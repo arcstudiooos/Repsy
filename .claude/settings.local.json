@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -I -c ' *)",
+      "Bash(claude --version)",
+      "Bash(claude plugin *)",
+      "PowerShell(git init D:\\\\Gym)",
+      "PowerShell($s=\"C:\\\\Users\\\\ranes\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--Gym\\\\f64524fb-d853-4356-848d-a727065b9714\\\\scratchpad\"; New-Item -ItemType Directory -Force \"$s\\\\prd\" | Out-Null; python -I \"$s\\\\scripts\\\\extract_docx.py\" \"C:\\\\Users\\\\ranes\\\\Downloads\\\\Kinetic_Coaching_Platform_Agent_Ready_PRD.docx\" \"$s\\\\prd\\\\prd.md\")"
+    ]
+  }
+}
