@@ -2,18 +2,17 @@ import { z } from 'zod';
 import {
   assertCan,
   DomainError,
-  highestRole,
   httpStatusFor,
   logger,
   type Action,
   type ActorContext,
   type ErrorCode,
   type MembershipRef,
-  type Role,
 } from '@kinetic/core';
-import { withSystem, withTenant, type PrismaClient, type TenantTx } from '@kinetic/db';
+import { withTenant, type PrismaClient, type TenantTx } from '@kinetic/db';
 import { getSessionUser, type Auth, type SessionUser } from '@/lib/auth';
-import { ORG_COOKIE, orgCookieSecret, readCookie, verifyOrgCookie } from './orgCookie';
+import { loadMemberships, resolveActor } from './actor';
+import { orgCookieSecret } from './orgCookie';
 import { defaultLimiter, InMemoryRateLimiter, type RateLimiter } from './rateLimit';
 import { clientIp } from './clientIp';
 import { getRequestId } from './requestId';
@@ -116,36 +115,6 @@ async function readInput(request: Request, schema: z.ZodType): Promise<unknown> 
   return parsed.data;
 }
 
-/**
- * Active org: signed `kinetic_org` cookie (bound to the user, re-checked against
- * live memberships), else the sole membership. A bad signature counts as absent;
- * a valid signature for an org the user does not belong to is a 404 so that
- * org existence never leaks.
- */
-function resolveActor(
-  request: Request,
-  user: SessionUser,
-  memberships: MembershipRef[],
-  secret: string,
-): ActorContext {
-  const cookie = readCookie(request.headers.get('cookie'), ORG_COOKIE);
-  const cookieOrg = cookie ? verifyOrgCookie(cookie, user.id, secret) : null;
-  let orgId: string;
-  if (cookieOrg !== null) {
-    orgId = cookieOrg;
-  } else {
-    const orgIds = [...new Set(memberships.map((m) => m.orgId))];
-    if (orgIds.length === 0) throw new DomainError('FORBIDDEN', 'No active workspace.');
-    if (orgIds.length > 1) {
-      throw new DomainError('ORG_SELECTION_REQUIRED', 'Choose a workspace to continue.');
-    }
-    orgId = orgIds[0] as string;
-  }
-  const role = highestRole(memberships.filter((m) => m.orgId === orgId).map((m) => m.role));
-  if (role === undefined) throw new DomainError('NOT_FOUND', 'Not found.');
-  return { userId: user.id, orgId, role, isPlatformAdmin: user.isPlatformAdmin };
-}
-
 /** Stack with the `name: message` header (which may span lines) replaced by the name. */
 function sanitizedStack(err: Error): string {
   const stack = err.stack ?? '';
@@ -190,21 +159,16 @@ export function createApiHandler(deps: ApiDeps = {}) {
         }
         if (!user) return fail('UNAUTHENTICATED', 'Sign in to continue.', requestId);
 
-        // System scope: memberships span orgs, and only this user's own rows are read.
-        const memberships = await withSystem(
-          async (tx) =>
-            (
-              await tx.membership.findMany({
-                where: { userId: user.id, status: 'active' },
-                select: { organizationId: true, role: true },
-              })
-            ).map((m): MembershipRef => ({ orgId: m.organizationId, role: m.role as Role })),
-          deps.prisma,
-        );
+        const memberships = await loadMemberships(user.id, deps.prisma);
 
         const requireOrg = def.requireOrg !== false;
         const actor = requireOrg
-          ? resolveActor(request, user, memberships, deps.secret ?? orgCookieSecret())
+          ? resolveActor(
+              request.headers.get('cookie'),
+              user,
+              memberships,
+              deps.secret ?? orgCookieSecret(),
+            )
           : undefined;
         if (actor && def.can) assertCan(actor, def.can);
 

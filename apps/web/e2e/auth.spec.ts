@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
-import { createPilotCode, findOwnerOrg } from './support/db';
+import { createPilotCode, findOwnerOrg, resetRateLimits } from './support/db';
 
 const PASSWORD = 'e2e-correct-horse-battery';
 
@@ -35,15 +35,19 @@ test('coach signs up with pilot code, verifies, lands on /app', async ({ page, r
   const code = `PILOT-${stamp}`;
   await createPilotCode(code);
 
-  await page.goto('/signup');
-  await page.getByLabel('Your name').fill('Casey Coach');
-  await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Password').fill(PASSWORD);
-  await page.getByLabel('Business name').fill('Casey Strength');
-  await page.getByLabel('Time zone').fill('Europe/London');
-  await page.getByLabel('Pilot code').fill(code);
-  await page.getByRole('button', { name: 'Create account' }).click();
-  await expect(page).toHaveURL(/\/verify-email$/);
+  // Sign-up is rate limited per IP and parallel workers share one IP: reset and retry.
+  await expect(async () => {
+    await resetRateLimits();
+    await page.goto('/signup');
+    await page.getByLabel('Your name').fill('Casey Coach');
+    await page.getByLabel('Email').fill(email);
+    await page.getByLabel('Password').fill(PASSWORD);
+    await page.getByLabel('Business name').fill('Casey Strength');
+    await page.getByLabel('Time zone').fill('Europe/London');
+    await page.getByLabel('Pilot code').fill(code);
+    await page.getByRole('button', { name: 'Create account' }).click();
+    await expect(page).toHaveURL(/\/verify-email$/, { timeout: 5_000 });
+  }).toPass({ timeout: 45_000 });
 
   // Unverified: /app is closed.
   await page.goto('/app');
@@ -60,15 +64,19 @@ test('coach signs up with pilot code, verifies, lands on /app', async ({ page, r
 });
 
 test('signup rejects an unknown pilot code without creating an account', async ({ page }) => {
-  await page.goto('/signup');
-  await page.getByLabel('Your name').fill('No Code');
-  await page.getByLabel('Email').fill(`nocode-${Date.now()}@example.test`);
-  await page.getByLabel('Password').fill(PASSWORD);
-  await page.getByLabel('Business name').fill('Nope Ltd');
-  await page.getByLabel('Time zone').fill('UTC');
-  await page.getByLabel('Pilot code').fill('NOT-A-CODE');
-  await page.getByRole('button', { name: 'Create account' }).click();
-  await expect(page.getByText('This pilot code is invalid or has expired.')).toBeVisible();
+  // Parallel specs share the per-IP sign-up counter: reset and retry.
+  await expect(async () => {
+    await resetRateLimits();
+    await page.goto('/signup');
+    await page.getByLabel('Your name').fill('No Code');
+    await page.getByLabel('Email').fill(`nocode-${Date.now()}@example.test`);
+    await page.getByLabel('Password').fill(PASSWORD);
+    await page.getByLabel('Business name').fill('Nope Ltd');
+    await page.getByLabel('Time zone').fill('UTC');
+    await page.getByLabel('Pilot code').fill('NOT-A-CODE');
+    await page.getByRole('button', { name: 'Create account' }).click();
+    await expect(page.getByText('This pilot code is invalid or has expired.')).toBeVisible();
+  }).toPass({ timeout: 45_000 });
   await expect(page).toHaveURL(/\/signup$/);
 });
 

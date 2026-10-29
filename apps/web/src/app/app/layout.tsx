@@ -27,7 +27,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       >
         Skip to content
       </a>
-      <CoachNav />
+      {/* usePathname() is runtime data: keep it out of the prerendered shell for dynamic routes. */}
+      <Suspense fallback={null}>
+        <CoachNav />
+      </Suspense>
       <div className="flex min-w-0 flex-col">
         <header className="border-b border-divider bg-surface px-4 py-3 md:hidden">
           <p className="text-lg font-semibold">Kinetic</p>
@@ -36,7 +39,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           id="main"
           className="mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-24 md:px-8 md:pt-8 md:pb-8"
         >
-          <PathBreadcrumbs />
+          <Suspense fallback={null}>
+            <PathBreadcrumbs />
+          </Suspense>
           <Suspense fallback={<LoadingState />}>
             <MembershipGate>{children}</MembershipGate>
           </Suspense>

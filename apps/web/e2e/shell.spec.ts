@@ -4,6 +4,7 @@ import { signUpVerifiedClient, signUpVerifiedCoach, type E2EUser } from './helpe
 
 const VIEWPORTS = [
   { width: 375, height: 812 },
+  { width: 768, height: 1024 },
   { width: 1440, height: 900 },
 ] as const;
 
@@ -60,6 +61,11 @@ test.describe('app shells', () => {
           ? ['Home', 'Clients', 'Review', 'Messages', 'More']
           : ['Overview', 'Clients', 'Programs', 'Review', 'Messages', 'Analytics', 'Settings'],
       );
+      await expect(nav.getByRole('link', { name: mobile ? 'Home' : 'Overview' })).toHaveAttribute(
+        'aria-current',
+        'page',
+      );
+      await expect(nav.locator('[aria-current=page]')).toHaveCount(1);
       await expectNoHorizontalOverflow(page);
       await expectNoAxeViolations(page);
       await ctx.close();

@@ -67,18 +67,22 @@ async function signUpAndVerify(
     orgName: `${displayName} Org`,
   };
   const code = `PILOT-${id}`;
-  await resetRateLimits();
   await createPilotCode(code);
 
-  await page.goto('/signup');
-  await page.getByLabel('Your name').fill(user.name);
-  await page.getByLabel('Email').fill(user.email);
-  await page.getByLabel('Password').fill(user.password);
-  await page.getByLabel('Business name').fill(user.orgName);
-  await page.getByLabel('Time zone').fill('Europe/London');
-  await page.getByLabel('Pilot code').fill(code);
-  await page.getByRole('button', { name: 'Create account' }).click();
-  await expect(page).toHaveURL(/\/verify-email$/);
+  // Sign-up is rate limited per IP and parallel workers share one IP, so another
+  // worker can refill the counter between our reset and submit: retry.
+  await expect(async () => {
+    await resetRateLimits();
+    await page.goto('/signup');
+    await page.getByLabel('Your name').fill(user.name);
+    await page.getByLabel('Email').fill(user.email);
+    await page.getByLabel('Password').fill(user.password);
+    await page.getByLabel('Business name').fill(user.orgName);
+    await page.getByLabel('Time zone').fill('Europe/London');
+    await page.getByLabel('Pilot code').fill(code);
+    await page.getByRole('button', { name: 'Create account' }).click();
+    await expect(page).toHaveURL(/\/verify-email$/, { timeout: 5_000 });
+  }).toPass({ timeout: 45_000 });
 
   const mail = await waitForEmail(request, user.email, 'auth.verify_email');
   const link = /https?:\/\/\S+/.exec(mail.text)?.[0];

@@ -18,6 +18,8 @@ const safeDecode = (segment: string): string => {
 export function crumbsFromPath(pathname: string): Crumb[] | null {
   const segments = pathname.split('/').filter(Boolean).slice(1); // drop "app"
   if (segments.length < 2) return null;
+  // Client pages render their own crumbs (Clients / name): the URL only holds an opaque id.
+  if (segments[0] === 'clients') return null;
   const crumbs: Crumb[] = [{ label: 'Overview', href: '/app' }];
   segments.forEach((segment, i) => {
     const href = `/app/${segments.slice(0, i + 1).join('/')}`;
