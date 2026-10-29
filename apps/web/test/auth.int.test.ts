@@ -162,7 +162,7 @@ describe('password reset', () => {
 
     await auth.api.requestPasswordReset({ body: { email, redirectTo: '/reset-password' } });
     const link = await queuedLink('auth.reset_password', user.id);
-    const token = link.split('?')[0].split('/').pop() as string;
+    const token = (link.split('?')[0] ?? '').split('/').pop() as string;
 
     await auth.api.resetPassword({ body: { newPassword: 'a-brand-new-passphrase', token } });
     await expect(

@@ -31,4 +31,11 @@ If `DATABASE_URL` is unset, tests start an embedded Postgres automatically inste
 
 ## Scripts
 
-`pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`
+- `pnpm lint` - ESLint across the repo
+- `pnpm typecheck` - TypeScript in every workspace
+- `pnpm test` - Vitest unit and integration tests
+- `pnpm test:e2e` - Playwright end-to-end tests (web app)
+- `pnpm db:up` / `pnpm db:down` - start or stop local Postgres
+- `pnpm format` - Prettier (writes; prefer formatting only files you changed)
+
+Per-app scripts are documented in `apps/web/README.md`.

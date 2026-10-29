@@ -1,0 +1,41 @@
+/* Design tokens (PRD §6.2). Keep in sync with src/lib/tokens.ts (tokens.test.ts enforces it). */
+:root {
+  --k-canvas: #f7f8f6;
+  --k-surface: #ffffff;
+  --k-ink: #152825;
+  --k-accent: #1c7666;
+  --k-accent-hover: #145b50;
+  --k-secondary: #60716e;
+  /* Decorative only: not a boundary for inputs or controls. */
+  --k-divider: #e1e8e4;
+  --k-input-border: #7d8c87;
+  --k-warning: #8f5a26;
+  --k-danger: #b64743;
+
+  --k-radius-card: 12px;
+  --k-radius-control: 8px;
+  --k-shadow-card: 0 4px 18px rgba(16, 36, 30, 0.05);
+
+  /* Spacing scale: 4 / 8 / 12 / 16 / 24 / 32 (Tailwind 1, 2, 3, 4, 6, 8). */
+  --k-space-1: 4px;
+  --k-space-2: 8px;
+  --k-space-3: 12px;
+  --k-space-4: 16px;
+  --k-space-6: 24px;
+  --k-space-8: 32px;
+
+  --k-motion-fast: 120ms;
+  --k-motion-base: 180ms;
+  --k-ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Reduced motion: no transitions or animations. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}
