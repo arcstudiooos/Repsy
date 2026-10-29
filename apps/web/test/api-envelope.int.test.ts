@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { DomainError } from '@kinetic/core';
-import type { PrismaClient } from '@kinetic/db';
+import { withSystem, type PrismaClient } from '@kinetic/db';
 import { createTestDb } from '@kinetic/db/testing';
 import { createAuth, type Auth } from '@/lib/auth';
 import { createApiHandler } from '@/server/api';
@@ -188,5 +188,62 @@ describe('api envelope', () => {
     const single = headersFor(t.coachA);
     single.set('cookie', `${single.get('cookie')}; kinetic_org=%E0%A4`);
     expect((await make()({ handler: () => ({}) })(req('GET', single))).status).toBe(200);
+  });
+
+  it('actor carries isPlatformAdmin from the session user', async () => {
+    const handler = make()({ handler: ({ actor }) => ({ admin: actor.isPlatformAdmin }) });
+    expect(await (await handler(req('GET', headersFor(t.coachA)))).json()).toEqual({
+      data: { admin: false },
+    });
+    await withSystem(
+      (tx) => tx.user.update({ where: { id: t.coachB.id }, data: { isPlatformAdmin: true } }),
+      prisma,
+    );
+    try {
+      expect(await (await handler(req('GET', headersFor(t.coachB)))).json()).toEqual({
+        data: { admin: true },
+      });
+    } finally {
+      await withSystem(
+        (tx) => tx.user.update({ where: { id: t.coachB.id }, data: { isPlatformAdmin: false } }),
+        prisma,
+      );
+    }
+  });
+
+  it('tenant() runs as the acting user: their own users row is writable', async () => {
+    const handler = make()({
+      handler: ({ actor, tenant }) =>
+        tenant((tx) =>
+          tx.user.update({
+            where: { id: actor.userId },
+            data: { name: 'coach-a' },
+            select: { id: true },
+          }),
+        ),
+    });
+    const res = await handler(req('GET', headersFor(t.coachA)));
+    expect(await res.json()).toEqual({ data: { id: t.coachA.id } });
+  });
+
+  it('per-route rateLimit uses its own bucket instead of the global one', async () => {
+    const define = make();
+    const strict = define({
+      rateLimit: { capacity: 1, refillPerSecond: 0.001 },
+      handler: () => ({}),
+    });
+    const normal = define({ handler: () => ({}) });
+    const h = () => req('GET', headersFor(t.clientA));
+    expect((await strict(h())).status).toBe(200);
+    const limited = await strict(h());
+    expect(limited.status).toBe(429);
+    expect(limited.headers.get('retry-after')).toBeTruthy();
+    expect((await normal(h())).status).toBe(200);
+  });
+
+  it('can + requireOrg: false is rejected when the route is defined', () => {
+    expect(() => make()({ requireOrg: false, can: 'org:read', handler: () => ({}) })).toThrow(
+      /requireOrg/,
+    );
   });
 });

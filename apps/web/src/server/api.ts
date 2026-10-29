@@ -14,7 +14,7 @@ import {
 import { withSystem, withTenant, type PrismaClient, type TenantTx } from '@kinetic/db';
 import { getSessionUser, type Auth, type SessionUser } from '@/lib/auth';
 import { ORG_COOKIE, orgCookieSecret, readCookie, verifyOrgCookie } from './orgCookie';
-import { defaultLimiter, type RateLimiter } from './rateLimit';
+import { defaultLimiter, InMemoryRateLimiter, type RateLimiter } from './rateLimit';
 import { clientIp } from './clientIp';
 import { getRequestId } from './requestId';
 
@@ -56,8 +56,13 @@ export interface RouteDef<S extends z.ZodType | undefined, R extends boolean> {
   input?: S;
   /** Default true. `false` for routes that work before an org is chosen (e.g. /me). */
   requireOrg?: R;
-  /** Authorization policy checked against the resolved actor. */
+  /** Authorization policy checked against the resolved actor. Requires an active org. */
   can?: Action;
+  /**
+   * Per-route token bucket (per user, or per IP when anonymous). Replaces the
+   * global bucket for this route; omit to use the global per-user default.
+   */
+  rateLimit?: { capacity: number; refillPerSecond: number };
   handler(ctx: RouteCtx<InputOf<S>, R>): unknown;
 }
 
@@ -136,13 +141,19 @@ function resolveActor(
   }
   const role = highestRole(memberships.filter((m) => m.orgId === orgId).map((m) => m.role));
   if (role === undefined) throw new DomainError('NOT_FOUND', 'Not found.');
-  return { userId: user.id, orgId, role };
+  return { userId: user.id, orgId, role, isPlatformAdmin: user.isPlatformAdmin };
 }
 
 export function createApiHandler(deps: ApiDeps = {}) {
   return function define<S extends z.ZodType | undefined = undefined, R extends boolean = true>(
     def: RouteDef<S, R>,
   ): (request: Request) => Promise<Response> {
+    if (def.can !== undefined && def.requireOrg === false) {
+      throw new Error(
+        'apiHandler: `can` needs an active org; it cannot be used with requireOrg: false',
+      );
+    }
+    const routeLimiter = def.rateLimit ? new InMemoryRateLimiter(def.rateLimit) : undefined;
     return async (request) => {
       const requestId = getRequestId(request);
       try {
@@ -154,7 +165,7 @@ export function createApiHandler(deps: ApiDeps = {}) {
         }
 
         const user = await getSessionUser(request.headers, deps.auth);
-        const limiter = deps.limiter ?? defaultLimiter;
+        const limiter = routeLimiter ?? deps.limiter ?? defaultLimiter;
         const limit = await limiter.consume(
           user ? `user:${user.id}` : `ip:${clientIp(request.headers)}`,
         );
@@ -194,7 +205,7 @@ export function createApiHandler(deps: ApiDeps = {}) {
           input,
           tenant: (fn) => {
             if (!actor) throw new Error('tenant() requires an active organization');
-            return withTenant(actor.orgId, fn, deps.prisma);
+            return withTenant(actor.orgId, fn, deps.prisma, { userId: actor.userId });
           },
         } as RouteCtx<InputOf<S>, R>);
 

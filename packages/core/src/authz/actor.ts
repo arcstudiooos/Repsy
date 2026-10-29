@@ -14,6 +14,10 @@ export interface ActorContext {
   userId: string;
   orgId: string;
   role: Role;
+  /** From the session user. Grants nothing by itself: platform-admin support access is explicit and audited. */
+  isPlatformAdmin: boolean;
+  /** The actor's client record in this org, once client records exist (Sprint 1). */
+  clientId?: string;
 }
 
 export const COACH_ROLES: readonly Role[] = ['owner', 'coach'];
