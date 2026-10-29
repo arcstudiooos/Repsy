@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { clientIp } from '@/server/clientIp';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { clientIp, trustedProxyHops } from '@/server/clientIp';
 import { orgCookieSecret, signOrgCookie, verifyOrgCookie, readCookie } from '@/server/orgCookie';
 import { InMemoryRateLimiter } from '@/server/rateLimit';
 
@@ -70,5 +70,22 @@ describe('InMemoryRateLimiter isolation', () => {
     expect(l.consume('user:u').allowed).toBe(true);
     for (let i = 0; i < 10_500; i++) l.consume(`ip:${i}`);
     expect(l.consume('user:u').allowed).toBe(false);
+  });
+});
+
+describe('clientIp env default', () => {
+  const headers = new Headers({ 'x-forwarded-for': '1.1.1.1, 9.9.9.9' });
+  afterEach(() => vi.unstubAllEnvs());
+  it('treats empty TRUSTED_PROXY_HOPS as unset (default 1)', () => {
+    vi.stubEnv('TRUSTED_PROXY_HOPS', '');
+    expect(clientIp(headers)).toBe('9.9.9.9');
+    expect(trustedProxyHops({ TRUSTED_PROXY_HOPS: '  ' })).toBe(1);
+    expect(trustedProxyHops({})).toBe(1);
+  });
+  it('reads a numeric value and rejects junk', () => {
+    expect(trustedProxyHops({ TRUSTED_PROXY_HOPS: '2' })).toBe(2);
+    expect(trustedProxyHops({ TRUSTED_PROXY_HOPS: 'abc' })).toBeNaN();
+    vi.stubEnv('TRUSTED_PROXY_HOPS', 'abc');
+    expect(clientIp(headers)).toBe('unknown');
   });
 });

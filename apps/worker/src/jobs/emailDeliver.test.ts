@@ -256,7 +256,7 @@ describe('DevSinkEmailAdapter', () => {
     });
     const files = await readdir(dir);
     expect(files).toHaveLength(1);
-    expect(files[0]).toContain('idem-1');
+    expect(files[0]).not.toContain('idem-1');
     const saved = JSON.parse(await readFile(join(dir, files[0] ?? ''), 'utf8'));
     expect(saved).toMatchObject({
       to: 'a@example.test',

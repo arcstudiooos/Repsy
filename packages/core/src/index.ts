@@ -13,5 +13,6 @@ export {
 } from './authz/actor';
 export { can, assertCan, type Action } from './authz/policies';
 export { enforceAttemptLimit, ATTEMPT_LIMIT, ATTEMPT_WINDOW_MS } from './identity/rateLimit';
-export { signupCoach, hashPilotCode, type SignupCoachInput } from './identity/signupCoach';
+export { signupCoach, type SignupCoachInput } from './identity/signupCoach';
+export { generatePilotCode, hashPilotCode, normalizePilotCode } from './identity/pilotCode';
 export { createLogger, logger, type Logger } from './log';

@@ -1,7 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const port = Number(process.env.E2E_WEB_PORT ?? 3100);
-const baseURL = `http://localhost:${port}`;
+// STAGING_URL points the smoke spec at a hosted environment; no local stack is started then.
+const stagingUrl = process.env.STAGING_URL;
+const baseURL = stagingUrl ?? `http://localhost:${port}`;
 
 export default defineConfig({
   testDir: './e2e',
@@ -12,13 +14,15 @@ export default defineConfig({
   timeout: 60_000,
   use: { baseURL, trace: 'on-first-retry' },
   // Prepares the DB, then starts web + worker (see e2e/support/stack.ts).
-  webServer: {
-    command: 'pnpm exec tsx e2e/support/stack.ts',
-    url: `${baseURL}/healthz`,
-    reuseExistingServer: false,
-    timeout: 240_000,
-    stdout: 'pipe',
-    stderr: 'pipe',
-  },
+  webServer: stagingUrl
+    ? undefined
+    : {
+        command: 'pnpm exec tsx e2e/support/stack.ts',
+        url: `${baseURL}/healthz`,
+        reuseExistingServer: false,
+        timeout: 240_000,
+        stdout: 'pipe',
+        stderr: 'pipe',
+      },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
 });

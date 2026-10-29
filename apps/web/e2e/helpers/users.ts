@@ -51,9 +51,7 @@ async function waitForEmail(
 }
 
 let counter = 0;
-// Keep ids short: the dev email sink embeds the (email-derived) token in the file name,
-// and long names exceed MAX_PATH on Windows.
-const unique = (prefix: string) => `${prefix}${Date.now().toString(36)}${counter++}`;
+const unique = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${counter++}`;
 
 async function signUpAndVerify(
   page: Page,

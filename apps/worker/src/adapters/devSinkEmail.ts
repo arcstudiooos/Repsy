@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { EmailMessage, EmailPort } from '@kinetic/core';
@@ -9,9 +10,10 @@ export class DevSinkEmailAdapter implements EmailPort {
   async send(message: EmailMessage): Promise<void> {
     await mkdir(this.dir, { recursive: true });
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const safeKey = message.idempotencyKey.replace(/[^A-Za-z0-9_-]/g, '_');
+    // The key can embed a single-use token and be long (MAX_PATH): name by its hash instead.
+    const keyHash = createHash('sha256').update(message.idempotencyKey).digest('hex').slice(0, 16);
     await writeFile(
-      join(this.dir, `${stamp}_${safeKey}.json`),
+      join(this.dir, `${stamp}_${keyHash}.json`),
       JSON.stringify(message, null, 2),
       'utf8',
     );

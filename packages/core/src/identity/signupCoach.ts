@@ -1,6 +1,6 @@
-import { createHash } from 'node:crypto';
 import { appendAudit, type SystemTx } from '@kinetic/db';
 import { DomainError } from '../errors';
+import { hashPilotCode } from './pilotCode';
 
 export interface SignupCoachInput {
   userId: string;
@@ -8,10 +8,6 @@ export interface SignupCoachInput {
   orgName: string;
   timezone: string;
 }
-
-/** Pilot codes are stored as sha256 hex; never compare or log plaintext. */
-export const hashPilotCode = (code: string): string =>
-  createHash('sha256').update(code.trim()).digest('hex');
 
 /**
  * Provisions a coach workspace. Runs in system scope (the org does not exist

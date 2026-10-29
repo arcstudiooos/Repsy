@@ -1,8 +1,8 @@
-import { createHash } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { withSystem, type PrismaClient } from '@kinetic/db';
 import { createTestDb } from '@kinetic/db/testing';
 import { DomainError } from '../errors';
+import { hashPilotCode } from './pilotCode';
 import { signupCoach } from './signupCoach';
 
 let prisma: PrismaClient;
@@ -10,7 +10,7 @@ let drop: () => Promise<void>;
 let adminId: string;
 let userId: string;
 
-const hash = (code: string) => createHash('sha256').update(code).digest('hex');
+const hash = hashPilotCode;
 const day = 86_400_000;
 
 async function seedCode(code: string, patch: { usedBy?: string; expiresAt?: Date } = {}) {
@@ -81,6 +81,11 @@ describe('signupCoach', () => {
         { action: 'org.created', actorId: userId, objectType: 'organization', objectId: orgId },
       ]);
     }, prisma);
+  });
+
+  it('accepts lowercase and hyphenless input', async () => {
+    await seedCode('MIXED-Case-9');
+    await expect(signup('mixedcase9')).resolves.toHaveProperty('orgId');
   });
 
   it('a code cannot be redeemed twice', async () => {

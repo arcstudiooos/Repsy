@@ -5,6 +5,9 @@ import { STATE_FILE, type E2EState } from './state';
 
 export const readState = (): E2EState => JSON.parse(readFileSync(STATE_FILE, 'utf8')) as E2EState;
 
+/** Same normalization as @kinetic/core normalizePilotCode (uppercase, no hyphens or spaces). */
+const normalizeCode = (code: string) => code.replace(/[\s-]+/g, '').toUpperCase();
+
 /** Inserts an unused pilot code (stored hashed, like production) via the admin connection. */
 export async function createPilotCode(code: string): Promise<void> {
   const client = new pg.Client({ connectionString: readState().adminUrl });
@@ -19,7 +22,7 @@ export async function createPilotCode(code: string): Promise<void> {
     await client.query(
       `INSERT INTO pilot_codes (id, code_hash, created_by, expires_at)
        VALUES (gen_random_uuid(), $1, $2, now() + interval '1 day')`,
-      [createHash('sha256').update(code).digest('hex'), rows[0]?.id],
+      [createHash('sha256').update(normalizeCode(code)).digest('hex'), rows[0]?.id],
     );
   } finally {
     await client.end();

@@ -11,8 +11,10 @@
   "devDependencies": {
     "@types/node": "24.19.2",
     "@types/pg": "8.23.1",
+    "better-auth": "1.7.12",
     "embedded-postgres": "17.9.0-beta.17",
     "prisma": "7.10.1",
+    "tsx": "4.23.15",
     "typescript": "5.9.3",
     "vitest": "5.0.5"
   },
@@ -23,10 +25,13 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "pilot-code:create": "tsx scripts/pilot-code-create.ts",
+    "db:seed": "tsx prisma/seed.ts"
   },
   "exports": {
     ".": "./src/index.ts",
-    "./testing": "./src/testing/createTestDb.ts"
+    "./testing": "./src/testing/createTestDb.ts",
+    "./testing/app-role": "./src/testing/appRole.ts"
   }
 }

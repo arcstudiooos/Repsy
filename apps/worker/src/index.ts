@@ -1,10 +1,11 @@
 import { logger } from '@kinetic/core';
-import { prisma } from '@kinetic/db';
+import { assertRuntimeRoleIfEnforced, prisma } from '@kinetic/db';
 import { createEmailPort } from './adapters';
-import { createBoss } from './boss';
+import { createBoss, pgBossSchemaIsPrecreated } from './boss';
 import { outboxPollIntervalMs } from './config';
 import { startHealthServer } from './health';
-import { emailDeliverJob, queueEmailSweep } from './jobs/emailDeliver';
+import { jobs } from './jobs/all';
+import { queueEmailSweep } from './jobs/emailDeliver';
 import { registerJobs } from './jobs/registry';
 import { initSentry, Sentry } from './sentry';
 
@@ -14,17 +15,18 @@ async function main(): Promise<void> {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error('DATABASE_URL is not set');
   initSentry();
+  await assertRuntimeRoleIfEnforced(prisma);
 
   const port = Number(process.env.PORT ?? process.env.WORKER_PORT ?? 8081);
   const health = await startHealthServer(port);
 
-  const boss = createBoss(url);
+  const boss = createBoss(url, { precreated: pgBossSchemaIsPrecreated() });
   boss.on('error', (error) => {
     logger.error({ err: errMessage(error) }, 'pg-boss error');
     Sentry.captureException(error);
   });
   await boss.start();
-  await registerJobs(boss, [emailDeliverJob], { prisma, port: createEmailPort(), logger });
+  await registerJobs(boss, jobs, { prisma, port: createEmailPort(), logger });
 
   const intervalMs = outboxPollIntervalMs();
   const poll = () =>
