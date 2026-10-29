@@ -25,12 +25,33 @@ BEGIN
     RAISE EXCEPTION 'kinetic.app_password is not set (pass it via PGOPTIONS, see the header of this file)';
   END IF;
 
+  -- The owner may be a plain CREATEROLE role (Render), which cannot ALTER superuser-class
+  -- attributes: set them once at CREATE time, and rotate with a password-only ALTER.
+  -- Password-bearing statements are wrapped so a failure never echoes the password
+  -- (psql stderr and server logs print the failing statement in the error context).
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = role_name) THEN
-    EXECUTE format('CREATE ROLE %I LOGIN', role_name);
+    BEGIN
+      EXECUTE format(
+        'CREATE ROLE %I LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD %L',
+        role_name, pw);
+    EXCEPTION WHEN OTHERS THEN
+      RAISE EXCEPTION 'creating role % failed (SQLSTATE %)', role_name, SQLSTATE;
+    END;
+  ELSE
+    BEGIN
+      EXECUTE format('ALTER ROLE %I PASSWORD %L', role_name, pw);
+    EXCEPTION WHEN OTHERS THEN
+      RAISE EXCEPTION 'setting % password failed (SQLSTATE %)', role_name, SQLSTATE;
+    END;
   END IF;
-  EXECUTE format(
-    'ALTER ROLE %I WITH LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD %L',
-    role_name, pw);
+
+  IF EXISTS (
+    SELECT 1 FROM pg_roles
+     WHERE rolname = role_name
+       AND (rolsuper OR rolbypassrls OR rolcreatedb OR rolcreaterole OR rolreplication OR NOT rolcanlogin)
+  ) THEN
+    RAISE EXCEPTION 'role % has unsafe attributes; drop it and re-run, or fix it as a superuser', role_name;
+  END IF;
   EXECUTE format('GRANT CONNECT ON DATABASE %I TO %I', current_database(), role_name);
 
   -- pg-boss keeps its tables in its own schema; created here so the default

@@ -102,3 +102,90 @@ describe('app-role.sql', () => {
     await expect(admin.query(sql)).rejects.toThrow(/kinetic\.app_password/);
   });
 });
+
+describe('app-role.sql run by a non-superuser CREATEROLE owner (Render)', () => {
+  const ownerRole = `kowner_${suffix}`;
+  const ownerPw = `opw-${suffix}`;
+  const foreignRole = `kforeign_${suffix}`;
+  const appRole = `kinetic_app_o_${suffix}`;
+  const bossSchema = `pgboss_o_${suffix}`;
+  const secret = `s3cret-${suffix}-XYZ`;
+  let db: Awaited<ReturnType<typeof createTestDb>>;
+  let owner: pg.Client;
+
+  beforeAll(async () => {
+    db = await createTestDb();
+    await admin.query(
+      `CREATE ROLE ${ownerRole} LOGIN PASSWORD '${ownerPw}' CREATEROLE NOSUPERUSER NOBYPASSRLS`,
+    );
+    await admin.query(`CREATE ROLE ${foreignRole} NOLOGIN`);
+    await admin.query(
+      `GRANT CREATE ON DATABASE ${(await admin.query('SELECT current_database() d')).rows[0].d} TO ${ownerRole}`,
+    );
+    await admin.query(`ALTER SCHEMA "${db.schema}" OWNER TO ${ownerRole}`);
+    await admin.query(`DO $$ DECLARE t text; BEGIN
+      FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = '${db.schema}' LOOP
+        EXECUTE format('ALTER TABLE %I.%I OWNER TO ${ownerRole}', '${db.schema}', t);
+      END LOOP; END $$`);
+    const url = new URL(baseUrl());
+    url.username = ownerRole;
+    url.password = ownerPw;
+    owner = new pg.Client({ connectionString: url.toString() });
+    await owner.connect();
+  });
+
+  afterAll(async () => {
+    await owner.end();
+    await db.drop();
+    await admin.query(`DROP SCHEMA IF EXISTS "${bossSchema}" CASCADE`);
+    await admin.query(`DROP OWNED BY ${appRole}`).catch(() => undefined);
+    await admin.query(`DROP ROLE IF EXISTS ${appRole}`);
+    await admin.query(`DROP OWNED BY ${ownerRole}`);
+    await admin.query(`DROP ROLE IF EXISTS ${ownerRole}`);
+    await admin.query(`DROP ROLE IF EXISTS ${foreignRole}`);
+  });
+
+  const run = (password: string, role = appRole) =>
+    applyAppRoleSql(owner, { role, password, appSchema: db.schema, pgbossSchema: bossSchema });
+  const attrs = async (role: string) =>
+    (
+      await admin.query(
+        `SELECT rolsuper, rolbypassrls, rolcreatedb, rolcreaterole, rolreplication, rolcanlogin
+           FROM pg_roles WHERE rolname = $1`,
+        [role],
+      )
+    ).rows[0];
+
+  it('creates the role with safe attributes (success path)', async () => {
+    await run(secret);
+    expect(await attrs(appRole)).toEqual({
+      rolsuper: false,
+      rolbypassrls: false,
+      rolcreatedb: false,
+      rolcreaterole: false,
+      rolreplication: false,
+      rolcanlogin: true,
+    });
+  });
+
+  it('rotates the password with a password-only ALTER', async () => {
+    await run(`${secret}-2`);
+    const url = new URL(baseUrl());
+    url.username = appRole;
+    url.password = `${secret}-2`;
+    const c = new pg.Client({ connectionString: url.toString() });
+    await c.connect();
+    await c.end();
+  });
+
+  it('failure never leaks the password', async () => {
+    // Exists, but this owner has no ADMIN on it, so ALTER ROLE is refused.
+    const error = await run(secret, foreignRole).catch(
+      (e: unknown) => e as Error & { where?: string },
+    );
+    expect(error).toBeInstanceOf(Error);
+    const text = JSON.stringify([(error as Error).message, (error as { where?: string }).where]);
+    expect(text).toMatch(/password failed/);
+    expect(text).not.toContain(secret);
+  });
+});

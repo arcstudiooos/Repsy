@@ -98,4 +98,23 @@ describe('assertRuntimeRoleIfEnforced', () => {
       assertRuntimeRoleIfEnforced(superClient(), { ENFORCE_RUNTIME_ROLE: 'true' }),
     ).rejects.toThrow(/superuser/i);
   });
+
+  it('refuses when the owner URL is present in the runtime env', async () => {
+    const env = { NODE_ENV: 'production', MIGRATION_DATABASE_URL: 'postgres://owner@h/db' };
+    await expect(assertRuntimeRoleIfEnforced(superClient(), env)).rejects.toThrow(
+      /MIGRATION_DATABASE_URL/,
+    );
+    await expect(
+      assertRuntimeRoleIfEnforced(superClient(), {
+        ENFORCE_RUNTIME_ROLE: 'true',
+        MIGRATION_DATABASE_URL: 'x',
+      }),
+    ).rejects.toThrow(/MIGRATION_DATABASE_URL/);
+  });
+
+  it('ignores MIGRATION_DATABASE_URL when enforcement is off', async () => {
+    await expect(
+      assertRuntimeRoleIfEnforced(superClient(), { MIGRATION_DATABASE_URL: 'x' }),
+    ).resolves.toBeUndefined();
+  });
 });

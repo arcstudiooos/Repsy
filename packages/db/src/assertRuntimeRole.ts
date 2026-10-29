@@ -47,6 +47,13 @@ export async function assertRuntimeRoleIfEnforced(
   options: { schema?: string } = {},
 ): Promise<void> {
   if (env.NODE_ENV === 'production' || env.ENFORCE_RUNTIME_ROLE === 'true') {
+    // The owner credential must never be readable by the running app (runtime-role boundary).
+    if (env.MIGRATION_DATABASE_URL) {
+      throw new Error(
+        'MIGRATION_DATABASE_URL must not be set in the runtime environment (owner credential). ' +
+          'Unset it in the start command; it is for pre-deploy migrations only.',
+      );
+    }
     await assertRuntimeRole(prisma, options);
   }
 }

@@ -49,7 +49,9 @@ describe('render.yaml blueprint', () => {
     expect(web?.runtime).toBe('node');
     expect(web?.buildCommand).toContain('pnpm install --frozen-lockfile');
     expect(web?.buildCommand).toContain('pnpm --filter @kinetic/web build');
-    expect(web?.startCommand).toBe('pnpm --filter @kinetic/web start');
+    expect(web?.startCommand).toBe(
+      'exec env -u MIGRATION_DATABASE_URL pnpm --filter @kinetic/web start',
+    );
     expect(web?.preDeployCommand).toContain('prisma migrate deploy');
     expect(web?.preDeployCommand).toContain('MIGRATION_DATABASE_URL');
     expect(web?.preDeployCommand).toContain('pgboss:migrate');

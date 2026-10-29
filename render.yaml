@@ -15,7 +15,8 @@ services:
     runtime: node
     plan: starter # the free tier sleeps
     buildCommand: pnpm install --frozen-lockfile --prod=false && pnpm --filter @kinetic/web build
-    startCommand: pnpm --filter @kinetic/web start
+    # The owner URL is only for preDeployCommand; the running app must not see it.
+    startCommand: exec env -u MIGRATION_DATABASE_URL pnpm --filter @kinetic/web start
     # Owner-only steps: schema migrations and the pg-boss schema run as the database
     # owner, never as the restricted runtime role (DATABASE_URL, kinetic_app).
     preDeployCommand: DATABASE_URL="$MIGRATION_DATABASE_URL" pnpm --filter @kinetic/db exec prisma migrate deploy && pnpm --filter @kinetic/worker pgboss:migrate

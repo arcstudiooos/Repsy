@@ -30,12 +30,20 @@ Checks before every PR: `pnpm lint && pnpm typecheck && pnpm test && pnpm test:e
 | Owner | `prisma migrate deploy`, `pgboss:migrate`, seed, pilot codes, `app-role.sql` | `MIGRATION_DATABASE_URL` |
 | `kinetic_app` | web and worker at runtime | `DATABASE_URL` |
 
-`kinetic_app` is LOGIN, NOSUPERUSER, NOBYPASSRLS, NOCREATEDB, NOCREATEROLE, and owns nothing. Create or rotate it as the owner:
+`kinetic_app` is LOGIN, NOSUPERUSER, NOBYPASSRLS, NOCREATEDB, NOCREATEROLE, and owns nothing. Create or rotate it as the owner. The owner only needs CREATEROLE (no superuser): attributes are set at CREATE time and rotation changes the password only.
+
+Password hygiene (the password travels through PGOPTIONS, and libpq splits `-c` values on spaces, so it must have no spaces or special characters):
 
 ```sh
-PGOPTIONS="-c kinetic.app_password=$KINETIC_APP_PASSWORD" \
-  psql "$MIGRATION_DATABASE_URL" -v ON_ERROR_STOP=1 -f packages/db/sql/app-role.sql
+KINETIC_APP_PASSWORD=$(openssl rand -hex 32)       # hex only: no escaping problems
+echo "$KINETIC_APP_PASSWORD"                       # copy it into Render's DATABASE_URL now; it is not stored anywhere
+read -rs -p "Owner connection string: " MIGRATION_DATABASE_URL; export MIGRATION_DATABASE_URL   # not in shell history
+PGOPTIONS="-c kinetic.app_password=$KINETIC_APP_PASSWORD"   psql "$MIGRATION_DATABASE_URL" -v ON_ERROR_STOP=1 -f packages/db/sql/app-role.sql
+unset KINETIC_APP_PASSWORD MIGRATION_DATABASE_URL
 ```
+
+- `SHOW kinetic.app_password` exposes the value to anyone with that session, so do not leave the session open.
+- The script never echoes the password in errors, but **if it errored, rotate** (re-run with a fresh password) before trusting the role.
 
 The script is idempotent: re-running it rotates the password and re-grants on current tables. Future tables created by the owner are covered by default privileges. It also creates the empty `pgboss` schema so its default privileges exist before pg-boss installs.
 
@@ -54,7 +62,9 @@ Deployment is deferred (the founder will add it later). `render.yaml` is written
 7. Run the **Smoke (staging)** workflow with the web URL (`.github/workflows/smoke.yml`). Optional repository secrets `SMOKE_EMAIL` / `SMOKE_PASSWORD` enable the sign-in check. Expected: `/healthz` 200 and the login page renders. A Render background worker has no public URL; check it through its logs (`worker started`).
 8. The seed is for demo data only and refuses to run with `NODE_ENV=production`. Mint the first real pilot code with `pilot-code:create` from a trusted machine with `MIGRATION_DATABASE_URL` set to the external owner string.
 
-Note: Render exposes service environment variables at runtime, so the owner string on `web` is readable by the web process. It is only used by `preDeployCommand`; the app itself connects through `DATABASE_URL`.
+Owner credential handling: Render exposes service environment variables to the running process, so `web`'s `startCommand` is `exec env -u MIGRATION_DATABASE_URL ...`: the owner URL exists only during `preDeployCommand`. The worker never receives it, and with the role guard enforced both services refuse to boot if `MIGRATION_DATABASE_URL` is present in their runtime environment.
+
+Post-pilot target (option b): run migrations from CI with the owner URL stored only in CI secrets, and remove `MIGRATION_DATABASE_URL` and `preDeployCommand` from Render entirely.
 
 ## Rollback
 
