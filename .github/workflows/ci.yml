@@ -37,6 +37,12 @@ jobs:
       - run: pnpm format:check
       - run: pnpm typecheck
       - run: pnpm test
+      # Migrations must reproduce prisma/schema.prisma exactly (replayed in a scratch database).
+      - run: |
+          PGPASSWORD=kinetic psql -h localhost -U kinetic -d kinetic_test -c 'CREATE DATABASE kinetic_shadow'
+          pnpm --filter @kinetic/db db:diff
+        env:
+          SHADOW_DATABASE_URL: postgres://kinetic:kinetic@localhost:5432/kinetic_shadow
       # Production build. Placeholder-but-valid values: nothing here is a real secret,
       # and no provider is contacted at build time.
       - run: pnpm --filter @kinetic/web build

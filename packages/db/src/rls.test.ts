@@ -107,4 +107,41 @@ describe('row level security', () => {
       expect(t.policies, t.relname).toBeGreaterThan(0);
     }
   });
+
+  it('policies use app_current_org', async () => {
+    const policies = await prisma.$queryRaw<
+      { tablename: string; qual: string | null; with_check: string | null }[]
+    >`SELECT tablename, qual, with_check FROM pg_policies
+      WHERE schemaname = ${schema} AND policyname = 'tenant_isolation'`;
+    expect(policies.map((p) => p.tablename).sort()).toEqual([
+      'audit_events',
+      'memberships',
+      'organizations',
+      'outbox_emails',
+    ]);
+    for (const p of policies) {
+      for (const text of [p.qual, p.with_check]) {
+        expect(text, p.tablename).toContain('app_current_org()');
+        expect(text, p.tablename).not.toContain('::text');
+      }
+    }
+  });
+
+  it('malformed org setting fails closed; empty setting returns no rows', async () => {
+    await expect(
+      prisma.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe(`SET LOCAL search_path TO "${schema}"`);
+        await tx.$executeRaw`SELECT set_config('app.org_id', 'not-a-uuid', true)`;
+        return tx.$queryRaw`SELECT 1 FROM memberships`;
+      }),
+    ).rejects.toMatchObject({
+      meta: { driverAdapterError: { cause: { originalCode: '22P02' } } },
+    });
+    const rows = await prisma.$transaction(async (tx) => {
+      await tx.$executeRawUnsafe(`SET LOCAL search_path TO "${schema}"`);
+      await tx.$executeRaw`SELECT set_config('app.org_id', '', true)`;
+      return tx.$queryRaw<unknown[]>`SELECT 1 FROM memberships`;
+    });
+    expect(rows).toEqual([]);
+  });
 });

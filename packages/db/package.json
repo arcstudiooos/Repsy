@@ -27,6 +27,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "pilot-code:create": "node --env-file-if-exists=../../.env --import tsx scripts/pilot-code-create.ts",
+    "db:diff": "node --env-file-if-exists=../../.env node_modules/prisma/build/index.js migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma --exit-code",
     "db:seed": "node --env-file-if-exists=../../.env --import tsx prisma/seed.ts",
     "db:deploy": "node --env-file-if-exists=../../.env node_modules/prisma/build/index.js migrate deploy"
   },
