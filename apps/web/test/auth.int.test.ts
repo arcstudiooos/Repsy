@@ -18,6 +18,7 @@ const PASSWORD = 'correct-horse-battery';
 let prisma: PrismaClient;
 let drop: () => Promise<void>;
 let auth: Auth;
+let deps: { auth: Auth; prisma: PrismaClient };
 
 const post = (path: string, body: unknown, headers: Record<string, string> = {}) =>
   createAuthHandlers(auth).POST(
@@ -65,6 +66,7 @@ async function queuedLink(kind: string, userId: string): Promise<string> {
 beforeAll(async () => {
   ({ prisma, drop } = await createTestDb());
   auth = createAuth({ prisma, env });
+  deps = { auth, prisma };
 });
 
 afterAll(async () => {
@@ -72,14 +74,10 @@ afterAll(async () => {
 });
 
 describe('password policy', () => {
-  it('rejects 11-char password', async () => {
-    const res = await post('/sign-up/email', {
-      name: 'Short',
-      email: 'short@example.test',
-      password: 'elevenchars',
-    });
+  it('rejects 11-char password with 422 over HTTP', async () => {
+    const res = await post('/reset-password', { newPassword: 'elevenchars', token: 'whatever' });
     expect(res.status).toBe(422);
-    expect(await prisma.user.count({ where: { email: 'short@example.test' } })).toBe(0);
+    expect(await res.json()).toMatchObject({ code: 'PASSWORD_TOO_SHORT' });
   });
 
   it('registers the breached-password plugin unless explicitly disabled', () => {
@@ -101,21 +99,30 @@ describe('route guard', () => {
     const { cookie } = await signIn(email);
     await prisma.user.update({ where: { email }, data: { emailVerified: false } });
 
-    const res = await guardRequest(new NextRequest(`${ORIGIN}/app`, { headers: { cookie } }), auth);
+    const res = await guardRequest(new NextRequest(`${ORIGIN}/app`, { headers: { cookie } }), deps);
     expect(res?.status).toBe(307);
     expect(new URL(res?.headers.get('location') ?? '').pathname).toBe('/verify-email');
   });
 
   it('anonymous user is sent to /login, verified user passes, non-admin is blocked from /admin', async () => {
-    const anon = await guardRequest(new NextRequest(`${ORIGIN}/settings`), auth);
+    const anon = await guardRequest(new NextRequest(`${ORIGIN}/settings`), deps);
     const loc = new URL(anon?.headers.get('location') ?? '');
     expect([loc.pathname, loc.searchParams.get('next')]).toEqual(['/login', '/settings']);
 
     await createVerifiedUser('ok@example.test');
+    const ok = await prisma.user.findUniqueOrThrow({ where: { email: 'ok@example.test' } });
+    await withSystem(async (tx) => {
+      const org = await tx.organization.create({
+        data: { name: 'Seeded', timezone: 'UTC', ownerUserId: ok.id },
+      });
+      await tx.membership.create({
+        data: { userId: ok.id, organizationId: org.id, role: 'owner' },
+      });
+    }, prisma);
     const { cookie } = await signIn('ok@example.test');
     const headers = { cookie };
-    expect(await guardRequest(new NextRequest(`${ORIGIN}/app`, { headers }), auth)).toBeNull();
-    const admin = await guardRequest(new NextRequest(`${ORIGIN}/admin`, { headers }), auth);
+    expect(await guardRequest(new NextRequest(`${ORIGIN}/app`, { headers }), deps)).toBeNull();
+    const admin = await guardRequest(new NextRequest(`${ORIGIN}/admin`, { headers }), deps);
     expect(admin?.status).toBe(403);
   });
 });

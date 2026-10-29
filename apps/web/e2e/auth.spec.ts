@@ -71,3 +71,11 @@ test('signup rejects an unknown pilot code without creating an account', async (
   await expect(page.getByText('This pilot code is invalid or has expired.')).toBeVisible();
   await expect(page).toHaveURL(/\/signup$/);
 });
+
+test('public sign-up endpoint is closed without a pilot code', async ({ request, baseURL }) => {
+  const res = await request.post('/api/auth/sign-up/email', {
+    headers: { origin: baseURL as string },
+    data: { name: 'Bypass', email: `bypass-${Date.now()}@example.test`, password: PASSWORD },
+  });
+  expect(res.status()).toBe(403);
+});

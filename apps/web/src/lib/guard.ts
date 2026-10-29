@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import type { PrismaClient } from '@kinetic/db';
 import { getSessionUser, type Auth, type SessionUser } from './auth';
+import { hasCoachMembership, ONBOARDING_PATH } from './membership';
 
-const PROTECTED_PREFIXES = ['/app', '/portal', '/settings', '/admin'] as const;
+const PROTECTED_PREFIXES = ['/app', '/portal', '/settings', '/admin', '/onboarding'] as const;
 
 export const isProtectedPath = (pathname: string): boolean =>
   PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
@@ -20,16 +22,23 @@ export function decideAccess(pathname: string, user: SessionUser | null): Access
   return { type: 'allow' };
 }
 
+const isAppPath = (pathname: string): boolean =>
+  pathname === '/app' || pathname.startsWith('/app/');
+
 /** Returns a response when the request must not proceed, otherwise null. */
 export async function guardRequest(
   request: NextRequest,
-  instance?: Pick<Auth, 'api'>,
+  deps: { auth?: Pick<Auth, 'api'>; prisma?: PrismaClient } = {},
 ): Promise<NextResponse | null> {
   const { pathname } = request.nextUrl;
   if (!isProtectedPath(pathname)) return null;
-  const user = await getSessionUser(request.headers, instance);
+  const user = await getSessionUser(request.headers, deps.auth);
   const decision = decideAccess(pathname, user);
   if (decision.type === 'redirect') return NextResponse.redirect(new URL(decision.to, request.url));
   if (decision.type === 'forbidden') return new NextResponse('Forbidden', { status: 403 });
+  // Verified but no workspace (Google-less orphans, failed provisioning): redeem a pilot code.
+  if (user && isAppPath(pathname) && !(await hasCoachMembership(deps.prisma, user.id))) {
+    return NextResponse.redirect(new URL(ONBOARDING_PATH, request.url));
+  }
   return null;
 }

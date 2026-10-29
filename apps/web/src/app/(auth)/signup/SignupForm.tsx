@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useActionState } from 'react';
-import { AuthShell, buttonClass, Field, linkClass } from '@/components/auth-ui';
+import { AuthShell, buttonClass, Field, FormMessage, linkClass } from '@/components/auth-ui';
 import { signUpCoachAction, type SignupState } from './actions';
 
 export function SignupForm() {
@@ -12,6 +12,7 @@ export function SignupForm() {
   return (
     <AuthShell title="Create your coach account">
       <form action={action}>
+        {errors.form && <FormMessage tone="error">{errors.form}</FormMessage>}
         <Field label="Your name" name="name" autoComplete="name" error={errors.name} />
         <Field label="Email" name="email" type="email" autoComplete="email" error={errors.email} />
         <Field

@@ -4,11 +4,7 @@ import Link from 'next/link';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { AuthShell, buttonClass, Field, FormMessage, linkClass } from '@/components/auth-ui';
 import { authClient } from '@/lib/auth-client';
-
-/** Only same-site relative paths are honored after login. */
-function safeNext(next: string | null): string {
-  return next && next.startsWith('/') && !next.startsWith('//') ? next : '/app';
-}
+import { safeNext } from '@/lib/safe-next';
 
 export function LoginForm({ google }: { google: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +15,10 @@ export function LoginForm({ google }: { google: ReactNode }) {
     setError(null);
     setPending(true);
     const data = new FormData(event.currentTarget);
-    const next = safeNext(new URLSearchParams(window.location.search).get('next'));
+    const next = safeNext(
+      new URLSearchParams(window.location.search).get('next'),
+      window.location.origin,
+    );
     const { error: failure } = await authClient.signIn.email({
       email: String(data.get('email')),
       password: String(data.get('password')),

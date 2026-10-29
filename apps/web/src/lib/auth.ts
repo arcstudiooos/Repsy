@@ -1,10 +1,13 @@
 import { betterAuth } from 'better-auth';
+import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { haveIBeenPwned } from 'better-auth/plugins/haveibeenpwned';
 import { enqueuePlatformEmail, logger } from '@kinetic/core';
 import { prisma as defaultPrisma, withSystem, type PrismaClient } from '@kinetic/db';
 
-export type AuthEnv = Record<string, string | undefined>;
+import { assertAuthEnv, type AuthEnv } from './auth-env';
+
+export type { AuthEnv };
 
 export interface SessionUser {
   id: string;
@@ -53,6 +56,7 @@ function enqueueAuthEmail(
 export function createAuth(options: { prisma?: PrismaClient; env?: AuthEnv } = {}) {
   const prisma = options.prisma ?? defaultPrisma;
   const env = options.env ?? process.env;
+  assertAuthEnv(env);
   const googleConfigured = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
 
   return betterAuth({
@@ -113,10 +117,30 @@ export function createAuth(options: { prisma?: PrismaClient; env?: AuthEnv } = {
             google: {
               clientId: env.GOOGLE_CLIENT_ID as string,
               clientSecret: env.GOOGLE_CLIENT_SECRET as string,
+              // Accounts are only created through pilot-code signup.
+              disableImplicitSignUp: true,
             },
           },
         }
       : {}),
+    hooks: {
+      // Account creation is gated by a pilot code. registerCoach calls
+      // auth.api.signUpEmail server-side (no ctx.request); anything arriving
+      // over HTTP (ctx.request set) may not create users.
+      before: createAuthMiddleware(async (ctx) => {
+        const viaHttp = ctx.request !== undefined;
+        const body = ctx.body as { requestSignUp?: unknown } | undefined;
+        const blocked =
+          ctx.path === '/sign-up/email' ||
+          (ctx.path === '/sign-in/social' && body?.requestSignUp === true);
+        if (viaHttp && blocked) {
+          throw new APIError('FORBIDDEN', {
+            message: 'Sign-up requires a pilot code.',
+            code: 'SIGNUP_REQUIRES_PILOT_CODE',
+          });
+        }
+      }),
+    },
     plugins: breachedPasswordCheckEnabled(env) ? [haveIBeenPwned()] : [],
     databaseHooks: {
       session: {
