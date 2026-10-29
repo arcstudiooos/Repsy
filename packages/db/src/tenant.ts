@@ -22,33 +22,69 @@ const NON_TENANT_MODELS = ['Account', 'Session', 'Verification', 'RateLimit', 'P
 const NON_TENANT_SET: ReadonlySet<string> = new Set(NON_TENANT_MODELS);
 type NonTenantDelegate = Uncapitalize<(typeof NON_TENANT_MODELS)[number]>;
 
-/** User relations that lead into NON_TENANT_MODELS. */
-const NON_TENANT_RELATIONS: ReadonlySet<string> = new Set([
-  'accounts',
-  'sessions',
-  'createdPilotCodes',
-  'usedPilotCodes',
-]);
-
 const notInTenantScope = (what: string) =>
   new Error(`${what} is not available in a tenant scope; use withSystem in system code`);
 
+/** model -> (relation field name -> target model), from Prisma's runtime data model. */
+export type RelationMap = ReadonlyMap<string, ReadonlyMap<string, string>>;
+
+interface RuntimeDataModel {
+  models: Record<string, { fields: { name: string; kind: string; type: string }[] }>;
+}
+
+export function buildRelationMap(dataModel: RuntimeDataModel): RelationMap {
+  return new Map(
+    Object.entries(dataModel.models).map(([model, { fields }]) => [
+      model,
+      new Map(fields.filter((f) => f.kind === 'object').map((f) => [f.name, f.type])),
+    ]),
+  );
+}
+
 /**
- * Rejects include/select/where/data trees that traverse into auth tables:
- * any key naming an auth relation (also under nested create/connect/update/
- * upsert/... keys and array elements), and a bare `_count: true`, which counts
- * every relation of the model including the auth ones.
+ * Prisma 7 exposes no public DMMF on the generated client; every client
+ * instance carries the runtime data model privately. Fail closed if absent.
  */
-function rejectNonTenantRelations(node: unknown): void {
+const relationMaps = new WeakMap<object, RelationMap>();
+function relationMapOf(client: PrismaClient): RelationMap {
+  const cached = relationMaps.get(client);
+  if (cached) return cached;
+  const dataModel = (client as unknown as { _runtimeDataModel?: RuntimeDataModel })
+    ._runtimeDataModel;
+  if (!dataModel) throw new Error('Prisma runtime data model unavailable; tenant guard cannot run');
+  const built = buildRelationMap(dataModel);
+  relationMaps.set(client, built);
+  return built;
+}
+
+/**
+ * Walks include/select/where/orderBy/having/data trees together with the
+ * current model. Throws when a key is a relation of the current model that
+ * targets an auth table (Account, Session, ...), or when `_count: true` is
+ * used on a model that has such a relation. Relation fields recurse with their
+ * target model; operator keys (select, AND, create, connect, ...) and arrays
+ * keep the current model. A same-named relation to a non-auth model passes.
+ */
+export function rejectAuthRelations(relations: RelationMap, model: string, node: unknown): void {
   if (node === null || typeof node !== 'object') return;
   if (Array.isArray(node)) {
-    for (const item of node) rejectNonTenantRelations(item);
+    for (const item of node) rejectAuthRelations(relations, model, item);
     return;
   }
+  const fields = relations.get(model);
   for (const [key, value] of Object.entries(node)) {
-    if (NON_TENANT_RELATIONS.has(key)) throw notInTenantScope(`Relation ${key}`);
-    if (key === '_count' && value === true) throw notInTenantScope('Relation count');
-    rejectNonTenantRelations(value);
+    const target = fields?.get(key);
+    if (target !== undefined) {
+      if (NON_TENANT_SET.has(target)) throw notInTenantScope(`Relation ${key}`);
+      rejectAuthRelations(relations, target, value);
+      continue;
+    }
+    if (key === '_count' && value === true) {
+      for (const t of fields?.values() ?? []) {
+        if (NON_TENANT_SET.has(t)) throw notInTenantScope('Relation count');
+      }
+    }
+    rejectAuthRelations(relations, model, value);
   }
 }
 
@@ -87,7 +123,7 @@ function scopeUpdateData(data: unknown): unknown {
   return rest;
 }
 
-function tenantExtension(orgId: string) {
+function tenantExtension(orgId: string, relations: RelationMap) {
   return Prisma.defineExtension({
     name: 'tenant',
     query: {
@@ -96,12 +132,14 @@ function tenantExtension(orgId: string) {
           const query = typedQuery as (args: unknown) => Promise<unknown>;
           const a = args as Args;
           if (NON_TENANT_SET.has(model)) throw notInTenantScope(`Model ${model}`);
-          rejectNonTenantRelations(a.include);
-          rejectNonTenantRelations(a.select);
-          rejectNonTenantRelations(a.where);
-          rejectNonTenantRelations(a.data);
-          rejectNonTenantRelations(a.create);
-          rejectNonTenantRelations(a.update);
+          rejectAuthRelations(relations, model, a.include);
+          rejectAuthRelations(relations, model, a.select);
+          rejectAuthRelations(relations, model, a.where);
+          rejectAuthRelations(relations, model, a.orderBy);
+          rejectAuthRelations(relations, model, a.having);
+          rejectAuthRelations(relations, model, a.data);
+          rejectAuthRelations(relations, model, a.create);
+          rejectAuthRelations(relations, model, a.update);
           if (model === 'Organization') {
             switch (operation) {
               case 'create':
@@ -158,7 +196,7 @@ function tenantExtension(orgId: string) {
 }
 
 function scoped(client: PrismaClient, orgId: string) {
-  return client.$extends(tenantExtension(orgId));
+  return client.$extends(tenantExtension(orgId, relationMapOf(client)));
 }
 
 type ScopedClient = ReturnType<typeof scoped>;

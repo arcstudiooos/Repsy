@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { PrismaClient } from './generated/client';
 import { createTestDb } from './testing/createTestDb';
-import { withSystem, withTenant } from './tenant';
+import { buildRelationMap, rejectAuthRelations, withSystem, withTenant } from './tenant';
 
 let prisma: PrismaClient;
 let drop: () => Promise<void>;
@@ -259,6 +259,86 @@ describe('withTenant: nested auth-table guards', () => {
     await expect(
       withTenant(orgA, (tx) => tx.user.findMany({ include: { _count: true } }), prisma),
     ).rejects.toThrow(denied);
+  });
+});
+
+describe('withTenant: model-aware relation guard', () => {
+  const denied = /not available in a tenant scope/;
+
+  it('rejects orderBy over an auth relation', async () => {
+    await expect(
+      withTenant(
+        orgA,
+        (tx) => tx.user.findMany({ orderBy: { sessions: { _count: 'asc' } } }),
+        prisma,
+      ),
+    ).rejects.toThrow(denied);
+  });
+
+  it('rejects auth relations in groupBy having and nested where', async () => {
+    await expect(
+      withTenant(
+        orgA,
+        (tx) => tx.membership.findMany({ where: { user: { is: { accounts: { some: {} } } } } }),
+        prisma,
+      ),
+    ).rejects.toThrow(denied);
+  });
+
+  it('allows legitimate nested tenant reads and writes', async () => {
+    const extra = await sys((tx) =>
+      tx.user.create({ data: { email: 'c@example.test', name: 'c' } }),
+    );
+    const created = await withTenant(
+      orgA,
+      (tx) =>
+        tx.membership.create({
+          data: { role: 'client', userId: extra.id, organizationId: orgA },
+          include: { user: { select: { _count: { select: { memberships: true } } } } },
+        }),
+      prisma,
+      { userId: extra.id },
+    );
+    expect(created.organizationId).toBe(orgA);
+    const org = await withTenant(
+      orgA,
+      (tx) =>
+        tx.organization.findMany({
+          include: { memberships: { include: { user: true } } },
+          orderBy: { memberships: { _count: 'desc' } },
+        }),
+      prisma,
+    );
+    expect(org[0]?.memberships.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('only rejects relations that target auth models (synthetic schema)', () => {
+    const relations = buildRelationMap({
+      models: {
+        User: {
+          fields: [{ name: 'sessions', kind: 'object', type: 'Session' }],
+        },
+        Session: { fields: [] },
+        Assignment: {
+          fields: [
+            { name: 'sessions', kind: 'object', type: 'WorkoutSession' },
+            { name: 'owner', kind: 'object', type: 'User' },
+          ],
+        },
+        WorkoutSession: { fields: [] },
+      },
+    });
+    const nested = { include: { sessions: true }, orderBy: { sessions: { _count: 'asc' } } };
+    expect(() => rejectAuthRelations(relations, 'Assignment', nested)).not.toThrow();
+    expect(() =>
+      rejectAuthRelations(relations, 'Assignment', { data: { sessions: { create: {} } } }),
+    ).not.toThrow();
+    expect(() => rejectAuthRelations(relations, 'Assignment', { _count: true })).not.toThrow();
+    expect(() => rejectAuthRelations(relations, 'User', nested)).toThrow(denied);
+    expect(() => rejectAuthRelations(relations, 'User', { _count: true })).toThrow(denied);
+    expect(() =>
+      rejectAuthRelations(relations, 'Assignment', { include: { owner: { include: nested } } }),
+    ).toThrow(denied);
   });
 });
 
