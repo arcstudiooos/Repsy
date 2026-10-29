@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: kinetic
       POSTGRES_DB: kinetic
     ports:
-      - '54320:5432'
+      - '127.0.0.1:54320:5432'
     volumes:
       - kinetic-pg-data:/var/lib/postgresql/data
     healthcheck:
