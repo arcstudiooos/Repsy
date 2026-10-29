@@ -99,6 +99,39 @@ test.describe('client directory', () => {
     await expect(page.getByRole('row', { name: /Quinn Quokka/ })).toBeVisible();
   });
 
+  test('search input stays in sync with the URL', async ({ page, request, baseURL }) => {
+    await signUpVerifiedCoach(page, request);
+    await apiCreateClient(page.request, baseURL as string, {
+      name: 'Sync Sam',
+      email: `sam-${Date.now()}@example.test`,
+    });
+    await page.goto('/app/clients');
+    const box = page.getByRole('searchbox', { name: 'Search clients' });
+    const row = page.getByRole('row', { name: /Sync Sam/ });
+    await expect(row).toBeVisible();
+
+    await box.fill('nomatchzzz');
+    await expect(page).toHaveURL(/q=nomatchzzz/);
+    await expect(page.getByRole('heading', { name: 'No clients match' })).toBeVisible();
+
+    await page.getByRole('link', { name: 'Clear filters' }).click();
+    await expect(box).toHaveValue('');
+    await expect(row).toBeVisible();
+
+    // Back restores the previous query text; forward clears it again.
+    await page.goBack();
+    await expect(page).toHaveURL(/q=nomatchzzz/);
+    await expect(box).toHaveValue('nomatchzzz');
+    await page.goForward();
+    await expect(box).toHaveValue('');
+    await expect(row).toBeVisible();
+
+    // Same term again must filter again (debounce baseline was resynced).
+    await box.fill('nomatchzzz');
+    await expect(page).toHaveURL(/q=nomatchzzz/);
+    await expect(page.getByRole('heading', { name: 'No clients match' })).toBeVisible();
+  });
+
   test('limit message shows at 30', async ({ page, request, baseURL }) => {
     test.setTimeout(120_000);
     await signUpVerifiedCoach(page, request);

@@ -43,6 +43,14 @@ export function ClientsTable({
   const [search, setSearch] = useState(q);
   const lastPushed = useRef(q);
 
+  // The URL changed from outside (Clear filters, back/forward): resync the input and the
+  // debounce baseline. Our own pushes set lastPushed first, so they never trigger this.
+  useEffect(() => {
+    if (q === lastPushed.current) return;
+    lastPushed.current = q;
+    setSearch(q);
+  }, [q]);
+
   // Debounced search: update the URL (and so the server-rendered list) 300ms after typing stops.
   useEffect(() => {
     if (search.trim() === lastPushed.current) return;
