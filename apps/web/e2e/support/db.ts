@@ -101,3 +101,19 @@ export async function resetRateLimits(): Promise<void> {
     await client.end();
   }
 }
+
+/** Renames the organization a coach owns, so tests can tell two orgs apart. Admin connection. */
+export async function renameOwnerOrg(coachEmail: string, name: string): Promise<void> {
+  const client = new pg.Client({ connectionString: readState().adminUrl });
+  await client.connect();
+  try {
+    await client.query(
+      `UPDATE organizations SET name = $2 WHERE id IN (
+         SELECT m.organization_id FROM memberships m JOIN users u ON u.id = m.user_id
+         WHERE u.email = $1)`,
+      [coachEmail, name],
+    );
+  } finally {
+    await client.end();
+  }
+}

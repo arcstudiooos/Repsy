@@ -6,6 +6,7 @@ import {
   signUpVerifiedCoach,
   waitForEmail,
 } from './helpers/users';
+import { renameOwnerOrg } from './support/db';
 
 test.describe('client invite', () => {
   test('coach invites, client accepts, lands on the portal, roster shows Active', async ({
@@ -95,33 +96,51 @@ test.describe('client invite', () => {
     await expect(page).toHaveURL(/\/app$/);
   });
 
-  test('a client cannot switch to an org they do not belong to', async ({
+  test('a client cannot switch to a real org they do not belong to', async ({
     page,
     request,
     browser,
     baseURL,
   }) => {
     const coach = await signUpVerifiedCoach(page, request);
-    const ctx = await browser.newContext();
-    const clientPage = await ctx.newPage();
+    const origin = new URL(baseURL as string).origin;
+    const clientCtx = await browser.newContext();
+    const coachBCtx = await browser.newContext();
     try {
-      await signUpVerifiedClient(clientPage, ctx.request, coach);
+      // Org B: a second, real organization the client is not a member of.
+      const coachB = await signUpVerifiedCoach(await coachBCtx.newPage(), coachBCtx.request);
+      const meB = await coachBCtx.request.get('/api/v1/me');
+      const orgB = ((await meB.json()) as { data: { memberships: { orgId: string }[] } }).data
+        .memberships[0]?.orgId as string;
+      expect(orgB).toBeTruthy();
+      const orgBName = `Org B ${Date.now()}`;
+      await renameOwnerOrg(coachB.email, orgBName);
+
+      const clientPage = await clientCtx.newPage();
+      await signUpVerifiedClient(clientPage, clientCtx.request, coach);
       await clientPage.goto('/');
       await expect(clientPage).toHaveURL(/\/portal$/);
+      await expect(clientPage.getByText('Coached by ' + coach.orgName)).toBeVisible();
 
-      const origin = new URL(baseURL as string).origin;
-      const foreignOrg = '3f0c2a1e-8b7d-4c55-9a0e-1d2b3c4d5e6f';
+      const me = await clientPage.request.get('/api/v1/me');
+      const memberships = ((await me.json()) as { data: { memberships: { orgId: string }[] } }).data
+        .memberships;
+      expect(memberships.map((m) => m.orgId)).not.toContain(orgB);
+
       const res = await clientPage.request.post('/api/v1/org/switch', {
-        data: { orgId: foreignOrg },
+        data: { orgId: orgB },
         headers: { origin },
       });
       expect(res.status()).toBe(404);
+      expect(res.headers()['set-cookie'] ?? '').not.toContain('kinetic_org');
 
       await clientPage.goto('/portal');
       await expect(clientPage).toHaveURL(/\/portal$/);
-      await expect(clientPage.getByRole('heading', { name: 'Home' })).toBeVisible();
+      await expect(clientPage.getByText('Coached by ' + coach.orgName)).toBeVisible();
+      await expect(clientPage.getByText('Coached by ' + orgBName)).toHaveCount(0);
     } finally {
-      await ctx.close();
+      await clientCtx.close();
+      await coachBCtx.close();
     }
   });
 
