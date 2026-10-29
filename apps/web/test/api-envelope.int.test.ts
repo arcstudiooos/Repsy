@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { DomainError } from '@kinetic/core';
 import type { PrismaClient } from '@kinetic/db';
@@ -176,5 +176,15 @@ describe('api envelope', () => {
       req('GET', headersFor(t.dualRoleUser, t.orgB.id)),
     );
     expect(await res.json()).toEqual({ data: { org: t.orgB.id, role: 'client' } });
+  });
+
+  it('malformed (bad percent-encoding) org cookie behaves as absent, not 500', async () => {
+    const h = headersFor(t.dualRoleUser);
+    h.set('cookie', `${h.get('cookie')}; kinetic_org=%E0%A4`);
+    const res = await make()({ handler: () => ({}) })(req('GET', h));
+    expect(res.status).toBe(409);
+    const single = headersFor(t.coachA);
+    single.set('cookie', `${single.get('cookie')}; kinetic_org=%E0%A4`);
+    expect((await make()({ handler: () => ({}) })(req('GET', single))).status).toBe(200);
   });
 });

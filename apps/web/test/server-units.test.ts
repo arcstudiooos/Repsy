@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { signOrgCookie, verifyOrgCookie, readCookie } from '@/server/orgCookie';
+import { clientIp } from '@/server/clientIp';
+import { orgCookieSecret, signOrgCookie, verifyOrgCookie, readCookie } from '@/server/orgCookie';
 import { InMemoryRateLimiter } from '@/server/rateLimit';
 
 describe('org cookie', () => {
@@ -28,5 +29,46 @@ describe('InMemoryRateLimiter', () => {
     expect(denied).toEqual({ allowed: false, retryAfterMs: 1000 });
     now = 1000;
     expect(l.consume('k').allowed).toBe(true);
+  });
+});
+
+describe('orgCookieSecret', () => {
+  it('empty ORG_COOKIE_SECRET falls back to BETTER_AUTH_SECRET', () => {
+    expect(orgCookieSecret({ ORG_COOKIE_SECRET: '  ', BETTER_AUTH_SECRET: 'abc' })).toBe('abc');
+    expect(orgCookieSecret({ ORG_COOKIE_SECRET: '', BETTER_AUTH_SECRET: 'abc' })).toBe('abc');
+  });
+  it('throws when nothing is set, or when short in production', () => {
+    expect(() => orgCookieSecret({ ORG_COOKIE_SECRET: '' })).toThrow();
+    expect(() =>
+      orgCookieSecret({ BETTER_AUTH_SECRET: 'short', NODE_ENV: 'production' }),
+    ).toThrow();
+    expect(orgCookieSecret({ BETTER_AUTH_SECRET: 'x'.repeat(32), NODE_ENV: 'production' })).toBe(
+      'x'.repeat(32),
+    );
+  });
+});
+
+describe('clientIp', () => {
+  const h = (xff?: string) => new Headers(xff ? { 'x-forwarded-for': xff } : {});
+  it('spoofed leftmost values with the same last hop agree', () => {
+    expect(clientIp(h('1.1.1.1, 9.9.9.9'), 1)).toBe('9.9.9.9');
+    expect(clientIp(h('2.2.2.2, 3.3.3.3, 9.9.9.9'), 1)).toBe('9.9.9.9');
+  });
+  it('hops=2 picks second-to-last', () => {
+    expect(clientIp(h('1.1.1.1, 8.8.8.8, 9.9.9.9'), 2)).toBe('8.8.8.8');
+  });
+  it('absent or too short -> unknown', () => {
+    expect(clientIp(h(), 1)).toBe('unknown');
+    expect(clientIp(h('9.9.9.9'), 2)).toBe('unknown');
+    expect(clientIp(h('9.9.9.9'), 0)).toBe('unknown');
+  });
+});
+
+describe('InMemoryRateLimiter isolation', () => {
+  it('flooding ip buckets does not reset a user bucket', () => {
+    const l = new InMemoryRateLimiter({ capacity: 1, refillPerSecond: 0.0001, now: () => 0 });
+    expect(l.consume('user:u').allowed).toBe(true);
+    for (let i = 0; i < 10_500; i++) l.consume(`ip:${i}`);
+    expect(l.consume('user:u').allowed).toBe(false);
   });
 });

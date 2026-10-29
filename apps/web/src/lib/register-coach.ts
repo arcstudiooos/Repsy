@@ -10,6 +10,7 @@ import {
 import { withSystem, type PrismaClient } from '@kinetic/db';
 import type { Auth } from './auth';
 import { hasCoachMembership } from './membership';
+import { clientIp } from '../server/clientIp';
 
 export const CODE_INVALID = 'This pilot code is invalid or has expired.';
 
@@ -28,13 +29,6 @@ type Redeem = (
   tx: Parameters<typeof signupCoach>[0],
   input: SignupCoachInput,
 ) => ReturnType<typeof signupCoach>;
-
-/** Best-effort client IP behind a proxy; per-email limits cover a spoofed header. */
-export function clientIp(headers: Headers): string {
-  return (
-    headers.get('x-forwarded-for')?.split(',')[0]?.trim() || headers.get('x-real-ip') || 'unknown'
-  );
-}
 
 export function validTimezone(tz: string): boolean {
   try {

@@ -24,7 +24,9 @@ const MAX_BUCKETS = 10_000;
 
 /** Single-instance pilot limiter: per-process token bucket. */
 export class InMemoryRateLimiter implements RateLimiter {
-  private readonly buckets = new Map<string, Bucket>();
+  // Anonymous (ip:) buckets live apart from user buckets so IP floods cannot evict users.
+  private readonly userBuckets = new Map<string, Bucket>();
+  private readonly ipBuckets = new Map<string, Bucket>();
   private readonly now: () => number;
 
   constructor(private readonly options: TokenBucketOptions) {
@@ -34,26 +36,27 @@ export class InMemoryRateLimiter implements RateLimiter {
   consume(key: string): RateLimitResult {
     const { capacity, refillPerSecond } = this.options;
     const now = this.now();
-    const prev = this.buckets.get(key);
+    const buckets = key.startsWith('ip:') ? this.ipBuckets : this.userBuckets;
+    const prev = buckets.get(key);
     const tokens = prev
       ? Math.min(capacity, prev.tokens + ((now - prev.updatedAt) / 1000) * refillPerSecond)
       : capacity;
-    this.buckets.delete(key); // re-insert so Map order tracks recency
+    buckets.delete(key); // re-insert so Map order tracks recency
     if (tokens >= 1) {
-      this.buckets.set(key, { tokens: tokens - 1, updatedAt: now });
-      this.evict();
+      buckets.set(key, { tokens: tokens - 1, updatedAt: now });
+      this.evict(buckets);
       return { allowed: true, retryAfterMs: 0 };
     }
-    this.buckets.set(key, { tokens, updatedAt: now });
-    this.evict();
+    buckets.set(key, { tokens, updatedAt: now });
+    this.evict(buckets);
     return { allowed: false, retryAfterMs: Math.ceil(((1 - tokens) / refillPerSecond) * 1000) };
   }
 
-  private evict(): void {
-    while (this.buckets.size > MAX_BUCKETS) {
-      const oldest = this.buckets.keys().next();
+  private evict(buckets: Map<string, Bucket>): void {
+    while (buckets.size > MAX_BUCKETS) {
+      const oldest = buckets.keys().next();
       if (oldest.done) return;
-      this.buckets.delete(oldest.value);
+      buckets.delete(oldest.value);
     }
   }
 }

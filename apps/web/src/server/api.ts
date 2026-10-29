@@ -15,6 +15,7 @@ import { withSystem, withTenant, type PrismaClient, type TenantTx } from '@kinet
 import { getSessionUser, type Auth, type SessionUser } from '@/lib/auth';
 import { ORG_COOKIE, orgCookieSecret, readCookie, verifyOrgCookie } from './orgCookie';
 import { defaultLimiter, type RateLimiter } from './rateLimit';
+import { clientIp } from './clientIp';
 import { getRequestId } from './requestId';
 
 export interface ApiDeps {
@@ -86,10 +87,6 @@ function trustedOrigin(request: Request, deps: ApiDeps): string {
   return new URL(request.url).origin;
 }
 
-function clientIp(request: Request): string {
-  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-}
-
 async function readInput(request: Request, schema: z.ZodType): Promise<unknown> {
   let raw: unknown;
   if (SAFE_METHODS.has(request.method)) {
@@ -125,7 +122,7 @@ function resolveActor(
   secret: string,
 ): ActorContext {
   const cookie = readCookie(request.headers.get('cookie'), ORG_COOKIE);
-  const cookieOrg = cookie ? verifyOrgCookie(decodeURIComponent(cookie), user.id, secret) : null;
+  const cookieOrg = cookie ? verifyOrgCookie(cookie, user.id, secret) : null;
   let orgId: string;
   if (cookieOrg !== null) {
     orgId = cookieOrg;
@@ -158,7 +155,9 @@ export function createApiHandler(deps: ApiDeps = {}) {
 
         const user = await getSessionUser(request.headers, deps.auth);
         const limiter = deps.limiter ?? defaultLimiter;
-        const limit = await limiter.consume(user ? `user:${user.id}` : `ip:${clientIp(request)}`);
+        const limit = await limiter.consume(
+          user ? `user:${user.id}` : `ip:${clientIp(request.headers)}`,
+        );
         if (!limit.allowed) {
           return fail('RATE_LIMITED', 'Too many requests. Try again shortly.', requestId, {
             headers: { 'retry-after': String(Math.max(1, Math.ceil(limit.retryAfterMs / 1000))) },

@@ -10,8 +10,14 @@ export const ORG_COOKIE = 'kinetic_org';
  * chose this org for this user, it never grants access.
  */
 export function orgCookieSecret(env: Record<string, string | undefined> = process.env): string {
-  const secret = env.ORG_COOKIE_SECRET ?? env.BETTER_AUTH_SECRET;
+  // Empty/whitespace counts as unset (.env.example ships `ORG_COOKIE_SECRET=`).
+  const secret = env.ORG_COOKIE_SECRET?.trim() || env.BETTER_AUTH_SECRET?.trim();
   if (!secret) throw new Error('ORG_COOKIE_SECRET or BETTER_AUTH_SECRET is required');
+  if (env.NODE_ENV === 'production' && secret.length < 32) {
+    throw new Error(
+      'ORG_COOKIE_SECRET (or BETTER_AUTH_SECRET) must be 32+ characters in production',
+    );
+  }
   return secret;
 }
 
