@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/toast';
+import { sendInvite } from '@/lib/invite-api';
 
 interface ApiError {
   code: string;
@@ -85,9 +86,17 @@ export function NewClientDialog() {
         }),
       });
       if (res.ok) {
-        const created = (await res.json()) as { data: { name: string } };
+        const created = (await res.json()) as { data: { id: string; name: string } };
+        const wantInvite = data.get('sendInvite') === 'on';
+        const invited = wantInvite ? await sendInvite(created.data.id) : null;
         setOpen(false);
-        toast.success(`${created.data.name} added`);
+        if (invited && !invited.ok) {
+          toast.error(
+            "Client added, but the invite couldn't be sent. You can send it from their page.",
+          );
+        } else {
+          toast.success(`${created.data.name} added`);
+        }
         router.refresh();
         return;
       }
@@ -165,6 +174,15 @@ export function NewClientDialog() {
               className="block w-full rounded-control border border-input-border bg-surface px-3 py-2 text-base text-ink aria-invalid:border-danger"
             />
           </Field>
+          <label className="flex min-h-11 items-center gap-3 text-base">
+            <input
+              type="checkbox"
+              name="sendInvite"
+              defaultChecked
+              className="size-5 accent-accent"
+            />
+            Send invite email now
+          </label>
           {formError && (
             <p role="alert" className="text-sm text-danger">
               {formError}

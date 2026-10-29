@@ -131,7 +131,7 @@ export function ClientsTable({
                     </td>
                     <td className="px-4 py-2 [overflow-wrap:anywhere]">{c.email}</td>
                     <td className="px-4 py-2">
-                      <StatusBadge status={c.status} />
+                      <StatusBadge status={c.status} inviteStatus={c.inviteStatus} />
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap">{formatDate(c.startDate)}</td>
                   </tr>
@@ -150,7 +150,7 @@ export function ClientsTable({
                   >
                     {c.name}
                   </Link>
-                  <StatusBadge status={c.status} />
+                  <StatusBadge status={c.status} inviteStatus={c.inviteStatus} />
                 </div>
                 <p className="text-sm break-all text-secondary">{c.email}</p>
                 <p className="mt-1 text-sm text-secondary">Start date: {formatDate(c.startDate)}</p>

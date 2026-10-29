@@ -51,7 +51,10 @@ export async function waitForEmail(
 }
 
 let counter = 0;
-const unique = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${counter++}`;
+// Workers are separate processes with their own counter: the random part keeps ids (and the
+// pilot codes derived from them) from colliding when two workers sign up in the same millisecond.
+const unique = (prefix: string) =>
+  `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}-${counter++}`;
 
 async function signUpAndVerify(
   page: Page,
@@ -81,8 +84,9 @@ async function signUpAndVerify(
     await page.getByLabel('Time zone').fill('Europe/London');
     await page.getByLabel('Pilot code').fill(code);
     await page.getByRole('button', { name: 'Create account' }).click();
-    await expect(page).toHaveURL(/\/verify-email$/, { timeout: 5_000 });
-  }).toPass({ timeout: 45_000 });
+    // Generous: a slow (not failed) sign-up must not be retried, or its pilot code is already used.
+    await expect(page).toHaveURL(/\/verify-email$/, { timeout: 20_000 });
+  }).toPass({ timeout: 90_000 });
 
   const mail = await waitForEmail(request, user.email, 'auth.verify_email');
   const link = /https?:\/\/\S+/.exec(mail.text)?.[0];

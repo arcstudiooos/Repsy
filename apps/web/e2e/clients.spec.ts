@@ -42,7 +42,7 @@ async function addClientViaDialog(page: Page, name: string, email: string) {
   await page.getByRole('button', { name: 'Add client' }).click();
   const dialog = page.getByRole('dialog', { name: 'Add client' });
   await dialog.getByLabel('Name').fill(name);
-  await dialog.getByLabel('Email').fill(email);
+  await dialog.getByLabel('Email', { exact: true }).fill(email);
   await dialog.getByRole('button', { name: 'Add client' }).click();
   return dialog;
 }
@@ -61,7 +61,8 @@ test.describe('client directory', () => {
     await page.goto('/app/clients');
     const email = `ada-${Date.now()}@example.test`;
     const dialog = await addClientViaDialog(page, 'Ada Lovelace', email);
-    await expect(dialog).toBeHidden();
+    // Create + invite + first-hit route compile in dev can take a few seconds.
+    await expect(dialog).toBeHidden({ timeout: 15_000 });
     const row = page.getByRole('row', { name: /Ada Lovelace/ });
     await expect(row).toBeVisible();
     await expect(row.getByText('Invited')).toBeVisible();
@@ -72,11 +73,16 @@ test.describe('client directory', () => {
     await signUpVerifiedCoach(page, request);
     await page.goto('/app/clients');
     const email = `dup-${Date.now()}@example.test`;
-    await addClientViaDialog(page, 'First Dup', email);
+    await expect(await addClientViaDialog(page, 'First Dup', email)).toBeHidden({
+      timeout: 15_000,
+    });
     await expect(page.getByRole('row', { name: /First Dup/ })).toBeVisible();
     const dialog = await addClientViaDialog(page, 'Second Dup', email);
     await expect(dialog.getByText('A client with this email already exists.')).toBeVisible();
-    await expect(dialog.getByLabel('Email')).toHaveAttribute('aria-invalid', 'true');
+    await expect(dialog.getByLabel('Email', { exact: true })).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
   });
 
   test('search filters the roster', async ({ page, request, baseURL }) => {
@@ -192,7 +198,7 @@ test.describe('client directory', () => {
       await page.keyboard.press('Tab');
       await expect(tabs.getByRole('link', { name: 'Program' })).toBeFocused();
       await page.keyboard.press('Enter');
-      await expect(page).toHaveURL(/\/program$/);
+      await expect(page).toHaveURL(/\/program$/, { timeout: 15_000 });
       await expect(page.getByRole('heading', { name: 'No program yet' })).toBeVisible();
       await expectNoAxeViolations(page);
     });

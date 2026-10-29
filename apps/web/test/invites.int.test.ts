@@ -71,6 +71,13 @@ const inviteStatus = async (headers: Headers, id: string) => {
   );
   return ((await res.json()) as { data: { inviteStatus: string } }).data.inviteStatus;
 };
+const inviteExpiry = async (headers: Headers, id: string) => {
+  const res = await api()(clientGetRoute)(
+    new Request(`${ORIGIN}/api/v1/clients/${id}`, { headers }),
+    ctx(id),
+  );
+  return ((await res.json()) as { data: { inviteExpiresAt: string | null } }).data.inviteExpiresAt;
+};
 
 beforeAll(async () => {
   ({ prisma, authPrisma, drop } = await createTestDb());
@@ -105,8 +112,10 @@ describe('invites API', () => {
     );
     expect(JSON.stringify(row)).not.toContain(token);
     expect(await inviteStatus(headersFor(t.coachA), id)).toBe('pending');
+    expect(await inviteExpiry(headersFor(t.coachA), id)).toBe(data.expiresAt);
     expect((await revoke(headersFor(t.coachA), id)).status).toBe(200);
     expect(await inviteStatus(headersFor(t.coachA), id)).toBe('none');
+    expect(await inviteExpiry(headersFor(t.coachA), id)).toBeNull();
   });
 
   it("coach B can't issue for an org A client (404)", async () => {

@@ -1,4 +1,4 @@
-import type { ClientStatus } from '@kinetic/core';
+import type { ClientStatus, InviteStatus } from '@kinetic/core';
 import { cn } from '@/lib/utils';
 
 const LABEL: Record<ClientStatus, string> = {
@@ -9,7 +9,20 @@ const LABEL: Record<ClientStatus, string> = {
 };
 
 /** Text label always shown, so status never relies on color alone. */
-export function StatusBadge({ status }: { status: ClientStatus }) {
+const INVITE_SUFFIX: Partial<Record<InviteStatus, string>> = {
+  none: 'not sent',
+  pending: 'pending',
+  expired: 'expired',
+};
+
+export function StatusBadge({
+  status,
+  inviteStatus,
+}: {
+  status: ClientStatus;
+  inviteStatus?: InviteStatus;
+}) {
+  const suffix = status === 'invited' && inviteStatus ? INVITE_SUFFIX[inviteStatus] : undefined;
   return (
     <span
       className={cn(
@@ -17,7 +30,7 @@ export function StatusBadge({ status }: { status: ClientStatus }) {
         status === 'active' ? 'border-accent text-accent' : 'border-input-border text-secondary',
       )}
     >
-      {LABEL[status]}
+      {suffix ? `${LABEL[status]} · ${suffix}` : LABEL[status]}
     </span>
   );
 }

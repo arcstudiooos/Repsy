@@ -17,6 +17,10 @@ export interface ClientView {
   timezone: string;
   preferredUnits: 'kg' | 'lb';
   inviteStatus: InviteStatus;
+  /** Expiry of the current (pending or expired) invite; null otherwise. */
+  inviteExpiresAt: string | null;
+  /** When the client accepted their invite; null if they have not. */
+  joinedAt: string | null;
   createdAt: string;
 }
 
@@ -45,7 +49,15 @@ const COUNTED: ClientStatus[] = ['invited', 'active'];
 const invalid = (field: string, message: string) =>
   new DomainError('VALIDATION', 'Some fields are invalid.', { [field]: [message] });
 
-export function toClientView(row: ClientRow, inviteStatus: InviteStatus = 'none'): ClientView {
+export interface InviteSummary {
+  status: InviteStatus;
+  expiresAt: Date | null;
+  acceptedAt: Date | null;
+}
+
+const NO_INVITE: InviteSummary = { status: 'none', expiresAt: null, acceptedAt: null };
+
+export function toClientView(row: ClientRow, invite: InviteSummary = NO_INVITE): ClientView {
   return {
     id: row.id,
     name: row.name,
@@ -55,7 +67,9 @@ export function toClientView(row: ClientRow, inviteStatus: InviteStatus = 'none'
     goals: row.goals,
     timezone: row.timezone,
     preferredUnits: row.preferredUnits,
-    inviteStatus,
+    inviteStatus: invite.status,
+    inviteExpiresAt: invite.expiresAt ? invite.expiresAt.toISOString() : null,
+    joinedAt: invite.acceptedAt ? invite.acceptedAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -101,8 +115,8 @@ async function assertUnderLimit(tx: TenantTx, limit: number) {
 }
 
 /** Coach-facing invite state per client, from the client's invite rows. */
-async function inviteStatuses(tx: TenantTx, ids: string[]): Promise<Map<string, InviteStatus>> {
-  const out = new Map<string, InviteStatus>();
+async function inviteStatuses(tx: TenantTx, ids: string[]): Promise<Map<string, InviteSummary>> {
+  const out = new Map<string, InviteSummary>();
   if (ids.length === 0) return out;
   const rows = await tx.clientInvite.findMany({
     where: { clientId: { in: ids } },
@@ -110,13 +124,16 @@ async function inviteStatuses(tx: TenantTx, ids: string[]): Promise<Map<string, 
   });
   const now = new Date();
   for (const id of ids) {
-    out.set(
-      id,
-      summarizeInvites(
-        rows.filter((x) => x.clientId === id),
-        now,
-      ),
-    );
+    const mine = rows.filter((x) => x.clientId === id);
+    const status = summarizeInvites(mine, now);
+    const current = mine
+      .filter((x) => !x.revokedAt && !x.acceptedAt)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+    out.set(id, {
+      status,
+      expiresAt: status === 'pending' || status === 'expired' ? (current?.expiresAt ?? null) : null,
+      acceptedAt: mine.find((x) => x.acceptedAt)?.acceptedAt ?? null,
+    });
   }
   return out;
 }
@@ -142,7 +159,7 @@ export async function createClient(
   const row = await tx.client.create({
     data: { coachUserId: actor.userId, name, email, goals, timezone: org.timezone },
   } as Parameters<typeof tx.client.create>[0]);
-  return toClientView(row, 'none');
+  return toClientView(row);
 }
 
 export async function listClients(

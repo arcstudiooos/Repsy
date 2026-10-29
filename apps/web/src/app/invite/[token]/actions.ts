@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { parseSetCookieHeader, toCookieOptions } from 'better-auth/cookies';
 import { prisma } from '@kinetic/db';
 import { acceptWithSignup } from '@/lib/accept-invite';
-import { auth } from '@/lib/auth';
+import { auth, getSessionUser } from '@/lib/auth';
 
 export interface AcceptState {
   fieldErrors?: Record<string, string>;
@@ -22,9 +22,18 @@ export async function acceptWithSignupAction(
   _prev: AcceptState,
   data: FormData,
 ): Promise<AcceptState> {
+  const requestHeaders = await headers();
+  // A signed-in visitor must not be silently swapped into a new account.
+  if (await getSessionUser(requestHeaders)) {
+    return {
+      fieldErrors: {
+        form: "You're signed in. Sign out to accept this invite with a new account.",
+      },
+    };
+  }
   const units = text(data, 'preferredUnits');
   const result = await acceptWithSignup(
-    { auth, prisma, headers: await headers() },
+    { auth, prisma, headers: requestHeaders },
     {
       token: text(data, 'token'),
       password: text(data, 'password'),

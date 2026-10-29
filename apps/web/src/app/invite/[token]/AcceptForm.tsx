@@ -40,8 +40,11 @@ export function AcceptForm(props: AcceptFormProps) {
     // Browser default zone, added to the list if the server's list lacks it.
     const browser = Intl.DateTimeFormat().resolvedOptions().timeZone;
     if (!browser) return;
+    // Intentional post-hydration sync: the browser zone is unknown during SSR.
+    /* eslint-disable react-hooks/set-state-in-effect */
     setZones((z) => (z.includes(browser) ? z : [browser, ...z]));
     setZone(browser);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   async function submitSignedIn(event: FormEvent<HTMLFormElement>) {
