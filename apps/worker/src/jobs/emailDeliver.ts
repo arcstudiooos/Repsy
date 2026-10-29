@@ -4,7 +4,6 @@ import { defineJob } from './registry';
 
 export const EMAIL_DELIVER = 'email.deliver';
 export const EMAIL_RETRY_LIMIT = 5;
-export const EMAIL_POLL_INTERVAL_MS = 30_000;
 const POLL_BATCH = 100;
 
 interface DeliverDeps {

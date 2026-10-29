@@ -2,8 +2,9 @@ import { logger } from '@kinetic/core';
 import { prisma } from '@kinetic/db';
 import { createEmailPort } from './adapters';
 import { createBoss } from './boss';
+import { outboxPollIntervalMs } from './config';
 import { startHealthServer } from './health';
-import { EMAIL_POLL_INTERVAL_MS, emailDeliverJob, pollPendingEmails } from './jobs/emailDeliver';
+import { emailDeliverJob, pollPendingEmails } from './jobs/emailDeliver';
 import { registerJobs } from './jobs/registry';
 import { initSentry, Sentry } from './sentry';
 
@@ -31,7 +32,7 @@ async function main(): Promise<void> {
       Sentry.captureException(error);
     });
   await poll();
-  const timer = setInterval(() => void poll(), EMAIL_POLL_INTERVAL_MS);
+  const timer = setInterval(() => void poll(), outboxPollIntervalMs());
   logger.info({ port }, 'worker started');
 
   const shutdown = async () => {
