@@ -110,7 +110,7 @@ Status key: **Locked** = agreed with the founder. **Proposed** = recommended def
 
 ---
 
-## D-005 — Hosting and background jobs: Railway, web + worker, Postgres-backed queue
+## D-005 — Hosting and background jobs: Render, web + worker, Postgres-backed queue
 
 **Status:** Locked (2026-10-29). Queue choice is a builder call within the founder's stated preference.
 **PRD refs:** §7 (hosting, background jobs), §7.1 job worker, F10 ("queue reflects state immediately"), F11 email notifications, §7.2 idempotency
@@ -120,13 +120,21 @@ Status key: **Locked** = agreed with the founder. **Proposed** = recommended def
 
 | Component | Choice |
 |---|---|
-| Web app + API | Next.js on Railway (service `web`) |
-| Background worker | Always-on Node.js worker on Railway (service `worker`), same repo and shared domain code |
-| Database | Managed PostgreSQL on Railway, shared by both services |
+| Web app + API | Next.js as a **Render Web Service** `web` (paid Starter or higher; the free tier sleeps) |
+| Background worker | **Render Background Worker** `worker` (always-on Node.js; same repo and shared domain code) |
+| Database | **Render Postgres** (paid; free instances expire after ~30 days), shared by both services |
 | Job queue | **pg-boss (Postgres-backed)**. No Redis in R1. |
 | File storage | S3-compatible private bucket (exports) |
 | Monitoring | Sentry (web + worker) |
 | Product analytics | PostHog (privacy settings per §13) |
+
+**Hosting change (2026-10-29):** originally Railway; switched to Render because Railway is not accepting new sign-ups (founder: "Lets work with render then"). Application code is unchanged; only deployment config differs.
+
+**Render specifics**
+- All three resources are defined in a `render.yaml` Blueprint at the repo root, auto-deploying from GitHub.
+- A single `web` instance in the pilot, so the in-memory rate limiter (Task 0.4) remains acceptable.
+- **Data isolation on Render:** the default database user owns the tables, and owners/superusers bypass Row-Level Security. Deployment therefore creates a separate **non-owner app role** (`NOSUPERUSER NOBYPASSRLS`) via SQL, grants it table privileges, keeps `FORCE ROW LEVEL SECURITY`, and both services connect with that role at runtime. Migrations (and pg-boss schema creation) use the owner connection. The app refuses to start if its runtime connection is the table owner, a superuser, or has `BYPASSRLS`. Role creation must be verified on Render during setup; if Render's managed Postgres does not allow it, stop and escalate to the founder.
+- **Client IP:** rate limiting reads the client address as set by Render's proxy in `X-Forwarded-For`, trusting only the proxy hop, never a client-supplied leftmost value.
 
 **Rules**
 1. Web and worker deploy as separate services against one Postgres database.
@@ -184,7 +192,7 @@ Status key: **Locked** = agreed with the founder. **Proposed** = recommended def
 - Users cannot access another coach's private client data (adversarial cross-tenant tests).
 - One user can hold multiple coaching relationships without duplicate accounts.
 - Expired or revoked invitations and revoked sessions are rejected.
-- Auth works consistently across Railway deployments (stable secret and base URL per environment; preview, staging and production configs).
+- Auth works consistently across Render deployments (stable secret and base URL per environment; preview, staging and production configs).
 
 ---
 
@@ -265,7 +273,7 @@ Status key: **Locked** = agreed with the founder. **Proposed** = recommended def
 
 | Sprint | Priority | Expected outcome |
 |---|---|---|
-| 0 | Monorepo, database, authentication, CI/CD, Railway deployment | Working technical foundation |
+| 0 | Monorepo, database, authentication, CI/CD, Render deployment | Working technical foundation |
 | 1 | Coach onboarding, client invitations, basic program creation and assignment | Coach can onboard and assign |
 | 2 | Mobile workout logging, basic coach review list (statuses and counts) | First complete end-to-end workflow |
 | 3 | Immutable versions, edit conflicts, offline continuity | Reliable workout experience |
@@ -284,8 +292,8 @@ Status key: **Locked** = agreed with the founder. **Proposed** = recommended def
 ```
 kinetic/            (repo root = D:\Gym)
 ├── apps/
-│   ├── web/        # Next.js App Router + Better Auth (Railway service "web")
-│   └── worker/     # pg-boss background jobs (Railway service "worker")
+│   ├── web/        # Next.js App Router + Better Auth (Render Web Service "web")
+│   └── worker/     # pg-boss background jobs (Render Background Worker "worker")
 ├── packages/
 │   ├── core/       # Domain logic and business rules; no provider SDKs (adapters only)
 │   └── db/         # Prisma schema, migrations, seed; PostgreSQL
@@ -294,7 +302,7 @@ kinetic/            (repo root = D:\Gym)
     ├── architecture/
     └── implementation-plan.md
 ```
-Railway hosts `web` and `worker` with one managed PostgreSQL database (D-005).
+Render hosts `web` and `worker` with one Render Postgres database (D-005).
 
 ---
 
@@ -333,9 +341,9 @@ Railway hosts `web` and `worker` with one managed PostgreSQL database (D-005).
 
 ### 5. Environments, domain and credentials
 - **Placeholder domain in Sprint 0.** No domain purchase or brand finalization until trademark and domain availability checks are done.
-- Use Railway-generated URLs initially. The app base URL, Better Auth URL, OAuth callback URLs and email link base all come from **environment variables**. **Never hardcode `kinetic.com` or any unverified domain.**
+- Use Render-generated `onrender.com` URLs initially. The app base URL, Better Auth URL, OAuth callback URLs and email link base all come from **environment variables**. **Never hardcode `kinetic.com` or any unverified domain.**
 - Add `staging.<final-domain>` after purchase. The final name and domain can change without architectural changes.
-- **The founder creates and owns all provider accounts** (Railway, Google Cloud OAuth, Resend, Sentry, PostHog, Cloudflare R2 / S3-compatible) and sets keys as Railway environment variables. Agents never hold production credentials.
+- **The founder creates and owns all provider accounts** (Render, Google Cloud OAuth, Resend, Sentry, PostHog, Cloudflare R2 / S3-compatible) and sets keys as Render environment variables (or an environment group). Agents never hold production credentials.
 - **Credentials are never committed to Git or written in documentation.** Only `.env.example` with placeholders (PRD §15.2).
 - Separate `staging` and `production` environments. Previews use synthetic seed data only.
 - *Builder call:* email transport is Resend behind an email adapter. In local development and CI, a console/file adapter is used, so no provider account is needed to run tests.

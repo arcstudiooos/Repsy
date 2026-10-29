@@ -4,9 +4,9 @@
 
 **Goal:** Ship Kinetic R1, a pilot-ready coaching loop: invite client → assign program → log workout → identify attention needed → complete check-in → take the next action.
 
-**Architecture:** pnpm monorepo. `apps/web` is Next.js App Router with Better Auth, serving UI and `/api/v1`. `apps/worker` is an always-on pg-boss worker. `packages/core` holds domain logic behind adapters. `packages/db` holds Prisma + PostgreSQL. Both apps deploy as separate Railway services on one managed Postgres. Build order is "thin loop first, then deepen" (D-009): the golden-path E2E passes from the end of Sprint 2 and stays green.
+**Architecture:** pnpm monorepo. `apps/web` is Next.js App Router with Better Auth, serving UI and `/api/v1`. `apps/worker` is an always-on pg-boss worker. `packages/core` holds domain logic behind adapters. `packages/db` holds Prisma + PostgreSQL. `web` deploys as a Render Web Service and `worker` as a Render Background Worker, on one Render Postgres (D-005). Build order is "thin loop first, then deepen" (D-009): the golden-path E2E passes from the end of Sprint 2 and stays green.
 
-**Tech Stack:** TypeScript (strict), Next.js App Router, React, Tailwind CSS, shadcn/ui + Radix, React Hook Form + Zod, Prisma, PostgreSQL, Better Auth, pg-boss, Resend (behind an adapter), Cloudflare R2 / S3-compatible storage, Sentry, PostHog, Vitest, React Testing Library, Playwright + @axe-core/playwright, GitHub Actions, Railway, `date-fns` + `@date-fns/tz` for timezone math, `idb` for IndexedDB.
+**Tech Stack:** TypeScript (strict), Next.js App Router, React, Tailwind CSS, shadcn/ui + Radix, React Hook Form + Zod, Prisma, PostgreSQL, Better Auth, pg-boss, Resend (behind an adapter), Cloudflare R2 / S3-compatible storage, Sentry, PostHog, Vitest, React Testing Library, Playwright + @axe-core/playwright, GitHub Actions, Render (`render.yaml` Blueprint), `date-fns` + `@date-fns/tz` for timezone math, `idb` for IndexedDB.
 
 **Spec:** `C:\Users\ranes\Downloads\Kinetic_Coaching_Platform_Agent_Ready_PRD.docx` (PRD v1.0) as amended by [`docs/decisions.md`](decisions.md) (D-001…D-010). **decisions.md wins every conflict.** Executors read both.
 
@@ -71,7 +71,7 @@ graph TD
   S0_2 --> S0_3[S0-3 Auth F01]
   S0_2 --> S0_6[S0-6 Worker + outbox]
   S0_3 --> S0_4[S0-4 Authz + API envelope]
-  S0_4 --> S0_7[S0-7 Railway deploy + seed]
+  S0_4 --> S0_7[S0-7 Render deploy + seed]
   S0_5 --> S0_7
   S0_6 --> S0_7
 
@@ -199,8 +199,8 @@ Scope: `apps/worker` boots pg-boss, registers jobs from a registry, graceful shu
 Interfaces: `packages/core/src/ports/email.ts`: `interface EmailPort { send(msg: EmailMessage): Promise<{ providerId: string }> }`; `packages/core/src/outbox.ts`: `enqueueEmail(tx, input: { kind; toUserId; templateKey; payload; idempotencyKey }): Promise<void>`; `apps/worker/src/jobs/registry.ts`: `defineJob<P>(name: string, handler: (p: P) => Promise<void>, opts?: { retryLimit?: number; cron?: string })`.
 Tests: same `idempotencyKey` enqueued twice → one row; delivery failure retries and marks `failed` after the limit; a handler throwing on attempt 1 succeeds on attempt 2 without double-send.
 
-**S0-7 — Railway deploy, seed, smoke** · §7, §17 · D-005, D-010 #5 · S0-4, S0-5, S0-6
-Scope: Railway project (founder creates the account and sets env), services `web` + `worker` + Postgres; staging and production environments; `prisma migrate deploy` as a pre-deploy step; synthetic seed (`pnpm db:seed`: 1 admin, 1 pilot code, demo coach + 3 clients; no real-looking PII); smoke Playwright against the staging URL from env; `docs/architecture/overview.md` with the diagram; `docs/runbook.md` (deploy, rollback, migration, restore placeholder).
+**S0-7 — Render deploy, seed, smoke** · §7, §17 · D-005, D-010 #5 · S0-4, S0-5, S0-6
+Scope: `render.yaml` Blueprint (founder creates the Render account, connects GitHub and sets env): Web Service `web` (paid Starter+), Background Worker `worker`, Render Postgres (paid); staging and production environments; `prisma migrate deploy` as the pre-deploy command using the owner connection; SQL that creates the non-owner runtime role `kinetic_app` (`NOSUPERUSER NOBYPASSRLS`) with grants, plus a startup check in web and worker that refuses to run as the table owner, a superuser or a `BYPASSRLS` role; pg-boss schema created with the owner connection; client IP from Render's proxy hop in `X-Forwarded-For`; high-entropy pilot-code generator (≥128 bits, shown once, stored sha256); synthetic seed (`pnpm db:seed`: 1 admin, 1 pilot code, demo coach + 3 clients; no real-looking PII); smoke Playwright against the staging URL from env; `docs/architecture/overview.md` with the diagram; `docs/runbook.md` (deploy, rollback, migration, restore placeholder).
 Tests: CI job `smoke` (manual trigger) hits `${STAGING_URL}/healthz` and logs in as the seeded demo coach.
 
 ### Sprint 1 — Clients + basic programming (DoD: full coach/client access tests)
@@ -468,10 +468,10 @@ describe('core', () => { it('exports a version', () => { expect(CORE_VERSION).to
 - [ ] **Step 4: Run.** Expected: PASS.
 - [ ] **Step 5: Commit.** `git commit -m "feat(worker): pg-boss worker, email outbox, adapters, Sentry, logging"`
 
-### Task 0.7: Railway deploy, seed, smoke (S0-7)
+### Task 0.7: Render deploy, seed, smoke (S0-7)
 
 **Files:**
-- Create: `packages/db/prisma/seed.ts`, `railway.json` (or per-service `railway.toml` in `apps/web`, `apps/worker`), `apps/web/e2e/smoke.spec.ts`, `.github/workflows/smoke.yml`, `docs/architecture/overview.md`, `docs/runbook.md`
+- Create: `packages/db/prisma/seed.ts`, `render.yaml`, `packages/db/sql/app-role.sql`, `packages/db/src/assertRuntimeRole.ts`, `apps/web/e2e/smoke.spec.ts`, `.github/workflows/smoke.yml`, `docs/architecture/overview.md`, `docs/runbook.md`
 - Test: `packages/db/src/seed.test.ts`
 
 **Interfaces:**
@@ -480,9 +480,9 @@ describe('core', () => { it('exports a version', () => { expect(CORE_VERSION).to
 
 - [ ] **Step 1: Write failing test.** `seed.test.ts` › `seed twice yields same counts` (1 admin, 1 org, 3 clients).
 - [ ] **Step 2: Run.** Expected: FAIL.
-- [ ] **Step 3: Implement** the seed, Railway service configs (web: `pnpm --filter @kinetic/web build` / `start`, pre-deploy `pnpm --filter @kinetic/db exec prisma migrate deploy`; worker: `pnpm --filter @kinetic/worker start`), smoke spec using `STAGING_URL`, and docs.
-- [ ] **Step 4: Run.** `pnpm test` PASS locally. **Founder step:** create the Railway project, Postgres and env vars (staging), then trigger `smoke.yml`. Expected: `/healthz` 200 on web and worker; seeded coach login succeeds.
-- [ ] **Step 5: Commit.** `git commit -m "chore(deploy): Railway services, seed, smoke workflow, runbook"`
+- [ ] **Step 3: Implement** the seed, `render.yaml` (web: build `pnpm install --frozen-lockfile && pnpm --filter @kinetic/web build`, start `pnpm --filter @kinetic/web start`, preDeployCommand `pnpm --filter @kinetic/db exec prisma migrate deploy` with `MIGRATION_DATABASE_URL`; worker: start `pnpm --filter @kinetic/worker start`; Postgres database; shared env group), the app-role SQL + `assertRuntimeRole()` startup check (test: connecting as owner/superuser throws), trusted-proxy client IP helper, pilot-code generator, smoke spec using `STAGING_URL`, and docs.
+- [ ] **Step 4: Run.** `pnpm test` PASS locally. **Founder step:** create the Render account, apply the Blueprint, set env vars (staging), run the app-role SQL and confirm Render allows creating the role (escalate if not), then trigger `smoke.yml`. Expected: `/healthz` 200 on web and worker; seeded coach login succeeds.
+- [ ] **Step 5: Commit.** `git commit -m "chore(deploy): Render blueprint, app role, seed, smoke workflow, runbook"`
 
 ---
 
