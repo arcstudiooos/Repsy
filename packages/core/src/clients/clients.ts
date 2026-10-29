@@ -104,8 +104,12 @@ function lockOrganization(tx: TenantTx, actor: ActorContext) {
   });
 }
 
+/** Clients occupying a slot under `Organization.activeClientLimit` (invited + active). */
+export const countActiveClients = (tx: TenantTx): Promise<number> =>
+  tx.client.count({ where: { status: { in: COUNTED } } });
+
 async function assertUnderLimit(tx: TenantTx, limit: number) {
-  const used = await tx.client.count({ where: { status: { in: COUNTED } } });
+  const used = await countActiveClients(tx);
   if (used >= limit) {
     throw new DomainError(
       'CLIENT_LIMIT_REACHED',

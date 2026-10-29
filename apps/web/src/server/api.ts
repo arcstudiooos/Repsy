@@ -10,7 +10,7 @@ import {
   type MembershipRef,
 } from '@kinetic/core';
 import { prisma as defaultPrisma, withTenant, type PrismaClient, type TenantTx } from '@kinetic/db';
-import { getSessionUser, type Auth, type SessionUser } from '@/lib/auth';
+import { auth as defaultAuth, getSessionUser, type Auth, type SessionUser } from '@/lib/auth';
 import { loadMemberships, resolveActor } from './actor';
 import { orgCookieSecret, serializeOrgCookie } from './orgCookie';
 import { defaultLimiter, InMemoryRateLimiter, type RateLimiter } from './rateLimit';
@@ -42,6 +42,13 @@ export interface RouteCtx<I, R extends boolean> {
   params: Record<string, string>;
   /** The Prisma client this handler runs on (injected in tests, the shared one otherwise). */
   prisma: PrismaClient;
+  /** The Better Auth instance this handler runs on (injected in tests, the shared one otherwise). */
+  auth: Pick<Auth, 'api'>;
+  /**
+   * For `requireOrg: false` routes that still want the active org when there is one:
+   * the resolved actor, or undefined when no organization is active (none chosen, none joined).
+   */
+  optionalActor(): ActorContext | undefined;
   /** Runs `fn` in a transaction scoped to the actor's organization. */
   tenant<T>(fn: (tx: TenantTx) => Promise<T>): Promise<T>;
   /** `Set-Cookie` value that makes `orgId` this user's active organization (signed, user-bound). */
@@ -200,6 +207,15 @@ export function createApiHandler(deps: ApiDeps = {}) {
           input,
           params: (await context?.params) ?? {},
           prisma: deps.prisma ?? defaultPrisma,
+          auth: deps.auth ?? defaultAuth,
+          optionalActor: () => {
+            try {
+              return resolveActor(request.headers.get('cookie'), user, memberships, secret);
+            } catch (error) {
+              if (error instanceof DomainError) return undefined;
+              throw error;
+            }
+          },
           tenant: (fn) => {
             if (!actor) throw new Error('tenant() requires an active organization');
             return runTenant(actor.orgId, fn);

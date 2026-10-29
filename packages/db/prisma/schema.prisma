@@ -48,26 +48,28 @@ enum OutboxStatus {
 }
 
 model User {
-  id              String       @id @default(uuid()) @db.Uuid
-  email           String       @unique
+  id              String    @id @default(uuid()) @db.Uuid
+  email           String    @unique
   name            String
   image           String?
-  emailVerified   Boolean      @default(false) @map("email_verified")
-  isPlatformAdmin Boolean      @default(false) @map("is_platform_admin")
-  lastLoginAt     DateTime?    @map("last_login_at") @db.Timestamptz(3)
-  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+  emailVerified   Boolean   @default(false) @map("email_verified")
+  isPlatformAdmin Boolean   @default(false) @map("is_platform_admin")
+  lastLoginAt     DateTime? @map("last_login_at") @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  ownedOrganizations Organization[]
-  memberships        Membership[]
-  createdPilotCodes  PilotCode[]    @relation("PilotCodeCreatedBy")
-  usedPilotCodes     PilotCode[]    @relation("PilotCodeUsedBy")
-  outboxEmails       OutboxEmail[]
-  clientProfiles     Client[]      @relation("ClientUser")
-  coachedClients     Client[]      @relation("ClientCoach")
-  createdInvites     ClientInvite[]
-  sessions           Session[]
-  accounts           Account[]
+  ownedOrganizations     Organization[]
+  memberships            Membership[]
+  createdPilotCodes      PilotCode[]             @relation("PilotCodeCreatedBy")
+  usedPilotCodes         PilotCode[]             @relation("PilotCodeUsedBy")
+  outboxEmails           OutboxEmail[]
+  clientProfiles         Client[]                @relation("ClientUser")
+  coachedClients         Client[]                @relation("ClientCoach")
+  createdInvites         ClientInvite[]
+  sessions               Session[]
+  accounts               Account[]
+  coachProfile           CoachProfile?
+  notificationPreference NotificationPreference?
 
   @@map("users")
 }
@@ -142,11 +144,11 @@ model Organization {
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  owner        User          @relation(fields: [ownerUserId], references: [id])
-  memberships  Membership[]
-  auditEvents  AuditEvent[]
-  outboxEmails OutboxEmail[]
-  clients      Client[]
+  owner         User           @relation(fields: [ownerUserId], references: [id])
+  memberships   Membership[]
+  auditEvents   AuditEvent[]
+  outboxEmails  OutboxEmail[]
+  clients       Client[]
   clientInvites ClientInvite[]
 
   @@map("organizations")
@@ -220,7 +222,7 @@ model OutboxEmail {
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
 
   organization Organization? @relation(fields: [organizationId], references: [id])
-  toUser       User?        @relation(fields: [toUserId], references: [id], onDelete: Restrict)
+  toUser       User?         @relation(fields: [toUserId], references: [id], onDelete: Restrict)
 
   @@index([organizationId])
   @@index([status])
@@ -247,9 +249,9 @@ model Client {
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  organization Organization @relation(fields: [organizationId], references: [id])
-  user         User?        @relation("ClientUser", fields: [userId], references: [id])
-  coach        User         @relation("ClientCoach", fields: [coachUserId], references: [id])
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  user         User?          @relation("ClientUser", fields: [userId], references: [id])
+  coach        User           @relation("ClientCoach", fields: [coachUserId], references: [id])
   invites      ClientInvite[]
 
   @@unique([organizationId, email])
@@ -278,4 +280,35 @@ model ClientInvite {
   @@index([clientId])
   @@index([organizationId])
   @@map("client_invites")
+}
+
+/// Users-level (keyed by user, not tenant-owned): a coach's own profile, shared across their organizations.
+/// Forced RLS: a row is visible only to its own user (app.user_id).
+model CoachProfile {
+  /// The user's id; one profile per user.
+  userId      String   @id @map("user_id") @db.Uuid
+  bio         String?
+  specialties String[]
+  units       Units    @default(kg)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("coach_profiles")
+}
+
+/// Users-level (keyed by user, not tenant-owned): email opt-ins. Both default off.
+/// Forced RLS: a row is visible only to its own user (app.user_id).
+model NotificationPreference {
+  /// The user's id; one row per user.
+  userId            String   @id @map("user_id") @db.Uuid
+  messageEmailOptIn Boolean  @default(false) @map("message_email_opt_in")
+  marketingOptIn    Boolean  @default(false) @map("marketing_opt_in")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
 }

@@ -30,6 +30,7 @@ export {
   toClientView,
   escapeLike,
   cleanGoals,
+  countActiveClients,
   GOALS_MAX,
   type ClientView,
   type ClientStatus,
@@ -50,3 +51,9 @@ export {
 export { newInviteToken, hashInviteToken } from './invites/token';
 export { PRIVACY_NOTICE_VERSION, PRIVACY_NOTICE_TEXT } from './privacy';
 export { isValidTimezone } from './invites/invites';
+export {
+  getSettings,
+  updateSettings,
+  type SettingsView,
+  type SettingsPatch,
+} from './settings/settings';

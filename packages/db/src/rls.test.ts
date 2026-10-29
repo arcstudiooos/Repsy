@@ -172,3 +172,77 @@ describe('row level security', () => {
     expect(rows.map((r) => r.organization_id)).toEqual([orgB]);
   });
 });
+
+describe('user-keyed tables (coach_profiles, notification_preferences)', () => {
+  let userA: string;
+  let userB: string;
+  beforeAll(async () => {
+    await withSystem(async (tx) => {
+      const a = await tx.user.create({ data: { email: 'pa@example.test', name: 'PA' } });
+      const b = await tx.user.create({ data: { email: 'pb@example.test', name: 'PB' } });
+      userA = a.id;
+      userB = b.id;
+      for (const userId of [a.id, b.id]) {
+        await tx.coachProfile.create({ data: { userId, bio: `bio-${userId}` } });
+        await tx.notificationPreference.create({ data: { userId } });
+      }
+    }, prisma);
+  });
+
+  it('have forced RLS and a self_row policy keyed on app.user_id', async () => {
+    const rows = await prisma.$queryRaw<
+      { relname: string; relrowsecurity: boolean; relforcerowsecurity: boolean; qual: string }[]
+    >`
+      SELECT c.relname, c.relrowsecurity, c.relforcerowsecurity,
+        pg_get_expr(p.polqual, p.polrelid) AS qual
+      FROM pg_class c JOIN pg_policy p ON p.polrelid = c.oid
+      WHERE c.relnamespace = ${schema}::regnamespace
+        AND c.relname IN ('coach_profiles', 'notification_preferences')
+        AND p.polname = 'self_row'`;
+    expect(rows.map((r) => r.relname).sort()).toEqual([
+      'coach_profiles',
+      'notification_preferences',
+    ]);
+    for (const r of rows) {
+      expect(r, r.relname).toMatchObject({ relrowsecurity: true, relforcerowsecurity: true });
+      expect(r.qual, r.relname).toContain('app.user_id');
+    }
+  });
+
+  it('plain prisma (no user) sees nothing', async () => {
+    expect(await prisma.coachProfile.findMany()).toEqual([]);
+    expect(await prisma.notificationPreference.findMany()).toEqual([]);
+  });
+
+  it("user A cannot read or update user B's profile or preferences in a tenant tx", async () => {
+    await withTenant(
+      orgA,
+      async (tx) => {
+        const mine = await tx.coachProfile.findMany();
+        expect(mine.map((r) => r.userId)).toEqual([userA]);
+        expect(await tx.coachProfile.findFirst({ where: { userId: userB } })).toBeNull();
+        expect(await tx.notificationPreference.findFirst({ where: { userId: userB } })).toBeNull();
+        const upd = await tx.coachProfile.updateMany({
+          where: { userId: userB },
+          data: { bio: 'hacked' },
+        });
+        expect(upd.count).toBe(0);
+        const upd2 = await tx.notificationPreference.updateMany({
+          where: { userId: userB },
+          data: { marketingOptIn: true },
+        });
+        expect(upd2.count).toBe(0);
+        await expect(
+          tx.notificationPreference.create({ data: { userId: userB } }),
+        ).rejects.toThrow();
+      },
+      prisma,
+      { userId: userA },
+    );
+    const b = await withSystem(
+      (tx) => tx.coachProfile.findUnique({ where: { userId: userB } }),
+      prisma,
+    );
+    expect(b?.bio).toBe(`bio-${userB}`);
+  });
+});

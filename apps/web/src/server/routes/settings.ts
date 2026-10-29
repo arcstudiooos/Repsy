@@ -1,0 +1,59 @@
+import { z } from 'zod';
+import { appendAudit } from '@kinetic/db';
+import { getSettings, updateSettings, type SettingsView } from '@kinetic/core';
+import type { RouteDef } from '../api';
+
+// Unknown keys (including any `organizationId`) are stripped by Zod and never read.
+// Ranges and permissions are enforced in core; this only fixes the shapes.
+const units = z.enum(['kg', 'lb']);
+const patchSchema = z.object({
+  profile: z
+    .object({
+      bio: z.string().max(5000).nullable().optional(),
+      specialties: z.array(z.string().max(200)).max(100).optional(),
+      units: units.optional(),
+    })
+    .optional(),
+  org: z
+    .object({
+      name: z.string().max(500).optional(),
+      timezone: z.string().max(100).optional(),
+      graceHours: z.number().optional(),
+    })
+    .optional(),
+  notifications: z
+    .object({
+      messageEmailOptIn: z.boolean().optional(),
+      marketingOptIn: z.boolean().optional(),
+    })
+    .optional(),
+  client: z
+    .object({ timezone: z.string().max(100).optional(), preferredUnits: units.optional() })
+    .optional(),
+});
+
+/** The caller's settings; shape depends on role. Creates their profile/preference rows on first read. */
+export const settingsGetRoute: RouteDef<undefined, true> = {
+  handler: ({ actor, tenant }): Promise<SettingsView> => tenant((tx) => getSettings(tx, actor)),
+};
+
+export const settingsPatchRoute: RouteDef<typeof patchSchema, true> = {
+  input: patchSchema,
+  handler: ({ actor, input, requestId, tenant }) =>
+    tenant(async (tx) => {
+      const fields = await updateSettings(tx, actor, input);
+      if (fields.length > 0) {
+        await appendAudit(tx, {
+          orgId: actor.orgId,
+          actorId: actor.userId,
+          objectType: 'settings',
+          objectId: actor.userId,
+          action: 'settings.updated',
+          // Field names only, never values.
+          metadata: { fields: fields.join(',') },
+          requestId,
+        });
+      }
+      return getSettings(tx, actor);
+    }),
+};
