@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { PrismaClient } from './generated/client';
+import { Prisma, type PrismaClient } from './generated/client';
 import { createTestDb } from './testing/createTestDb';
 import { withSystem, withTenant } from './tenant';
 
@@ -137,11 +137,34 @@ describe('row level security', () => {
     ).rejects.toMatchObject({
       meta: { driverAdapterError: { cause: { originalCode: '22P02' } } },
     });
+    const auditOrgs = (setting: string | null, searchPath = `"${schema}"`) =>
+      prisma.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe(`SET LOCAL search_path TO ${searchPath}`);
+        if (setting !== null)
+          await tx.$executeRaw`SELECT set_config('app.org_id', ${setting}, true)`;
+        const rows = await tx.$queryRaw<{ organization_id: string }[]>`
+          SELECT organization_id FROM ${Prisma.raw(`"${schema}".audit_events`)}`;
+        return rows.map((r) => r.organization_id);
+      });
+    expect(await auditOrgs('')).toEqual([]);
+    expect(await auditOrgs(null)).toEqual([]);
+    expect(await auditOrgs(orgB)).toEqual([orgB]);
+  });
+
+  it('helper functions are schema-qualified and immune to search_path', async () => {
+    const fns = await prisma.$queryRaw<{ proname: string; prosrc: string }[]>`
+      SELECT p.proname, p.prosrc FROM pg_proc p
+      WHERE p.pronamespace = ${schema}::regnamespace
+        AND p.proname IN ('app_current_org', 'app_rls_bypass')`;
+    expect(fns.map((f) => f.proname).sort()).toEqual(['app_current_org', 'app_rls_bypass']);
+    for (const f of fns) expect(f.prosrc, f.proname).toContain('pg_catalog.current_setting');
+    expect(fns.find((f) => f.proname === 'app_current_org')?.prosrc).toContain('pg_catalog.uuid');
     const rows = await prisma.$transaction(async (tx) => {
-      await tx.$executeRawUnsafe(`SET LOCAL search_path TO "${schema}"`);
-      await tx.$executeRaw`SELECT set_config('app.org_id', '', true)`;
-      return tx.$queryRaw<unknown[]>`SELECT 1 FROM memberships`;
+      await tx.$executeRawUnsafe('SET LOCAL search_path = pg_temp, public');
+      await tx.$executeRaw`SELECT set_config('app.org_id', ${orgB}, true)`;
+      return tx.$queryRaw<{ organization_id: string }[]>`
+        SELECT organization_id FROM ${Prisma.raw(`"${schema}".audit_events`)}`;
     });
-    expect(rows).toEqual([]);
+    expect(rows.map((r) => r.organization_id)).toEqual([orgB]);
   });
 });
