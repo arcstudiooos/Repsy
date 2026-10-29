@@ -11,7 +11,8 @@ import { requireSeedPassword, seedDemo } from '../src/seed';
 async function main(): Promise<void> {
   if (process.env.NODE_ENV === 'production') throw new Error('Refusing to seed in production');
   const password = requireSeedPassword();
-  const url = process.env.MIGRATION_DATABASE_URL ?? process.env.DATABASE_URL;
+  // Blank counts as unset (.env.example ships `MIGRATION_DATABASE_URL=`).
+  const url = process.env.MIGRATION_DATABASE_URL?.trim() || process.env.DATABASE_URL;
   if (!url) throw new Error('DATABASE_URL is not set');
   const prisma = createPrismaClient(url);
   try {

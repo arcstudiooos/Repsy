@@ -5,7 +5,7 @@ import type { EmailMessage, EmailPort } from '@kinetic/core';
 
 /** Dev/test adapter: one JSON file per email, no network. */
 export class DevSinkEmailAdapter implements EmailPort {
-  constructor(private readonly dir: string) {}
+  constructor(readonly dir: string) {}
 
   async send(message: EmailMessage): Promise<void> {
     await mkdir(this.dir, { recursive: true });

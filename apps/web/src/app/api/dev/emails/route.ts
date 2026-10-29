@@ -7,7 +7,8 @@ export async function GET(): Promise<Response> {
   await connection();
   if (process.env.NODE_ENV === 'production') return new Response(null, { status: 404 });
 
-  const dir = process.env.DEV_EMAIL_DIR ?? join(process.cwd(), '..', '..', '.dev-emails');
+  // Blank counts as unset (.env.example ships `DEV_EMAIL_DIR=`); default matches the worker's.
+  const dir = process.env.DEV_EMAIL_DIR?.trim() || join(process.cwd(), '..', '..', '.dev-emails');
   const files = await readdir(dir).catch((error: NodeJS.ErrnoException) => {
     if (error.code === 'ENOENT') return [];
     throw error;

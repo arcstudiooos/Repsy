@@ -31,12 +31,12 @@ Kinetic is a pnpm monorepo deployed as two Render services (`web`, `worker`) sha
 
 ## Packages
 
-| Package | Role |
-|---|---|
-| `apps/web` | Next.js app and `/api/v1`. Auth (Better Auth), org cookie, rate limiting, `/healthz`. |
-| `apps/worker` | pg-boss worker. Delivers the email outbox. Health server on `WORKER_PORT`. |
-| `packages/core` | Domain logic: actor context, policies, signup, pilot codes, outbox. Never imports provider SDKs. |
-| `packages/db` | Prisma schema, migrations, `withTenant` / `withSystem`, `assertRuntimeRole`, seed, `sql/app-role.sql`. |
+| Package         | Role                                                                                                   |
+| --------------- | ------------------------------------------------------------------------------------------------------ |
+| `apps/web`      | Next.js app and `/api/v1`. Auth (Better Auth), org cookie, rate limiting, `/healthz`.                  |
+| `apps/worker`   | pg-boss worker. Delivers the email outbox. Health server on `WORKER_PORT`.                             |
+| `packages/core` | Domain logic: actor context, policies, signup, pilot codes, outbox. Never imports provider SDKs.       |
+| `packages/db`   | Prisma schema, migrations, `withTenant` / `withSystem`, `assertRuntimeRole`, seed, `sql/app-role.sql`. |
 
 ## Rules that shape the design
 

@@ -15,7 +15,8 @@ function parseDays(argv: string[]): number {
 
 async function main(): Promise<void> {
   const days = parseDays(process.argv.slice(2));
-  const url = process.env.MIGRATION_DATABASE_URL ?? process.env.DATABASE_URL;
+  // Blank counts as unset (.env.example ships `MIGRATION_DATABASE_URL=`).
+  const url = process.env.MIGRATION_DATABASE_URL?.trim() || process.env.DATABASE_URL;
   if (!url) throw new Error('DATABASE_URL is not set');
   const { code, codeHash } = generatePilotCode();
   const prisma = createPrismaClient(url);

@@ -1,3 +1,5 @@
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { DevSinkEmailAdapter } from './devSinkEmail';
 import { createEmailPort } from './index';
@@ -10,6 +12,16 @@ describe('createEmailPort', () => {
     );
     expect(createEmailPort({ RESEND_API_KEY: '', DEV_EMAIL_DIR: '.x' })).toBeInstanceOf(
       DevSinkEmailAdapter,
+    );
+  });
+
+  it('treats a blank DEV_EMAIL_DIR as unset (repo-root .dev-emails)', () => {
+    const port = createEmailPort({ DEV_EMAIL_DIR: '' }) as DevSinkEmailAdapter;
+    expect(port.dir).toBe(
+      join(fileURLToPath(new URL('../../../../', import.meta.url)), '.dev-emails'),
+    );
+    expect((createEmailPort({ DEV_EMAIL_DIR: '/tmp/x' }) as DevSinkEmailAdapter).dir).toBe(
+      '/tmp/x',
     );
   });
 

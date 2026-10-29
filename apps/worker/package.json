@@ -8,7 +8,8 @@
     "start": "tsx src/index.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "pgboss:migrate": "tsx src/pgbossMigrate.ts"
+    "pgboss:migrate": "node --env-file-if-exists=../../.env --import tsx src/pgbossMigrate.ts",
+    "dev": "node --env-file-if-exists=../../.env --watch --import tsx src/index.ts"
   },
   "dependencies": {
     "@kinetic/core": "workspace:*",

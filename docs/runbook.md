@@ -8,12 +8,16 @@ Prerequisites: Node 24 (`.nvmrc`), pnpm, Docker (for the dev database).
 
 ```sh
 pnpm install
-cp .env.example .env            # placeholders only; fill in locally
 pnpm db:up                      # Postgres 16 on localhost:54320
-pnpm --filter @kinetic/db exec prisma migrate deploy
-SEED_PASSWORD='<at least 12 chars>' pnpm db:seed
+cp .env.example .env            # repo root; no provider keys needed
+# set SEED_PASSWORD in .env (12+ chars, local only)
+pnpm db:migrate                 # prisma migrate deploy (reads .env)
+pnpm db:seed
+pnpm dev                        # web on http://localhost:3000 + worker
 ```
 
+- The root `.env` is loaded by `pnpm dev` (web via `process.loadEnvFile` in `next.config.ts`, worker via `node --env-file-if-exists`), `db:migrate`, `db:seed`, `pilot-code:create` and `pgboss:migrate`. Shell variables win over the file. Production processes (`start` scripts) never read it.
+- Blank provider keys = local mode: emails are written to `DEV_EMAIL_DIR` (blank = `<repo>/.dev-emails`, also at `/api/dev/emails`), Google sign-in is off, Sentry and PostHog are no-ops.
 - `pnpm db:seed` is idempotent and synthetic: `admin@example.test`, `coach@example.test` (with an organization) and three demo client users. All share `SEED_PASSWORD`. It refuses to run without it, and in production.
 - The seed prints a pilot code once (only the hash is stored). Mint another any time:
   `pnpm --filter @kinetic/db pilot-code:create -- --expires-days 30` (default 30).
@@ -25,10 +29,10 @@ Checks before every PR: `pnpm lint && pnpm typecheck && pnpm test && pnpm test:e
 
 ## Database roles
 
-| Role | Used for | Variable |
-|---|---|---|
-| Owner | `prisma migrate deploy`, `pgboss:migrate`, seed, pilot codes, `app-role.sql` | `MIGRATION_DATABASE_URL` |
-| `kinetic_app` | web and worker at runtime | `DATABASE_URL` |
+| Role          | Used for                                                                     | Variable                 |
+| ------------- | ---------------------------------------------------------------------------- | ------------------------ |
+| Owner         | `prisma migrate deploy`, `pgboss:migrate`, seed, pilot codes, `app-role.sql` | `MIGRATION_DATABASE_URL` |
+| `kinetic_app` | web and worker at runtime                                                    | `DATABASE_URL`           |
 
 `kinetic_app` is LOGIN, NOSUPERUSER, NOBYPASSRLS, NOCREATEDB, NOCREATEROLE, and owns nothing. Create or rotate it as the owner. The owner only needs CREATEROLE (no superuser): attributes are set at CREATE time and rotation changes the password only.
 

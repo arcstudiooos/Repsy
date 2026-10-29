@@ -23,11 +23,12 @@
   "scripts": {
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
+    "db:migrate": "node --env-file-if-exists=../../.env node_modules/prisma/build/index.js migrate dev",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "pilot-code:create": "tsx scripts/pilot-code-create.ts",
-    "db:seed": "tsx prisma/seed.ts"
+    "pilot-code:create": "node --env-file-if-exists=../../.env --import tsx scripts/pilot-code-create.ts",
+    "db:seed": "node --env-file-if-exists=../../.env --import tsx prisma/seed.ts",
+    "db:deploy": "node --env-file-if-exists=../../.env node_modules/prisma/build/index.js migrate deploy"
   },
   "exports": {
     ".": "./src/index.ts",

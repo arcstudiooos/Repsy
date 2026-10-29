@@ -21,5 +21,6 @@ export function createEmailPort(env: NodeJS.ProcessEnv = process.env): EmailPort
     if (!from) throw new Error('EMAIL_FROM is required when RESEND_API_KEY is set');
     return new ResendEmailAdapter(env.RESEND_API_KEY, from);
   }
-  return new DevSinkEmailAdapter(env.DEV_EMAIL_DIR ?? join(repoRoot, '.dev-emails'));
+  // Blank counts as unset (.env.example ships `DEV_EMAIL_DIR=`).
+  return new DevSinkEmailAdapter(env.DEV_EMAIL_DIR?.trim() || join(repoRoot, '.dev-emails'));
 }

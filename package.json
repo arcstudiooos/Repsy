@@ -7,12 +7,15 @@
     "node": ">=24"
   },
   "scripts": {
+    "dev": "pnpm --parallel --filter @kinetic/web --filter @kinetic/worker dev",
     "lint": "eslint . && pnpm --filter @kinetic/web lint",
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "vitest run",
     "test:e2e": "pnpm --filter @kinetic/web test:e2e",
     "db:up": "docker compose up -d --wait postgres",
     "db:down": "docker compose down",
+    "db:migrate": "pnpm --filter @kinetic/db db:deploy",
+    "db:seed": "pnpm --filter @kinetic/db db:seed",
     "format": "prettier --write ."
   },
   "devDependencies": {
