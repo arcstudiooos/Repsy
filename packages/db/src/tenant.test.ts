@@ -172,6 +172,96 @@ describe('withTenant: non-tenant tables', () => {
   });
 });
 
+describe('withTenant: nested auth-table guards', () => {
+  const denied = /not available in a tenant scope/;
+
+  it('rejects nested auth-table writes via data', async () => {
+    await expect(
+      withTenant(
+        orgA,
+        (tx) =>
+          tx.user.update({
+            where: { id: userA },
+            data: { accounts: { connect: { id: 'any' } } },
+          }),
+        prisma,
+        { userId: userA },
+      ),
+    ).rejects.toThrow(denied);
+    await expect(
+      withTenant(
+        orgA,
+        (tx) =>
+          tx.user.update({
+            where: { id: userA },
+            data: {
+              sessions: {
+                create: { token: 't', expiresAt: new Date(), updatedAt: new Date() },
+              },
+            },
+          }),
+        prisma,
+        { userId: userA },
+      ),
+    ).rejects.toThrow(denied);
+  });
+
+  it('rejects auth relations in createMany/upsert data paths', async () => {
+    await expect(
+      withTenant(
+        orgA,
+        (tx) =>
+          tx.user.upsert({
+            where: { id: userA },
+            create: { email: 'x@example.test', name: 'x', accounts: { connect: { id: 'any' } } },
+            update: {},
+          }),
+        prisma,
+        { userId: userA },
+      ),
+    ).rejects.toThrow(denied);
+    await expect(
+      withTenant(
+        orgA,
+        (tx) =>
+          tx.user.upsert({
+            where: { id: userA },
+            create: { email: 'x@example.test', name: 'x' },
+            update: { sessions: { deleteMany: {} } },
+          }),
+        prisma,
+        { userId: userA },
+      ),
+    ).rejects.toThrow(denied);
+    await expect(
+      withTenant(
+        orgA,
+        (tx) =>
+          tx.user.createMany({
+            data: [{ email: 'y@example.test', name: 'y', accounts: {} } as never],
+          }),
+        prisma,
+      ),
+    ).rejects.toThrow(denied);
+  });
+
+  it('rejects _count over auth relations', async () => {
+    await expect(
+      withTenant(orgA, (tx) => tx.user.findMany({ select: { _count: true } }), prisma),
+    ).rejects.toThrow(denied);
+    await expect(
+      withTenant(
+        orgA,
+        (tx) => tx.user.findMany({ select: { _count: { select: { accounts: true } } } }),
+        prisma,
+      ),
+    ).rejects.toThrow(denied);
+    await expect(
+      withTenant(orgA, (tx) => tx.user.findMany({ include: { _count: true } }), prisma),
+    ).rejects.toThrow(denied);
+  });
+});
+
 describe('withTenant writes', () => {
   it('users: only the acting user row can be updated', async () => {
     await expect(

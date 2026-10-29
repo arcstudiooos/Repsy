@@ -144,6 +144,15 @@ function resolveActor(
   return { userId: user.id, orgId, role, isPlatformAdmin: user.isPlatformAdmin };
 }
 
+/** Stack with the `name: message` header (which may span lines) replaced by the name. */
+function sanitizedStack(err: Error): string {
+  const stack = err.stack ?? '';
+  const header = `${err.name}: ${err.message}`;
+  if (stack.startsWith(header)) return err.name + stack.slice(header.length);
+  const firstFrame = stack.search(/^\s+at /m);
+  return firstFrame === -1 ? err.name : `${err.name}\n${stack.slice(firstFrame)}`;
+}
+
 export function createApiHandler(deps: ApiDeps = {}) {
   return function define<S extends z.ZodType | undefined = undefined, R extends boolean = true>(
     def: RouteDef<S, R>,
@@ -221,12 +230,15 @@ export function createApiHandler(deps: ApiDeps = {}) {
         if (error instanceof DomainError) {
           return fail(error.code, error.message, requestId, { fieldErrors: error.fieldErrors });
         }
+        // Never log err.message: it can carry client PII (e.g. Prisma echoes values).
         // Stack goes to logs only, never to the response.
+        const err = error instanceof Error ? error : undefined;
         logger.error(
           {
             requestId,
-            err:
-              error instanceof Error ? { message: error.message, stack: error.stack } : 'unknown',
+            errName: err?.name ?? 'unknown',
+            ...(err && 'code' in err && typeof err.code === 'string' ? { errCode: err.code } : {}),
+            ...(err?.stack ? { stack: sanitizedStack(err) } : {}),
           },
           'unhandled API error',
         );

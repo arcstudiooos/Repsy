@@ -33,7 +33,12 @@ const NON_TENANT_RELATIONS: ReadonlySet<string> = new Set([
 const notInTenantScope = (what: string) =>
   new Error(`${what} is not available in a tenant scope; use withSystem in system code`);
 
-/** Rejects include/select/where trees that traverse into auth tables. */
+/**
+ * Rejects include/select/where/data trees that traverse into auth tables:
+ * any key naming an auth relation (also under nested create/connect/update/
+ * upsert/... keys and array elements), and a bare `_count: true`, which counts
+ * every relation of the model including the auth ones.
+ */
 function rejectNonTenantRelations(node: unknown): void {
   if (node === null || typeof node !== 'object') return;
   if (Array.isArray(node)) {
@@ -42,6 +47,7 @@ function rejectNonTenantRelations(node: unknown): void {
   }
   for (const [key, value] of Object.entries(node)) {
     if (NON_TENANT_RELATIONS.has(key)) throw notInTenantScope(`Relation ${key}`);
+    if (key === '_count' && value === true) throw notInTenantScope('Relation count');
     rejectNonTenantRelations(value);
   }
 }
@@ -93,6 +99,9 @@ function tenantExtension(orgId: string) {
           rejectNonTenantRelations(a.include);
           rejectNonTenantRelations(a.select);
           rejectNonTenantRelations(a.where);
+          rejectNonTenantRelations(a.data);
+          rejectNonTenantRelations(a.create);
+          rejectNonTenantRelations(a.update);
           if (model === 'Organization') {
             switch (operation) {
               case 'create':

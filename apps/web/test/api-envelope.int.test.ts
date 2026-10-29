@@ -1,6 +1,6 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { DomainError } from '@kinetic/core';
+import { DomainError, logger } from '@kinetic/core';
 import { withSystem, type PrismaClient } from '@kinetic/db';
 import { createTestDb } from '@kinetic/db/testing';
 import { createAuth, type Auth } from '@/lib/auth';
@@ -91,6 +91,29 @@ describe('api envelope', () => {
     expect(text).not.toContain('exploded');
     expect(text).not.toContain('/secret/path');
     expect(text).not.toMatch(/\bat \S+ \(/);
+  });
+
+  it('catch-all never logs error message', async () => {
+    const spy = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+    try {
+      const handler = make()({
+        handler: () => {
+          throw new Error('client email jane@example.test');
+        },
+      });
+      const res = await handler(req('GET', headersFor(t.coachA)));
+      expect(res.status).toBe(500);
+      const body = (await res.json()) as { error: { code: string; requestId: string } };
+      expect(body.error.code).toBe('INTERNAL');
+      expect(body.error.requestId).toBeTruthy();
+      expect(spy).toHaveBeenCalled();
+      expect(JSON.stringify(spy.mock.calls)).not.toContain('jane@example.test');
+      const [fields] = spy.mock.calls[0] as unknown as [{ errName: string; stack: string }];
+      expect(fields.errName).toBe('Error');
+      expect(fields.stack.split('\n')[0]).toBe('Error');
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it('maps DomainError codes to statuses', async () => {
