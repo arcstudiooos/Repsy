@@ -38,6 +38,14 @@ enum Units {
   @@map("units")
 }
 
+enum TrackingType {
+  reps_load
+  duration
+  distance
+
+  @@map("tracking_type")
+}
+
 enum OutboxStatus {
   pending
   sending
@@ -150,6 +158,7 @@ model Organization {
   outboxEmails  OutboxEmail[]
   clients       Client[]
   clientInvites ClientInvite[]
+  exercises     Exercise[]
 
   @@map("organizations")
 }
@@ -311,4 +320,29 @@ model NotificationPreference {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notification_preferences")
+}
+
+/// Exercise library. organizationId null = global catalog row (readable by every
+/// organization, writable by none; see the exercises migration). Org rows are custom.
+/// Case-insensitive name uniqueness per org is an expression index
+/// (exercises_org_lower_name_key) that Prisma cannot model; it lives in the migration.
+model Exercise {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String?      @map("organization_id") @db.Uuid
+  name           String
+  equipment      String
+  muscleGroup    String       @map("muscle_group")
+  movementType   String       @map("movement_type")
+  trackingType   TrackingType @map("tracking_type")
+  /// Plain text, at most 2000 characters.
+  instructions   String       @default("")
+  /// https only, at most 500 characters.
+  mediaUrl       String?      @map("media_url")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, name, id])
+  @@index([organizationId, createdAt])
+  @@map("exercises")
 }

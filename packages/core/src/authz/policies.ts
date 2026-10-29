@@ -7,7 +7,9 @@ export type Action =
   | 'settings:org:update'
   | 'client:read'
   | 'client:create'
-  | 'client:update';
+  | 'client:update'
+  | 'exercise:read'
+  | 'exercise:create';
 
 const POLICY: Record<Action, readonly Role[]> = {
   'org:read': ['owner', 'coach'],
@@ -16,6 +18,8 @@ const POLICY: Record<Action, readonly Role[]> = {
   'client:read': ['owner', 'coach'],
   'client:create': ['owner', 'coach'],
   'client:update': ['owner', 'coach'],
+  'exercise:read': ['owner', 'coach'],
+  'exercise:create': ['owner', 'coach'],
 };
 
 export const can = (actor: ActorContext, action: Action): boolean =>

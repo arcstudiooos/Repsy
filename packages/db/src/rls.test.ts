@@ -99,6 +99,7 @@ describe('row level security', () => {
       'audit_events',
       'client_invites',
       'clients',
+      'exercises',
       'memberships',
       'organizations',
       'outbox_emails',
@@ -170,6 +171,76 @@ describe('row level security', () => {
         SELECT organization_id FROM ${Prisma.raw(`"${schema}".audit_events`)}`;
     });
     expect(rows.map((r) => r.organization_id)).toEqual([orgB]);
+  });
+});
+
+describe('exercises (global catalog + org rows)', () => {
+  // Uses a different policy shape from tenant_isolation: globals are readable by every
+  // organization, writable by none. The generic guard above still covers forced RLS + a policy.
+  const ex = (organizationId: string | null, name: string) => ({
+    organizationId,
+    name,
+    equipment: 'Other',
+    muscleGroup: 'Core',
+    movementType: 'Core',
+    trackingType: 'duration' as const,
+  });
+  const asOrg = <T>(orgId: string, fn: (tx: Prisma.TransactionClient) => Promise<T>) =>
+    prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.org_id', ${orgId}, true)`;
+      return fn(tx);
+    });
+
+  it('uses the globals-readable policy plus restrictive immutability policies', async () => {
+    const rows = await prisma.$queryRaw<{ polname: string; permissive: boolean; qual: string }[]>`
+      SELECT p.polname, p.polpermissive AS permissive, pg_get_expr(p.polqual, p.polrelid) AS qual
+      FROM pg_policy p JOIN pg_class c ON c.oid = p.polrelid
+      WHERE c.relnamespace = ${schema}::regnamespace AND c.relname = 'exercises'`;
+    expect(rows.map((r) => r.polname).sort()).toEqual([
+      'exercise_globals_immutable_delete',
+      'exercise_globals_immutable_update',
+      'exercise_scope',
+    ]);
+    const scope = rows.find((r) => r.polname === 'exercise_scope');
+    expect(scope?.qual).toContain('organization_id IS NULL');
+    expect(scope?.qual).toContain('app_current_org()');
+    for (const r of rows.filter((x) => x.polname !== 'exercise_scope')) {
+      expect(r.permissive, r.polname).toBe(false);
+    }
+  });
+
+  it('a raw insert of a global row under app.org_id is rejected', async () => {
+    await expect(
+      asOrg(orgA, (tx) => tx.exercise.create({ data: ex(null, 'Sneaky') })),
+    ).rejects.toThrow();
+  });
+
+  it('cannot insert a row for another org', async () => {
+    await expect(
+      asOrg(orgA, (tx) => tx.exercise.create({ data: ex(orgB, 'Other') })),
+    ).rejects.toThrow();
+  });
+
+  it('every org sees globals and only its own custom rows; raw writes cannot touch globals', async () => {
+    await asOrg(orgA, (tx) => tx.exercise.create({ data: ex(orgA, 'Only A') }));
+    const names = (orgId: string) =>
+      asOrg(orgId, async (tx) => (await tx.exercise.findMany()).map((e) => e.name));
+    const a = await names(orgA);
+    const b = await names(orgB);
+    expect(a).toContain('Only A');
+    expect(b).not.toContain('Only A');
+    expect(a.filter((n) => n !== 'Only A').sort()).toEqual([...b].sort());
+    expect(b.length).toBeGreaterThanOrEqual(75);
+
+    const del = await asOrg(orgB, (tx) =>
+      tx.exercise.deleteMany({ where: { organizationId: null } }),
+    );
+    expect(del.count).toBe(0);
+    const upd = await asOrg(orgB, (tx) =>
+      tx.exercise.updateMany({ where: { organizationId: null }, data: { name: 'x' } }),
+    );
+    expect(upd.count).toBe(0);
+    expect((await names(orgB)).length).toBe(b.length);
   });
 });
 

@@ -20,6 +20,15 @@ const TENANT_MODELS: ReadonlySet<string> = new Set(
  */
 const NON_TENANT_MODELS = ['Account', 'Session', 'Verification', 'RateLimit', 'PilotCode'] as const;
 const NON_TENANT_SET: ReadonlySet<string> = new Set(NON_TENANT_MODELS);
+
+/**
+ * Tenant models whose rows with a null `organizationId` are a shared global catalog.
+ * Reads see the org's rows OR the globals; writes still inject the org, and
+ * updates/deletes stay scoped to the org so they can never match a global row
+ * (RLS enforces the same, see the exercises migration). Names are Prisma model names.
+ */
+export const GLOBAL_READABLE_MODELS = ['Exercise'] as const;
+const GLOBAL_READABLE_SET: ReadonlySet<string> = new Set(GLOBAL_READABLE_MODELS);
 type NonTenantDelegate = Uncapitalize<(typeof NON_TENANT_MODELS)[number]>;
 
 const notInTenantScope = (what: string) =>
@@ -92,6 +101,19 @@ type Args = Record<string, unknown> & { where?: Record<string, unknown> };
 
 function scopeWhere(args: Args, orgId: string): Args {
   return { ...args, where: { ...args.where, organizationId: orgId } };
+}
+
+/** Read filter for global-readable models: own rows or globals. AND-ed so a caller's own filters survive. */
+function scopeGlobalReadWhere(args: Args, orgId: string): Args {
+  const where = args.where ?? {};
+  const and = where.AND === undefined ? [] : Array.isArray(where.AND) ? where.AND : [where.AND];
+  return {
+    ...args,
+    where: {
+      ...where,
+      AND: [...and, { OR: [{ organizationId: orgId }, { organizationId: null }] }],
+    },
+  };
 }
 
 /** Organization is keyed on `id`; AND-ing keeps a caller's unique key intact. */
@@ -183,6 +205,11 @@ function tenantExtension(orgId: string, relations: RelationMap) {
             case 'count':
             case 'aggregate':
             case 'groupBy':
+              return query(
+                GLOBAL_READABLE_SET.has(model)
+                  ? scopeGlobalReadWhere(a, orgId)
+                  : scopeWhere(a, orgId),
+              );
             case 'delete':
             case 'deleteMany':
               return query(scopeWhere(a, orgId));

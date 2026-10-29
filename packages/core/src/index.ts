@@ -57,3 +57,16 @@ export {
   type SettingsView,
   type SettingsPatch,
 } from './settings/settings';
+export {
+  createExercise,
+  searchExercises,
+  EXERCISE_PAGE_SIZE,
+  MUSCLE_GROUPS,
+  EQUIPMENT,
+  MOVEMENT_TYPES,
+  TRACKING_TYPES,
+  type ExerciseView,
+  type TrackingType,
+  type CreateExerciseInput,
+  type SearchExercisesQuery,
+} from './exercises/exercises';

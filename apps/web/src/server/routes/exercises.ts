@@ -1,0 +1,40 @@
+import { z } from 'zod';
+import { createExercise, searchExercises, TRACKING_TYPES } from '@kinetic/core';
+import { ApiResult, type RouteDef } from '../api';
+
+// Unknown keys (including any `organizationId`) are stripped by Zod and never read.
+const listSchema = z.object({
+  q: z.string().trim().min(1).max(100).optional(),
+  muscleGroup: z.string().trim().min(1).max(40).optional(),
+  equipment: z.string().trim().min(1).max(40).optional(),
+  trackingType: z.enum(TRACKING_TYPES).optional(),
+  cursor: z.string().min(1).max(500).optional(),
+});
+
+export const exercisesListRoute: RouteDef<typeof listSchema, true> = {
+  can: 'exercise:read',
+  input: listSchema,
+  handler: async ({ actor, input, tenant }) => {
+    const { items, nextCursor } = await tenant((tx) => searchExercises(tx, actor, input));
+    return new ApiResult(items, { meta: { nextCursor } });
+  },
+};
+
+const createSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  equipment: z.string().trim().min(1).max(40),
+  muscleGroup: z.string().trim().min(1).max(40),
+  movementType: z.string().trim().min(1).max(40),
+  trackingType: z.enum(TRACKING_TYPES),
+  instructions: z.string().max(2000).optional(),
+  mediaUrl: z.string().max(500).nullable().optional(),
+});
+
+export const exercisesPostRoute: RouteDef<typeof createSchema, true> = {
+  can: 'exercise:create',
+  input: createSchema,
+  handler: async ({ actor, input, requestId, tenant }) => {
+    const created = await tenant((tx) => createExercise(tx, actor, input, { requestId }));
+    return new ApiResult(created, { status: 201 });
+  },
+};
