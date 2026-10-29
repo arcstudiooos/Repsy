@@ -256,7 +256,8 @@ export type SystemTx = Prisma.TransactionClient;
  * transaction. Never call this from request handlers acting for a user.
  * The one sanctioned request-path exception is `findInviteByTokenHash`
  * (invites.ts): an invitee has no membership yet, so it looks up a single
- * invite by token hash.
+ * invite by token hash. `acceptInvite` (core/invites) is the second: it also
+ * runs pre-membership, authorized solely by possession of the invite token.
  */
 export function withSystem<T>(
   fn: (tx: SystemTx) => Promise<T>,

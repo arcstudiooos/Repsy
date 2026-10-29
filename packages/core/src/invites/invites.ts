@@ -169,6 +169,9 @@ export async function acceptInvite(
   if (pre !== 'ok' || !lookup) throw inviteError(pre === 'ok' ? 'INVITE_INVALID' : pre);
 
   return withSystem(async (tx) => {
+    // Lock order must match issueInvite (client row, then invite rows), or a
+    // concurrent resend and accept can deadlock (40P01).
+    await tx.client.updateMany({ where: { id: lookup.clientId }, data: { updatedAt: now } });
     const claim = await tx.clientInvite.updateMany({
       where: { id: lookup.inviteId, acceptedAt: null, revokedAt: null, expiresAt: { gt: now } },
       data: { acceptedAt: now },

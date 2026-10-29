@@ -221,3 +221,49 @@ describe('invites', () => {
     await expect(code(accept('0'.repeat(64), clientUserId))).resolves.toBe('INVITE_INVALID');
   });
 });
+
+describe('accept vs resend concurrency', () => {
+  it('never deadlocks and ends consistent', async () => {
+    const org = await withSystem(
+      (tx) =>
+        tx.organization.create({ data: { name: 'Race', timezone: 'UTC', ownerUserId: coachId } }),
+      prisma,
+    );
+    const actor = actorFor(org.id);
+    const allowed = new Set(['INVITE_REVOKED', 'INVITE_USED', 'CONFLICT']);
+    for (let i = 0; i < 20; i++) {
+      const client = await run(actor, (tx) =>
+        createClient(tx, actor, { name: 'R', email: `race${i}@example.test` }),
+      );
+      const user = await withSystem(
+        (tx) => tx.user.create({ data: { email: `racer${i}@example.test`, name: 'R' } }),
+        prisma,
+      );
+      const first = await issue(actor, client.id);
+      const results = await Promise.allSettled([
+        ...[0, 1, 2].map(() => run(actor, (tx) => issueInvite(tx, actor, client.id, T0))),
+        ...[0, 1, 2].map(() => accept(first.tokenHash, user.id)),
+      ]);
+      for (const r of results) {
+        if (r.status === 'rejected') {
+          expect(r.reason, String(r.reason)).toBeInstanceOf(DomainError);
+          expect(allowed.has((r.reason as DomainError).code)).toBe(true);
+        }
+      }
+      const invites = await withSystem(
+        (tx) => tx.clientInvite.findMany({ where: { clientId: client.id } }),
+        prisma,
+      );
+      expect(invites.filter((x) => !x.acceptedAt && !x.revokedAt).length).toBeLessThanOrEqual(1);
+      const row = await withSystem(
+        (tx) => tx.client.findUniqueOrThrow({ where: { id: client.id } }),
+        prisma,
+      );
+      if (invites.some((x) => x.acceptedAt)) {
+        expect(row).toMatchObject({ status: 'active', userId: user.id });
+      } else {
+        expect(row).toMatchObject({ status: 'invited', userId: null });
+      }
+    }
+  }, 60_000);
+});
