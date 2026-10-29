@@ -1,2 +1,25 @@
 _old-scaffold/
 .superpowers/
+
+# node / next
+node_modules/
+.next/
+out/
+dist/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+
+# env
+.env
+.env.*
+!.env.example
+
+# local
+.dev-emails/
+.DS_Store
+
+# playwright
+playwright-report/
+test-results/
