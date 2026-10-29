@@ -11,6 +11,8 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "vitest run",
     "test:e2e": "pnpm --filter @kinetic/web test:e2e",
+    "db:up": "docker compose up -d --wait postgres",
+    "db:down": "docker compose down",
     "format": "prettier --write ."
   },
   "devDependencies": {

@@ -16,6 +16,19 @@ pnpm install
 cp .env.example .env
 ```
 
+## Local database
+
+Postgres 16 runs in Docker, matching CI. Requires Docker Desktop.
+
+```sh
+pnpm db:up                 # start Postgres 16 on localhost:54320 (waits until healthy)
+# export DATABASE_URL=postgresql://kinetic:kinetic@localhost:54320/kinetic  (value from .env.example), then:
+pnpm test
+pnpm db:down               # stop the container (data persists in a named volume)
+```
+
+If `DATABASE_URL` is unset, tests start an embedded Postgres automatically instead.
+
 ## Scripts
 
 `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`

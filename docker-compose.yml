@@ -1,0 +1,22 @@
+# Local development only. The credentials below are throwaway values for a
+# localhost-bound dev database; they are not secrets.
+services:
+  postgres:
+    image: postgres:16.15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kinetic
+      POSTGRES_PASSWORD: kinetic
+      POSTGRES_DB: kinetic
+    ports:
+      - '54320:5432'
+    volumes:
+      - kinetic-pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U kinetic -d kinetic']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  kinetic-pg-data:
