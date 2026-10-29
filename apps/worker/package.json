@@ -5,6 +5,22 @@
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
+    "start": "tsx src/index.ts",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@kinetic/core": "workspace:*",
+    "@kinetic/db": "workspace:*",
+    "@sentry/node": "11.10.0",
+    "pg-boss": "12.38.0",
+    "pino": "10.4.0",
+    "resend": "6.35.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "vitest": "5.0.5"
   }
 }

@@ -24,5 +24,9 @@
     "db:migrate": "prisma migrate dev",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing/createTestDb.ts"
   }
 }
