@@ -42,5 +42,6 @@ Open http://localhost:3000 and sign in as `coach@example.test` (or `admin@exampl
 - `pnpm db:up` / `pnpm db:down` - start or stop local Postgres
 - `pnpm db:migrate` / `pnpm db:seed` - apply migrations / seed demo data (read the root `.env`)
 - `pnpm format` - Prettier (writes; prefer formatting only files you changed)
+- `pnpm format:check` - Prettier check on source dirs (CI)
 
 Per-app scripts are documented in `apps/web/README.md`.
