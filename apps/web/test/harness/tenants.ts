@@ -25,7 +25,11 @@ export interface TwoTenants {
   dualRoleUser: SeededUser;
 }
 
-async function createUser(prisma: PrismaClient, auth: Auth, label: string): Promise<SeededUser> {
+export async function createUser(
+  prisma: PrismaClient,
+  auth: Auth,
+  label: string,
+): Promise<SeededUser> {
   const email = `${label}-${crypto.randomUUID().slice(0, 8)}@example.test`;
   await auth.api.signUpEmail({ body: { name: label, email, password: TEST_PASSWORD } });
   await withSystem(

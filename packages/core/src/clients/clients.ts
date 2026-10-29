@@ -66,7 +66,7 @@ function cleanName(name: string): string {
   return v;
 }
 
-function cleanGoals(goals: string | null | undefined): string | null {
+export function cleanGoals(goals: string | null | undefined): string | null {
   if (goals === undefined || goals === null) return null;
   const v = goals.trim();
   if (v.length > GOALS_MAX) throw invalid('goals', `Use at most ${GOALS_MAX} characters.`);

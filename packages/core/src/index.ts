@@ -29,6 +29,8 @@ export {
   updateClient,
   toClientView,
   escapeLike,
+  cleanGoals,
+  GOALS_MAX,
   type ClientView,
   type ClientStatus,
 } from './clients/clients';
@@ -37,6 +39,8 @@ export {
   revokeInvite,
   acceptInvite,
   classifyInvite,
+  inviteFailureMessage,
+  type InviteFailure,
   summarizeInvites,
   INVITE_TTL_MS,
   type InviteClass,
@@ -44,3 +48,5 @@ export {
   type AcceptInviteInput,
 } from './invites/invites';
 export { newInviteToken, hashInviteToken } from './invites/token';
+export { PRIVACY_NOTICE_VERSION, PRIVACY_NOTICE_TEXT } from './privacy';
+export { isValidTimezone } from './invites/invites';

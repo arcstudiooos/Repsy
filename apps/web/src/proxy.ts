@@ -7,6 +7,8 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   return (await guardRequest(request)) ?? NextResponse.next();
 }
 
+// `/invite/*` and `/select-org` are deliberately absent: invites are public (the token is the
+// credential, the page checks it) and the chooser checks the session itself.
 export const config = {
   matcher: [
     '/app/:path*',

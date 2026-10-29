@@ -66,6 +66,17 @@ export async function makeClientOfCoach(coachEmail: string, clientEmail: string)
        WHERE cu.email = $1 AND co.email = $2`,
       [clientEmail, coachEmail],
     );
+    // The portal gate also needs a linked Client row in that organization.
+    await client.query(
+      `INSERT INTO clients (id, organization_id, user_id, coach_user_id, name, email, status,
+                            timezone, updated_at)
+       SELECT gen_random_uuid(), m.organization_id, cu.id, co.id, cu.name, lower(cu.email),
+              'active', 'UTC', now()
+       FROM users cu, users co
+       JOIN memberships m ON m.user_id = co.id AND m.role = 'owner'
+       WHERE cu.email = $1 AND co.email = $2`,
+      [clientEmail, coachEmail],
+    );
     await client.query(
       `DELETE FROM memberships
        WHERE role = 'owner' AND user_id = (SELECT id FROM users WHERE email = $1)`,

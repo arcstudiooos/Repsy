@@ -2,8 +2,10 @@ import { appendAudit, findInviteByTokenHash, withSystem } from '@kinetic/db';
 import type { PrismaClient, TenantTx } from '@kinetic/db';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
+import { cleanGoals } from '../clients/clients';
 import { DomainError } from '../errors';
 import { enqueueEmail } from '../outbox';
+import { PRIVACY_NOTICE_VERSION } from '../privacy';
 import { newInviteToken } from './token';
 
 export const INVITE_TTL_MS = 7 * 86_400_000;
@@ -26,6 +28,8 @@ const MESSAGES: Record<InviteFailure, string> = {
   INVITE_USED: 'This invite link has already been used.',
   INVITE_REVOKED: 'This invite link is no longer active. Ask your coach for a new one.',
 };
+
+export const inviteFailureMessage = (code: InviteFailure): string => MESSAGES[code];
 
 const inviteError = (code: InviteFailure) => new DomainError(code, MESSAGES[code]);
 
@@ -153,6 +157,39 @@ export interface AcceptInviteInput {
   goals?: string;
 }
 
+export function isValidTimezone(tz: string): boolean {
+  if (typeof tz !== 'string' || tz.trim() === '') return false;
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Validates onboarding input so every caller is safe; returns the cleaned goals (null = leave as is). */
+function validateAcceptInput(input: AcceptInviteInput): string | null {
+  const fieldErrors: Record<string, string[]> = {};
+  if (input.consentVersion !== PRIVACY_NOTICE_VERSION) {
+    fieldErrors.consentVersion = ['Agree to the current privacy notice to continue.'];
+  }
+  if (!isValidTimezone(input.timezone)) fieldErrors.timezone = ['Choose a valid time zone.'];
+  if (input.preferredUnits !== 'kg' && input.preferredUnits !== 'lb') {
+    fieldErrors.preferredUnits = ['Choose kg or lb.'];
+  }
+  let goals: string | null = null;
+  try {
+    goals = cleanGoals(input.goals);
+  } catch (error) {
+    if (!(error instanceof DomainError)) throw error;
+    fieldErrors.goals = error.fieldErrors?.goals ?? [error.message];
+  }
+  if (Object.keys(fieldErrors).length > 0) {
+    throw new DomainError('VALIDATION', 'Some fields are invalid.', fieldErrors);
+  }
+  return goals;
+}
+
 /**
  * SYSTEM CODE (the invitee has no membership yet). One transaction: atomically
  * claim the invite, link the user to the client, activate it, and upsert the
@@ -164,55 +201,64 @@ export async function acceptInvite(
   now: Date = new Date(),
   prisma?: PrismaClient,
 ): Promise<{ orgId: string; clientId: string }> {
+  const goals = validateAcceptInput(input);
   const lookup = await findInviteByTokenHash(input.tokenHash, prisma);
   const pre = classifyInvite(lookup, now);
   if (pre !== 'ok' || !lookup) throw inviteError(pre === 'ok' ? 'INVITE_INVALID' : pre);
 
-  return withSystem(async (tx) => {
-    // Lock order must match issueInvite (client row, then invite rows), or a
-    // concurrent resend and accept can deadlock (40P01).
-    await tx.client.updateMany({ where: { id: lookup.clientId }, data: { updatedAt: now } });
-    const claim = await tx.clientInvite.updateMany({
-      where: { id: lookup.inviteId, acceptedAt: null, revokedAt: null, expiresAt: { gt: now } },
-      data: { acceptedAt: now },
-    });
-    if (claim.count !== 1) {
-      const fresh = await tx.clientInvite.findUnique({ where: { id: lookup.inviteId } });
-      const code = classifyInvite(fresh, now);
-      throw inviteError(code === 'ok' ? 'INVITE_USED' : code);
-    }
-    const linked = await tx.client.updateMany({
-      where: { id: lookup.clientId, organizationId: lookup.orgId, status: 'invited' },
-      data: {
-        userId: input.userId,
-        status: 'active',
-        consentVersion: input.consentVersion,
-        consentAt: now,
-        timezone: input.timezone,
-        preferredUnits: input.preferredUnits,
-        ...(input.goals !== undefined ? { goals: input.goals } : {}),
-      },
-    });
-    if (linked.count !== 1) throw inviteError('INVITE_INVALID');
-    await tx.membership.upsert({
-      where: {
-        userId_organizationId_role: {
+  try {
+    return await withSystem(async (tx) => {
+      // Lock order must match issueInvite (client row, then invite rows), or a
+      // concurrent resend and accept can deadlock (40P01).
+      await tx.client.updateMany({ where: { id: lookup.clientId }, data: { updatedAt: now } });
+      const claim = await tx.clientInvite.updateMany({
+        where: { id: lookup.inviteId, acceptedAt: null, revokedAt: null, expiresAt: { gt: now } },
+        data: { acceptedAt: now },
+      });
+      if (claim.count !== 1) {
+        const fresh = await tx.clientInvite.findUnique({ where: { id: lookup.inviteId } });
+        const code = classifyInvite(fresh, now);
+        throw inviteError(code === 'ok' ? 'INVITE_USED' : code);
+      }
+      const linked = await tx.client.updateMany({
+        where: { id: lookup.clientId, organizationId: lookup.orgId, status: 'invited' },
+        data: {
           userId: input.userId,
-          organizationId: lookup.orgId,
-          role: 'client',
+          status: 'active',
+          consentVersion: input.consentVersion,
+          consentAt: now,
+          timezone: input.timezone,
+          preferredUnits: input.preferredUnits,
+          ...(goals !== null ? { goals } : {}),
         },
-      },
-      create: { userId: input.userId, organizationId: lookup.orgId, role: 'client' },
-      update: { status: 'active' },
-    });
-    await appendAudit(tx, {
-      orgId: lookup.orgId,
-      actorId: input.userId,
-      objectType: 'client',
-      objectId: lookup.clientId,
-      action: 'invite.accepted',
-      metadata: { inviteId: lookup.inviteId },
-    });
-    return { orgId: lookup.orgId, clientId: lookup.clientId };
-  }, prisma);
+      });
+      if (linked.count !== 1) throw inviteError('INVITE_INVALID');
+      await tx.membership.upsert({
+        where: {
+          userId_organizationId_role: {
+            userId: input.userId,
+            organizationId: lookup.orgId,
+            role: 'client',
+          },
+        },
+        create: { userId: input.userId, organizationId: lookup.orgId, role: 'client' },
+        update: { status: 'active' },
+      });
+      await appendAudit(tx, {
+        orgId: lookup.orgId,
+        actorId: input.userId,
+        objectType: 'client',
+        objectId: lookup.clientId,
+        action: 'invite.accepted',
+        metadata: { inviteId: lookup.inviteId },
+      });
+      return { orgId: lookup.orgId, clientId: lookup.clientId };
+    }, prisma);
+  } catch (error) {
+    // (organizationId, userId) is unique on clients: this user already has a client record here.
+    if ((error as { code?: unknown } | null)?.code === 'P2002') {
+      throw new DomainError('CONFLICT', 'You are already a client of this coach.');
+    }
+    throw error;
+  }
 }

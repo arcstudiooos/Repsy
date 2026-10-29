@@ -9,10 +9,10 @@ import {
   type ErrorCode,
   type MembershipRef,
 } from '@kinetic/core';
-import { withTenant, type PrismaClient, type TenantTx } from '@kinetic/db';
+import { prisma as defaultPrisma, withTenant, type PrismaClient, type TenantTx } from '@kinetic/db';
 import { getSessionUser, type Auth, type SessionUser } from '@/lib/auth';
 import { loadMemberships, resolveActor } from './actor';
-import { orgCookieSecret } from './orgCookie';
+import { orgCookieSecret, serializeOrgCookie } from './orgCookie';
 import { defaultLimiter, InMemoryRateLimiter, type RateLimiter } from './rateLimit';
 import { clientIp } from './clientIp';
 import { getRequestId } from './requestId';
@@ -40,15 +40,23 @@ export interface RouteCtx<I, R extends boolean> {
   input: I;
   /** Dynamic route segments (e.g. `id`), already decoded by Next. Empty when none. */
   params: Record<string, string>;
+  /** The Prisma client this handler runs on (injected in tests, the shared one otherwise). */
+  prisma: PrismaClient;
   /** Runs `fn` in a transaction scoped to the actor's organization. */
   tenant<T>(fn: (tx: TenantTx) => Promise<T>): Promise<T>;
+  /** `Set-Cookie` value that makes `orgId` this user's active organization (signed, user-bound). */
+  orgCookie(orgId: string): string;
 }
 
 /** Return from a handler to set `meta` or a non-200 status. A bare return value becomes `data`. */
 export class ApiResult {
   constructor(
     readonly data: unknown,
-    readonly options: { meta?: Record<string, unknown>; status?: number } = {},
+    readonly options: {
+      meta?: Record<string, unknown>;
+      status?: number;
+      headers?: Record<string, string>;
+    } = {},
   ) {}
 }
 
@@ -91,6 +99,10 @@ function trustedOrigin(request: Request, deps: ApiDeps): string {
   if (configured) return new URL(configured).origin;
   if (process.env.NODE_ENV === 'production') throw new Error('APP_BASE_URL is required');
   return new URL(request.url).origin;
+}
+
+function isSecure(request: Request, deps: ApiDeps): boolean {
+  return trustedOrigin(request, deps).startsWith('https://');
 }
 
 async function readInput(request: Request, schema: z.ZodType): Promise<unknown> {
@@ -162,14 +174,19 @@ export function createApiHandler(deps: ApiDeps = {}) {
         const memberships = await loadMemberships(user.id, deps.prisma);
 
         const requireOrg = def.requireOrg !== false;
+        const secret = deps.secret ?? orgCookieSecret();
         const actor = requireOrg
-          ? resolveActor(
-              request.headers.get('cookie'),
-              user,
-              memberships,
-              deps.secret ?? orgCookieSecret(),
-            )
+          ? resolveActor(request.headers.get('cookie'), user, memberships, secret)
           : undefined;
+        const runTenant = <T>(orgId: string, fn: (tx: TenantTx) => Promise<T>): Promise<T> =>
+          withTenant(orgId, fn, deps.prisma, { userId: user.id });
+        // A client's own Client row id, so handlers can scope to "my data" without trusting input.
+        if (actor?.role === 'client') {
+          const own = await runTenant(actor.orgId, (tx) =>
+            tx.client.findFirst({ where: { userId: user.id }, select: { id: true } }),
+          );
+          if (own) actor.clientId = own.id;
+        }
         if (actor && def.can) assertCan(actor, def.can);
 
         const input = def.input ? await readInput(request, def.input) : undefined;
@@ -182,10 +199,12 @@ export function createApiHandler(deps: ApiDeps = {}) {
           memberships,
           input,
           params: (await context?.params) ?? {},
+          prisma: deps.prisma ?? defaultPrisma,
           tenant: (fn) => {
             if (!actor) throw new Error('tenant() requires an active organization');
-            return withTenant(actor.orgId, fn, deps.prisma, { userId: actor.userId });
+            return runTenant(actor.orgId, fn);
           },
+          orgCookie: (orgId) => serializeOrgCookie(user.id, orgId, secret, isSecure(request, deps)),
         } as RouteCtx<InputOf<S>, R>);
 
         const { data, options } =
@@ -194,7 +213,7 @@ export function createApiHandler(deps: ApiDeps = {}) {
             : { data: result, options: {} };
         return Response.json(options.meta ? { data, meta: options.meta } : { data }, {
           status: options.status ?? 200,
-          headers: { 'x-request-id': requestId },
+          headers: { 'x-request-id': requestId, ...options.headers },
         });
       } catch (error) {
         if (error instanceof DomainError) {

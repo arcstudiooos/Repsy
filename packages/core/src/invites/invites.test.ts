@@ -6,6 +6,7 @@ import type { ActorContext } from '../authz/actor';
 import { createClient } from '../clients/clients';
 import { DomainError } from '../errors';
 import { acceptInvite, classifyInvite, INVITE_TTL_MS, issueInvite, revokeInvite } from './invites';
+import { PRIVACY_NOTICE_VERSION } from '../privacy';
 import { newInviteToken } from './token';
 
 let prisma: PrismaClient;
@@ -69,7 +70,7 @@ const accept = (tokenHash: string, userId: string, now = T0) =>
     {
       tokenHash,
       userId,
-      consentVersion: 'v1',
+      consentVersion: PRIVACY_NOTICE_VERSION,
       timezone: 'Europe/Paris',
       preferredUnits: 'lb',
       goals: 'Lift',
@@ -159,7 +160,7 @@ describe('invites', () => {
     expect(row).toMatchObject({
       userId: clientUserId,
       status: 'active',
-      consentVersion: 'v1',
+      consentVersion: PRIVACY_NOTICE_VERSION,
       timezone: 'Europe/Paris',
       preferredUnits: 'lb',
       goals: 'Lift',
@@ -266,4 +267,77 @@ describe('accept vs resend concurrency', () => {
       }
     }
   }, 60_000);
+});
+
+describe('acceptInvite input validation', () => {
+  const base = {
+    consentVersion: PRIVACY_NOTICE_VERSION,
+    timezone: 'Europe/Paris',
+    preferredUnits: 'kg' as const,
+  };
+  const attempt = async (patch: Record<string, unknown>) => {
+    const { actor, client, clientUserId } = await setup();
+    const { tokenHash } = await issue(actor, client.id);
+    const err = await acceptInvite(
+      { tokenHash, userId: clientUserId, ...base, ...patch } as Parameters<typeof acceptInvite>[0],
+      T0,
+      prisma,
+    ).then(
+      () => null,
+      (e: unknown) => e,
+    );
+    const row = await withSystem(
+      (tx) => tx.client.findUniqueOrThrow({ where: { id: client.id } }),
+      prisma,
+    );
+    return { err, row };
+  };
+
+  it.each([
+    ['goals over 2000 chars', { goals: 'x'.repeat(2001) }, 'goals'],
+    ['invalid timezone', { timezone: 'Mars/Olympus' }, 'timezone'],
+    ['invalid units', { preferredUnits: 'stone' }, 'preferredUnits'],
+    ['wrong consent version', { consentVersion: 'old' }, 'consentVersion'],
+  ])('%s -> VALIDATION, nothing written', async (_name, patch, field) => {
+    const { err, row } = await attempt(patch);
+    expect(err).toBeInstanceOf(DomainError);
+    expect((err as DomainError).code).toBe('VALIDATION');
+    expect(Object.keys((err as DomainError).fieldErrors ?? {})).toContain(field);
+    expect(row).toMatchObject({ status: 'invited', userId: null });
+  });
+
+  it('trims goals; blank goals leave the coach-entered goals alone', async () => {
+    const ok = await attempt({ goals: '  Get strong  ' });
+    expect(ok.err).toBeNull();
+    expect(ok.row.goals).toBe('Get strong');
+    const blank = await attempt({ goals: '   ' });
+    expect(blank.err).toBeNull();
+    expect(blank.row.goals).toBeNull();
+  });
+
+  it('a user already linked to another client in the org -> CONFLICT, invite stays open', async () => {
+    const { actor, client, clientUserId } = await setup();
+    const other = await run(actor, (tx) =>
+      createClient(tx, actor, { name: 'Bea', email: `bea${seq}@example.test` }),
+    );
+    const a = await issue(actor, client.id);
+    const b = await issue(actor, other.id);
+    await acceptInvite({ tokenHash: a.tokenHash, userId: clientUserId, ...base }, T0, prisma);
+    const err = await acceptInvite(
+      { tokenHash: b.tokenHash, userId: clientUserId, ...base },
+      T0,
+      prisma,
+    ).then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(DomainError);
+    expect((err as DomainError).code).toBe('CONFLICT');
+    expect((err as DomainError).message).toBe('You are already a client of this coach.');
+    const invite = await withSystem(
+      (tx) => tx.clientInvite.findFirstOrThrow({ where: { clientId: other.id } }),
+      prisma,
+    );
+    expect(invite.acceptedAt).toBeNull();
+  });
 });

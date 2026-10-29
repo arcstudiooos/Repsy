@@ -30,7 +30,7 @@ interface SunkEmail {
   text: string;
 }
 
-async function waitForEmail(
+export async function waitForEmail(
   request: APIRequestContext,
   to: string,
   templateKey: string,

@@ -51,7 +51,7 @@ async function pilotCodeUsable(prisma: PrismaClient, code: string): Promise<bool
 }
 
 /** Undo a half-finished signup so the same email can register again. */
-async function deleteUser(prisma: PrismaClient, userId: string): Promise<void> {
+export async function deleteUser(prisma: PrismaClient, userId: string): Promise<void> {
   // The verification email is enqueued asynchronously and may land mid-delete; retry briefly.
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {

@@ -31,7 +31,9 @@ const TEMPLATES: Record<string, Template> = {
       `<p>${escapeHtml(coachName)}${escapeHtml(where)} invited you to Kinetic.</p>` +
       `<p><a href="${escapeHtml(link)}">Accept your invite</a></p>` +
       '<p>This link works once and expires in 7 days.</p>';
-    return { subject: `${coachName} invited you to Kinetic`, text, html };
+    // Names are user-controlled: CR/LF in a subject would allow header injection.
+    const subject = `${coachName} invited you to Kinetic`.replace(/[\r\n]+/g, ' ');
+    return { subject, text, html };
   },
 };
 

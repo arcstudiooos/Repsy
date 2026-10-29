@@ -349,6 +349,40 @@ describe('raw-address recipients and templates', () => {
     expect(await load(row.id)).toMatchObject({ status: 'sent', payloadJson: {} });
   });
 
+  it('strips CR/LF from the invite subject so names cannot inject headers', async () => {
+    const row = await withSystem(
+      (tx) =>
+        tx.outboxEmail.create({
+          data: {
+            organizationId: orgId,
+            kind: 'client_invite',
+            toEmail: 'inj@example.test',
+            templateKey: 'client_invite',
+            payloadJson: {
+              token: 'tok_inj',
+              coachName: 'Eve\r\nBcc: evil@example.test',
+              orgName: 'Gym',
+            },
+            idempotencyKey: 'client_invite:inj-1',
+            nextAttemptAt: new Date('2026-01-01T00:00:00.000Z'),
+          },
+        }),
+      prisma,
+    );
+    const { port, sent } = fakePort(0);
+    await deliverDueEmails({
+      prisma,
+      port,
+      logger: quiet,
+      now: clock().now,
+      appBaseUrl: 'https://app.example.test/',
+    });
+    const message = sent.find((m) => m.to === 'inj@example.test');
+    expect(message?.subject).not.toMatch(/[\r\n]/);
+    expect(message?.subject).toBe('Eve Bcc: evil@example.test invited you to Kinetic');
+    expect(row.id).toBeTruthy();
+  });
+
   it('rejects a row with both or neither recipient (CHECK)', async () => {
     const base = {
       organizationId: orgId,

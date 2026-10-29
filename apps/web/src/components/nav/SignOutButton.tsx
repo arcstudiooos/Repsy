@@ -5,7 +5,13 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { authClient } from '@/lib/auth-client';
 
-export function SignOutButton({ className }: { className?: string }) {
+export function SignOutButton({
+  className,
+  redirectTo = '/login',
+}: {
+  className?: string;
+  redirectTo?: string;
+}) {
   const router = useRouter();
   return (
     <Button
@@ -14,7 +20,7 @@ export function SignOutButton({ className }: { className?: string }) {
       className={className ?? 'w-full justify-start px-3 text-secondary'}
       onClick={() =>
         void authClient.signOut().then(() => {
-          router.replace('/login');
+          router.replace(redirectTo);
           router.refresh();
         })
       }
