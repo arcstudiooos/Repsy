@@ -1,0 +1,230 @@
+import { z } from 'zod';
+import {
+  assertCan,
+  DomainError,
+  highestRole,
+  httpStatusFor,
+  logger,
+  type Action,
+  type ActorContext,
+  type ErrorCode,
+  type MembershipRef,
+  type Role,
+} from '@kinetic/core';
+import { withSystem, withTenant, type PrismaClient, type TenantTx } from '@kinetic/db';
+import { getSessionUser, type Auth, type SessionUser } from '@/lib/auth';
+import { ORG_COOKIE, orgCookieSecret, readCookie, verifyOrgCookie } from './orgCookie';
+import { defaultLimiter, type RateLimiter } from './rateLimit';
+import { getRequestId } from './requestId';
+
+export interface ApiDeps {
+  auth?: Pick<Auth, 'api'>;
+  prisma?: PrismaClient;
+  /** Org-cookie signing key; defaults to ORG_COOKIE_SECRET / BETTER_AUTH_SECRET. */
+  secret?: string;
+  /** Trusted origin for CSRF checks; defaults to APP_BASE_URL. */
+  appBaseUrl?: string;
+  limiter?: RateLimiter;
+}
+
+type InputOf<S> = S extends z.ZodType ? z.output<S> : undefined;
+
+export interface RouteCtx<I, R extends boolean> {
+  request: Request;
+  requestId: string;
+  user: SessionUser;
+  /** Active org + role, from a validated membership. Undefined only when `requireOrg: false`. */
+  actor: R extends true ? ActorContext : undefined;
+  /** All of the user's active memberships. */
+  memberships: MembershipRef[];
+  input: I;
+  /** Runs `fn` in a transaction scoped to the actor's organization. */
+  tenant<T>(fn: (tx: TenantTx) => Promise<T>): Promise<T>;
+}
+
+/** Return from a handler to set `meta` or a non-200 status. A bare return value becomes `data`. */
+export class ApiResult {
+  constructor(
+    readonly data: unknown,
+    readonly options: { meta?: Record<string, unknown>; status?: number } = {},
+  ) {}
+}
+
+export interface RouteDef<S extends z.ZodType | undefined, R extends boolean> {
+  /** Zod schema for the JSON body (non-GET) or query string (GET). Unknown keys are stripped. */
+  input?: S;
+  /** Default true. `false` for routes that work before an org is chosen (e.g. /me). */
+  requireOrg?: R;
+  /** Authorization policy checked against the resolved actor. */
+  can?: Action;
+  handler(ctx: RouteCtx<InputOf<S>, R>): unknown;
+}
+
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+function fail(
+  code: ErrorCode,
+  message: string,
+  requestId: string,
+  extra: { fieldErrors?: Record<string, string[]>; headers?: Record<string, string> } = {},
+): Response {
+  const error: Record<string, unknown> = { code, message, requestId };
+  if (extra.fieldErrors) error.fieldErrors = extra.fieldErrors;
+  return Response.json(
+    { error },
+    {
+      status: httpStatusFor(code),
+      headers: { 'x-request-id': requestId, ...extra.headers },
+    },
+  );
+}
+
+function trustedOrigin(request: Request, deps: ApiDeps): string {
+  const configured = deps.appBaseUrl ?? process.env.APP_BASE_URL;
+  if (configured) return new URL(configured).origin;
+  if (process.env.NODE_ENV === 'production') throw new Error('APP_BASE_URL is required');
+  return new URL(request.url).origin;
+}
+
+function clientIp(request: Request): string {
+  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+}
+
+async function readInput(request: Request, schema: z.ZodType): Promise<unknown> {
+  let raw: unknown;
+  if (SAFE_METHODS.has(request.method)) {
+    raw = Object.fromEntries(new URL(request.url).searchParams);
+  } else {
+    const text = await request.text();
+    try {
+      raw = text === '' ? {} : (JSON.parse(text) as unknown);
+    } catch {
+      throw new DomainError('BAD_REQUEST', 'Request body must be valid JSON.');
+    }
+  }
+  const parsed = schema.safeParse(raw);
+  if (!parsed.success) {
+    const flat = z.flattenError(parsed.error);
+    const fieldErrors: Record<string, string[]> = { ...flat.fieldErrors };
+    if (flat.formErrors.length > 0) fieldErrors._form = flat.formErrors;
+    throw new DomainError('VALIDATION', 'Some fields are invalid.', fieldErrors);
+  }
+  return parsed.data;
+}
+
+/**
+ * Active org: signed `kinetic_org` cookie (bound to the user, re-checked against
+ * live memberships), else the sole membership. A bad signature counts as absent;
+ * a valid signature for an org the user does not belong to is a 404 so that
+ * org existence never leaks.
+ */
+function resolveActor(
+  request: Request,
+  user: SessionUser,
+  memberships: MembershipRef[],
+  secret: string,
+): ActorContext {
+  const cookie = readCookie(request.headers.get('cookie'), ORG_COOKIE);
+  const cookieOrg = cookie ? verifyOrgCookie(decodeURIComponent(cookie), user.id, secret) : null;
+  let orgId: string;
+  if (cookieOrg !== null) {
+    orgId = cookieOrg;
+  } else {
+    const orgIds = [...new Set(memberships.map((m) => m.orgId))];
+    if (orgIds.length === 0) throw new DomainError('FORBIDDEN', 'No active workspace.');
+    if (orgIds.length > 1) {
+      throw new DomainError('ORG_SELECTION_REQUIRED', 'Choose a workspace to continue.');
+    }
+    orgId = orgIds[0] as string;
+  }
+  const role = highestRole(memberships.filter((m) => m.orgId === orgId).map((m) => m.role));
+  if (role === undefined) throw new DomainError('NOT_FOUND', 'Not found.');
+  return { userId: user.id, orgId, role };
+}
+
+export function createApiHandler(deps: ApiDeps = {}) {
+  return function define<S extends z.ZodType | undefined = undefined, R extends boolean = true>(
+    def: RouteDef<S, R>,
+  ): (request: Request) => Promise<Response> {
+    return async (request) => {
+      const requestId = getRequestId(request);
+      try {
+        if (!SAFE_METHODS.has(request.method)) {
+          // CSRF: browsers always send Origin on cross-site mutations.
+          if (request.headers.get('origin') !== trustedOrigin(request, deps)) {
+            return fail('FORBIDDEN', 'Cross-origin request rejected.', requestId);
+          }
+        }
+
+        const user = await getSessionUser(request.headers, deps.auth);
+        const limiter = deps.limiter ?? defaultLimiter;
+        const limit = await limiter.consume(user ? `user:${user.id}` : `ip:${clientIp(request)}`);
+        if (!limit.allowed) {
+          return fail('RATE_LIMITED', 'Too many requests. Try again shortly.', requestId, {
+            headers: { 'retry-after': String(Math.max(1, Math.ceil(limit.retryAfterMs / 1000))) },
+          });
+        }
+        if (!user) return fail('UNAUTHENTICATED', 'Sign in to continue.', requestId);
+
+        // System scope: memberships span orgs, and only this user's own rows are read.
+        const memberships = await withSystem(
+          async (tx) =>
+            (
+              await tx.membership.findMany({
+                where: { userId: user.id, status: 'active' },
+                select: { organizationId: true, role: true },
+              })
+            ).map((m): MembershipRef => ({ orgId: m.organizationId, role: m.role as Role })),
+          deps.prisma,
+        );
+
+        const requireOrg = def.requireOrg !== false;
+        const actor = requireOrg
+          ? resolveActor(request, user, memberships, deps.secret ?? orgCookieSecret())
+          : undefined;
+        if (actor && def.can) assertCan(actor, def.can);
+
+        const input = def.input ? await readInput(request, def.input) : undefined;
+
+        const result = await def.handler({
+          request,
+          requestId,
+          user,
+          actor,
+          memberships,
+          input,
+          tenant: (fn) => {
+            if (!actor) throw new Error('tenant() requires an active organization');
+            return withTenant(actor.orgId, fn, deps.prisma);
+          },
+        } as RouteCtx<InputOf<S>, R>);
+
+        const { data, options } =
+          result instanceof ApiResult
+            ? { data: result.data, options: result.options }
+            : { data: result, options: {} };
+        return Response.json(options.meta ? { data, meta: options.meta } : { data }, {
+          status: options.status ?? 200,
+          headers: { 'x-request-id': requestId },
+        });
+      } catch (error) {
+        if (error instanceof DomainError) {
+          return fail(error.code, error.message, requestId, { fieldErrors: error.fieldErrors });
+        }
+        // Stack goes to logs only, never to the response.
+        logger.error(
+          {
+            requestId,
+            err:
+              error instanceof Error ? { message: error.message, stack: error.stack } : 'unknown',
+          },
+          'unhandled API error',
+        );
+        return fail('INTERNAL', 'Something went wrong.', requestId);
+      }
+    };
+  };
+}
+
+/** Production handler factory: reads env lazily on each request. */
+export const apiHandler = createApiHandler();

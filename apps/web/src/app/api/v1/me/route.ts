@@ -1,5 +1,4 @@
-import { meResponse } from '@/lib/me';
+import { apiHandler } from '@/server/api';
+import { meRoute } from '@/server/routes/me';
 
-export function GET(request: Request): Promise<Response> {
-  return meResponse(request.headers);
-}
+export const GET = apiHandler(meRoute);

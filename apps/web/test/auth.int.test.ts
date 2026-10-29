@@ -5,7 +5,8 @@ import { createTestDb } from '@kinetic/db/testing';
 import { breachedPasswordCheckEnabled, createAuth, getSessionUser, type Auth } from '@/lib/auth';
 import { createAuthHandlers } from '@/lib/auth-handler';
 import { guardRequest } from '@/lib/guard';
-import { meResponse } from '@/lib/me';
+import { createApiHandler } from '@/server/api';
+import { meRoute } from '@/server/routes/me';
 
 const ORIGIN = 'http://localhost:3000';
 const env = {
@@ -19,6 +20,11 @@ let prisma: PrismaClient;
 let drop: () => Promise<void>;
 let auth: Auth;
 let deps: { auth: Auth; prisma: PrismaClient };
+
+const meApi = (headers: Headers) =>
+  createApiHandler({ auth, prisma, secret: env.BETTER_AUTH_SECRET, appBaseUrl: ORIGIN })(meRoute)(
+    new Request(`${ORIGIN}/api/v1/me`, { headers }),
+  );
 
 const post = (path: string, body: unknown, headers: Record<string, string> = {}) =>
   createAuthHandlers(auth).POST(
@@ -133,7 +139,7 @@ describe('sessions', () => {
     const { cookie, token } = await signIn('revoke@example.test');
     const headers = new Headers({ cookie });
 
-    expect((await meResponse(headers, auth)).status).toBe(200);
+    expect((await meApi(headers)).status).toBe(200);
     expect(await getSessionUser(headers, auth)).toMatchObject({
       email: 'revoke@example.test',
       emailVerified: true,
@@ -142,7 +148,7 @@ describe('sessions', () => {
 
     await auth.api.revokeSession({ body: { token }, headers });
 
-    const after = await meResponse(headers, auth);
+    const after = await meApi(headers);
     expect(after.status).toBe(401);
     expect(await after.json()).toMatchObject({ error: { code: 'UNAUTHENTICATED' } });
   });
