@@ -1,5 +1,5 @@
 import type { Prisma } from './generated/client';
-import type { TenantTx } from './tenant';
+import type { SystemTx, TenantTx } from './tenant';
 
 export interface AuditInput {
   orgId: string;
@@ -12,7 +12,8 @@ export interface AuditInput {
   requestId?: string;
 }
 
-export function appendAudit(tx: TenantTx, input: AuditInput) {
+/** Tenant-scoped, or system scope for flows (signup) that create the org itself. */
+export function appendAudit(tx: TenantTx | SystemTx, input: AuditInput) {
   const data: Prisma.AuditEventUncheckedCreateInput = {
     organizationId: input.orgId,
     actorId: input.actorId,
@@ -22,5 +23,5 @@ export function appendAudit(tx: TenantTx, input: AuditInput) {
     metadataJson: input.metadata ?? {},
     requestId: input.requestId ?? null,
   };
-  return tx.auditEvent.create({ data });
+  return (tx as Pick<SystemTx, 'auditEvent'>).auditEvent.create({ data });
 }

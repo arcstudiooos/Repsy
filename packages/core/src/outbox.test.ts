@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { withSystem, withTenant, type PrismaClient } from '@kinetic/db';
 import { createTestDb } from '@kinetic/db/testing';
-import { enqueueEmail } from './outbox';
+import { enqueueEmail, enqueuePlatformEmail } from './outbox';
 
 let prisma: PrismaClient;
 let drop: () => Promise<void>;
@@ -55,5 +55,28 @@ describe('enqueueEmail', () => {
       ),
     ).rejects.toThrow('boom');
     expect((await rows()).some((r) => r.idempotencyKey === 'rolled-back')).toBe(false);
+  });
+});
+
+describe('enqueuePlatformEmail', () => {
+  it('inserts a null-org row under system scope, once per idempotency key', async () => {
+    const send = () =>
+      withSystem(
+        (tx) =>
+          enqueuePlatformEmail(tx, {
+            kind: 'auth.verify_email',
+            toUserId: userId,
+            templateKey: 'auth.verify_email',
+            payload: { subject: 'Verify', text: 'link' },
+            idempotencyKey: 'platform-1',
+          }),
+        prisma,
+      );
+    expect([await send(), await send()]).toEqual([true, false]);
+    const all = (await rows()).filter((r) => r.idempotencyKey === 'platform-1');
+    expect(all).toHaveLength(1);
+    expect(all[0]).toMatchObject({ organizationId: null, status: 'pending' });
+    // Invisible without bypass.
+    expect(await prisma.outboxEmail.findMany()).toEqual([]);
   });
 });

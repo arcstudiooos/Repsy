@@ -3,6 +3,8 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: true,
+  transpilePackages: ['@kinetic/core', '@kinetic/db'],
+  serverExternalPackages: ['pg'],
   partialPrefetching: true,
   turbopack: {
     rules: {

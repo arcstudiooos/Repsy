@@ -35,6 +35,7 @@ model User {
   id              String       @id @default(uuid()) @db.Uuid
   email           String       @unique
   name            String
+  image           String?
   emailVerified   Boolean      @default(false) @map("email_verified")
   isPlatformAdmin Boolean      @default(false) @map("is_platform_admin")
   lastLoginAt     DateTime?    @map("last_login_at") @db.Timestamptz(3)
@@ -46,8 +47,69 @@ model User {
   createdPilotCodes  PilotCode[]    @relation("PilotCodeCreatedBy")
   usedPilotCodes     PilotCode[]    @relation("PilotCodeUsedBy")
   outboxEmails       OutboxEmail[]
+  sessions           Session[]
+  accounts           Account[]
 
   @@map("users")
+}
+
+// Better Auth tables. Not tenant-owned (no organization_id), so no RLS.
+model Session {
+  id        String   @id @default(uuid()) @db.Uuid
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+  token     String   @unique
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  userId    String   @map("user_id") @db.Uuid
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id @default(uuid()) @db.Uuid
+  accountId             String    @map("account_id")
+  providerId            String    @map("provider_id")
+  userId                String    @map("user_id") @db.Uuid
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  idToken               String?   @map("id_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at") @db.Timestamptz(3)
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at") @db.Timestamptz(3)
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id @default(uuid()) @db.Uuid
+  identifier String
+  value      String
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([identifier])
+  @@map("verifications")
+}
+
+model RateLimit {
+  id          String @id @default(uuid()) @db.Uuid
+  key         String @unique
+  count       Int
+  lastRequest BigInt @map("last_request")
+
+  @@map("rate_limits")
 }
 
 model Organization {
@@ -120,7 +182,8 @@ model AuditEvent {
 
 model OutboxEmail {
   id             String       @id @default(uuid()) @db.Uuid
-  organizationId String       @map("organization_id") @db.Uuid
+  /// Null for platform emails (verification, password reset); visible only under bypass.
+  organizationId String?      @map("organization_id") @db.Uuid
   kind           String
   toUserId       String       @map("to_user_id") @db.Uuid
   templateKey    String       @map("template_key")
@@ -133,7 +196,7 @@ model OutboxEmail {
   sentAt         DateTime?    @map("sent_at") @db.Timestamptz(3)
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  organization Organization @relation(fields: [organizationId], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id])
   toUser       User         @relation(fields: [toUserId], references: [id])
 
   @@index([organizationId])

@@ -1,0 +1,162 @@
+import { betterAuth } from 'better-auth';
+import { prismaAdapter } from 'better-auth/adapters/prisma';
+import { haveIBeenPwned } from 'better-auth/plugins/haveibeenpwned';
+import { enqueuePlatformEmail, logger } from '@kinetic/core';
+import { prisma as defaultPrisma, withSystem, type PrismaClient } from '@kinetic/db';
+
+export type AuthEnv = Record<string, string | undefined>;
+
+export interface SessionUser {
+  id: string;
+  email: string;
+  emailVerified: boolean;
+  isPlatformAdmin: boolean;
+}
+
+export const MIN_PASSWORD_LENGTH = 12;
+const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
+const VERIFY_TTL_SECONDS = 60 * 60;
+const RESET_TTL_SECONDS = 60 * 60;
+
+/**
+ * Breached-password check is ON everywhere. Only test/E2E env sets
+ * DISABLE_BREACHED_PASSWORD_CHECK=true (they must not touch the network).
+ */
+export function breachedPasswordCheckEnabled(env: AuthEnv): boolean {
+  return env.DISABLE_BREACHED_PASSWORD_CHECK !== 'true';
+}
+
+/** Never log or persist the link outside the outbox row: it carries a single-use token. */
+function enqueueAuthEmail(
+  prisma: PrismaClient,
+  input: { userId: string; kind: string; token: string; subject: string; text: string },
+): void {
+  // Not awaited (Better Auth guidance): response timing must not reveal whether an account exists.
+  void withSystem(
+    (tx) =>
+      enqueuePlatformEmail(tx, {
+        kind: input.kind,
+        toUserId: input.userId,
+        templateKey: input.kind,
+        payload: { subject: input.subject, text: input.text },
+        idempotencyKey: `${input.kind}:${input.userId}:${input.token}`,
+      }),
+    prisma,
+  ).catch((error: unknown) => {
+    logger.error(
+      { kind: input.kind, err: error instanceof Error ? error.message : 'unknown' },
+      'failed to enqueue auth email',
+    );
+  });
+}
+
+export function createAuth(options: { prisma?: PrismaClient; env?: AuthEnv } = {}) {
+  const prisma = options.prisma ?? defaultPrisma;
+  const env = options.env ?? process.env;
+  const googleConfigured = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
+
+  return betterAuth({
+    baseURL: env.BETTER_AUTH_URL,
+    secret: env.BETTER_AUTH_SECRET,
+    database: prismaAdapter(prisma, { provider: 'postgresql' }),
+    advanced: {
+      database: { generateId: 'uuid' },
+      // Secure cookies whenever the configured origin is https.
+      useSecureCookies: env.BETTER_AUTH_URL?.startsWith('https://') ?? false,
+      defaultCookieAttributes: { httpOnly: true, sameSite: 'lax' },
+    },
+    user: {
+      additionalFields: {
+        isPlatformAdmin: { type: 'boolean', required: false, defaultValue: false, input: false },
+        lastLoginAt: { type: 'date', required: false, input: false },
+      },
+    },
+    // DB-backed sessions: a row per session, revocable by deleting it.
+    session: { expiresIn: SESSION_TTL_SECONDS, updateAge: 60 * 60 * 24 },
+    emailAndPassword: {
+      enabled: true,
+      minPasswordLength: MIN_PASSWORD_LENGTH,
+      requireEmailVerification: true,
+      resetPasswordTokenExpiresIn: RESET_TTL_SECONDS,
+      revokeSessionsOnPasswordReset: true,
+      sendResetPassword: ({ user, url, token }) => {
+        enqueueAuthEmail(prisma, {
+          userId: user.id,
+          kind: 'auth.reset_password',
+          token,
+          subject: 'Reset your Kinetic password',
+          text: `Use this link to choose a new password (valid for 1 hour): ${url}`,
+        });
+        return Promise.resolve();
+      },
+    },
+    emailVerification: {
+      sendOnSignUp: true,
+      sendOnSignIn: true,
+      autoSignInAfterVerification: true,
+      expiresIn: VERIFY_TTL_SECONDS,
+      sendVerificationEmail: ({ user, url, token }) => {
+        enqueueAuthEmail(prisma, {
+          userId: user.id,
+          kind: 'auth.verify_email',
+          token,
+          subject: 'Verify your Kinetic email',
+          text: `Confirm your email address to finish setting up your account: ${url}`,
+        });
+        return Promise.resolve();
+      },
+    },
+    rateLimit: { enabled: true, storage: 'database', modelName: 'rateLimit', window: 60, max: 100 },
+    ...(googleConfigured
+      ? {
+          socialProviders: {
+            google: {
+              clientId: env.GOOGLE_CLIENT_ID as string,
+              clientSecret: env.GOOGLE_CLIENT_SECRET as string,
+            },
+          },
+        }
+      : {}),
+    plugins: breachedPasswordCheckEnabled(env) ? [haveIBeenPwned()] : [],
+    databaseHooks: {
+      session: {
+        create: {
+          after: async (session) => {
+            await prisma.user.update({
+              where: { id: session.userId },
+              data: { lastLoginAt: new Date() },
+            });
+          },
+        },
+      },
+    },
+  });
+}
+
+export type Auth = ReturnType<typeof createAuth>;
+
+let instance: Auth | undefined;
+
+/** Lazily-built shared instance: env is read on first use, not at import/build time. */
+export const auth: Auth = new Proxy({} as Auth, {
+  get(_target, prop) {
+    instance ??= createAuth();
+    return Reflect.get(instance, prop, instance) as unknown;
+  },
+});
+
+/** `instance` is injectable for tests; production code uses the shared `auth`. */
+export async function getSessionUser(
+  headers: Headers,
+  instance: Pick<Auth, 'api'> = auth,
+): Promise<SessionUser | null> {
+  const session = await instance.api.getSession({ headers });
+  if (!session) return null;
+  const { user } = session;
+  return {
+    id: user.id,
+    email: user.email,
+    emailVerified: user.emailVerified,
+    isPlatformAdmin: user.isPlatformAdmin === true,
+  };
+}
