@@ -1,0 +1,206 @@
+import { appendAudit, type TenantTx } from '@kinetic/db';
+import type { ActorContext } from '../authz/actor';
+import { assertCan } from '../authz/policies';
+import { DomainError } from '../errors';
+import type { TrackingType } from '../exercises/options';
+import { decodeCursor, encodeCursor, PAGE_SIZE } from '../pagination';
+import { TITLE_MAX, UUID } from './commit';
+import { targetSchema, type SetTarget } from './targets';
+
+const notFound = () => new DomainError('NOT_FOUND', 'Not found.');
+
+export function cleanTitle(title: string): string {
+  const t = title.trim();
+  if (t.length < 1 || t.length > TITLE_MAX) {
+    throw new DomainError('VALIDATION', 'Some fields are invalid.', {
+      title: [`Use 1-${TITLE_MAX} characters.`],
+    });
+  }
+  return t;
+}
+
+export interface ProgramSummary {
+  id: string;
+  title: string;
+  kind: 'template' | 'client';
+  versionNo: number | null;
+  daysPerWeek: number | null;
+  weekCount: number | null;
+  updatedAt: string;
+}
+
+export interface ProgramDetail {
+  id: string;
+  title: string;
+  kind: 'template' | 'client';
+  /** Null until the first commit. */
+  versionNo: number | null;
+  versionId: string | null;
+  daysPerWeek: number;
+  weekCount: number;
+  weeks: {
+    days: {
+      title: string;
+      notes: string;
+      exercises: {
+        exerciseId: string;
+        exerciseName: string;
+        trackingType: TrackingType;
+        note: string | null;
+        sets: SetTarget[];
+      }[];
+    }[];
+  }[];
+}
+
+export async function createProgram(
+  tx: TenantTx,
+  actor: ActorContext,
+  input: { title: string },
+  opts: { requestId?: string } = {},
+): Promise<ProgramSummary> {
+  assertCan(actor, 'program:write');
+  const row = await tx.program.create({
+    data: { title: cleanTitle(input.title), createdBy: actor.userId },
+  } as Parameters<typeof tx.program.create>[0]);
+  await appendAudit(tx, {
+    orgId: actor.orgId,
+    actorId: actor.userId,
+    objectType: 'program',
+    objectId: row.id,
+    action: 'program.created',
+    requestId: opts.requestId,
+  });
+  return {
+    id: row.id,
+    title: row.title,
+    kind: row.kind,
+    versionNo: null,
+    daysPerWeek: null,
+    weekCount: null,
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export async function renameProgram(
+  tx: TenantTx,
+  actor: ActorContext,
+  id: string,
+  title: string,
+  opts: { requestId?: string } = {},
+): Promise<void> {
+  assertCan(actor, 'program:write');
+  if (!UUID.test(id)) throw notFound();
+  const { count } = await tx.program.updateMany({
+    where: { id },
+    data: { title: cleanTitle(title) },
+  });
+  if (count === 0) throw notFound();
+  await appendAudit(tx, {
+    orgId: actor.orgId,
+    actorId: actor.userId,
+    objectType: 'program',
+    objectId: id,
+    action: 'program.renamed',
+    requestId: opts.requestId,
+  });
+}
+
+export async function listPrograms(
+  tx: TenantTx,
+  actor: ActorContext,
+  query: { kind: 'template'; cursor?: string },
+): Promise<{ items: ProgramSummary[]; nextCursor: string | null }> {
+  assertCan(actor, 'program:read');
+  const and: Record<string, unknown>[] = [{ kind: query.kind, status: 'active' }];
+  if (query.cursor !== undefined) {
+    const c = decodeCursor(query.cursor);
+    and.push({
+      OR: [{ createdAt: { lt: c.createdAt } }, { createdAt: c.createdAt, id: { lt: c.id } }],
+    });
+  }
+  const rows = await tx.program.findMany({
+    where: { AND: and },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    take: PAGE_SIZE + 1,
+    include: {
+      currentVersion: { select: { versionNo: true, daysPerWeek: true, weekCount: true } },
+    },
+  });
+  const page = rows.slice(0, PAGE_SIZE);
+  const last = page[page.length - 1];
+  return {
+    items: page.map((r) => ({
+      id: r.id,
+      title: r.title,
+      kind: r.kind,
+      versionNo: r.currentVersion?.versionNo ?? null,
+      daysPerWeek: r.currentVersion?.daysPerWeek ?? null,
+      weekCount: r.currentVersion?.weekCount ?? null,
+      updatedAt: r.updatedAt.toISOString(),
+    })),
+    nextCursor: rows.length > PAGE_SIZE && last ? encodeCursor(last) : null,
+  };
+}
+
+/** The program at its current version, or at `opts.versionId` (an older committed version of the same program). */
+export async function getProgram(
+  tx: TenantTx,
+  actor: ActorContext,
+  id: string,
+  opts: { versionId?: string } = {},
+): Promise<ProgramDetail> {
+  assertCan(actor, 'program:read');
+  if (!UUID.test(id)) throw notFound();
+  const program = await tx.program.findFirst({ where: { id } });
+  if (!program) throw notFound();
+
+  const wanted = opts.versionId ?? program.currentVersionId;
+  const base = { id: program.id, title: program.title, kind: program.kind };
+  if (wanted === null) {
+    return { ...base, versionNo: null, versionId: null, daysPerWeek: 0, weekCount: 0, weeks: [] };
+  }
+  if (!UUID.test(wanted)) throw notFound();
+  const version = await tx.programVersion.findFirst({ where: { id: wanted, programId: id } });
+  if (!version) throw notFound();
+
+  const slots = await tx.programSlot.findMany({
+    where: { programVersionId: version.id },
+    orderBy: [{ weekIndex: 'asc' }, { dayIndex: 'asc' }],
+    include: {
+      workoutVersion: {
+        include: {
+          exercises: {
+            orderBy: { position: 'asc' },
+            include: { exercise: { select: { name: true, trackingType: true } } },
+          },
+        },
+      },
+    },
+  });
+  const weeks: ProgramDetail['weeks'] = Array.from({ length: version.weekCount }, () => ({
+    days: [],
+  }));
+  for (const slot of slots) {
+    const wv = slot.workoutVersion;
+    weeks[slot.weekIndex]?.days.push({
+      title: wv.title,
+      notes: wv.notes,
+      exercises: wv.exercises.map((e) => ({
+        exerciseId: e.exerciseId,
+        exerciseName: e.exercise.name,
+        trackingType: e.exercise.trackingType,
+        note: e.note,
+        sets: targetSchema.parse(e.targetJson),
+      })),
+    });
+  }
+  return {
+    ...base,
+    versionNo: version.versionNo,
+    versionId: version.id,
+    daysPerWeek: version.daysPerWeek,
+    weekCount: version.weekCount,
+    weeks,
+  };
+}

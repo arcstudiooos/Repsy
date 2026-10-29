@@ -31,6 +31,8 @@ export class DomainError extends Error {
     public readonly code: ErrorCode,
     message?: string,
     public readonly fieldErrors?: Record<string, string[]>,
+    /** Machine-readable extras the API serializes as `error.details` (e.g. `currentVersionNo` on a 409). */
+    public readonly details?: Record<string, string | number | boolean | null>,
   ) {
     super(message ?? code);
     this.name = 'DomainError';

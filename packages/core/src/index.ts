@@ -70,3 +70,24 @@ export {
   type CreateExerciseInput,
   type SearchExercisesQuery,
 } from './exercises/exercises';
+export {
+  commitProgramVersion,
+  type CommitInput,
+  type WeekInput,
+  type DayInput,
+  type ExerciseInput,
+} from './programs/commit';
+export {
+  createProgram,
+  renameProgram,
+  listPrograms,
+  getProgram,
+  type ProgramDetail,
+  type ProgramSummary,
+} from './programs/read';
+export {
+  targetSchema,
+  setTargetSchema,
+  type SetTarget,
+  type WorkoutTargets,
+} from './programs/targets';

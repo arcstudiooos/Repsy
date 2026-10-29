@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "@kinetic/db": "workspace:*",
-    "pino": "10.4.0"
+    "pino": "10.4.0",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@types/node": "24.19.2",

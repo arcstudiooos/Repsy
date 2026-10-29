@@ -103,7 +103,12 @@ describe('row level security', () => {
       'memberships',
       'organizations',
       'outbox_emails',
+      'program_slots',
+      'program_versions',
+      'programs',
       'users',
+      'workout_version_exercises',
+      'workout_versions',
     ]);
     for (const t of tables) {
       expect(t, t.relname).toMatchObject({ relrowsecurity: true, relforcerowsecurity: true });
@@ -123,6 +128,11 @@ describe('row level security', () => {
       'memberships',
       'organizations',
       'outbox_emails',
+      'program_slots',
+      'program_versions',
+      'programs',
+      'workout_version_exercises',
+      'workout_versions',
     ]);
     for (const p of policies) {
       for (const text of [p.qual, p.with_check]) {

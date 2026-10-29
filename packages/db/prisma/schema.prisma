@@ -66,18 +66,20 @@ model User {
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  ownedOrganizations     Organization[]
-  memberships            Membership[]
-  createdPilotCodes      PilotCode[]             @relation("PilotCodeCreatedBy")
-  usedPilotCodes         PilotCode[]             @relation("PilotCodeUsedBy")
-  outboxEmails           OutboxEmail[]
-  clientProfiles         Client[]                @relation("ClientUser")
-  coachedClients         Client[]                @relation("ClientCoach")
-  createdInvites         ClientInvite[]
-  sessions               Session[]
-  accounts               Account[]
-  coachProfile           CoachProfile?
-  notificationPreference NotificationPreference?
+  ownedOrganizations       Organization[]
+  memberships              Membership[]
+  createdPilotCodes        PilotCode[]             @relation("PilotCodeCreatedBy")
+  usedPilotCodes           PilotCode[]             @relation("PilotCodeUsedBy")
+  outboxEmails             OutboxEmail[]
+  clientProfiles           Client[]                @relation("ClientUser")
+  coachedClients           Client[]                @relation("ClientCoach")
+  createdInvites           ClientInvite[]
+  createdPrograms          Program[]               @relation("ProgramCreator")
+  committedProgramVersions ProgramVersion[]        @relation("ProgramVersionCommitter")
+  sessions                 Session[]
+  accounts                 Account[]
+  coachProfile             CoachProfile?
+  notificationPreference   NotificationPreference?
 
   @@map("users")
 }
@@ -152,13 +154,18 @@ model Organization {
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  owner         User           @relation(fields: [ownerUserId], references: [id])
-  memberships   Membership[]
-  auditEvents   AuditEvent[]
-  outboxEmails  OutboxEmail[]
-  clients       Client[]
-  clientInvites ClientInvite[]
-  exercises     Exercise[]
+  owner                   User                     @relation(fields: [ownerUserId], references: [id])
+  memberships             Membership[]
+  auditEvents             AuditEvent[]
+  outboxEmails            OutboxEmail[]
+  clients                 Client[]
+  clientInvites           ClientInvite[]
+  exercises               Exercise[]
+  programs                Program[]
+  programVersions         ProgramVersion[]
+  programSlots            ProgramSlot[]
+  workoutVersions         WorkoutVersion[]
+  workoutVersionExercises WorkoutVersionExercise[]
 
   @@map("organizations")
 }
@@ -262,6 +269,7 @@ model Client {
   user         User?          @relation("ClientUser", fields: [userId], references: [id])
   coach        User           @relation("ClientCoach", fields: [coachUserId], references: [id])
   invites      ClientInvite[]
+  programs     Program[]
 
   @@unique([organizationId, email])
   @@unique([organizationId, userId])
@@ -340,9 +348,139 @@ model Exercise {
   mediaUrl       String?      @map("media_url")
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  organization            Organization?            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  workoutVersionExercises WorkoutVersionExercise[]
 
   @@index([organizationId, name, id])
   @@index([organizationId, createdAt])
   @@map("exercises")
+}
+
+enum ProgramKind {
+  template
+  client
+
+  @@map("program_kind")
+}
+
+enum ProgramStatus {
+  active
+  archived
+
+  @@map("program_status")
+}
+
+/// A reusable template (kind=template) or one client's copy (kind=client). Its content lives in
+/// immutable ProgramVersions; `currentVersionId` points at the latest committed one (null until the first commit).
+/// The row doubles as the lock that serializes commits (D-001 optimistic concurrency).
+model Program {
+  id               String        @id @default(uuid()) @db.Uuid
+  organizationId   String        @map("organization_id") @db.Uuid
+  /// At most 120 characters.
+  title            String
+  kind             ProgramKind   @default(template)
+  clientId         String?       @map("client_id") @db.Uuid
+  sourceProgramId  String?       @map("source_program_id") @db.Uuid
+  sourceVersionId  String?       @map("source_version_id") @db.Uuid
+  currentVersionId String?       @unique @map("current_version_id") @db.Uuid
+  status           ProgramStatus @default(active)
+  createdBy        String        @map("created_by") @db.Uuid
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization   Organization     @relation(fields: [organizationId], references: [id])
+  client         Client?          @relation(fields: [clientId], references: [id])
+  creator        User             @relation("ProgramCreator", fields: [createdBy], references: [id])
+  sourceProgram  Program?         @relation("ProgramSource", fields: [sourceProgramId], references: [id])
+  copies         Program[]        @relation("ProgramSource")
+  sourceVersion  ProgramVersion?  @relation("ProgramSourceVersion", fields: [sourceVersionId], references: [id])
+  currentVersion ProgramVersion?  @relation("ProgramCurrentVersion", fields: [currentVersionId], references: [id])
+  versions       ProgramVersion[] @relation("ProgramVersions")
+
+  @@index([organizationId, kind, status, createdAt, id])
+  @@index([organizationId, clientId])
+  @@map("programs")
+}
+
+/// One committed save of a program: a slot map from (weekIndex, dayIndex) to WorkoutVersion (D-002 #2). Immutable.
+model ProgramVersion {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  programId      String   @map("program_id") @db.Uuid
+  versionNo      Int      @map("version_no")
+  committedBy    String   @map("committed_by") @db.Uuid
+  committedAt    DateTime @default(now()) @map("committed_at") @db.Timestamptz(3)
+  daysPerWeek    Int      @map("days_per_week")
+  weekCount      Int      @map("week_count")
+
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  program        Program       @relation("ProgramVersions", fields: [programId], references: [id])
+  committer      User          @relation("ProgramVersionCommitter", fields: [committedBy], references: [id])
+  slots          ProgramSlot[]
+  currentOf      Program?      @relation("ProgramCurrentVersion")
+  sourceOfCopies Program[]     @relation("ProgramSourceVersion")
+
+  @@unique([programId, versionNo])
+  @@index([organizationId])
+  @@map("program_versions")
+}
+
+model ProgramSlot {
+  id               String @id @default(uuid()) @db.Uuid
+  organizationId   String @map("organization_id") @db.Uuid
+  programVersionId String @map("program_version_id") @db.Uuid
+  /// Zero-based.
+  weekIndex        Int    @map("week_index")
+  /// Zero-based.
+  dayIndex         Int    @map("day_index")
+  workoutVersionId String @map("workout_version_id") @db.Uuid
+
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  programVersion ProgramVersion @relation(fields: [programVersionId], references: [id])
+  workoutVersion WorkoutVersion @relation(fields: [workoutVersionId], references: [id])
+
+  @@unique([programVersionId, weekIndex, dayIndex])
+  @@index([organizationId])
+  @@index([workoutVersionId])
+  @@map("program_slots")
+}
+
+/// Immutable (D-002 #1): no update or delete code paths exist. Shared by every program version whose slot holds the same content.
+model WorkoutVersion {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  /// At most 120 characters.
+  title          String
+  notes          String   @default("")
+  /// sha256 hex of the canonical JSON of {title, notes, exercises}.
+  contentHash    String   @map("content_hash")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization             @relation(fields: [organizationId], references: [id])
+  exercises    WorkoutVersionExercise[]
+  slots        ProgramSlot[]
+
+  @@index([organizationId, contentHash])
+  @@map("workout_versions")
+}
+
+model WorkoutVersionExercise {
+  id               String  @id @default(uuid()) @db.Uuid
+  organizationId   String  @map("organization_id") @db.Uuid
+  workoutVersionId String  @map("workout_version_id") @db.Uuid
+  exerciseId       String  @map("exercise_id") @db.Uuid
+  /// Zero-based order within the workout.
+  position         Int
+  /// Zod-validated set targets (targetSchema).
+  targetJson       Json    @map("target_json")
+  note             String?
+
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  workoutVersion WorkoutVersion @relation(fields: [workoutVersionId], references: [id])
+  exercise       Exercise       @relation(fields: [exerciseId], references: [id])
+
+  @@unique([workoutVersionId, position])
+  @@index([organizationId])
+  @@index([exerciseId])
+  @@map("workout_version_exercises")
 }

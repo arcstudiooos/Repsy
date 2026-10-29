@@ -116,6 +116,28 @@ describe('api envelope', () => {
     }
   });
 
+  it('serializes DomainError details as error.details, and omits it otherwise', async () => {
+    const withDetails = make()({
+      handler: () => {
+        throw new DomainError('CONFLICT', 'stale', undefined, { currentVersionNo: 3 });
+      },
+    });
+    const res = await withDetails(req('GET', headersFor(t.coachA)));
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { error: Record<string, unknown> };
+    expect(body.error).toMatchObject({ code: 'CONFLICT', details: { currentVersionNo: 3 } });
+
+    const plain = make()({
+      handler: () => {
+        throw new DomainError('NOT_FOUND', 'nope');
+      },
+    });
+    const plainBody = (await (await plain(req('GET', headersFor(t.coachA)))).json()) as {
+      error: Record<string, unknown>;
+    };
+    expect(plainBody.error).not.toHaveProperty('details');
+  });
+
   it('maps DomainError codes to statuses', async () => {
     const cases = [
       ['NOT_FOUND', 404],

@@ -88,10 +88,15 @@ function fail(
   code: ErrorCode,
   message: string,
   requestId: string,
-  extra: { fieldErrors?: Record<string, string[]>; headers?: Record<string, string> } = {},
+  extra: {
+    fieldErrors?: Record<string, string[]>;
+    details?: Record<string, string | number | boolean | null>;
+    headers?: Record<string, string>;
+  } = {},
 ): Response {
   const error: Record<string, unknown> = { code, message, requestId };
   if (extra.fieldErrors) error.fieldErrors = extra.fieldErrors;
+  if (extra.details) error.details = extra.details;
   return Response.json(
     { error },
     {
@@ -233,7 +238,10 @@ export function createApiHandler(deps: ApiDeps = {}) {
         });
       } catch (error) {
         if (error instanceof DomainError) {
-          return fail(error.code, error.message, requestId, { fieldErrors: error.fieldErrors });
+          return fail(error.code, error.message, requestId, {
+            fieldErrors: error.fieldErrors,
+            details: error.details,
+          });
         }
         // Never log err.message: it can carry client PII (e.g. Prisma echoes values).
         // Stack goes to logs only, never to the response.

@@ -128,6 +128,50 @@ describe('withTenant reads', () => {
   });
 });
 
+describe('withTenant: global-readable models', () => {
+  const GLOBAL_BENCH = 'e0000000-0000-4000-8000-000000000001';
+
+  it('a tenant-scoped findFirst/findUnique of a global exercise id returns it', async () => {
+    for (const orgId of [orgA, orgB]) {
+      const first = await withTenant(
+        orgId,
+        (tx) => tx.exercise.findFirst({ where: { id: GLOBAL_BENCH } }),
+        prisma,
+      );
+      const unique = await withTenant(
+        orgId,
+        (tx) => tx.exercise.findUnique({ where: { id: GLOBAL_BENCH } }),
+        prisma,
+      );
+      expect(first).toMatchObject({ id: GLOBAL_BENCH, organizationId: null });
+      expect(unique).toMatchObject({ id: GLOBAL_BENCH, organizationId: null });
+    }
+  });
+
+  it("another org's custom exercise stays invisible to findFirst/findUnique", async () => {
+    const custom = await withTenant(
+      orgB,
+      (tx) =>
+        tx.exercise.create({
+          data: {
+            name: 'B private',
+            equipment: 'x',
+            muscleGroup: 'x',
+            movementType: 'x',
+            trackingType: 'reps_load',
+          },
+        }),
+      prisma,
+    );
+    expect(
+      await withTenant(orgA, (tx) => tx.exercise.findFirst({ where: { id: custom.id } }), prisma),
+    ).toBeNull();
+    expect(
+      await withTenant(orgA, (tx) => tx.exercise.findUnique({ where: { id: custom.id } }), prisma),
+    ).toBeNull();
+  });
+});
+
 describe('withTenant: non-tenant tables', () => {
   type Untyped = Record<string, { findMany(args?: object): Promise<unknown> }>;
   it.each(['account', 'session', 'verification', 'rateLimit', 'pilotCode'])(
