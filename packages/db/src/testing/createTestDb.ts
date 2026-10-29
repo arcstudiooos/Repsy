@@ -7,6 +7,7 @@ import pg from 'pg';
 import { createPrismaClient } from '../client';
 import type { PrismaClient } from '../generated/client';
 
+const APP_ROLE = 'kinetic_app_test';
 const run = promisify(execFile);
 const prismaCli = createRequire(import.meta.url).resolve('prisma/build/index.js');
 const packageDir = fileURLToPath(new URL('../../', import.meta.url));
@@ -14,6 +15,8 @@ const packageDir = fileURLToPath(new URL('../../', import.meta.url));
 /** Creates an isolated Postgres schema, migrates it, returns a client bound to it. */
 export async function createTestDb(): Promise<{
   prisma: PrismaClient;
+  /** Name of the Postgres schema holding this test database. */
+  schema: string;
   drop(): Promise<void>;
 }> {
   const baseUrl = process.env.DATABASE_URL;
@@ -38,9 +41,21 @@ export async function createTestDb(): Promise<{
     throw error;
   }
 
-  const prisma = createPrismaClient(baseUrl, schema);
+  // RLS does not apply to superusers, so the app connects as a plain role.
+  await admin.query(`DO $$ BEGIN
+    CREATE ROLE ${APP_ROLE} LOGIN PASSWORD '${APP_ROLE}' NOSUPERUSER NOBYPASSRLS;
+  EXCEPTION WHEN duplicate_object OR unique_violation THEN NULL; END $$`);
+  await admin.query(`GRANT USAGE ON SCHEMA "${schema}" TO ${APP_ROLE}`);
+  await admin.query(`GRANT ALL ON ALL TABLES IN SCHEMA "${schema}" TO ${APP_ROLE}`);
+  await admin.query(`GRANT ALL ON ALL SEQUENCES IN SCHEMA "${schema}" TO ${APP_ROLE}`);
+  const appUrl = new URL(baseUrl);
+  appUrl.username = APP_ROLE;
+  appUrl.password = APP_ROLE;
+
+  const prisma = createPrismaClient(appUrl.toString(), schema);
   return {
     prisma,
+    schema,
     async drop() {
       await prisma.$disconnect();
       await admin.query(`DROP SCHEMA "${schema}" CASCADE`);
