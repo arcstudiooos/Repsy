@@ -4,3 +4,6 @@ pnpm-lock.yaml
 _old-scaffold
 .superpowers
 generated
+apps/web/e2e/.state.json
+test-results
+playwright-report

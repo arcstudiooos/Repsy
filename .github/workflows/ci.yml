@@ -34,7 +34,15 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
+      - run: pnpm format:check
       - run: pnpm typecheck
       - run: pnpm test
+      # Production build. Placeholder-but-valid values: nothing here is a real secret,
+      # and no provider is contacted at build time.
+      - run: pnpm --filter @kinetic/web build
+        env:
+          NODE_ENV: production
+          BETTER_AUTH_SECRET: ci-build-placeholder-secret-0123456789abcdef
+          NEXT_PUBLIC_SENTRY_DSN: ''
       - run: pnpm --filter @kinetic/web exec playwright install --with-deps
       - run: pnpm test:e2e

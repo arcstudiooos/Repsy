@@ -16,7 +16,8 @@
     "db:down": "docker compose down",
     "db:migrate": "pnpm --filter @kinetic/db db:deploy",
     "db:seed": "pnpm --filter @kinetic/db db:seed",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "format:check": "prettier --check --end-of-line auto apps packages .github README.md package.json pnpm-workspace.yaml render.yaml docker-compose.yml"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
