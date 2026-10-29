@@ -1,0 +1,139 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum MembershipRole {
+  owner
+  coach
+  client
+
+  @@map("membership_role")
+}
+
+enum MembershipStatus {
+  active
+  inactive
+
+  @@map("membership_status")
+}
+
+enum OutboxStatus {
+  pending
+  sent
+  failed
+
+  @@map("outbox_status")
+}
+
+model User {
+  id              String       @id @default(uuid()) @db.Uuid
+  email           String       @unique
+  name            String
+  emailVerified   Boolean      @default(false) @map("email_verified")
+  isPlatformAdmin Boolean      @default(false) @map("is_platform_admin")
+  lastLoginAt     DateTime?    @map("last_login_at") @db.Timestamptz(3)
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  ownedOrganizations Organization[]
+  memberships        Membership[]
+  createdPilotCodes  PilotCode[]    @relation("PilotCodeCreatedBy")
+  usedPilotCodes     PilotCode[]    @relation("PilotCodeUsedBy")
+  outboxEmails       OutboxEmail[]
+
+  @@map("users")
+}
+
+model Organization {
+  id                String   @id @default(uuid()) @db.Uuid
+  name              String
+  timezone          String
+  plan              String   @default("pilot")
+  ownerUserId       String   @map("owner_user_id") @db.Uuid
+  graceHours        Int      @default(24) @map("grace_hours")
+  activeClientLimit Int      @default(30) @map("active_client_limit")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  owner        User          @relation(fields: [ownerUserId], references: [id])
+  memberships  Membership[]
+  auditEvents  AuditEvent[]
+  outboxEmails OutboxEmail[]
+
+  @@map("organizations")
+}
+
+model Membership {
+  id             String           @id @default(uuid()) @db.Uuid
+  userId         String           @map("user_id") @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  role           MembershipRole
+  status         MembershipStatus @default(active)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user         User         @relation(fields: [userId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([userId, organizationId, role])
+  @@index([organizationId])
+  @@map("memberships")
+}
+
+model PilotCode {
+  id        String    @id @default(uuid()) @db.Uuid
+  codeHash  String    @unique @map("code_hash")
+  createdBy String    @map("created_by") @db.Uuid
+  usedBy    String?   @map("used_by") @db.Uuid
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(3)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  creator User  @relation("PilotCodeCreatedBy", fields: [createdBy], references: [id])
+  user    User? @relation("PilotCodeUsedBy", fields: [usedBy], references: [id])
+
+  @@map("pilot_codes")
+}
+
+model AuditEvent {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  actorId        String?  @map("actor_id") @db.Uuid
+  objectType     String   @map("object_type")
+  objectId       String   @map("object_id")
+  action         String
+  metadataJson   Json     @default("{}") @map("metadata_json")
+  requestId      String?  @map("request_id")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@index([createdAt])
+  @@map("audit_events")
+}
+
+model OutboxEmail {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  kind           String
+  toUserId       String       @map("to_user_id") @db.Uuid
+  templateKey    String       @map("template_key")
+  payloadJson    Json         @map("payload_json")
+  idempotencyKey String       @unique @map("idempotency_key")
+  status         OutboxStatus @default(pending)
+  attempts       Int          @default(0)
+  sentAt         DateTime?    @map("sent_at") @db.Timestamptz(3)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  toUser       User         @relation(fields: [toUserId], references: [id])
+
+  @@index([organizationId])
+  @@index([status])
+  @@map("outbox_emails")
+}

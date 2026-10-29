@@ -8,6 +8,7 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/.next/**',
       'apps/web/**',
+      '**/generated/**',
       '_old-scaffold/**',
       '.superpowers/**',
       '**/playwright-report/**',
