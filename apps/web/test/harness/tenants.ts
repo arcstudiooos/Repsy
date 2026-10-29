@@ -28,7 +28,10 @@ export interface TwoTenants {
 async function createUser(prisma: PrismaClient, auth: Auth, label: string): Promise<SeededUser> {
   const email = `${label}-${crypto.randomUUID().slice(0, 8)}@example.test`;
   await auth.api.signUpEmail({ body: { name: label, email, password: TEST_PASSWORD } });
-  await prisma.user.update({ where: { email }, data: { emailVerified: true } });
+  await withSystem(
+    (tx) => tx.user.update({ where: { email }, data: { emailVerified: true } }),
+    prisma,
+  );
   const res = await auth.api.signInEmail({
     body: { email, password: TEST_PASSWORD },
     returnHeaders: true,
@@ -37,7 +40,7 @@ async function createUser(prisma: PrismaClient, auth: Auth, label: string): Prom
     .getSetCookie()
     .map((c) => c.split(';')[0])
     .join('; ');
-  const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+  const user = await withSystem((tx) => tx.user.findUniqueOrThrow({ where: { email } }), prisma);
   return { id: user.id, email, cookie };
 }
 

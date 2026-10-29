@@ -6,6 +6,7 @@ import { createPrismaClient } from './client';
 import type { PrismaClient } from './generated/client';
 import { applyAppRoleSql, dropAppRole } from './testing/appRole';
 import { createTestDb } from './testing/createTestDb';
+import { withSystem } from './tenant';
 
 const suffix = randomUUID().replace(/-/g, '').slice(0, 10);
 const role = `kinetic_app_${suffix}`;
@@ -55,10 +56,11 @@ describe('app-role.sql', () => {
 
   it('is accepted by assertRuntimeRole and can read and write app tables', async () => {
     await expect(assertRuntimeRole(appClient, { schema })).resolves.toBeUndefined();
-    const user = await appClient.user.create({
-      data: { email: `${suffix}@example.test`, name: 'R' },
-    });
-    expect(await appClient.user.count({ where: { id: user.id } })).toBe(1);
+    const count = await withSystem(async (tx) => {
+      const user = await tx.user.create({ data: { email: `${suffix}@example.test`, name: 'R' } });
+      return tx.user.count({ where: { id: user.id } });
+    }, appClient);
+    expect(count).toBe(1);
   });
 
   it('cannot run DDL', async () => {

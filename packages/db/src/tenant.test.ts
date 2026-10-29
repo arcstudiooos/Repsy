@@ -69,9 +69,34 @@ describe('withTenant reads', () => {
     expect(found).toBeNull();
   });
 
-  it('leaves models without organizationId untouched', async () => {
+  it('users: only members of the active org are visible', async () => {
     const users = await withTenant(orgA, (tx) => tx.user.findMany(), prisma);
-    expect(users).toHaveLength(2);
+    expect(users.map((u) => u.id)).toEqual([userA]);
+  });
+
+  it('users: an email search cannot list other tenants users', async () => {
+    const users = await withTenant(
+      orgA,
+      (tx) => tx.user.findMany({ where: { email: { contains: 'example.test' } } }),
+      prisma,
+    );
+    expect(users.map((u) => u.email)).toEqual(['a@example.test']);
+  });
+
+  it('users: the acting user sees their own row via userId', async () => {
+    const self = await withTenant(
+      orgA,
+      (tx) => tx.user.findUnique({ where: { id: userB } }),
+      prisma,
+      { userId: userB },
+    );
+    expect(self?.id).toBe(userB);
+    const without = await withTenant(
+      orgA,
+      (tx) => tx.user.findUnique({ where: { id: userB } }),
+      prisma,
+    );
+    expect(without).toBeNull();
   });
 
   it('counts only own rows', async () => {
@@ -94,6 +119,7 @@ describe('withTenant reads', () => {
       orgA,
       (tx) => tx.user.findMany({ include: { memberships: true, outboxEmails: true } }),
       prisma,
+      { userId: userB },
     );
     const b = users.find((x) => x.id === userB);
     expect(b?.memberships).toEqual([]);
@@ -102,7 +128,78 @@ describe('withTenant reads', () => {
   });
 });
 
+describe('withTenant: non-tenant tables', () => {
+  type Untyped = Record<string, { findMany(args?: object): Promise<unknown> }>;
+  it.each(['account', 'session', 'verification', 'rateLimit', 'pilotCode'])(
+    '%s is not available through a tenant client',
+    async (model) => {
+      await expect(
+        withTenant(orgA, (tx) => (tx as unknown as Untyped)[model]!.findMany(), prisma),
+      ).rejects.toThrow(/not available in a tenant scope/);
+    },
+  );
+
+  it('is also omitted from the TenantTx type', async () => {
+    await withTenant(
+      orgA,
+      async (tx) => {
+        // @ts-expect-error account is not part of TenantTx
+        void tx.account;
+        // @ts-expect-error session is not part of TenantTx
+        void tx.session;
+        // @ts-expect-error verification is not part of TenantTx
+        void tx.verification;
+        // @ts-expect-error rateLimit is not part of TenantTx
+        void tx.rateLimit;
+        // @ts-expect-error pilotCode is not part of TenantTx
+        void tx.pilotCode;
+      },
+      prisma,
+    );
+  });
+
+  it('auth relations cannot be reached through include/select', async () => {
+    await expect(
+      withTenant(orgA, (tx) => tx.user.findMany({ include: { accounts: true } }), prisma),
+    ).rejects.toThrow(/not available in a tenant scope/);
+    await expect(
+      withTenant(
+        orgA,
+        (tx) => tx.membership.findMany({ include: { user: { select: { sessions: true } } } }),
+        prisma,
+      ),
+    ).rejects.toThrow(/not available in a tenant scope/);
+  });
+});
+
 describe('withTenant writes', () => {
+  it('users: only the acting user row can be updated', async () => {
+    await expect(
+      withTenant(
+        orgA,
+        (tx) => tx.user.update({ where: { id: userA }, data: { name: 'hacked' } }),
+        prisma,
+      ),
+    ).rejects.toThrow();
+    await expect(
+      withTenant(
+        orgA,
+        (tx) => tx.user.update({ where: { id: userA }, data: { name: 'hacked' } }),
+        prisma,
+        { userId: userB },
+      ),
+    ).rejects.toThrow();
+    const self = await withTenant(
+      orgA,
+      (tx) => tx.user.update({ where: { id: userA }, data: { name: 'A2' } }),
+      prisma,
+      { userId: userA },
+    );
+    expect(self.name).toBe('A2');
+    const a = await sys((tx) => tx.user.findUniqueOrThrow({ where: { id: userA } }));
+    expect(a.name).toBe('A2');
+  });
+
   it('create sets organizationId, ignoring a supplied foreign one', async () => {
     const row = await withTenant(
       orgA,

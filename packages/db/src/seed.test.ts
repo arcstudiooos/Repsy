@@ -60,7 +60,7 @@ describe('seedDemo', () => {
     expect(stored).toHaveLength(1);
     expect(stored[0]?.codeHash).toBe(sha('AAAABBBB'));
     expect(JSON.stringify(stored)).not.toContain('AAAA-BBBB');
-    const users = await prisma.user.findMany();
+    const users = await withSystem((tx) => tx.user.findMany(), prisma);
     expect(users.every((u) => u.email.endsWith('@example.test'))).toBe(true);
     expect(users.map((u) => u.email)).toEqual(
       expect.arrayContaining(['admin@example.test', 'coach@example.test']),
@@ -87,7 +87,10 @@ describe('createPilotCodeRow', () => {
     const before = Date.now();
     const row = await createPilotCodeRow(prisma, { codeHash: sha('ZZZZ'), expiresInDays: 10 });
     const stored = await prisma.pilotCode.findUniqueOrThrow({ where: { id: row.id } });
-    const admin = await prisma.user.findUniqueOrThrow({ where: { email: 'admin@example.test' } });
+    const admin = await withSystem(
+      (tx) => tx.user.findUniqueOrThrow({ where: { email: 'admin@example.test' } }),
+      prisma,
+    );
     expect(stored.createdBy).toBe(admin.id);
     const days = (stored.expiresAt.getTime() - before) / 86_400_000;
     expect(days).toBeGreaterThan(9.99);

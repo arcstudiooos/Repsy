@@ -16,6 +16,8 @@ const env = {
 };
 
 let prisma: PrismaClient;
+/** Better Auth's client: sees every users row (test assertions on users go through it). */
+let authPrisma: PrismaClient;
 let drop: () => Promise<void>;
 let auth: Auth;
 let t: TwoTenants;
@@ -41,8 +43,8 @@ const req = (
 };
 
 beforeAll(async () => {
-  ({ prisma, drop } = await createTestDb());
-  auth = createAuth({ prisma, env });
+  ({ prisma, authPrisma, drop } = await createTestDb());
+  auth = createAuth({ prisma, authPrisma, env });
   t = await seedTwoTenants(prisma, auth);
 });
 afterAll(async () => {

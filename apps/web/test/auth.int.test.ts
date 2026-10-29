@@ -17,6 +17,8 @@ const env = {
 const PASSWORD = 'correct-horse-battery';
 
 let prisma: PrismaClient;
+/** Better Auth's client: sees every users row (test assertions on users go through it). */
+let authPrisma: PrismaClient;
 let drop: () => Promise<void>;
 let auth: Auth;
 let deps: { auth: Auth; prisma: PrismaClient };
@@ -37,7 +39,7 @@ const post = (path: string, body: unknown, headers: Record<string, string> = {})
 
 async function createVerifiedUser(email: string): Promise<void> {
   await auth.api.signUpEmail({ body: { name: 'Test', email, password: PASSWORD } });
-  await prisma.user.update({ where: { email }, data: { emailVerified: true } });
+  await authPrisma.user.update({ where: { email }, data: { emailVerified: true } });
 }
 
 async function signIn(email: string): Promise<{ cookie: string; token: string }> {
@@ -70,8 +72,8 @@ async function queuedLink(kind: string, userId: string): Promise<string> {
 }
 
 beforeAll(async () => {
-  ({ prisma, drop } = await createTestDb());
-  auth = createAuth({ prisma, env });
+  ({ prisma, authPrisma, drop } = await createTestDb());
+  auth = createAuth({ prisma, authPrisma, env });
   deps = { auth, prisma };
 });
 
@@ -88,7 +90,7 @@ describe('password policy', () => {
 
   it('registers the breached-password plugin unless explicitly disabled', () => {
     const ids = (e: Record<string, string>) =>
-      createAuth({ prisma, env: e }).options.plugins?.map((p) => p.id) ?? [];
+      createAuth({ prisma, authPrisma, env: e }).options.plugins?.map((p) => p.id) ?? [];
     expect(ids({ ...env, DISABLE_BREACHED_PASSWORD_CHECK: '' })).toContain('have-i-been-pwned');
     expect(ids({ ...env, DISABLE_BREACHED_PASSWORD_CHECK: 'false' })).toContain(
       'have-i-been-pwned',
@@ -103,7 +105,7 @@ describe('route guard', () => {
     const email = 'unverified@example.test';
     await createVerifiedUser(email);
     const { cookie } = await signIn(email);
-    await prisma.user.update({ where: { email }, data: { emailVerified: false } });
+    await authPrisma.user.update({ where: { email }, data: { emailVerified: false } });
 
     const res = await guardRequest(new NextRequest(`${ORIGIN}/app`, { headers: { cookie } }), deps);
     expect(res?.status).toBe(307);
@@ -116,7 +118,7 @@ describe('route guard', () => {
     expect([loc.pathname, loc.searchParams.get('next')]).toEqual(['/login', '/settings']);
 
     await createVerifiedUser('ok@example.test');
-    const ok = await prisma.user.findUniqueOrThrow({ where: { email: 'ok@example.test' } });
+    const ok = await authPrisma.user.findUniqueOrThrow({ where: { email: 'ok@example.test' } });
     await withSystem(async (tx) => {
       const org = await tx.organization.create({
         data: { name: 'Seeded', timezone: 'UTC', ownerUserId: ok.id },
@@ -158,7 +160,7 @@ describe('password reset', () => {
   it('reset token cannot be reused', async () => {
     const email = 'reset@example.test';
     await createVerifiedUser(email);
-    const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+    const user = await authPrisma.user.findUniqueOrThrow({ where: { email } });
 
     await auth.api.requestPasswordReset({ body: { email, redirectTo: '/reset-password' } });
     const link = await queuedLink('auth.reset_password', user.id);

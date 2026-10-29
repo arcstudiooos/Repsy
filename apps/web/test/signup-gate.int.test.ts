@@ -17,6 +17,8 @@ const env = {
 const PASSWORD = 'correct-horse-battery';
 
 let prisma: PrismaClient;
+/** Better Auth's client: sees every users row (test assertions on users go through it). */
+let authPrisma: PrismaClient;
 let drop: () => Promise<void>;
 let auth: Auth;
 let deps: { auth: Auth; prisma: PrismaClient };
@@ -55,13 +57,13 @@ const input = (email: string, pilotCode: string) => ({
   pilotCode,
 });
 
-const count = (email: string) => prisma.user.count({ where: { email } });
+const count = (email: string) => authPrisma.user.count({ where: { email } });
 const outbox = () => withSystem((tx) => tx.outboxEmail.count(), prisma);
 
 /** Verified user with a live session cookie, but no membership. */
 async function verifiedOrphan(email: string) {
   await auth.api.signUpEmail({ body: { name: 'Orphan', email, password: PASSWORD } });
-  await prisma.user.update({ where: { email }, data: { emailVerified: true } });
+  await authPrisma.user.update({ where: { email }, data: { emailVerified: true } });
   const res = await auth.api.signInEmail({
     body: { email, password: PASSWORD },
     returnHeaders: true,
@@ -70,15 +72,15 @@ async function verifiedOrphan(email: string) {
     .getSetCookie()
     .map((c) => c.split(';')[0])
     .join('; ');
-  const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+  const user = await authPrisma.user.findUniqueOrThrow({ where: { email } });
   return { cookie, user };
 }
 
 beforeAll(async () => {
-  ({ prisma, drop } = await createTestDb());
-  auth = createAuth({ prisma, env });
+  ({ prisma, authPrisma, drop } = await createTestDb());
+  auth = createAuth({ prisma, authPrisma, env });
   deps = { auth, prisma };
-  adminId = (await prisma.user.create({ data: { email: 'admin@example.test', name: 'A' } })).id;
+  adminId = (await authPrisma.user.create({ data: { email: 'admin@example.test', name: 'A' } })).id;
 });
 
 afterAll(async () => {
@@ -110,6 +112,7 @@ describe('pilot-code gate', () => {
   it('google provider disables implicit sign-up and is absent when unconfigured', () => {
     const google = createAuth({
       prisma,
+      authPrisma,
       env: { ...env, GOOGLE_CLIENT_ID: 'id', GOOGLE_CLIENT_SECRET: 'secret' },
     });
     expect(google.options.socialProviders?.google?.disableImplicitSignUp).toBe(true);
@@ -121,7 +124,9 @@ describe('pilot-code gate', () => {
     expect(
       await registerCoach({ ...deps, headers: ip(1) }, input('reg-ok@example.test', 'reg-ok')),
     ).toEqual({ ok: true });
-    const user = await prisma.user.findUniqueOrThrow({ where: { email: 'reg-ok@example.test' } });
+    const user = await authPrisma.user.findUniqueOrThrow({
+      where: { email: 'reg-ok@example.test' },
+    });
     const memberships = await withSystem(
       (tx) => tx.membership.findMany({ where: { userId: user.id } }),
       prisma,

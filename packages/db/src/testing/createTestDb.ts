@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import pg from 'pg';
-import { createPrismaClient } from '../client';
+import { createAuthPrismaClient, createPrismaClient } from '../client';
 import type { PrismaClient } from '../generated/client';
 
 const APP_ROLE = 'kinetic_app_test';
@@ -15,6 +15,8 @@ const packageDir = fileURLToPath(new URL('../../', import.meta.url));
 /** Creates an isolated Postgres schema, migrates it, returns a client bound to it. */
 export async function createTestDb(): Promise<{
   prisma: PrismaClient;
+  /** Better Auth's client (users RLS auth context), same schema and role. */
+  authPrisma: PrismaClient;
   /** Name of the Postgres schema holding this test database. */
   schema: string;
   drop(): Promise<void>;
@@ -53,11 +55,14 @@ export async function createTestDb(): Promise<{
   appUrl.password = APP_ROLE;
 
   const prisma = createPrismaClient(appUrl.toString(), schema);
+  const authPrisma = createAuthPrismaClient(appUrl.toString(), schema);
   return {
     prisma,
+    authPrisma,
     schema,
     async drop() {
       await prisma.$disconnect();
+      await authPrisma.$disconnect();
       await admin.query(`DROP SCHEMA "${schema}" CASCADE`);
       await admin.end();
     },

@@ -4,13 +4,14 @@ import { createTestDb } from './testing/createTestDb';
 import { withSystem, withTenant } from './tenant';
 
 let prisma: PrismaClient;
+let authPrisma: PrismaClient;
 let schema: string;
 let drop: () => Promise<void>;
 let orgA: string;
 let orgB: string;
 
 beforeAll(async () => {
-  ({ prisma, schema, drop } = await createTestDb());
+  ({ prisma, authPrisma, schema, drop } = await createTestDb());
   await withSystem(async (tx) => {
     const u = await tx.user.create({ data: { email: 'r@example.test', name: 'R' } });
     const a = await tx.organization.create({
@@ -44,6 +45,17 @@ describe('row level security', () => {
     ).rejects.toThrow();
   });
 
+  it('plain prisma sees no users; the Better Auth client sees all of them only', async () => {
+    expect(await prisma.user.findMany()).toEqual([]);
+    await expect(
+      prisma.user.create({ data: { email: 'x@example.test', name: 'X' } }),
+    ).rejects.toThrow();
+    expect(await authPrisma.user.count()).toBe(1);
+    // auth_context opens users only: tenant tables stay fail-closed on that pool.
+    expect(await authPrisma.auditEvent.findMany()).toEqual([]);
+    expect(await authPrisma.organization.findMany()).toEqual([]);
+  });
+
   it('raw select with app.org_id set sees only that org', async () => {
     const seen = await prisma.$transaction(async (tx) => {
       await tx.$executeRawUnsafe(`SET LOCAL search_path TO "${schema}"`);
@@ -65,7 +77,7 @@ describe('row level security', () => {
     expect(await withTenant(orgA, (tx) => tx.auditEvent.count(), prisma)).toBe(1);
   });
 
-  it('every table with organization_id (and organizations) has forced RLS and a policy', async () => {
+  it('every table with organization_id (and organizations, users) has forced RLS and a policy', async () => {
     const tables = await prisma.$queryRaw<
       {
         relname: string;
@@ -79,7 +91,7 @@ describe('row level security', () => {
       FROM pg_class c
       WHERE c.relkind = 'r'
         AND c.relnamespace = ${schema}::regnamespace
-        AND (c.relname = 'organizations' OR EXISTS (
+        AND (c.relname IN ('organizations', 'users') OR EXISTS (
           SELECT 1 FROM information_schema.columns col
           WHERE col.table_schema = ${schema}
             AND col.table_name = c.relname AND col.column_name = 'organization_id'))`;
@@ -88,6 +100,7 @@ describe('row level security', () => {
       'memberships',
       'organizations',
       'outbox_emails',
+      'users',
     ]);
     for (const t of tables) {
       expect(t, t.relname).toMatchObject({ relrowsecurity: true, relforcerowsecurity: true });

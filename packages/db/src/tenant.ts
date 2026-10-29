@@ -14,6 +14,38 @@ const TENANT_MODELS: ReadonlySet<string> = new Set(
   ),
 );
 
+/**
+ * Platform/auth tables (no organization_id, no RLS): credentials, sessions,
+ * tokens, rate limits, pilot codes. Never reachable from a tenant scope.
+ */
+const NON_TENANT_MODELS = ['Account', 'Session', 'Verification', 'RateLimit', 'PilotCode'] as const;
+const NON_TENANT_SET: ReadonlySet<string> = new Set(NON_TENANT_MODELS);
+type NonTenantDelegate = Uncapitalize<(typeof NON_TENANT_MODELS)[number]>;
+
+/** User relations that lead into NON_TENANT_MODELS. */
+const NON_TENANT_RELATIONS: ReadonlySet<string> = new Set([
+  'accounts',
+  'sessions',
+  'createdPilotCodes',
+  'usedPilotCodes',
+]);
+
+const notInTenantScope = (what: string) =>
+  new Error(`${what} is not available in a tenant scope; use withSystem in system code`);
+
+/** Rejects include/select/where trees that traverse into auth tables. */
+function rejectNonTenantRelations(node: unknown): void {
+  if (node === null || typeof node !== 'object') return;
+  if (Array.isArray(node)) {
+    for (const item of node) rejectNonTenantRelations(item);
+    return;
+  }
+  for (const [key, value] of Object.entries(node)) {
+    if (NON_TENANT_RELATIONS.has(key)) throw notInTenantScope(`Relation ${key}`);
+    rejectNonTenantRelations(value);
+  }
+}
+
 type Args = Record<string, unknown> & { where?: Record<string, unknown> };
 
 function scopeWhere(args: Args, orgId: string): Args {
@@ -57,6 +89,10 @@ function tenantExtension(orgId: string) {
         $allOperations({ model, operation, args, query: typedQuery }) {
           const query = typedQuery as (args: unknown) => Promise<unknown>;
           const a = args as Args;
+          if (NON_TENANT_SET.has(model)) throw notInTenantScope(`Model ${model}`);
+          rejectNonTenantRelations(a.include);
+          rejectNonTenantRelations(a.select);
+          rejectNonTenantRelations(a.where);
           if (model === 'Organization') {
             switch (operation) {
               case 'create':
@@ -118,9 +154,14 @@ function scoped(client: PrismaClient, orgId: string) {
 
 type ScopedClient = ReturnType<typeof scoped>;
 
-/** Transaction-bound, tenant-scoped client handed to `withTenant` callbacks. */
+/**
+ * Transaction-bound, tenant-scoped client handed to `withTenant` callbacks.
+ * Auth/platform tables are omitted (and rejected at runtime); `user` is
+ * limited by users RLS to members of the org plus the acting user's own row.
+ */
 export type TenantTx = Omit<
   ScopedClient,
+  | NonTenantDelegate
   | '$connect'
   | '$disconnect'
   | '$on'
@@ -132,17 +173,30 @@ export type TenantTx = Omit<
   | '$executeRawUnsafe'
 >;
 
+export interface TenantOptions {
+  /**
+   * The acting user. Sets `app.user_id` so users RLS lets the actor see (and
+   * update) their own row even without a membership row match.
+   */
+  userId?: string;
+}
+
 /**
  * Runs `fn` in a transaction scoped to `orgId`: the first statement sets
- * `app.org_id` (enforced by RLS), and the client also injects `organizationId`.
+ * `app.org_id` (and `app.user_id` when given; both enforced by RLS), and the
+ * client also injects `organizationId`.
  */
 export function withTenant<T>(
   orgId: string,
   fn: (tx: TenantTx) => Promise<T>,
   client: PrismaClient = defaultPrisma,
+  options: TenantOptions = {},
 ): Promise<T> {
   return scoped(client, orgId).$transaction(async (tx) => {
     await tx.$executeRaw`SELECT set_config('app.org_id', ${orgId}, true)`;
+    if (options.userId !== undefined) {
+      await tx.$executeRaw`SELECT set_config('app.user_id', ${options.userId}, true)`;
+    }
     return fn(tx);
   });
 }

@@ -30,7 +30,13 @@ describe('production auth env', () => {
     ],
   ])('createAuth throws in production: %s', (_name, patch, message) => {
     const env = { ...good, ...patch };
-    expect(() => createAuth({ prisma: {} as PrismaClient, env })).toThrow(message);
+    expect(() =>
+      createAuth({ prisma: {} as PrismaClient, authPrisma: {} as PrismaClient, env }),
+    ).toThrow(message);
+  });
+
+  it('requires the Better Auth client whenever prisma is injected', () => {
+    expect(() => createAuth({ prisma: {} as PrismaClient, env: good })).toThrow(/authPrisma/);
   });
 
   it('does not enforce outside production', () => {

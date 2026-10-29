@@ -3,7 +3,12 @@ import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { haveIBeenPwned } from 'better-auth/plugins/haveibeenpwned';
 import { enqueuePlatformEmail, logger } from '@kinetic/core';
-import { prisma as defaultPrisma, withSystem, type PrismaClient } from '@kinetic/db';
+import {
+  authPrisma as defaultAuthPrisma,
+  prisma as defaultPrisma,
+  withSystem,
+  type PrismaClient,
+} from '@kinetic/db';
 
 import { assertAuthEnv, type AuthEnv } from './auth-env';
 
@@ -53,8 +58,23 @@ function enqueueAuthEmail(
   });
 }
 
-export function createAuth(options: { prisma?: PrismaClient; env?: AuthEnv } = {}) {
+export interface CreateAuthOptions {
+  /** App/system client (outbox enqueue). */
+  prisma?: PrismaClient;
+  /**
+   * Better Auth's own client: connections carry the users-RLS auth context
+   * (createAuthPrismaClient). Required whenever `prisma` is injected.
+   */
+  authPrisma?: PrismaClient;
+  env?: AuthEnv;
+}
+
+export function createAuth(options: CreateAuthOptions = {}) {
   const prisma = options.prisma ?? defaultPrisma;
+  if (options.prisma && !options.authPrisma) {
+    throw new Error('createAuth: pass authPrisma together with an injected prisma');
+  }
+  const authPrisma = options.authPrisma ?? defaultAuthPrisma;
   const env = options.env ?? process.env;
   assertAuthEnv(env);
   const googleConfigured = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
@@ -62,7 +82,7 @@ export function createAuth(options: { prisma?: PrismaClient; env?: AuthEnv } = {
   return betterAuth({
     baseURL: env.BETTER_AUTH_URL,
     secret: env.BETTER_AUTH_SECRET,
-    database: prismaAdapter(prisma, { provider: 'postgresql' }),
+    database: prismaAdapter(authPrisma, { provider: 'postgresql' }),
     advanced: {
       database: { generateId: 'uuid' },
       // Secure cookies whenever the configured origin is https.
@@ -146,7 +166,7 @@ export function createAuth(options: { prisma?: PrismaClient; env?: AuthEnv } = {
       session: {
         create: {
           after: async (session) => {
-            await prisma.user.update({
+            await authPrisma.user.update({
               where: { id: session.userId },
               data: { lastLoginAt: new Date() },
             });

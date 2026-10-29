@@ -124,7 +124,10 @@ export async function registerCoach(
   }
 
   // Better Auth hides existing emails behind a synthetic user that is never stored.
-  const stored = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+  const stored = await withSystem(
+    (tx) => tx.user.findUnique({ where: { id: userId }, select: { id: true } }),
+    prisma,
+  );
   if (!stored) {
     logger.info('signup attempted for an already registered email');
     return { ok: true };
