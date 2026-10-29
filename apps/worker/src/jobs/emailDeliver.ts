@@ -1,6 +1,6 @@
 import type { EmailMessage, EmailPort, Logger } from '@kinetic/core';
 import { withSystem, type PrismaClient } from '@kinetic/db';
-import { defineJob } from './registry';
+import { defineJob, type CaptureException } from './registry';
 
 export const EMAIL_DELIVER = 'email.deliver';
 export const EMAIL_RETRY_LIMIT = 5;
@@ -14,7 +14,15 @@ export interface DeliverDeps {
   logger: Logger;
   /** Injectable clock for deterministic tests. */
   now?: () => Date;
+  /** Called once per row that transitions to `failed`. */
+  captureException?: CaptureException;
 }
+
+/**
+ * Payloads may carry single-use links (verify / reset tokens). Once a row is
+ * final (sent or failed) the payload is cleared so tokens do not persist.
+ */
+const CLEARED_PAYLOAD = {};
 
 interface Row {
   templateKey: string;
@@ -64,19 +72,30 @@ export async function deliverDueEmails(deps: DeliverDeps): Promise<BatchResult> 
   const clock = deps.now ?? (() => new Date());
   const result: BatchResult = { sent: 0, retried: 0, failed: 0 };
   const start = clock();
+  const reportFailed = (outboxId: string, attempts: number, cause?: unknown) =>
+    deps.captureException?.(
+      new Error('outbox email failed permanently', cause === undefined ? undefined : { cause }),
+      { outboxId, attempts },
+    );
 
   // Reclaim expired leases: a crashed sender's attempt already counted.
-  await withSystem(async (tx) => {
+  const reclaimedFailed = await withSystem(async (tx) => {
     const expired = { status: 'sending' as const, leaseUntil: { lt: start } };
-    await tx.outboxEmail.updateMany({
+    const failed = await tx.outboxEmail.updateManyAndReturn({
       where: { ...expired, attempts: { gte: EMAIL_RETRY_LIMIT } },
-      data: { status: 'failed', leaseUntil: null },
+      data: { status: 'failed', leaseUntil: null, payloadJson: CLEARED_PAYLOAD },
+      select: { id: true, attempts: true },
     });
     await tx.outboxEmail.updateMany({
       where: expired,
       data: { status: 'pending', leaseUntil: null },
     });
+    return failed;
   }, prisma);
+  for (const row of reclaimedFailed) {
+    logger.warn({ outboxId: row.id, attempts: row.attempts }, 'email delivery failed permanently');
+    reportFailed(row.id, row.attempts);
+  }
 
   const candidates = await withSystem(
     (tx) =>
@@ -118,7 +137,7 @@ export async function deliverDueEmails(deps: DeliverDeps): Promise<BatchResult> 
           tx.outboxEmail.updateMany({
             where: { id, status: 'sending' },
             data: exhausted
-              ? { status: 'failed', leaseUntil: null }
+              ? { status: 'failed', leaseUntil: null, payloadJson: CLEARED_PAYLOAD }
               : {
                   status: 'pending',
                   leaseUntil: null,
@@ -135,6 +154,7 @@ export async function deliverDueEmails(deps: DeliverDeps): Promise<BatchResult> 
         },
         exhausted ? 'email delivery failed permanently' : 'email delivery failed, will retry',
       );
+      if (exhausted) reportFailed(id, row.attempts, error);
       result[exhausted ? 'failed' : 'retried'] += 1;
       continue;
     }
@@ -142,7 +162,7 @@ export async function deliverDueEmails(deps: DeliverDeps): Promise<BatchResult> 
       (tx) =>
         tx.outboxEmail.updateMany({
           where: { id, status: 'sending' },
-          data: { status: 'sent', sentAt: clock(), leaseUntil: null },
+          data: { status: 'sent', sentAt: clock(), leaseUntil: null, payloadJson: CLEARED_PAYLOAD },
         }),
       prisma,
     );

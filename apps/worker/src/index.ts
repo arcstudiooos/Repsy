@@ -15,6 +15,8 @@ async function main(): Promise<void> {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error('DATABASE_URL is not set');
   initSentry();
+  // Fails fast in production when RESEND_API_KEY / EMAIL_FROM are missing.
+  const emailPort = createEmailPort();
   await assertRuntimeRoleIfEnforced(prisma);
 
   const port = Number(process.env.PORT ?? process.env.WORKER_PORT ?? 8081);
@@ -26,7 +28,10 @@ async function main(): Promise<void> {
     Sentry.captureException(error);
   });
   await boss.start();
-  await registerJobs(boss, jobs, { prisma, port: createEmailPort(), logger });
+  const captureException = (error: unknown, context?: Record<string, unknown>) => {
+    Sentry.captureException(error, context ? { extra: context } : undefined);
+  };
+  await registerJobs(boss, jobs, { prisma, port: emailPort, logger, captureException });
 
   const intervalMs = outboxPollIntervalMs();
   const poll = () =>

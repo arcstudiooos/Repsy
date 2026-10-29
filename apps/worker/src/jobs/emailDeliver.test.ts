@@ -113,6 +113,8 @@ describe('deliverDueEmails', () => {
     expect(await deliverDueEmails(deps)).toEqual({ sent: 0, retried: 0, failed: 0 });
     expect(send).toHaveBeenCalledTimes(2);
     expect(sent).toHaveLength(1);
+    // Payload (may carry a single-use link) is not kept after a successful send.
+    expect(row.payloadJson).toEqual({});
     expect(sent[0]).toMatchObject({
       to: 'rcpt@example.test',
       subject: 'Hello',
@@ -155,7 +157,9 @@ describe('deliverDueEmails', () => {
       c.advance(backoffMs(attempt));
     }
     expect(await deliverDueEmails(deps)).toEqual({ sent: 0, retried: 0, failed: 1 });
-    expect(await load(id)).toMatchObject({ status: 'failed', attempts: EMAIL_RETRY_LIMIT });
+    const failed = await load(id);
+    expect(failed).toMatchObject({ status: 'failed', attempts: EMAIL_RETRY_LIMIT });
+    expect(failed.payloadJson).toEqual({});
 
     c.advance(3_600_000);
     await deliverDueEmails(deps);
@@ -217,6 +221,42 @@ describe('deliverDueEmails', () => {
     await deliverDueEmails({ prisma, port, logger: quiet, now: () => T0 });
     expect(send).not.toHaveBeenCalled();
     expect(await load(id)).toMatchObject({ status: 'sending' });
+  });
+});
+
+describe('failure reporting', () => {
+  it('reports a row that turns failed after the last attempt', async () => {
+    const id = await seedOnly();
+    await withSystem(
+      (tx) => tx.outboxEmail.update({ where: { id }, data: { attempts: EMAIL_RETRY_LIMIT - 1 } }),
+      prisma,
+    );
+    const captureException = vi.fn();
+    const { port } = fakePort(Infinity);
+    await deliverDueEmails({ prisma, port, logger: quiet, now: () => T0, captureException });
+    expect(captureException).toHaveBeenCalledTimes(1);
+    expect(captureException.mock.calls[0]?.[0]).toBeInstanceOf(Error);
+    expect(captureException.mock.calls[0]?.[1]).toMatchObject({ outboxId: id });
+  });
+
+  it('reports a row failed by lease reclaim, and not plain retries', async () => {
+    const id = await seedOnly();
+    await withSystem(
+      (tx) =>
+        tx.outboxEmail.update({
+          where: { id },
+          data: { status: 'sending', attempts: EMAIL_RETRY_LIMIT, leaseUntil: at(-1000) },
+        }),
+      prisma,
+    );
+    const retryId = await seedEmail();
+    const captureException = vi.fn();
+    const { port } = fakePort(Infinity);
+    await deliverDueEmails({ prisma, port, logger: quiet, now: () => T0, captureException });
+    expect(await load(id)).toMatchObject({ status: 'failed', payloadJson: {} });
+    expect(await load(retryId)).toMatchObject({ status: 'pending', attempts: 1 });
+    expect(captureException).toHaveBeenCalledTimes(1);
+    expect(captureException.mock.calls[0]?.[1]).toMatchObject({ outboxId: id });
   });
 });
 

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { betterAuth } from 'better-auth';
 import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
@@ -47,7 +48,8 @@ function enqueueAuthEmail(
         toUserId: input.userId,
         templateKey: input.kind,
         payload: { subject: input.subject, text: input.text },
-        idempotencyKey: `${input.kind}:${input.userId}:${input.token}`,
+        // Hash of the token: the key is kept forever (unique index), the token must not be.
+        idempotencyKey: `${input.kind}:${input.userId}:${createHash('sha256').update(input.token).digest('hex')}`,
       }),
     prisma,
   ).catch((error: unknown) => {

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { withSystem, type PrismaClient } from '@kinetic/db';
@@ -165,6 +166,19 @@ describe('password reset', () => {
     await auth.api.requestPasswordReset({ body: { email, redirectTo: '/reset-password' } });
     const link = await queuedLink('auth.reset_password', user.id);
     const token = (link.split('?')[0] ?? '').split('/').pop() as string;
+
+    // The idempotency key carries sha256(token), never the raw token.
+    const row = await withSystem(
+      (tx) =>
+        tx.outboxEmail.findFirstOrThrow({
+          where: { kind: 'auth.reset_password', toUserId: user.id },
+        }),
+      prisma,
+    );
+    expect(row.idempotencyKey).not.toContain(token);
+    expect(row.idempotencyKey).toBe(
+      `auth.reset_password:${user.id}:${createHash('sha256').update(token).digest('hex')}`,
+    );
 
     await auth.api.resetPassword({ body: { newPassword: 'a-brand-new-passphrase', token } });
     await expect(

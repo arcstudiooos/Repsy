@@ -2,10 +2,14 @@ import type { PgBoss, Queue } from 'pg-boss';
 import type { EmailPort, Logger } from '@kinetic/core';
 import type { PrismaClient } from '@kinetic/db';
 
+/** Error reporter (Sentry.captureException in the worker; a no-op without SENTRY_DSN). */
+export type CaptureException = (error: unknown, context?: Record<string, unknown>) => void;
+
 export interface JobDeps {
   prisma: PrismaClient;
   port: EmailPort;
   logger: Logger;
+  captureException?: CaptureException;
 }
 
 export interface JobDefinition<T extends object> {
@@ -18,7 +22,10 @@ export function defineJob<T extends object>(definition: JobDefinition<T>): JobDe
   return definition;
 }
 
-/** Registers every job's queue and worker. A throwing handler makes pg-boss retry. */
+/**
+ * Registers every job's queue and worker. A throwing handler is reported via
+ * captureException, then rethrown so pg-boss retries.
+ */
 export async function registerJobs(
   boss: PgBoss,
   jobs: ReadonlyArray<JobDefinition<never>>,
@@ -28,7 +35,14 @@ export async function registerJobs(
     const handle = job.handle as (data: object, deps: JobDeps) => Promise<void>;
     await boss.createQueue(job.name, job.queue);
     await boss.work<object>(job.name, async (batch) => {
-      for (const { data } of batch) await handle(data, deps);
+      for (const { data } of batch) {
+        try {
+          await handle(data, deps);
+        } catch (error) {
+          deps.captureException?.(error, { job: job.name });
+          throw error;
+        }
+      }
     });
   }
 }
