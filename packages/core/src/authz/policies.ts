@@ -1,11 +1,14 @@
 import { DomainError } from '../errors';
 import type { ActorContext, Role } from './actor';
 
-export type Action = 'org:read' | 'org:update';
+export type Action = 'org:read' | 'org:update' | 'client:read' | 'client:create' | 'client:update';
 
 const POLICY: Record<Action, readonly Role[]> = {
   'org:read': ['owner', 'coach'],
   'org:update': ['owner', 'coach'],
+  'client:read': ['owner', 'coach'],
+  'client:create': ['owner', 'coach'],
+  'client:update': ['owner', 'coach'],
 };
 
 export const can = (actor: ActorContext, action: Action): boolean =>

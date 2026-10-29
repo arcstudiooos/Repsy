@@ -24,6 +24,7 @@ const counts = () =>
       ownerMemberships: await tx.membership.count({ where: { role: 'owner' } }),
       credentials: await tx.account.count({ where: { providerId: 'credential' } }),
       pilotCodes: await tx.pilotCode.count(),
+      clients: await tx.client.count({ where: { status: 'active', consentAt: { not: null } } }),
     }),
     prisma,
   );
@@ -47,6 +48,7 @@ describe('seedDemo', () => {
       ownerMemberships: 1,
       credentials: 5,
       pilotCodes: 1,
+      clients: 3,
     });
     expect(first.pilotCode).toBe('AAAA-BBBB');
 

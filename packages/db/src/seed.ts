@@ -8,8 +8,9 @@ export const MIN_SEED_PASSWORD_LENGTH = 12;
 export const SEED_ADMIN_EMAIL = 'admin@example.test';
 export const SEED_COACH_EMAIL = 'coach@example.test';
 const ORG_NAME = 'Demo Coaching';
+const SEED_CONSENT_VERSION = '2026-01';
 const ORG_TIMEZONE = 'Europe/London';
-/** Synthetic people only. The Client model arrives in Sprint 1; until then clients are users + memberships. */
+/** Synthetic people only: each is a client user + membership + linked Client row. */
 const SEED_CLIENTS = [
   { email: 'client1@example.test', name: 'Alex Rivers' },
   { email: 'client2@example.test', name: 'Sam Okafor' },
@@ -95,6 +96,21 @@ export async function seedDemo(
     for (const client of SEED_CLIENTS) {
       const user = await upsertUser(client.email, client.name);
       await ensureMembership(user.id, 'client');
+      await tx.client.upsert({
+        where: { organizationId_email: { organizationId: org.id, email: client.email } },
+        create: {
+          organizationId: org.id,
+          coachUserId: coach.id,
+          userId: user.id,
+          name: client.name,
+          email: client.email,
+          status: 'active',
+          timezone: org.timezone,
+          consentVersion: SEED_CONSENT_VERSION,
+          consentAt: new Date(),
+        },
+        update: { userId: user.id, status: 'active' },
+      });
     }
     return admin.id;
   }, prisma);

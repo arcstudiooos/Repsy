@@ -22,6 +22,22 @@ enum MembershipStatus {
   @@map("membership_status")
 }
 
+enum ClientStatus {
+  invited
+  active
+  paused
+  archived
+
+  @@map("client_status")
+}
+
+enum Units {
+  kg
+  lb
+
+  @@map("units")
+}
+
 enum OutboxStatus {
   pending
   sending
@@ -47,6 +63,8 @@ model User {
   createdPilotCodes  PilotCode[]    @relation("PilotCodeCreatedBy")
   usedPilotCodes     PilotCode[]    @relation("PilotCodeUsedBy")
   outboxEmails       OutboxEmail[]
+  clientProfiles     Client[]      @relation("ClientUser")
+  coachedClients     Client[]      @relation("ClientCoach")
   sessions           Session[]
   accounts           Account[]
 
@@ -127,6 +145,7 @@ model Organization {
   memberships  Membership[]
   auditEvents  AuditEvent[]
   outboxEmails OutboxEmail[]
+  clients      Client[]
 
   @@map("organizations")
 }
@@ -203,4 +222,34 @@ model OutboxEmail {
   @@index([status])
   @@index([status, nextAttemptAt])
   @@map("outbox_emails")
+}
+
+model Client {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  userId         String?      @map("user_id") @db.Uuid
+  coachUserId    String       @map("coach_user_id") @db.Uuid
+  name           String
+  /// Stored lowercased.
+  email          String
+  status         ClientStatus @default(invited)
+  startDate      DateTime?    @map("start_date") @db.Date
+  goals          String?
+  /// IANA zone; defaults to the organization timezone at creation.
+  timezone       String
+  preferredUnits Units        @default(kg) @map("preferred_units")
+  consentVersion String?      @map("consent_version")
+  consentAt      DateTime?    @map("consent_at") @db.Timestamptz(3)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User?        @relation("ClientUser", fields: [userId], references: [id])
+  coach        User         @relation("ClientCoach", fields: [coachUserId], references: [id])
+
+  @@unique([organizationId, email])
+  @@unique([organizationId, userId])
+  @@index([organizationId, status])
+  @@index([organizationId, createdAt, id])
+  @@map("clients")
 }

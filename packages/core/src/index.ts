@@ -16,3 +16,14 @@ export { enforceAttemptLimit, ATTEMPT_LIMIT, ATTEMPT_WINDOW_MS } from './identit
 export { signupCoach, type SignupCoachInput } from './identity/signupCoach';
 export { generatePilotCode, hashPilotCode, normalizePilotCode } from './identity/pilotCode';
 export { createLogger, logger, type Logger } from './log';
+export { encodeCursor, decodeCursor, PAGE_SIZE, type CursorRow } from './pagination';
+export {
+  createClient,
+  listClients,
+  getClient,
+  updateClient,
+  toClientView,
+  escapeLike,
+  type ClientView,
+  type ClientStatus,
+} from './clients/clients';
