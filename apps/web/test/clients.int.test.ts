@@ -51,8 +51,9 @@ const post = (headers: Headers, body: unknown) =>
       body: JSON.stringify(body),
     }),
   );
-const get = (headers: Headers, id: string) =>
-  api()(clientGetRoute)(new Request(`${ORIGIN}/api/v1/clients/${id}`, { headers }));
+const ctx = (id: string) => ({ params: Promise.resolve({ id }) });
+const get = (headers: Headers, id: string, rawPath = id) =>
+  api()(clientGetRoute)(new Request(`${ORIGIN}/api/v1/clients/${rawPath}`, { headers }), ctx(id));
 const patch = (headers: Headers, id: string, body: unknown) =>
   api()(clientPatchRoute)(
     new Request(`${ORIGIN}/api/v1/clients/${id}`, {
@@ -60,6 +61,7 @@ const patch = (headers: Headers, id: string, body: unknown) =>
       headers: mutating(headers),
       body: JSON.stringify(body),
     }),
+    ctx(id),
   );
 
 beforeAll(async () => {
@@ -119,6 +121,9 @@ describe('clients API', () => {
     expect((await patch(headersFor(t.coachB), data.id, { name: 'Pwned' })).status).toBe(404);
     expect((await get(headersFor(t.coachA), data.id)).status).toBe(200);
     expect((await get(headersFor(t.coachA), 'not-a-uuid')).status).toBe(404);
+    // malformed percent-encoding must be a 404, never a 500 (no URL parsing in the handler)
+    expect((await get(headersFor(t.coachA), '%E0%A4%A')).status).toBe(404);
+    expect((await patch(headersFor(t.coachA), '%E0%A4%A', { name: 'x' })).status).toBe(404);
   });
 
   it('client role GET /clients → 403', async () => {

@@ -1,22 +1,7 @@
 import { z } from 'zod';
 import { appendAudit } from '@kinetic/db';
-import {
-  createClient,
-  getClient,
-  listClients,
-  updateClient,
-  DomainError,
-  type ClientView,
-} from '@kinetic/core';
+import { createClient, getClient, listClients, updateClient, type ClientView } from '@kinetic/core';
 import { ApiResult, type RouteDef } from '../api';
-
-/** Dynamic routes receive no params from `apiHandler`; the id is the last path segment. */
-function idFrom(request: Request): string {
-  const segments = new URL(request.url).pathname.split('/').filter(Boolean);
-  const id = segments[segments.length - 1];
-  if (!id) throw new DomainError('NOT_FOUND', 'Not found.');
-  return decodeURIComponent(id);
-}
 
 // Unknown keys (including any `organizationId`) are stripped by Zod and never read.
 const listSchema = z.object({
@@ -62,10 +47,7 @@ export const clientsPostRoute: RouteDef<typeof createSchema, true> = {
 
 export const clientGetRoute: RouteDef<undefined, true> = {
   can: 'client:read',
-  handler: ({ actor, request, tenant }) => {
-    const id = idFrom(request);
-    return tenant((tx) => getClient(tx, actor, id));
-  },
+  handler: ({ actor, params, tenant }) => tenant((tx) => getClient(tx, actor, params.id ?? '')),
 };
 
 const patchSchema = z.object({
@@ -82,8 +64,8 @@ const patchSchema = z.object({
 export const clientPatchRoute: RouteDef<typeof patchSchema, true> = {
   can: 'client:update',
   input: patchSchema,
-  handler: ({ actor, input, request, requestId, tenant }) => {
-    const id = idFrom(request);
+  handler: ({ actor, input, params, requestId, tenant }) => {
+    const id = params.id ?? '';
     return tenant(async (tx) => {
       const updated = await updateClient(tx, actor, id, input);
       await appendAudit(tx, {

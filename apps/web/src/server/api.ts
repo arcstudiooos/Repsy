@@ -39,6 +39,8 @@ export interface RouteCtx<I, R extends boolean> {
   /** All of the user's active memberships. */
   memberships: MembershipRef[];
   input: I;
+  /** Dynamic route segments (e.g. `id`), already decoded by Next. Empty when none. */
+  params: Record<string, string>;
   /** Runs `fn` in a transaction scoped to the actor's organization. */
   tenant<T>(fn: (tx: TenantTx) => Promise<T>): Promise<T>;
 }
@@ -156,14 +158,17 @@ function sanitizedStack(err: Error): string {
 export function createApiHandler(deps: ApiDeps = {}) {
   return function define<S extends z.ZodType | undefined = undefined, R extends boolean = true>(
     def: RouteDef<S, R>,
-  ): (request: Request) => Promise<Response> {
+  ): (
+    request: Request,
+    context?: { params?: Promise<Record<string, string>> | Record<string, string> },
+  ) => Promise<Response> {
     if (def.can !== undefined && def.requireOrg === false) {
       throw new Error(
         'apiHandler: `can` needs an active org; it cannot be used with requireOrg: false',
       );
     }
     const routeLimiter = def.rateLimit ? new InMemoryRateLimiter(def.rateLimit) : undefined;
-    return async (request) => {
+    return async (request, context) => {
       const requestId = getRequestId(request);
       try {
         if (!SAFE_METHODS.has(request.method)) {
@@ -212,6 +217,7 @@ export function createApiHandler(deps: ApiDeps = {}) {
           actor,
           memberships,
           input,
+          params: (await context?.params) ?? {},
           tenant: (fn) => {
             if (!actor) throw new Error('tenant() requires an active organization');
             return withTenant(actor.orgId, fn, deps.prisma, { userId: actor.userId });
