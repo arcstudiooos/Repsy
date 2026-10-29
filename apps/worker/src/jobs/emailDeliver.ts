@@ -4,12 +4,16 @@ import { defineJob } from './registry';
 
 export const EMAIL_DELIVER = 'email.deliver';
 export const EMAIL_RETRY_LIMIT = 5;
-const POLL_BATCH = 100;
+export const EMAIL_BATCH_SIZE = 25;
+export const EMAIL_LEASE_MS = 5 * 60_000;
+export const EMAIL_BACKOFF_BASE_MS = 30_000;
 
-interface DeliverDeps {
+export interface DeliverDeps {
   prisma: PrismaClient;
   port: EmailPort;
   logger: Logger;
+  /** Injectable clock for deterministic tests. */
+  now?: () => Date;
 }
 
 interface Row {
@@ -39,93 +43,132 @@ function render(row: Row, to: string): EmailMessage {
   };
 }
 
+/** 30s, 60s, 120s, 240s after attempts 1..4. */
+export const backoffMs = (attempts: number) => EMAIL_BACKOFF_BASE_MS * 2 ** (attempts - 1);
+
+export interface BatchResult {
+  sent: number;
+  retried: number;
+  failed: number;
+}
+
 /**
- * Delivers one pending outbox row. Throws on a retryable failure (pg-boss then
- * retries with backoff); returns 'failed' once EMAIL_RETRY_LIMIT attempts are used.
- * Non-pending rows are skipped, so a re-run never double-sends.
+ * One sweep over the outbox (system code, all orgs). The row is the source of
+ * truth for retries: a row is claimed atomically (status `sending` + lease,
+ * attempts incremented), sent, then marked sent / rescheduled / failed.
+ * Concurrent sweeps cannot claim the same row, so it is sent at most once
+ * per attempt; the idempotencyKey covers a crash between send and mark-sent.
  */
-export async function deliverEmail(
-  { prisma, port, logger }: DeliverDeps,
-  outboxId: string,
-): Promise<'sent' | 'failed' | 'skipped'> {
-  const row = await withSystem(
-    (tx) => tx.outboxEmail.findUnique({ where: { id: outboxId }, include: { toUser: true } }),
-    prisma,
-  );
-  if (!row || row.status !== 'pending') return 'skipped';
+export async function deliverDueEmails(deps: DeliverDeps): Promise<BatchResult> {
+  const { prisma, port, logger } = deps;
+  const clock = deps.now ?? (() => new Date());
+  const result: BatchResult = { sent: 0, retried: 0, failed: 0 };
+  const start = clock();
 
-  try {
-    await port.send(render(row, row.toUser.email));
-  } catch (error) {
-    const attempts = row.attempts + 1;
-    const exhausted = attempts >= EMAIL_RETRY_LIMIT;
-    await withSystem(
-      (tx) =>
-        tx.outboxEmail.updateMany({
-          where: { id: outboxId, status: 'pending' },
-          data: { attempts, ...(exhausted ? { status: 'failed' as const } : {}) },
-        }),
-      prisma,
-    );
-    logger.warn(
-      { outboxId, attempts, err: error instanceof Error ? error.message : 'unknown' },
-      exhausted ? 'email delivery failed permanently' : 'email delivery failed, will retry',
-    );
-    if (exhausted) return 'failed';
-    throw error;
-  }
+  // Reclaim expired leases: a crashed sender's attempt already counted.
+  await withSystem(async (tx) => {
+    const expired = { status: 'sending' as const, leaseUntil: { lt: start } };
+    await tx.outboxEmail.updateMany({
+      where: { ...expired, attempts: { gte: EMAIL_RETRY_LIMIT } },
+      data: { status: 'failed', leaseUntil: null },
+    });
+    await tx.outboxEmail.updateMany({
+      where: expired,
+      data: { status: 'pending', leaseUntil: null },
+    });
+  }, prisma);
 
-  await withSystem(
+  const candidates = await withSystem(
     (tx) =>
-      tx.outboxEmail.updateMany({
-        where: { id: outboxId, status: 'pending' },
-        data: { status: 'sent', sentAt: new Date(), attempts: row.attempts + 1 },
+      tx.outboxEmail.findMany({
+        where: { status: 'pending', nextAttemptAt: { lte: start } },
+        select: { id: true },
+        orderBy: { nextAttemptAt: 'asc' },
+        take: EMAIL_BATCH_SIZE,
       }),
     prisma,
   );
-  logger.info({ outboxId }, 'email sent');
-  return 'sent';
+
+  for (const { id } of candidates) {
+    const claimedAt = clock();
+    const claimed = await withSystem(
+      (tx) =>
+        tx.outboxEmail.updateMany({
+          where: { id, status: 'pending', nextAttemptAt: { lte: claimedAt } },
+          data: {
+            status: 'sending',
+            leaseUntil: new Date(claimedAt.getTime() + EMAIL_LEASE_MS),
+            attempts: { increment: 1 },
+          },
+        }),
+      prisma,
+    );
+    if (claimed.count !== 1) continue;
+
+    const row = await withSystem(
+      (tx) => tx.outboxEmail.findUniqueOrThrow({ where: { id }, include: { toUser: true } }),
+      prisma,
+    );
+    try {
+      await port.send(render(row, row.toUser.email));
+    } catch (error) {
+      const exhausted = row.attempts >= EMAIL_RETRY_LIMIT;
+      await withSystem(
+        (tx) =>
+          tx.outboxEmail.updateMany({
+            where: { id, status: 'sending' },
+            data: exhausted
+              ? { status: 'failed', leaseUntil: null }
+              : {
+                  status: 'pending',
+                  leaseUntil: null,
+                  nextAttemptAt: new Date(clock().getTime() + backoffMs(row.attempts)),
+                },
+          }),
+        prisma,
+      );
+      logger.warn(
+        {
+          outboxId: id,
+          attempts: row.attempts,
+          err: error instanceof Error ? error.message : 'unknown',
+        },
+        exhausted ? 'email delivery failed permanently' : 'email delivery failed, will retry',
+      );
+      result[exhausted ? 'failed' : 'retried'] += 1;
+      continue;
+    }
+    await withSystem(
+      (tx) =>
+        tx.outboxEmail.updateMany({
+          where: { id, status: 'sending' },
+          data: { status: 'sent', sentAt: clock(), leaseUntil: null },
+        }),
+      prisma,
+    );
+    logger.info({ outboxId: id }, 'email sent');
+    result.sent += 1;
+  }
+  return result;
 }
 
 export interface JobSender {
   send(name: string, data: object, options: object): Promise<string | null>;
 }
 
-/** Queues a deliver job for each pending row (system code: reads across orgs). */
-export async function pollPendingEmails({
-  prisma,
-  sender,
-  logger,
-}: {
-  prisma: PrismaClient;
-  sender: JobSender;
-  logger: Logger;
-}): Promise<number> {
-  const rows = await withSystem(
-    (tx) =>
-      tx.outboxEmail.findMany({
-        where: { status: 'pending' },
-        select: { id: true },
-        orderBy: { createdAt: 'asc' },
-        take: POLL_BATCH,
-      }),
-    prisma,
+/** Queues a sweep job; sweeps are idempotent, so overlap is harmless. */
+export function queueEmailSweep(sender: JobSender, intervalMs: number): Promise<string | null> {
+  return sender.send(
+    EMAIL_DELIVER,
+    {},
+    { singletonSeconds: Math.max(1, Math.floor(intervalMs / 1000)) },
   );
-  for (const { id } of rows) {
-    await sender.send(
-      EMAIL_DELIVER,
-      { outboxId: id },
-      { singletonKey: id, retryLimit: EMAIL_RETRY_LIMIT, retryBackoff: true },
-    );
-  }
-  if (rows.length > 0) logger.debug({ count: rows.length }, 'queued pending emails');
-  return rows.length;
 }
 
-export const emailDeliverJob = defineJob<{ outboxId: string }>({
+export const emailDeliverJob = defineJob<object>({
   name: EMAIL_DELIVER,
-  queue: { retryLimit: EMAIL_RETRY_LIMIT, retryBackoff: true },
-  handle: async ({ outboxId }, deps) => {
-    await deliverEmail(deps, outboxId);
+  queue: { retryLimit: 0 },
+  handle: async (_data, deps) => {
+    await deliverDueEmails(deps);
   },
 });

@@ -24,6 +24,7 @@ enum MembershipStatus {
 
 enum OutboxStatus {
   pending
+  sending
   sent
   failed
 
@@ -127,6 +128,8 @@ model OutboxEmail {
   idempotencyKey String       @unique @map("idempotency_key")
   status         OutboxStatus @default(pending)
   attempts       Int          @default(0)
+  nextAttemptAt  DateTime     @default(now()) @map("next_attempt_at") @db.Timestamptz(3)
+  leaseUntil     DateTime?    @map("lease_until") @db.Timestamptz(3)
   sentAt         DateTime?    @map("sent_at") @db.Timestamptz(3)
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
 
@@ -135,5 +138,6 @@ model OutboxEmail {
 
   @@index([organizationId])
   @@index([status])
+  @@index([status, nextAttemptAt])
   @@map("outbox_emails")
 }

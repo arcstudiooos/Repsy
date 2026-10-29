@@ -4,7 +4,7 @@ import { createEmailPort } from './adapters';
 import { createBoss } from './boss';
 import { outboxPollIntervalMs } from './config';
 import { startHealthServer } from './health';
-import { emailDeliverJob, pollPendingEmails } from './jobs/emailDeliver';
+import { emailDeliverJob, queueEmailSweep } from './jobs/emailDeliver';
 import { registerJobs } from './jobs/registry';
 import { initSentry, Sentry } from './sentry';
 
@@ -26,13 +26,14 @@ async function main(): Promise<void> {
   await boss.start();
   await registerJobs(boss, [emailDeliverJob], { prisma, port: createEmailPort(), logger });
 
+  const intervalMs = outboxPollIntervalMs();
   const poll = () =>
-    pollPendingEmails({ prisma, sender: boss, logger }).catch((error: unknown) => {
+    queueEmailSweep(boss, intervalMs).catch((error: unknown) => {
       logger.error({ err: errMessage(error) }, 'poll failed');
       Sentry.captureException(error);
     });
   await poll();
-  const timer = setInterval(() => void poll(), outboxPollIntervalMs());
+  const timer = setInterval(() => void poll(), intervalMs);
   logger.info({ port }, 'worker started');
 
   const shutdown = async () => {

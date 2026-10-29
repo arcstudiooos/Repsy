@@ -8,7 +8,7 @@ import { createLogger, logger as defaultLogger } from '@kinetic/core';
 import { withSystem, type PrismaClient } from '@kinetic/db';
 import { createTestDb } from '@kinetic/db/testing';
 import { DevSinkEmailAdapter } from '../adapters/devSinkEmail';
-import { deliverEmail, EMAIL_RETRY_LIMIT, pollPendingEmails } from './emailDeliver';
+import { backoffMs, deliverDueEmails, EMAIL_RETRY_LIMIT, queueEmailSweep } from './emailDeliver';
 
 let prisma: PrismaClient;
 let drop: () => Promise<void>;
@@ -30,6 +30,7 @@ async function seedEmail(): Promise<string> {
           templateKey: 'invite',
           payloadJson: { subject: 'Hello', text: 'Hi there' },
           idempotencyKey: `key-${seq}`,
+          nextAttemptAt: new Date('2026-01-01T00:00:00.000Z'),
         },
       }),
     prisma,
@@ -70,20 +71,46 @@ afterAll(async () => {
   await drop();
 });
 
-describe('deliverEmail', () => {
+const T0 = new Date('2026-01-01T00:00:00.000Z');
+const at = (ms: number) => new Date(T0.getTime() + ms);
+
+function clock() {
+  let t = T0.getTime();
+  return {
+    now: () => new Date(t),
+    advance(ms: number) {
+      t += ms;
+    },
+  };
+}
+
+/** Isolates a test from rows seeded by other tests. */
+async function seedOnly(): Promise<string> {
+  await withSystem(
+    (tx) => tx.outboxEmail.updateMany({ where: { status: 'pending' }, data: { status: 'failed' } }),
+    prisma,
+  );
+  return seedEmail();
+}
+
+describe('deliverDueEmails', () => {
   it('retries then succeeds without double-send', async () => {
-    const id = await seedEmail();
+    const id = await seedOnly();
     const { port, send, sent } = fakePort(1);
-    const deps = { prisma, port, logger: quiet };
+    const c = clock();
+    const deps = { prisma, port, logger: quiet, now: c.now };
 
-    await expect(deliverEmail(deps, id)).rejects.toThrow('provider down');
-    expect(await load(id)).toMatchObject({ status: 'pending', attempts: 1 });
+    expect(await deliverDueEmails(deps)).toEqual({ sent: 0, retried: 1, failed: 0 });
+    expect(await load(id)).toMatchObject({ status: 'pending', attempts: 1, leaseUntil: null });
 
-    expect(await deliverEmail(deps, id)).toBe('sent');
-    expect(await load(id)).toMatchObject({ status: 'sent' });
-    expect((await load(id)).sentAt).toBeInstanceOf(Date);
+    c.advance(30_000);
+    expect(await deliverDueEmails(deps)).toEqual({ sent: 1, retried: 0, failed: 0 });
+    const row = await load(id);
+    expect(row).toMatchObject({ status: 'sent', attempts: 2 });
+    expect(row.sentAt).toEqual(at(30_000));
 
-    expect(await deliverEmail(deps, id)).toBe('skipped');
+    c.advance(600_000);
+    expect(await deliverDueEmails(deps)).toEqual({ sent: 0, retried: 0, failed: 0 });
     expect(send).toHaveBeenCalledTimes(2);
     expect(sent).toHaveLength(1);
     expect(sent[0]).toMatchObject({
@@ -93,41 +120,117 @@ describe('deliverEmail', () => {
     });
   });
 
+  it('schedules exponential backoff and does not retry early', async () => {
+    const id = await seedOnly();
+    const { port, send } = fakePort(Infinity);
+    const c = clock();
+    const deps = { prisma, port, logger: quiet, now: c.now };
+
+    let elapsed = 0;
+    for (const [i, delay] of [30_000, 60_000, 120_000, 240_000].entries()) {
+      await deliverDueEmails(deps);
+      expect(await load(id)).toMatchObject({
+        status: 'pending',
+        attempts: i + 1,
+        nextAttemptAt: at(elapsed + delay),
+      });
+      c.advance(delay - 1);
+      await deliverDueEmails(deps); // one ms early: not due
+      expect(send).toHaveBeenCalledTimes(i + 1);
+      c.advance(1);
+      elapsed += delay;
+    }
+  });
+
   it('marks failed after retryLimit 5', async () => {
     expect(EMAIL_RETRY_LIMIT).toBe(5);
-    const id = await seedEmail();
+    const id = await seedOnly();
     const { port, send } = fakePort(Infinity);
-    const deps = { prisma, port, logger: quiet };
+    const c = clock();
+    const deps = { prisma, port, logger: quiet, now: c.now };
 
     for (let attempt = 1; attempt < EMAIL_RETRY_LIMIT; attempt += 1) {
-      await expect(deliverEmail(deps, id)).rejects.toThrow('provider down');
+      await deliverDueEmails(deps);
       expect(await load(id)).toMatchObject({ status: 'pending', attempts: attempt });
+      c.advance(backoffMs(attempt));
     }
-    expect(await deliverEmail(deps, id)).toBe('failed');
+    expect(await deliverDueEmails(deps)).toEqual({ sent: 0, retried: 0, failed: 1 });
     expect(await load(id)).toMatchObject({ status: 'failed', attempts: EMAIL_RETRY_LIMIT });
 
-    expect(await deliverEmail(deps, id)).toBe('skipped');
+    c.advance(3_600_000);
+    await deliverDueEmails(deps);
     expect(send).toHaveBeenCalledTimes(EMAIL_RETRY_LIMIT);
+  });
+
+  it('two concurrent sweeps over one row send exactly once', async () => {
+    const id = await seedOnly();
+    const { port, send } = fakePort(0);
+    const deps = { prisma, port, logger: quiet, now: () => T0 };
+
+    const results = await Promise.all([deliverDueEmails(deps), deliverDueEmails(deps)]);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(results.reduce((n, r) => n + r.sent, 0)).toBe(1);
+    expect(await load(id)).toMatchObject({ status: 'sent', attempts: 1 });
+  });
+
+  it('keeps every attempt count when failures run concurrently', async () => {
+    const ids = [await seedOnly(), await seedEmail(), await seedEmail()];
+    const { port } = fakePort(Infinity);
+    const deps = { prisma, port, logger: quiet, now: () => T0 };
+
+    await Promise.all([deliverDueEmails(deps), deliverDueEmails(deps), deliverDueEmails(deps)]);
+    for (const id of ids) {
+      expect(await load(id)).toMatchObject({ status: 'pending', attempts: 1 });
+    }
+  });
+
+  it('reclaims an expired lease and sends once', async () => {
+    const id = await seedOnly();
+    // Simulate a crashed sender: claimed, lease in the past.
+    await withSystem(
+      (tx) =>
+        tx.outboxEmail.update({
+          where: { id },
+          data: { status: 'sending', attempts: 1, leaseUntil: at(-1000) },
+        }),
+      prisma,
+    );
+    const { port, send } = fakePort(0);
+    const deps = { prisma, port, logger: quiet, now: () => T0 };
+
+    expect(await deliverDueEmails(deps)).toEqual({ sent: 1, retried: 0, failed: 0 });
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(await load(id)).toMatchObject({ status: 'sent', attempts: 2 });
+  });
+
+  it('does not touch a live lease', async () => {
+    const id = await seedOnly();
+    await withSystem(
+      (tx) =>
+        tx.outboxEmail.update({
+          where: { id },
+          data: { status: 'sending', attempts: 1, leaseUntil: at(60_000) },
+        }),
+      prisma,
+    );
+    const { port, send } = fakePort(0);
+    await deliverDueEmails({ prisma, port, logger: quiet, now: () => T0 });
+    expect(send).not.toHaveBeenCalled();
+    expect(await load(id)).toMatchObject({ status: 'sending' });
   });
 });
 
-describe('pollPendingEmails', () => {
-  it('queues one deliver job per pending row, keyed by row id', async () => {
-    const id = await seedEmail();
-    const queued: Array<{ name: string; data: object; options: object }> = [];
+describe('queueEmailSweep', () => {
+  it('queues one sweep job throttled to the poll interval', async () => {
+    const calls: Array<{ name: string; options: object }> = [];
     const sender = {
-      send: async (name: string, data: object, options: object) => {
-        queued.push({ name, data, options });
+      send: async (name: string, _data: object, options: object) => {
+        calls.push({ name, options });
         return 'job';
       },
     };
-    const count = await pollPendingEmails({ prisma, sender, logger: quiet });
-    expect(count).toBeGreaterThanOrEqual(1);
-    expect(queued).toContainEqual({
-      name: 'email.deliver',
-      data: { outboxId: id },
-      options: expect.objectContaining({ singletonKey: id }),
-    });
+    await queueEmailSweep(sender, 45_000);
+    expect(calls).toEqual([{ name: 'email.deliver', options: { singletonSeconds: 45 } }]);
   });
 });
 

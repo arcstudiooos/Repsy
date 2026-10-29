@@ -5,7 +5,7 @@ import { createLogger } from '@kinetic/core';
 import { withSystem, type PrismaClient } from '@kinetic/db';
 import { createTestDb } from '@kinetic/db/testing';
 import { createBoss } from './boss';
-import { emailDeliverJob, pollPendingEmails } from './jobs/emailDeliver';
+import { emailDeliverJob, queueEmailSweep } from './jobs/emailDeliver';
 import { registerJobs } from './jobs/registry';
 
 let prisma: PrismaClient;
@@ -20,7 +20,7 @@ afterAll(async () => {
 
 // Boots real pg-boss with the superuser DATABASE_URL: pg-boss creates its own
 // `pgboss` schema, which the restricted app role may not do.
-it('pg-boss delivers a polled outbox row end to end', async () => {
+it('pg-boss delivers an outbox row via a sweep job end to end', async () => {
   const outboxId = await withSystem(async (tx) => {
     const user = await tx.user.create({ data: { email: 'boot@example.test', name: 'B' } });
     const org = await tx.organization.create({
@@ -49,7 +49,7 @@ it('pg-boss delivers a polled outbox row end to end', async () => {
       port: { send: async (m) => void sent.push(m) },
       logger,
     });
-    await pollPendingEmails({ prisma, sender: boss, logger });
+    await queueEmailSweep(boss, 1000);
     await expect
       .poll(
         () => withSystem((tx) => tx.outboxEmail.findUnique({ where: { id: outboxId } }), prisma),
