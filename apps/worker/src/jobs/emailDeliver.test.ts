@@ -309,6 +309,79 @@ describe('DevSinkEmailAdapter', () => {
   });
 });
 
+describe('raw-address recipients and templates', () => {
+  it('delivers a client_invite by toEmail with the accept link, then clears the payload', async () => {
+    await withSystem(
+      (tx) =>
+        tx.outboxEmail.updateMany({ where: { status: 'pending' }, data: { status: 'failed' } }),
+      prisma,
+    );
+    const row = await withSystem(
+      (tx) =>
+        tx.outboxEmail.create({
+          data: {
+            organizationId: orgId,
+            kind: 'client_invite',
+            toEmail: 'invitee@example.test',
+            templateKey: 'client_invite',
+            payloadJson: { token: 'tok_123-abc', coachName: 'Coach <Carl>', orgName: 'Gym' },
+            idempotencyKey: 'client_invite:raw-1',
+            nextAttemptAt: new Date('2026-01-01T00:00:00.000Z'),
+          },
+        }),
+      prisma,
+    );
+    const { port, sent } = fakePort(0);
+    const result = await deliverDueEmails({
+      prisma,
+      port,
+      logger: quiet,
+      now: clock().now,
+      appBaseUrl: 'https://app.example.test/',
+    });
+    expect(result.sent).toBe(1);
+    expect(sent[0]).toMatchObject({
+      to: 'invitee@example.test',
+      subject: 'Coach <Carl> invited you to Kinetic',
+    });
+    expect(sent[0]?.text).toContain('https://app.example.test/invite/tok_123-abc');
+    expect(sent[0]?.html).toContain('&#60;Carl&#62;');
+    expect(await load(row.id)).toMatchObject({ status: 'sent', payloadJson: {} });
+  });
+
+  it('rejects a row with both or neither recipient (CHECK)', async () => {
+    const base = {
+      organizationId: orgId,
+      kind: 'k',
+      templateKey: 'k',
+      payloadJson: {},
+    };
+    await expect(
+      withSystem(
+        (tx) =>
+          tx.outboxEmail.create({
+            data: { ...base, idempotencyKey: 'chk-none' },
+          }),
+        prisma,
+      ),
+    ).rejects.toThrow();
+    await expect(
+      withSystem(
+        (tx) =>
+          tx.outboxEmail.create({
+            data: {
+              ...base,
+              toUserId: userId,
+              toEmail: 'a@example.test',
+              idempotencyKey: 'chk-both',
+            },
+          }),
+        prisma,
+      ),
+    ).rejects.toThrow();
+  });
+});
+
 describe('logger', () => {
   it('logger redacts body', () => {
     const lines: string[] = [];

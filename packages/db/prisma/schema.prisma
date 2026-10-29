@@ -65,6 +65,7 @@ model User {
   outboxEmails       OutboxEmail[]
   clientProfiles     Client[]      @relation("ClientUser")
   coachedClients     Client[]      @relation("ClientCoach")
+  createdInvites     ClientInvite[]
   sessions           Session[]
   accounts           Account[]
 
@@ -146,6 +147,7 @@ model Organization {
   auditEvents  AuditEvent[]
   outboxEmails OutboxEmail[]
   clients      Client[]
+  clientInvites ClientInvite[]
 
   @@map("organizations")
 }
@@ -204,7 +206,9 @@ model OutboxEmail {
   /// Null for platform emails (verification, password reset); visible only under bypass.
   organizationId String?      @map("organization_id") @db.Uuid
   kind           String
-  toUserId       String       @map("to_user_id") @db.Uuid
+  /// Exactly one of toUserId / toEmail is set (CHECK). toEmail addresses people without an account yet (client invites).
+  toUserId       String?      @map("to_user_id") @db.Uuid
+  toEmail        String?      @map("to_email")
   templateKey    String       @map("template_key")
   payloadJson    Json         @map("payload_json")
   idempotencyKey String       @unique @map("idempotency_key")
@@ -216,7 +220,7 @@ model OutboxEmail {
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
 
   organization Organization? @relation(fields: [organizationId], references: [id])
-  toUser       User         @relation(fields: [toUserId], references: [id])
+  toUser       User?        @relation(fields: [toUserId], references: [id], onDelete: Restrict)
 
   @@index([organizationId])
   @@index([status])
@@ -246,10 +250,32 @@ model Client {
   organization Organization @relation(fields: [organizationId], references: [id])
   user         User?        @relation("ClientUser", fields: [userId], references: [id])
   coach        User         @relation("ClientCoach", fields: [coachUserId], references: [id])
+  invites      ClientInvite[]
 
   @@unique([organizationId, email])
   @@unique([organizationId, userId])
   @@index([organizationId, status])
   @@index([organizationId, createdAt, id])
   @@map("clients")
+}
+
+model ClientInvite {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  clientId       String    @map("client_id") @db.Uuid
+  /// sha256 hex of the token; the plaintext only ever lives in the outbox payload until sent.
+  tokenHash      String    @unique @map("token_hash")
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(3)
+  acceptedAt     DateTime? @map("accepted_at") @db.Timestamptz(3)
+  revokedAt      DateTime? @map("revoked_at") @db.Timestamptz(3)
+  createdBy      String    @map("created_by") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  client       Client       @relation(fields: [clientId], references: [id])
+  creator      User         @relation(fields: [createdBy], references: [id])
+
+  @@index([clientId])
+  @@index([organizationId])
+  @@map("client_invites")
 }

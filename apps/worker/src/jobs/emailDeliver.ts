@@ -1,6 +1,7 @@
 import type { EmailMessage, EmailPort, Logger } from '@kinetic/core';
 import { withSystem, type PrismaClient } from '@kinetic/db';
 import { defineJob, type CaptureException } from './registry';
+import { renderTemplate } from './templates';
 
 export const EMAIL_DELIVER = 'email.deliver';
 export const EMAIL_RETRY_LIMIT = 5;
@@ -16,6 +17,8 @@ export interface DeliverDeps {
   now?: () => Date;
   /** Called once per row that transitions to `failed`. */
   captureException?: CaptureException;
+  /** Base URL for links in templates; defaults to APP_BASE_URL. */
+  appBaseUrl?: string;
 }
 
 /**
@@ -30,21 +33,15 @@ interface Row {
   idempotencyKey: string;
 }
 
-const escapeHtml = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
-
-/** Minimal rendering until real templates land: payload.subject/text/html, else the key. */
-function render(row: Row, to: string): EmailMessage {
+/** Renders via the template for `templateKey`, else payload.subject/text/html. */
+function render(row: Row, to: string, appBaseUrl: string): EmailMessage {
   const payload =
     row.payloadJson && typeof row.payloadJson === 'object' && !Array.isArray(row.payloadJson)
       ? (row.payloadJson as Record<string, unknown>)
       : {};
-  const str = (key: string) => (typeof payload[key] === 'string' ? payload[key] : undefined);
-  const text = str('text') ?? '';
   return {
     to,
-    subject: str('subject') ?? row.templateKey,
-    text,
-    html: str('html') ?? `<p>${escapeHtml(text)}</p>`,
+    ...renderTemplate(row.templateKey, payload, appBaseUrl),
     templateKey: row.templateKey,
     payload,
     idempotencyKey: row.idempotencyKey,
@@ -70,6 +67,7 @@ export interface BatchResult {
 export async function deliverDueEmails(deps: DeliverDeps): Promise<BatchResult> {
   const { prisma, port, logger } = deps;
   const clock = deps.now ?? (() => new Date());
+  const appBaseUrl = deps.appBaseUrl ?? process.env.APP_BASE_URL ?? 'http://localhost:3000';
   const result: BatchResult = { sent: 0, retried: 0, failed: 0 };
   const start = clock();
   const reportFailed = (outboxId: string, attempts: number, cause?: unknown) =>
@@ -129,7 +127,10 @@ export async function deliverDueEmails(deps: DeliverDeps): Promise<BatchResult> 
       prisma,
     );
     try {
-      await port.send(render(row, row.toUser.email));
+      // Recipient: raw address (invitee without an account) or the user's email.
+      const to = row.toEmail ?? row.toUser?.email;
+      if (!to) throw new Error('outbox row has no recipient');
+      await port.send(render(row, to, appBaseUrl));
     } catch (error) {
       const exhausted = row.attempts >= EMAIL_RETRY_LIMIT;
       await withSystem(

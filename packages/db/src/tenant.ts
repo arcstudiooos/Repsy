@@ -254,6 +254,9 @@ export type SystemTx = Prisma.TransactionClient;
  * SYSTEM CODE ONLY (worker sweeps, auth bootstrap, seeding, test setup).
  * Bypasses tenant isolation by setting `app.bypass_rls = 'on'` for the
  * transaction. Never call this from request handlers acting for a user.
+ * The one sanctioned request-path exception is `findInviteByTokenHash`
+ * (invites.ts): an invitee has no membership yet, so it looks up a single
+ * invite by token hash.
  */
 export function withSystem<T>(
   fn: (tx: SystemTx) => Promise<T>,

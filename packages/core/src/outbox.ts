@@ -1,13 +1,23 @@
 import type { Prisma, SystemTx, TenantTx } from '@kinetic/db';
 
-export interface EnqueueEmailInput {
+/** Addressed to an account (`toUserId`) or a raw address (`toEmail`, e.g. an invitee with no account yet): exactly one. */
+export type EmailRecipient =
+  { toUserId: string; toEmail?: never } | { toEmail: string; toUserId?: never };
+
+export type EnqueueEmailInput = EmailRecipient & {
   kind: string;
-  toUserId: string;
   templateKey: string;
   payload: Prisma.InputJsonObject;
   /** Same key enqueued twice produces one row. */
   idempotencyKey: string;
-}
+};
+
+const recipient = (input: EmailRecipient) => {
+  if ((input.toUserId === undefined) === (input.toEmail === undefined)) {
+    throw new Error('enqueueEmail needs exactly one of toUserId or toEmail');
+  }
+  return { toUserId: input.toUserId ?? null, toEmail: input.toEmail ?? null };
+};
 
 /**
  * Enqueues an email in the caller's transaction so it commits or rolls back
@@ -18,7 +28,7 @@ export async function enqueueEmail(tx: TenantTx, input: EnqueueEmailInput): Prom
   // organizationId is injected by the tenant-scoped client.
   const data = {
     kind: input.kind,
-    toUserId: input.toUserId,
+    ...recipient(input),
     templateKey: input.templateKey,
     payloadJson: input.payload,
     idempotencyKey: input.idempotencyKey,
@@ -41,7 +51,7 @@ export async function enqueuePlatformEmail(
       {
         organizationId: null,
         kind: input.kind,
-        toUserId: input.toUserId,
+        ...recipient(input),
         templateKey: input.templateKey,
         payloadJson: input.payload,
         idempotencyKey: input.idempotencyKey,

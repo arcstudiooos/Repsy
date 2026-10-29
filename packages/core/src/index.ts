@@ -1,6 +1,11 @@
 export const CORE_VERSION = '0.0.0';
 export type { EmailMessage, EmailPort } from './ports/email';
-export { enqueueEmail, enqueuePlatformEmail, type EnqueueEmailInput } from './outbox';
+export {
+  enqueueEmail,
+  enqueuePlatformEmail,
+  type EnqueueEmailInput,
+  type EmailRecipient,
+} from './outbox';
 export { DomainError, httpStatusFor, ERROR_STATUS, type ErrorCode } from './errors';
 export {
   ROLES,
@@ -27,3 +32,15 @@ export {
   type ClientView,
   type ClientStatus,
 } from './clients/clients';
+export {
+  issueInvite,
+  revokeInvite,
+  acceptInvite,
+  classifyInvite,
+  summarizeInvites,
+  INVITE_TTL_MS,
+  type InviteClass,
+  type InviteStatus,
+  type AcceptInviteInput,
+} from './invites/invites';
+export { newInviteToken, hashInviteToken } from './invites/token';

@@ -3,3 +3,4 @@ export { withTenant, withSystem, type TenantTx, type TenantOptions, type SystemT
 export { appendAudit, type AuditInput } from './audit';
 export { assertRuntimeRole, assertRuntimeRoleIfEnforced } from './assertRuntimeRole';
 export { Prisma, type PrismaClient } from './generated/client';
+export { findInviteByTokenHash, type InviteLookup } from './invites';

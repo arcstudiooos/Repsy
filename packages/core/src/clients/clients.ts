@@ -2,6 +2,7 @@ import type { TenantTx } from '@kinetic/db';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';
+import { summarizeInvites, type InviteStatus } from '../invites/invites';
 import { decodeCursor, encodeCursor, PAGE_SIZE } from '../pagination';
 
 export type ClientStatus = 'invited' | 'active' | 'paused' | 'archived';
@@ -15,6 +16,7 @@ export interface ClientView {
   goals: string | null;
   timezone: string;
   preferredUnits: 'kg' | 'lb';
+  inviteStatus: InviteStatus;
   createdAt: string;
 }
 
@@ -43,7 +45,7 @@ const COUNTED: ClientStatus[] = ['invited', 'active'];
 const invalid = (field: string, message: string) =>
   new DomainError('VALIDATION', 'Some fields are invalid.', { [field]: [message] });
 
-export function toClientView(row: ClientRow): ClientView {
+export function toClientView(row: ClientRow, inviteStatus: InviteStatus = 'none'): ClientView {
   return {
     id: row.id,
     name: row.name,
@@ -53,6 +55,7 @@ export function toClientView(row: ClientRow): ClientView {
     goals: row.goals,
     timezone: row.timezone,
     preferredUnits: row.preferredUnits,
+    inviteStatus,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -97,6 +100,27 @@ async function assertUnderLimit(tx: TenantTx, limit: number) {
   }
 }
 
+/** Coach-facing invite state per client, from the client's invite rows. */
+async function inviteStatuses(tx: TenantTx, ids: string[]): Promise<Map<string, InviteStatus>> {
+  const out = new Map<string, InviteStatus>();
+  if (ids.length === 0) return out;
+  const rows = await tx.clientInvite.findMany({
+    where: { clientId: { in: ids } },
+    select: { clientId: true, expiresAt: true, acceptedAt: true, revokedAt: true, createdAt: true },
+  });
+  const now = new Date();
+  for (const id of ids) {
+    out.set(
+      id,
+      summarizeInvites(
+        rows.filter((x) => x.clientId === id),
+        now,
+      ),
+    );
+  }
+  return out;
+}
+
 export async function createClient(
   tx: TenantTx,
   actor: ActorContext,
@@ -118,7 +142,7 @@ export async function createClient(
   const row = await tx.client.create({
     data: { coachUserId: actor.userId, name, email, goals, timezone: org.timezone },
   } as Parameters<typeof tx.client.create>[0]);
-  return toClientView(row);
+  return toClientView(row, 'none');
 }
 
 export async function listClients(
@@ -149,9 +173,13 @@ export async function listClients(
     take: PAGE_SIZE + 1,
   });
   const page = rows.slice(0, PAGE_SIZE);
+  const statuses = await inviteStatuses(
+    tx,
+    page.map((row) => row.id),
+  );
   const last = page[page.length - 1];
   return {
-    items: page.map(toClientView),
+    items: page.map((row) => toClientView(row, statuses.get(row.id))),
     nextCursor: rows.length > PAGE_SIZE && last ? encodeCursor(last) : null,
   };
 }
@@ -165,7 +193,7 @@ export async function getClient(
   if (!UUID.test(id)) throw new DomainError('NOT_FOUND', 'Not found.');
   const row = await tx.client.findFirst({ where: { id } });
   if (!row) throw new DomainError('NOT_FOUND', 'Not found.');
-  return toClientView(row);
+  return toClientView(row, (await inviteStatuses(tx, [id])).get(id));
 }
 
 export async function updateClient(
@@ -212,5 +240,5 @@ export async function updateClient(
   if (!current) throw new DomainError('NOT_FOUND', 'Not found.');
   if (org && !COUNTED.includes(current.status)) await assertUnderLimit(tx, org.activeClientLimit);
   const row = await tx.client.update({ where: { id }, data });
-  return toClientView(row);
+  return toClientView(row, (await inviteStatuses(tx, [id])).get(id));
 }
