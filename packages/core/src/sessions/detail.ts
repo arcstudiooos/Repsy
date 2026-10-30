@@ -39,7 +39,8 @@ export async function getSessionDetail(
   if (!isUuid(sessionId)) throw notFound();
   const now = opts.now ?? new Date();
   const row = await tx.workoutSession.findFirst({
-    where: { id: sessionId, ...sessionScope(actor) },
+    // Cancelled sessions are never shown (D-002 #7).
+    where: { id: sessionId, ...sessionScope(actor), state: { not: 'cancelled' } },
     select: { ...SUMMARY_SELECT, comment: true },
   });
   if (!row) throw notFound();
@@ -69,11 +70,19 @@ export async function getSessionDetail(
         workoutVersionExercise: { is: { exerciseId } },
       },
       orderBy: [{ session: { completedAt: 'desc' } }, { sessionId: 'desc' }],
-      select: { sessionId: true, session: { select: { scheduledLocalDate: true } } },
+      select: {
+        sessionId: true,
+        workoutVersionExerciseId: true,
+        session: { select: { scheduledLocalDate: true } },
+      },
     });
     if (!latest) continue;
     const sets = await tx.setLog.findMany({
-      where: { sessionId: latest.sessionId, workoutVersionExercise: { is: { exerciseId } } },
+      // One exercise row: an exercise listed twice in that workout must not merge its sets.
+      where: {
+        sessionId: latest.sessionId,
+        workoutVersionExerciseId: latest.workoutVersionExerciseId,
+      },
       orderBy: [{ setIndex: 'asc' }],
     });
     previous[exerciseId] = {

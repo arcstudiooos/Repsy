@@ -62,7 +62,7 @@ export async function withPortalTenant<T>(
     base.orgId,
     async (tx) => {
       const own = await tx.client.findFirst({
-        where: { userId: base.userId },
+        where: { userId: base.userId, status: { not: 'archived' } },
         select: { id: true },
       });
       if (!own) notFound();

@@ -13,6 +13,7 @@ import {
   sessionsOf,
   type ClientWorld,
 } from './fixtures.test-helpers';
+import { getSessionDetail } from './detail';
 import { completeSession, skipSession, startSession } from './lifecycle';
 
 let prisma: PrismaClient;
@@ -191,6 +192,42 @@ describe('coach-logged sessions (D-008 #7)', () => {
     const b = await newClientWorld(prisma, await newOrg(prisma));
     const theirs = await firstSession(b);
     expect(await codeOf(runAs(prisma, a.coach, (tx) => startSession(tx, a.coach, theirs)))).toBe(
+      'NOT_FOUND',
+    );
+  });
+});
+
+describe('archived clients and cancelled sessions', () => {
+  it('nobody starts, logs or finishes for an archived client (D-010 #4)', async () => {
+    const w = await newClientWorld(prisma, await newOrg(prisma));
+    const [a, b] = await sessionsOf(prisma, w.assignmentId);
+    await runAs(prisma, w.client, (tx) => startSession(tx, w.client, b!.id));
+    await withSystem(
+      (tx) => tx.client.update({ where: { id: w.clientId }, data: { status: 'archived' } }),
+      prisma,
+    );
+    for (const actor of [w.client, w.coach]) {
+      expect(await codeOf(runAs(prisma, actor, (tx) => startSession(tx, actor, a!.id)))).toBe(
+        'NOT_FOUND',
+      );
+      expect(
+        await codeOf(runAs(prisma, actor, (tx) => completeSession(tx, actor, b!.id, finish()))),
+      ).toBe('NOT_FOUND');
+    }
+    expect((await row(b!.id)).state).toBe('in_progress');
+    // History stays readable for the coach.
+    const detail = await runAs(prisma, w.coach, (tx) => getSessionDetail(tx, w.coach, b!.id));
+    expect(detail.session.state).toBe('in_progress');
+  });
+
+  it('a cancelled session does not open', async () => {
+    const w = await newClientWorld(prisma, await newOrg(prisma));
+    const id = await firstSession(w);
+    await withSystem(
+      (tx) => tx.workoutSession.update({ where: { id }, data: { state: 'cancelled' } }),
+      prisma,
+    );
+    expect(await codeOf(runAs(prisma, w.client, (tx) => getSessionDetail(tx, w.client, id)))).toBe(
       'NOT_FOUND',
     );
   });

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { PrismaClient } from '@kinetic/db';
+import { withSystem, type PrismaClient } from '@kinetic/db';
 import { createTestDb } from '@kinetic/db/testing';
 import { createAuth, type Auth } from '@/lib/auth';
 import { createApiHandler } from '@/server/api';
@@ -65,6 +65,15 @@ beforeAll(async () => {
     { params: Promise.resolve({ id: a.sessionIds[0]! }) },
   );
   expect(done.status).toBe(200);
+  // A minute ago: well outside the margin "Mark all as seen" keeps for in-flight completions.
+  await withSystem(
+    (tx) =>
+      tx.workoutSession.update({
+        where: { id: a.sessionIds[0]! },
+        data: { completedAt: new Date(Date.now() - 60_000) },
+      }),
+    prisma,
+  );
 });
 afterAll(async () => {
   await drop();

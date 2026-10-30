@@ -194,8 +194,10 @@ export function WorkoutLogger({
     const res = await startWorkout(session.id);
     setStarting(false);
     if (res.ok) {
-      // Local state only: a refresh would remount the logger mid-entry.
       setDetail(res.data);
+      // Already started elsewhere with sets logged: reload so the rows show what the server holds. Otherwise local
+      // state only, since a refresh would remount the logger mid-entry.
+      if (res.data.logs.length > 0) router.refresh();
     } else {
       setStartError(res.message);
     }

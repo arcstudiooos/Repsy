@@ -226,4 +226,19 @@ describe('session logging API', () => {
     expect(data.find((s) => s.id === id)?.loggedByCoach).toBe(true);
     expect(await audits(id, 'session.logged_by_coach')).toBe(1);
   });
+
+  it('an archived client loses access: 404 on their own sessions (D-010 #4)', async () => {
+    const id = sibling.sessionIds[1]!;
+    await withSystem(
+      (tx) => tx.client.update({ where: { id: sibling.clientId }, data: { status: 'archived' } }),
+      prisma,
+    );
+    const asArchived = headersFor(siblingUser, t.orgA.id);
+    expect((await call(sessionGetRoute, asArchived, id, '')).status).toBe(404);
+    expect((await call(sessionStartRoute, asArchived, id, '/start', {})).status).toBe(404);
+    const list = await api()(sessionsListRoute)(
+      new Request(`${ORIGIN}/api/v1/sessions`, { headers: asArchived }),
+    );
+    expect(list.status).toBe(404);
+  });
 });

@@ -36,7 +36,12 @@ export async function lockSession(
   sessionId: string,
 ): Promise<LockedSession> {
   if (!isUuid(sessionId)) throw notFound();
-  const where = { id: sessionId, ...sessionScope(actor) };
+  // Nobody logs for an archived client (D-010 #4): their sessions are read-only history.
+  const where = {
+    id: sessionId,
+    ...sessionScope(actor),
+    client: { is: { status: { not: 'archived' as const } } },
+  };
   const locked = await tx.workoutSession.updateMany({
     where,
     data: { pauseOffsetDays: { increment: 0 } },

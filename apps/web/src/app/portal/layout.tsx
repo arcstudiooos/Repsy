@@ -19,8 +19,17 @@ async function ClientGate({ children }: { children: ReactNode }) {
   const target = shellRedirect('portal', await getServerActorOutcome(user));
   if (target) redirect(target);
   const linked = await withServerTenant((tx, actor) =>
-    tx.client.findFirst({ where: { userId: actor.userId }, select: { id: true } }),
+    tx.client.findFirst({ where: { userId: actor.userId }, select: { id: true, status: true } }),
   );
+  // D-010 #4: archiving a client ends their access to this coach's organization.
+  if (linked?.status === 'archived') {
+    return (
+      <EmptyState
+        title="Your access has ended"
+        body="Your coach has closed your account in this workspace. Contact them if you think this is a mistake."
+      />
+    );
+  }
   // A client membership without a Client row is a data fault; redirecting to `/`
   // would loop straight back here, so say so instead.
   if (!linked) {
