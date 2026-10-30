@@ -94,3 +94,10 @@ export {
 export { toDisplay, fromDisplay, type Units } from './units';
 export { scheduleSlots, ScheduleInputError } from './schedule/scheduleSlots';
 export type { SlotKey, IsoWeekday, ScheduledSlot, ScheduleSlotsInput } from './schedule/types';
+export {
+  assignProgram,
+  getAssignmentSummary,
+  type AssignProgramInput,
+  type AssignProgramResult,
+  type AssignmentSummary,
+} from './assignments/assign';

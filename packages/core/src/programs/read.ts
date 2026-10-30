@@ -5,7 +5,21 @@ import { DomainError } from '../errors';
 import type { TrackingType } from '../exercises/options';
 import { decodeCursor, encodeCursor, PAGE_SIZE } from '../pagination';
 import { TITLE_MAX, UUID } from './commit';
-import { targetSchema, type SetTarget } from './targets';
+import type { SetTarget } from './targets';
+
+/**
+ * Stored targets were validated when they were committed. History reads must keep rendering even after
+ * targetSchema tightens, so this checks only the shape (array of objects) and never re-applies bounds.
+ */
+function storedTargets(json: unknown): SetTarget[] {
+  if (
+    !Array.isArray(json) ||
+    json.some((s) => s === null || typeof s !== 'object' || Array.isArray(s))
+  ) {
+    throw new Error('Stored workout targets have an unexpected shape.');
+  }
+  return json as SetTarget[];
+}
 
 const notFound = () => new DomainError('NOT_FOUND', 'Not found.');
 
@@ -191,7 +205,7 @@ export async function getProgram(
         exerciseName: e.exercise.name,
         trackingType: e.exercise.trackingType,
         note: e.note,
-        sets: targetSchema.parse(e.targetJson),
+        sets: storedTargets(e.targetJson),
       })),
     });
   }

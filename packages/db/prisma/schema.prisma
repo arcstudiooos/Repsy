@@ -76,6 +76,8 @@ model User {
   createdInvites           ClientInvite[]
   createdPrograms          Program[]               @relation("ProgramCreator")
   committedProgramVersions ProgramVersion[]        @relation("ProgramVersionCommitter")
+  confirmedAssignments     ProgramAssignment[]     @relation("AssignmentReadinessConfirmer")
+  loggedSessions           WorkoutSession[]        @relation("SessionLogger")
   sessions                 Session[]
   accounts                 Account[]
   coachProfile             CoachProfile?
@@ -166,6 +168,8 @@ model Organization {
   programSlots            ProgramSlot[]
   workoutVersions         WorkoutVersion[]
   workoutVersionExercises WorkoutVersionExercise[]
+  programAssignments      ProgramAssignment[]
+  workoutSessions         WorkoutSession[]
 
   @@map("organizations")
 }
@@ -265,11 +269,13 @@ model Client {
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  organization Organization   @relation(fields: [organizationId], references: [id])
-  user         User?          @relation("ClientUser", fields: [userId], references: [id])
-  coach        User           @relation("ClientCoach", fields: [coachUserId], references: [id])
-  invites      ClientInvite[]
-  programs     Program[]
+  organization    Organization        @relation(fields: [organizationId], references: [id])
+  user            User?               @relation("ClientUser", fields: [userId], references: [id])
+  coach           User                @relation("ClientCoach", fields: [coachUserId], references: [id])
+  invites         ClientInvite[]
+  programs        Program[]
+  assignments     ProgramAssignment[]
+  workoutSessions WorkoutSession[]
 
   @@unique([organizationId, email])
   @@unique([organizationId, userId])
@@ -388,14 +394,15 @@ model Program {
   createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  organization   Organization     @relation(fields: [organizationId], references: [id])
-  client         Client?          @relation(fields: [clientId], references: [id])
-  creator        User             @relation("ProgramCreator", fields: [createdBy], references: [id])
-  sourceProgram  Program?         @relation("ProgramSource", fields: [sourceProgramId], references: [id])
-  copies         Program[]        @relation("ProgramSource")
-  sourceVersion  ProgramVersion?  @relation("ProgramSourceVersion", fields: [sourceVersionId], references: [id])
-  currentVersion ProgramVersion?  @relation("ProgramCurrentVersion", fields: [currentVersionId], references: [id])
-  versions       ProgramVersion[] @relation("ProgramVersions")
+  organization   Organization        @relation(fields: [organizationId], references: [id])
+  client         Client?             @relation(fields: [clientId], references: [id])
+  creator        User                @relation("ProgramCreator", fields: [createdBy], references: [id])
+  sourceProgram  Program?            @relation("ProgramSource", fields: [sourceProgramId], references: [id])
+  copies         Program[]           @relation("ProgramSource")
+  sourceVersion  ProgramVersion?     @relation("ProgramSourceVersion", fields: [sourceVersionId], references: [id])
+  currentVersion ProgramVersion?     @relation("ProgramCurrentVersion", fields: [currentVersionId], references: [id])
+  versions       ProgramVersion[]    @relation("ProgramVersions")
+  assignments    ProgramAssignment[]
 
   @@index([organizationId, kind, status, createdAt, id])
   @@index([organizationId, clientId])
@@ -456,9 +463,10 @@ model WorkoutVersion {
   contentHash    String   @map("content_hash")
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  organization Organization             @relation(fields: [organizationId], references: [id])
-  exercises    WorkoutVersionExercise[]
-  slots        ProgramSlot[]
+  organization    Organization             @relation(fields: [organizationId], references: [id])
+  exercises       WorkoutVersionExercise[]
+  slots           ProgramSlot[]
+  workoutSessions WorkoutSession[]
 
   @@index([organizationId, contentHash])
   @@map("workout_versions")
@@ -483,4 +491,92 @@ model WorkoutVersionExercise {
   @@index([organizationId])
   @@index([exerciseId])
   @@map("workout_version_exercises")
+}
+
+enum AssignmentStatus {
+  active
+  ended
+  completed
+
+  @@map("assignment_status")
+}
+
+enum SessionState {
+  scheduled
+  in_progress
+  completed
+  skipped
+  missed
+  incomplete
+  cancelled
+
+  @@map("session_state")
+}
+
+/// A client's copy of a program running on chosen weekdays (D-001, D-010 #2). At most one `active` per client:
+/// the partial unique index program_assignments_one_active_per_client lives in the migration (Prisma cannot model it).
+model ProgramAssignment {
+  id                   String           @id @default(uuid()) @db.Uuid
+  organizationId       String           @map("organization_id") @db.Uuid
+  clientId             String           @map("client_id") @db.Uuid
+  /// The client's copy (kind=client), not the template.
+  programId            String           @map("program_id") @db.Uuid
+  startLocalDate       DateTime         @map("start_local_date") @db.Date
+  /// ISO weekdays 1-7.
+  weekdays             Int[]
+  /// The client's IANA zone at assignment time.
+  timezone             String
+  status               AssignmentStatus @default(active)
+  readinessConfirmedAt DateTime?        @map("readiness_confirmed_at") @db.Timestamptz(3)
+  readinessConfirmedBy String?          @map("readiness_confirmed_by") @db.Uuid
+  endedAt              DateTime?        @map("ended_at") @db.Timestamptz(3)
+  createdAt            DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  client          Client           @relation(fields: [clientId], references: [id])
+  program         Program          @relation(fields: [programId], references: [id])
+  readinessBy     User?            @relation("AssignmentReadinessConfirmer", fields: [readinessConfirmedBy], references: [id])
+  workoutSessions WorkoutSession[]
+
+  @@index([organizationId])
+  @@index([clientId])
+  @@index([programId])
+  @@map("program_assignments")
+}
+
+/// One planned workout (D-002 #4): generated at assign time for every slot. `workoutVersionId` stays null until locked.
+model WorkoutSession {
+  id                 String       @id @default(uuid()) @db.Uuid
+  organizationId     String       @map("organization_id") @db.Uuid
+  assignmentId       String       @map("assignment_id") @db.Uuid
+  clientId           String       @map("client_id") @db.Uuid
+  slotWeekIndex      Int          @map("slot_week_index")
+  slotDayIndex       Int          @map("slot_day_index")
+  /// Intended calendar date in the client's timezone.
+  scheduledLocalDate DateTime     @map("scheduled_local_date") @db.Date
+  /// 00:00 local on the date, as UTC.
+  scheduledAt        DateTime     @map("scheduled_at") @db.Timestamptz(3)
+  /// 23:59 local on the date, as UTC.
+  dueAt              DateTime     @map("due_at") @db.Timestamptz(3)
+  state              SessionState @default(scheduled)
+  workoutVersionId   String?      @map("workout_version_id") @db.Uuid
+  startedAt          DateTime?    @map("started_at") @db.Timestamptz(3)
+  completedAt        DateTime?    @map("completed_at") @db.Timestamptz(3)
+  submittedAt        DateTime?    @map("submitted_at") @db.Timestamptz(3)
+  comment            String?
+  loggedByUserId     String?      @map("logged_by_user_id") @db.Uuid
+  pauseOffsetDays    Int          @default(0) @map("pause_offset_days")
+  createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization   Organization      @relation(fields: [organizationId], references: [id])
+  assignment     ProgramAssignment @relation(fields: [assignmentId], references: [id])
+  client         Client            @relation(fields: [clientId], references: [id])
+  workoutVersion WorkoutVersion?   @relation(fields: [workoutVersionId], references: [id], onDelete: Restrict)
+  loggedBy       User?             @relation("SessionLogger", fields: [loggedByUserId], references: [id])
+
+  @@unique([assignmentId, slotWeekIndex, slotDayIndex])
+  @@index([organizationId, clientId, dueAt])
+  @@index([assignmentId])
+  @@index([workoutVersionId])
+  @@map("workout_sessions")
 }

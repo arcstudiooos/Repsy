@@ -11,7 +11,9 @@ export type Action =
   | 'exercise:read'
   | 'exercise:create'
   | 'program:read'
-  | 'program:write';
+  | 'program:write'
+  | 'assignment:read'
+  | 'assignment:write';
 
 const POLICY: Record<Action, readonly Role[]> = {
   'org:read': ['owner', 'coach'],
@@ -24,6 +26,8 @@ const POLICY: Record<Action, readonly Role[]> = {
   'exercise:create': ['owner', 'coach'],
   'program:read': ['owner', 'coach'],
   'program:write': ['owner', 'coach'],
+  'assignment:read': ['owner', 'coach'],
+  'assignment:write': ['owner', 'coach'],
 };
 
 export const can = (actor: ActorContext, action: Action): boolean =>
