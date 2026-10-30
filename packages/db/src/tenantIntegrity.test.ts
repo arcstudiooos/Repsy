@@ -26,6 +26,9 @@ interface Tenant {
   workoutVersionExerciseId: string;
   setLogId: string;
   checkinTemplateId: string;
+  threadId: string;
+  /** A client without a thread. */
+  spareClientId: string;
 }
 let a: Tenant;
 let b: Tenant;
@@ -109,8 +112,22 @@ async function seedTenant(tx: SystemTx, label: string): Promise<Tenant> {
   const template = await tx.checkinTemplate.create({
     data: { organizationId: org.id, title: 'T', questionsJson: [] },
   });
+  const thread = await tx.conversationThread.create({
+    data: { organizationId: org.id, clientId: client.id, coachUserId: user.id },
+  });
+  const spare = await tx.client.create({
+    data: {
+      organizationId: org.id,
+      coachUserId: user.id,
+      name: 'S',
+      email: `s-${label}@example.test`,
+      timezone: 'UTC',
+    },
+  });
   return {
     orgId: org.id,
+    spareClientId: spare.id,
+    threadId: thread.id,
     checkinTemplateId: template.id,
     setLogId: log.id,
     userId: user.id,
@@ -281,6 +298,29 @@ const CASES: [string, Insert][] = [
           tokenHash: `h-${crypto.randomUUID()}`,
           expiresAt: new Date('2099-01-01'),
           createdBy: own.userId,
+        },
+      }),
+  ],
+  [
+    'conversation_threads -> clients',
+    (tx, own, parent) =>
+      tx.conversationThread.create({
+        data: {
+          organizationId: own.orgId,
+          clientId: parent.spareClientId,
+          coachUserId: own.userId,
+        },
+      }),
+  ],
+  [
+    'messages -> conversation_threads',
+    (tx, own, parent) =>
+      tx.message.create({
+        data: {
+          organizationId: own.orgId,
+          threadId: parent.threadId,
+          senderUserId: own.userId,
+          body: 'hi',
         },
       }),
   ],

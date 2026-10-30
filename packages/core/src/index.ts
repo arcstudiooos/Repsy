@@ -127,6 +127,21 @@ export {
   type CheckinSubmittedHook,
 } from './checkins/checkins';
 export {
+  getMyThread,
+  getClientThread,
+  getThread,
+  listThreads,
+  listMessages,
+  sendMessage,
+  unreadMessageCount,
+  MESSAGE_MAX,
+  MESSAGE_PAGE_SIZE,
+  type MessageView,
+  type ThreadSummary,
+  type ThreadView,
+  type MessageSentHook,
+} from './messages/messages';
+export {
   SEEDED_QUESTIONS,
   QUESTION_TYPES,
   MAX_QUESTIONS,

@@ -115,7 +115,11 @@ export async function buildProgram(
 export async function openClientTab(page: Page, clientName: string, tab: string): Promise<void> {
   await page.goto('/app/clients');
   await page.getByRole('link', { name: clientName }).first().click();
-  await page.getByRole('link', { name: tab, exact: true }).click();
+  // Scoped: "Messages" is also a primary-nav link.
+  await page
+    .getByRole('navigation', { name: 'Client sections' })
+    .getByRole('link', { name: tab, exact: true })
+    .click();
   await expect(page).toHaveURL(new RegExp(`/${tab.toLowerCase()}$`));
 }
 

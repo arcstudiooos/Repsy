@@ -4,3 +4,4 @@ export { appendAudit, type AuditInput } from './audit';
 export { assertRuntimeRole, assertRuntimeRoleIfEnforced } from './assertRuntimeRole';
 export { Prisma, type PrismaClient } from './generated/client';
 export { findInviteByTokenHash, type InviteLookup } from './invites';
+export { wantsMessageEmail } from './preferences';

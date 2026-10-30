@@ -12,10 +12,14 @@ export function createPrismaClient(
   schema?: string,
   options: { authContext?: boolean } = {},
 ): PrismaClient {
+  // A non-default schema (test databases) is also the search_path, so raw SQL that names app functions resolves
+  // the same way Prisma's qualified table names do.
+  const settings = [
+    ...(options.authContext ? [AUTH_CONTEXT_OPTIONS] : []),
+    ...(schema ? [`-c search_path=${schema},public`] : []),
+  ].join(' ');
   const adapter = new PrismaPg(
-    options.authContext
-      ? { connectionString, options: AUTH_CONTEXT_OPTIONS }
-      : { connectionString },
+    settings ? { connectionString, options: settings } : { connectionString },
     schema ? { schema } : undefined,
   );
   return new PrismaClient({ adapter });

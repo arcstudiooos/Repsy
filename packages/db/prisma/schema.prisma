@@ -82,6 +82,8 @@ model User {
   programDrafts            ProgramDraft[]          @relation("ProgramDraftEditor")
   setLogRevisions          SetLogRevision[]        @relation("SetLogReviser")
   clientPauses             ClientPause[]           @relation("ClientPauseCreator")
+  coachThreads             ConversationThread[]    @relation("ThreadCoach")
+  sentMessages             Message[]               @relation("MessageSender")
   sessions                 Session[]
   accounts                 Account[]
   coachProfile             CoachProfile?
@@ -180,6 +182,8 @@ model Organization {
   clientPauses            ClientPause[]
   checkinTemplates        CheckinTemplate[]
   checkins                Checkin[]
+  conversationThreads     ConversationThread[]
+  messages                Message[]
 
   @@map("organizations")
 }
@@ -295,6 +299,7 @@ model Client {
   /// Composite FK (MATCH SIMPLE: null until a weekday is set) keeps the template in this org.
   checkinTemplate CheckinTemplate?    @relation(fields: [checkinTemplateId, organizationId], references: [id, organizationId], onDelete: Restrict)
   checkins        Checkin[]
+  thread          ConversationThread?
 
   @@unique([organizationId, email])
   @@unique([organizationId, userId])
@@ -790,4 +795,46 @@ model Checkin {
   @@index([organizationId, submittedAt])
   @@index([templateId])
   @@map("checkins")
+}
+
+/// The one conversation of a client and their coach (S4-4, Ruling 6), created on first open.
+model ConversationThread {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  clientId       String   @unique @map("client_id") @db.Uuid
+  coachUserId    String   @map("coach_user_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  coach        User         @relation("ThreadCoach", fields: [coachUserId], references: [id])
+  messages     Message[]
+
+  @@unique([id, organizationId])
+  /// Implied by the unique client_id; required by Prisma for the one-to-one composite relation.
+  @@unique([clientId, organizationId])
+  @@index([organizationId])
+  @@map("conversation_threads")
+}
+
+/// A text message (D-008 #1): immutable except `readAt` (trigger, migration 000025). The body never reaches logs,
+/// analytics or audit. `clientMessageId` makes a retried send idempotent.
+model Message {
+  id              String    @id @default(uuid()) @db.Uuid
+  organizationId  String    @map("organization_id") @db.Uuid
+  threadId        String    @map("thread_id") @db.Uuid
+  senderUserId    String    @map("sender_user_id") @db.Uuid
+  body            String
+  clientMessageId String?   @map("client_message_id") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  readAt          DateTime? @map("read_at") @db.Timestamptz(3)
+
+  organization Organization       @relation(fields: [organizationId], references: [id])
+  thread       ConversationThread @relation(fields: [threadId, organizationId], references: [id, organizationId])
+  sender       User               @relation("MessageSender", fields: [senderUserId], references: [id])
+
+  @@unique([threadId, clientMessageId])
+  @@index([threadId, createdAt, id])
+  @@index([organizationId, readAt])
+  @@map("messages")
 }

@@ -82,4 +82,16 @@ describe('issueCheckins', () => {
     expect(r.text).toContain('https://app.test/portal/check-ins/abc');
     expect(r.text).toContain('Sam');
   });
+
+  it('renders the new-message email without the body', () => {
+    const r = renderTemplate(
+      'new_message',
+      { senderName: 'Ana', toPortal: true },
+      'https://app.test',
+    );
+    expect(r.subject).toBe('New message from Ana');
+    expect(r.text).toBe(
+      'You have a new message from Ana.\n\nRead it in Kinetic: https://app.test/portal/messages',
+    );
+  });
 });

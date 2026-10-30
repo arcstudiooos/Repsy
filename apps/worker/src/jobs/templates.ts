@@ -51,6 +51,18 @@ const TEMPLATES: Record<string, Template> = {
     const subject = 'Your weekly check-in is ready';
     return { subject, text, html };
   },
+  // S4-4: who wrote, never what (the body stays in the app).
+  new_message: (payload, appBaseUrl) => {
+    const sender = str(payload, 'senderName') ?? 'your coach';
+    const path = payload.toPortal === true ? '/portal/messages' : '/app/messages';
+    const link = `${appBaseUrl.replace(/\/+$/, '')}${path}`;
+    const text = `You have a new message from ${sender}.\n\nRead it in Kinetic: ${link}`;
+    const html =
+      `<p>You have a new message from ${escapeHtml(sender)}.</p>` +
+      `<p><a href="${escapeHtml(link)}">Read it in Kinetic</a></p>`;
+    const subject = `New message from ${sender}`.replace(/[\r\n]+/g, ' ');
+    return { subject, text, html };
+  },
 };
 
 export function renderTemplate(
