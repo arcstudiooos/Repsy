@@ -325,6 +325,19 @@ const CASES: [string, Insert][] = [
       }),
   ],
   [
+    'export_jobs -> clients',
+    (tx, own, parent) =>
+      tx.exportJob.create({
+        data: {
+          organizationId: own.orgId,
+          requestedBy: own.userId,
+          clientId: parent.clientId,
+          scope: 'client_self',
+          idempotencyKey: crypto.randomUUID(),
+        },
+      }),
+  ],
+  [
     'internal_notes -> clients',
     (tx, own, parent) =>
       tx.internalNote.create({

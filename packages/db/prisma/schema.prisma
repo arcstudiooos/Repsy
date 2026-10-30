@@ -87,6 +87,7 @@ model User {
   resolvedFlags            ReviewFlag[]            @relation("FlagResolver")
   createdFlags             ReviewFlag[]            @relation("FlagCreator")
   internalNotes            InternalNote[]          @relation("NoteAuthor")
+  exportJobs               ExportJob[]             @relation("ExportRequester")
   sessions                 Session[]
   accounts                 Account[]
   coachProfile             CoachProfile?
@@ -189,6 +190,7 @@ model Organization {
   messages                Message[]
   reviewFlags             ReviewFlag[]
   internalNotes           InternalNote[]
+  exportJobs              ExportJob[]
 
   @@map("organizations")
 }
@@ -307,6 +309,7 @@ model Client {
   thread          ConversationThread?
   reviewFlags     ReviewFlag[]
   internalNotes   InternalNote[]
+  exportJobs      ExportJob[]
 
   @@unique([organizationId, email])
   @@unique([organizationId, userId])
@@ -921,4 +924,58 @@ model InternalNote {
   @@index([clientId, createdAt])
   @@index([organizationId])
   @@map("internal_notes")
+}
+
+enum ExportScope {
+  client_self
+  org
+
+  @@map("export_scope")
+}
+
+enum ExportStatus {
+  queued
+  running
+  done
+  failed
+
+  @@map("export_status")
+}
+
+/// A data export (S5-2, D-010 #4): requested in the app, built by the worker (`exports.build`) as CSV objects in
+/// private storage, downloadable only by the requester through short-lived app links. `filesJson` is written last,
+/// so a failed or half-built export never offers a file.
+model ExportJob {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  requestedBy    String       @map("requested_by") @db.Uuid
+  /// The client's own export (`client_self`); null for an organization export.
+  clientId       String?      @map("client_id") @db.Uuid
+  scope          ExportScope
+  resourceType   String       @default("csv_bundle") @map("resource_type")
+  status         ExportStatus @default(queued)
+  /// Storage prefix of the job's files.
+  objectKey      String?      @map("object_key")
+  /// `[{ name, key, rows }]`, set when the job is done.
+  filesJson      Json?        @map("files_json")
+  attempts       Int          @default(0)
+  claimedAt      DateTime?    @map("claimed_at") @db.Timestamptz(3)
+  completedAt    DateTime?    @map("completed_at") @db.Timestamptz(3)
+  /// Downloads are offered until then.
+  expiresAt      DateTime?    @map("expires_at") @db.Timestamptz(3)
+  /// A short error code (never content) when failed.
+  errorCode      String?      @map("error_code")
+  idempotencyKey String       @map("idempotency_key")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  requester    User         @relation("ExportRequester", fields: [requestedBy], references: [id])
+  /// Composite FK (MATCH SIMPLE: null for org exports) keeps the client in this org.
+  client       Client?      @relation(fields: [clientId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@unique([organizationId, requestedBy, idempotencyKey])
+  @@index([status, createdAt])
+  @@index([organizationId, requestedBy, createdAt])
+  @@map("export_jobs")
 }

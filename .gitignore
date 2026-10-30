@@ -21,6 +21,7 @@ npm-debug.log*
 
 # local
 .dev-emails/
+.dev-exports/
 .DS_Store
 
 # playwright

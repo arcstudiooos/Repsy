@@ -165,6 +165,24 @@ export {
   type FlagAction,
 } from './review/flags';
 export {
+  requestExport,
+  listMyExports,
+  exportFileFor,
+  buildExportFiles,
+  claimExport,
+  completeExport,
+  failExport,
+  EXPORT_AVAILABLE_DAYS,
+  EXPORT_MAX_ATTEMPTS,
+  type ExportView,
+  type ExportFile,
+  type ExportScope,
+  type ExportStatus,
+  type ExportStorage,
+  type ClaimedExport,
+} from './exports/exports';
+export { toCsv, type CsvValue } from './exports/csv';
+export {
   adherence,
   getAnalytics,
   parseRange,

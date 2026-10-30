@@ -25,7 +25,9 @@ export type Action =
   | 'message:send'
   | 'note:read'
   | 'note:write'
-  | 'analytics:read';
+  | 'analytics:read'
+  | 'export:org'
+  | 'export:self';
 
 const POLICY: Record<Action, readonly Role[]> = {
   'org:read': ['owner', 'coach'],
@@ -55,6 +57,9 @@ const POLICY: Record<Action, readonly Role[]> = {
   'note:read': ['owner', 'coach'],
   'note:write': ['owner', 'coach'],
   'analytics:read': ['owner', 'coach'],
+  // D-010 #4: the owner exports the organization; a client exports their own data.
+  'export:org': ['owner'],
+  'export:self': ['client'],
 };
 
 export const can = (actor: ActorContext, action: Action): boolean =>

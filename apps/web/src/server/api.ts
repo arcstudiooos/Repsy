@@ -252,6 +252,11 @@ export function createApiHandler(deps: ApiDeps = {}) {
           clientHash: (clientId) => clientHash(analyticsHashSecret(), clientId),
         } as RouteCtx<InputOf<S>, R>);
 
+        // A raw response (a file download) passes through with the request id.
+        if (result instanceof Response) {
+          result.headers.set('x-request-id', requestId);
+          return result;
+        }
         const { data, options } =
           result instanceof ApiResult
             ? { data: result.data, options: result.options }
