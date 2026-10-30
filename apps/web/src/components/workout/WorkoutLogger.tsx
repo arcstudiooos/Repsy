@@ -206,7 +206,12 @@ export function WorkoutLogger({
       <p className="text-sm text-secondary">
         {formatSessionDate(session.scheduledLocalDate, todayLocalDate)}
       </p>
-      <h1 className="text-2xl font-semibold break-words md:text-3xl">{workout.title}</h1>
+      {mode === 'coach' ? (
+        // The client page layout already holds the page's h1 (the client's name).
+        <h2 className="text-2xl font-semibold break-words">{workout.title}</h2>
+      ) : (
+        <h1 className="text-2xl font-semibold break-words md:text-3xl">{workout.title}</h1>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <SessionStateBadge state={session.state} overdue={session.overdue} />
         {session.loggedByCoach && <LoggedByCoachBadge />}
