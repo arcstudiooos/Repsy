@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { draftFromValues, EMPTY_DRAFT, fieldsFor, valuesFromDraft } from './set-entry';
+import { draftFromValues, EMPTY_DRAFT, fieldsFor, isBlank, valuesFromDraft } from './set-entry';
 
 describe('set entry', () => {
   it('135 lb → weightKg 61.235 → displays 135 (Review Focus #5)', () => {
@@ -56,5 +56,14 @@ describe('set entry', () => {
       ok: false,
       field: 'weight',
     });
+  });
+});
+
+describe('isBlank', () => {
+  it('reads only the value fields of a logged set', () => {
+    const empty = { reps: null, weightKg: null, rpe: null, durationSeconds: null, distanceM: null };
+    const logged = { ...empty, workoutVersionExerciseId: 'x', setIndex: 0, clientUpdatedAt: 'now' };
+    expect(isBlank(logged)).toBe(true);
+    expect(isBlank({ ...logged, reps: 0 })).toBe(false);
   });
 });

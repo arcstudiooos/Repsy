@@ -141,4 +141,9 @@ export function valuesFromDraft(
 }
 
 /** True when the row holds nothing worth saving. */
-export const isBlank = (v: SetValues) => Object.values(v).every((x) => x === null);
+export const isBlank = (v: SetValues): boolean =>
+  v.reps === null &&
+  v.weightKg === null &&
+  v.rpe === null &&
+  v.durationSeconds === null &&
+  v.distanceM === null;
