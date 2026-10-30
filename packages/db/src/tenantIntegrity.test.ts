@@ -11,6 +11,7 @@ import type { PrismaClient } from './generated/client';
 const BENCH = 'e0000000-0000-4000-8000-000000000001';
 
 let prisma: PrismaClient;
+let schema: string;
 let drop: () => Promise<void>;
 
 interface Tenant {
@@ -111,6 +112,56 @@ const CASES: [string, Insert][] = [
     'workout_sessions -> clients',
     (tx, own, parent) =>
       tx.workoutSession.create({ data: session(own, own.assignmentId, parent.clientId, 1) }),
+  ],
+  [
+    'workout_sessions -> workout_versions (locked version)',
+    (tx, own, parent) =>
+      tx.workoutSession.create({
+        data: {
+          ...session(own, own.assignmentId, own.clientId, 2),
+          workoutVersionId: parent.workoutVersionId,
+        },
+      }),
+  ],
+  [
+    'programs.current_version_id -> program_versions',
+    (tx, own, parent) =>
+      tx.program.create({
+        data: {
+          organizationId: own.orgId,
+          title: 'Current',
+          createdBy: own.userId,
+          currentVersionId: parent.programVersionId,
+        },
+      }),
+  ],
+  [
+    'programs.source_program_id -> programs',
+    (tx, own, parent) =>
+      tx.program.create({
+        data: {
+          organizationId: own.orgId,
+          title: 'Copy',
+          kind: 'client',
+          clientId: own.clientId,
+          sourceProgramId: parent.programId,
+          createdBy: own.userId,
+        },
+      }),
+  ],
+  [
+    'programs.source_version_id -> program_versions',
+    (tx, own, parent) =>
+      tx.program.create({
+        data: {
+          organizationId: own.orgId,
+          title: 'Copy',
+          kind: 'client',
+          clientId: own.clientId,
+          sourceVersionId: parent.programVersionId,
+          createdBy: own.userId,
+        },
+      }),
   ],
   [
     'program_assignments -> clients',
@@ -214,7 +265,7 @@ const outcome = (p: Promise<unknown>) =>
   );
 
 beforeAll(async () => {
-  ({ prisma, drop } = await createTestDb());
+  ({ prisma, schema, drop } = await createTestDb());
   ({ a, b } = await withSystem(
     async (tx) => ({ a: await seedTenant(tx, 'a'), b: await seedTenant(tx, 'b') }),
     prisma,
@@ -245,5 +296,20 @@ describe('cross-tenant parent links are refused by the database', () => {
       prisma,
     );
     expect(await outcome(created)).toBe('ok');
+  });
+});
+
+describe('session sweep index', () => {
+  it('workout_sessions has an (organization_id, state, due_at) index', async () => {
+    const rows = await withSystem(
+      (tx) =>
+        tx.$queryRaw<{ indexdef: string }[]>`
+          SELECT indexdef FROM pg_indexes
+          WHERE schemaname = ${schema} AND tablename = 'workout_sessions'`,
+      prisma,
+    );
+    expect(rows.map((r) => r.indexdef)).toContainEqual(
+      expect.stringMatching(/\(organization_id, state, due_at\)$/),
+    );
   });
 });

@@ -401,14 +401,17 @@ model Program {
   /// since SET NULL would also null organization_id (migration 000016).
   client         Client?             @relation(fields: [clientId, organizationId], references: [id, organizationId], onDelete: Restrict)
   creator        User                @relation("ProgramCreator", fields: [createdBy], references: [id])
-  sourceProgram  Program?            @relation("ProgramSource", fields: [sourceProgramId], references: [id])
+  /// Composite FKs (MATCH SIMPLE: null skips the check) keep the source and current version in this org (migration 000017).
+  sourceProgram  Program?            @relation("ProgramSource", fields: [sourceProgramId, organizationId], references: [id, organizationId], onDelete: Restrict)
   copies         Program[]           @relation("ProgramSource")
-  sourceVersion  ProgramVersion?     @relation("ProgramSourceVersion", fields: [sourceVersionId], references: [id])
-  currentVersion ProgramVersion?     @relation("ProgramCurrentVersion", fields: [currentVersionId], references: [id])
+  sourceVersion  ProgramVersion?     @relation("ProgramSourceVersion", fields: [sourceVersionId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  currentVersion ProgramVersion?     @relation("ProgramCurrentVersion", fields: [currentVersionId, organizationId], references: [id, organizationId], onDelete: Restrict)
   versions       ProgramVersion[]    @relation("ProgramVersions")
   assignments    ProgramAssignment[]
 
   @@unique([id, organizationId])
+  /// Lets the 1:1 currentVersion relation use the composite key; currentVersionId alone stays unique too.
+  @@unique([currentVersionId, organizationId])
   @@index([organizationId, kind, status, createdAt, id])
   @@index([organizationId, clientId])
   @@map("programs")
@@ -579,11 +582,14 @@ model WorkoutSession {
   organization   Organization      @relation(fields: [organizationId], references: [id])
   assignment     ProgramAssignment @relation(fields: [assignmentId, organizationId], references: [id, organizationId])
   client         Client            @relation(fields: [clientId, organizationId], references: [id, organizationId])
-  workoutVersion WorkoutVersion?   @relation(fields: [workoutVersionId], references: [id], onDelete: Restrict)
+  /// Composite FK (MATCH SIMPLE: null until locked) keeps the locked version in this org (migration 000017).
+  workoutVersion WorkoutVersion?   @relation(fields: [workoutVersionId, organizationId], references: [id, organizationId], onDelete: Restrict)
   loggedBy       User?             @relation("SessionLogger", fields: [loggedByUserId], references: [id])
 
   @@unique([assignmentId, slotWeekIndex, slotDayIndex])
   @@index([organizationId, clientId, dueAt])
+  /// Portal "upcoming" reads and the S4 missed-session sweep.
+  @@index([organizationId, state, dueAt])
   @@index([assignmentId])
   @@index([workoutVersionId])
   @@map("workout_sessions")
