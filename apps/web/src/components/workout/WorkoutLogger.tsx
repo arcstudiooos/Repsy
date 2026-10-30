@@ -1,8 +1,8 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
-import type { SessionDetail, TrackingType, Units } from '@kinetic/core';
+import { useEffect, useRef, useState } from 'react';
+import type { LoggedSet, SessionDetail, TrackingType, Units } from '@kinetic/core';
 import {
   LoggedByCoachBadge,
   RevisionMark,
@@ -20,8 +20,21 @@ import {
   valuesFromDraft,
   type SetDraft,
 } from '@/lib/set-entry';
-import { saveSets, startWorkout } from '@/lib/workout-api';
-import { FinishDialog } from './FinishDialog';
+import { saveSets, startWorkout, type SetLogPayload } from '@/lib/workout-api';
+import { hasDeviceStore } from '@/portal/offline/db';
+import { enqueue, flush, retryBlocked, syncState } from '@/portal/offline/outbox';
+import { cacheWorkoutPage, uncacheWorkoutPage } from '@/portal/offline/registerSw';
+import { useOnline, useSyncStatus } from '@/portal/offline/useSyncStatus';
+import {
+  applyLocal,
+  cacheWorkout,
+  evict,
+  localView,
+  markFinished,
+  newest,
+  type LocalView,
+} from '@/portal/offline/workoutCache';
+import { FinishDialog, type FinishBody } from './FinishDialog';
 import { SetRow, type RowStatus } from './SetRow';
 
 type Exercise = SessionDetail['workout']['exercises'][number];
@@ -58,10 +71,30 @@ function describeSet(
   return `${d.reps || '-'} reps${load}${rpe}`;
 }
 
+const SYNC_LABEL = {
+  saved_on_device: 'Saved on device',
+  syncing: 'Syncing',
+  synced: 'Synced',
+} as const;
+const OFFLINE_START = "You're offline. Open this workout while online to start it.";
+const CLOCK_BLOCKED = 'Your device clock is ahead. Fix the date and time, then tap Retry.';
+
+const toLogged = (p: SetLogPayload): LoggedSet => ({
+  workoutVersionExerciseId: p.workoutVersionExerciseId,
+  setIndex: p.setIndex,
+  reps: p.reps,
+  weightKg: p.weightKg,
+  rpe: p.rpe,
+  durationSeconds: p.durationSeconds,
+  distanceM: p.distanceM,
+  clientUpdatedAt: p.clientUpdatedAt,
+});
+
 /**
- * The workout screen (S2-2), shared by the client portal and the coach logging view (S2-3). Online only in
- * Sprint 2: each set saves when a field loses focus, and its status reads "Syncing" until the server acknowledges
- * it, then "Synced" (D-004 #6). It never claims "Saved on device"; that arrives with the IndexedDB outbox (S3-3).
+ * The workout screen (S2-2), shared by the client portal and the coach logging view (S2-3). Each set saves when a
+ * field loses focus. In the portal (S3-3) every write is stored on the device first ("Saved on device") and sent by
+ * the IndexedDB outbox ("Syncing"), so logging and finishing keep working offline; "Synced" only once the server
+ * acknowledged every queued write (D-004 #6). The coach view calls the API directly ("Syncing" until acknowledged).
  */
 export function WorkoutLogger({
   initial,
@@ -79,6 +112,9 @@ export function WorkoutLogger({
   backHref: string;
 }) {
   const router = useRouter();
+  const deviceFirst = mode === 'client';
+  const online = useOnline();
+  const sync = useSyncStatus(initial.session.id, deviceFirst);
   const [detail, setDetail] = useState(initial);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
@@ -150,17 +186,29 @@ export function WorkoutLogger({
       setStatus((s) => ({ ...s, [key]: { kind: 'idle' } }));
       return;
     }
+    const payload: SetLogPayload = {
+      workoutVersionExerciseId: e.id,
+      setIndex,
+      ...parsed.values,
+      clientUpdatedAt: new Date().toISOString(),
+      clientMutationId: crypto.randomUUID(),
+    };
+    if (deviceFirst) {
+      // Device first: the outbox sends it (now, or once back online) and the row reads from its state.
+      synced.current[key] = snapshot;
+      await applyLocal(session.id, [toLogged(payload)]);
+      await enqueue({
+        id: payload.clientMutationId,
+        sessionId: session.id,
+        kind: 'logs',
+        body: { items: [payload] },
+      });
+      setStatus((s) => ({ ...s, [key]: { kind: 'saved' } }));
+      return;
+    }
     inflight.current.add(key);
     setStatus((s) => ({ ...s, [key]: { kind: 'syncing' } }));
-    const res = await saveSets(session.id, [
-      {
-        workoutVersionExerciseId: e.id,
-        setIndex,
-        ...parsed.values,
-        clientUpdatedAt: new Date().toISOString(),
-        clientMutationId: crypto.randomUUID(),
-      },
-    ]);
+    const res = await saveSets(session.id, [payload]);
     inflight.current.delete(key);
     if (!res.ok) {
       setStatus((s) => ({ ...s, [key]: { kind: 'error', message: res.message } }));
@@ -192,12 +240,81 @@ export function WorkoutLogger({
     }
   };
 
+  /**
+   * Portal: brings in what this device holds (values typed offline, a finish still queued, newer server values from
+   * stale acks). Rows with an edit not yet handed to the outbox keep what is on screen.
+   */
+  function applyDeviceView(view: LocalView): void {
+    const logs = newest(initial.logs, view.logs);
+    const finishedHere = view.finished && initial.session.state === 'in_progress';
+    setDetail((d) => ({
+      ...d,
+      logs: newest(d.logs, logs),
+      session: finishedHere ? { ...d.session, state: view.finished! } : d.session,
+    }));
+    const next: Record<string, SetDraft> = {};
+    for (const l of logs) {
+      const key = rowKey(l.workoutVersionExerciseId, l.setIndex);
+      const current = draftsRef.current[key];
+      const untouched =
+        current === undefined
+          ? synced.current[key] === undefined
+          : synced.current[key] === JSON.stringify(current);
+      if (!untouched) continue;
+      const d = draftFromValues(l, units);
+      synced.current[key] = JSON.stringify(d);
+      next[key] = d;
+    }
+    if (Object.keys(next).length === 0) return;
+    draftsRef.current = { ...draftsRef.current, ...next };
+    setDrafts((all) => ({ ...all, ...next }));
+    setStatus((s) => ({
+      ...s,
+      ...Object.fromEntries(Object.keys(next).map((k) => [k, { kind: 'synced' as const }])),
+    }));
+  }
+
+  const pullDevice = () => {
+    let live = true;
+    void localView(initial.session.id).then((view) => {
+      if (live && view) applyDeviceView(view);
+    });
+    return () => {
+      live = false;
+    };
+  };
+
+  useEffect(() => {
+    if (!deviceFirst || !hasDeviceStore()) return;
+    const stop = pullDevice();
+    // Once the server holds the finished session and nothing waits to sync, the device copy can go.
+    if (initial.session.state === 'completed' || initial.session.state === 'skipped') {
+      void evict(initial.session.id).then((gone) => gone && uncacheWorkoutPage(initial.session.id));
+    }
+    return stop;
+    // Mount only: later server payloads remount this component (the page's `key`).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const syncStatus = sync?.status;
+  useEffect(() => {
+    if (syncStatus !== 'synced' || !deviceFirst) return;
+    return pullDevice();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncStatus]);
+
   async function onStart() {
+    if (deviceFirst && !online) return;
     setStarting(true);
     setStartError(null);
     const res = await startWorkout(session.id);
     setStarting(false);
     if (res.ok) {
+      if (deviceFirst) {
+        // Keep the workout on the device so it can be logged, closed and reopened offline.
+        await cacheWorkout(res.data);
+        cacheWorkoutPage(session.id);
+      }
       setDetail(res.data);
       // Already started elsewhere with sets logged: reload so the rows show what the server holds. Otherwise local
       // state only, since a refresh would remount the logger mid-entry.
@@ -207,7 +324,77 @@ export function WorkoutLogger({
     }
   }
 
-  const unsynced = Object.values(status).some((s) => s.kind !== 'synced' && s.kind !== 'idle');
+  // Portal rows stored on the device are safe to finish with: the outbox sends them before the completion.
+  const unsynced = Object.values(status).some((s) =>
+    deviceFirst
+      ? s.kind === 'invalid' || s.kind === 'unsaved' || s.kind === 'error'
+      : s.kind !== 'synced' && s.kind !== 'idle',
+  );
+
+  /** A row's status as shown: in the portal, stored rows follow the outbox (Saved on device, Syncing, Synced). */
+  const shownStatus = (key: string): RowStatus => {
+    const local = status[key] ?? (logged.has(key) ? { kind: 'synced' } : { kind: 'idle' });
+    if (!deviceFirst || (local.kind !== 'synced' && local.kind !== 'saved')) return local;
+    if (sync?.pendingRows.includes(key)) {
+      return { kind: sync.status === 'syncing' ? 'syncing' : 'saved' };
+    }
+    return sync ? { kind: 'synced' } : local;
+  };
+
+  /** Portal: complete/skip go through the outbox, after this session's set logs. */
+  const queueFinish =
+    (kind: 'complete' | 'skip') =>
+    async (body: FinishBody): Promise<{ ok: true; data: SessionDetail }> => {
+      const state = kind === 'complete' ? 'completed' : 'skipped';
+      await markFinished(session.id, state);
+      await enqueue({ id: body.idempotencyKey, sessionId: session.id, kind, body });
+      await flush();
+      return {
+        ok: true,
+        data: { ...detail, session: { ...detail.session, state, comment: body.comment ?? null } },
+      };
+    };
+
+  async function onFinished(done: SessionDetail, kind: 'complete' | 'skip') {
+    const word = kind === 'complete' ? 'completed' : 'skipped';
+    setDetail(done);
+    if (deviceFirst) {
+      const st = await syncState(session.id);
+      if (st.status !== 'synced' || st.rejected.length > 0) {
+        // Offline (or refused): stay on the finished workout, which shows what is still on the device.
+        toast.success(`Workout ${word}. Saved on device.`);
+        return;
+      }
+      if (await evict(session.id)) uncacheWorkoutPage(session.id);
+    }
+    toast.success(`Workout ${word}`);
+    router.push(`${backHref}?scope=past`);
+    router.refresh();
+  }
+
+  const syncPanel =
+    deviceFirst && sync ? (
+      <div className="mb-4 flex flex-col gap-2">
+        <p role="status" className={sync.status === 'synced' ? 'text-accent' : 'text-secondary'}>
+          {SYNC_LABEL[sync.status]}
+        </p>
+        {sync.blockedReason && (
+          <div className="flex flex-wrap items-center gap-3">
+            <p role="alert" className="text-danger">
+              {CLOCK_BLOCKED}
+            </p>
+            <Button variant="secondary" onClick={() => void retryBlocked(session.id)}>
+              Retry
+            </Button>
+          </div>
+        )}
+        {sync.rejected.map((r, i) => (
+          <p key={i} role="alert" className="text-danger">
+            Some changes couldn&apos;t be saved: {r.message}
+          </p>
+        ))}
+      </div>
+    ) : null;
 
   const header = (
     <div className="mb-6 flex flex-col gap-2">
@@ -255,19 +442,24 @@ export function WorkoutLogger({
             {startError}
           </p>
         )}
-        <Button className="min-h-14 w-full text-lg" onClick={onStart} disabled={starting}>
+        {deviceFirst && !online && (
+          <p role="status" className="mb-3 text-secondary">
+            {OFFLINE_START}
+          </p>
+        )}
+        <Button
+          className="min-h-14 w-full text-lg"
+          onClick={onStart}
+          disabled={starting || (deviceFirst && !online)}
+        >
           {starting ? 'Starting…' : 'Start workout'}
         </Button>
         <div className="mt-3 flex justify-center">
           <FinishDialog
             kind="skip"
             sessionId={session.id}
-            onDone={(done) => {
-              setDetail(done);
-              toast.success('Workout skipped');
-              router.push(`${backHref}?scope=past`);
-              router.refresh();
-            }}
+            disabled={deviceFirst && !online}
+            onDone={(done) => void onFinished(done, 'skip')}
           />
         </div>
       </>
@@ -292,6 +484,7 @@ export function WorkoutLogger({
     return (
       <>
         {header}
+        {syncPanel}
         {session.comment && (
           <Card className="mb-4">
             <CardHeader className="mb-1">
@@ -342,6 +535,7 @@ export function WorkoutLogger({
   return (
     <>
       {header}
+      {syncPanel}
       <ol className="flex flex-col gap-4">
         {workout.exercises.map((e) => {
           const prev = detail.previous[e.exerciseId];
@@ -379,9 +573,7 @@ export function WorkoutLogger({
                           units={units}
                           draft={drafts[key] ?? EMPTY_DRAFT}
                           placeholder={draftFromTarget(e.sets[i], units)}
-                          status={
-                            status[key] ?? (logged.has(key) ? { kind: 'synced' } : { kind: 'idle' })
-                          }
+                          status={shownStatus(key)}
                           onChange={(d) => onDraftChange(key, d)}
                           onCommit={() => void save(e, i)}
                         />
@@ -413,23 +605,15 @@ export function WorkoutLogger({
           kind="complete"
           sessionId={session.id}
           disabled={unsynced}
-          onDone={(done) => {
-            setDetail(done);
-            toast.success('Workout completed');
-            router.push(`${backHref}?scope=past`);
-            router.refresh();
-          }}
+          submit={deviceFirst ? queueFinish('complete') : undefined}
+          onDone={(done) => void onFinished(done, 'complete')}
         />
         <FinishDialog
           kind="skip"
           sessionId={session.id}
           disabled={unsynced}
-          onDone={(done) => {
-            setDetail(done);
-            toast.success('Workout skipped');
-            router.push(`${backHref}?scope=past`);
-            router.refresh();
-          }}
+          submit={deviceFirst ? queueFinish('skip') : undefined}
+          onDone={(done) => void onFinished(done, 'skip')}
         />
       </div>
     </>

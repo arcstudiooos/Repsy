@@ -11,6 +11,8 @@ export type RowStatus =
   | { kind: 'idle' }
   /** Edited since its last sync and not sent yet. */
   | { kind: 'unsaved' }
+  /** Stored on this device, waiting for the server (S3-3). */
+  | { kind: 'saved' }
   | { kind: 'syncing' }
   | { kind: 'synced' }
   | { kind: 'error'; message: string }
@@ -82,6 +84,7 @@ export function SetRow({
             failed ? 'text-danger' : status.kind === 'synced' ? 'text-accent' : 'text-secondary',
           )}
         >
+          {status.kind === 'saved' && 'Saved on device'}
           {status.kind === 'syncing' && 'Syncing'}
           {status.kind === 'synced' && 'Synced'}
           {status.kind === 'unsaved' && 'Not synced yet'}

@@ -23,6 +23,18 @@ const nextConfig: NextConfig = {
   transpilePackages: ['@kinetic/core', '@kinetic/db'],
   serverExternalPackages: ['pg'],
   partialPrefetching: true,
+  // The portal service worker (S3-3): always revalidated, so a new version is picked up on the next visit.
+  async headers() {
+    return [
+      {
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache' },
+          { key: 'Service-Worker-Allowed', value: '/portal/' },
+        ],
+      },
+    ];
+  },
   turbopack: {
     rules: {
       '*.css': {
