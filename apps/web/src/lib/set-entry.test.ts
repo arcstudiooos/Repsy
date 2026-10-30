@@ -42,6 +42,16 @@ describe('set entry', () => {
       ok: false,
       field: 'weight',
     });
+    expect(valuesFromDraft({ ...EMPTY_DRAFT, distanceM: '1,500' }, 'distance', 'kg')).toMatchObject(
+      {
+        ok: false,
+        field: 'distanceM',
+      },
+    );
+    expect(valuesFromDraft({ ...EMPTY_DRAFT, reps: '1,000' }, 'reps_load', 'kg')).toMatchObject({
+      ok: false,
+      field: 'reps',
+    });
     expect(valuesFromDraft({ ...EMPTY_DRAFT, weight: '4500' }, 'reps_load', 'lb')).toMatchObject({
       ok: false,
       field: 'weight',

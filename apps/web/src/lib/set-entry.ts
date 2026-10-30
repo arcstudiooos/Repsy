@@ -66,7 +66,10 @@ export function draftFromTarget(t: SetTarget | undefined, units: Units): SetDraf
 }
 
 const parse = (s: string): number | null | 'invalid' => {
-  const t = s.trim().replace(',', '.');
+  const raw = s.trim();
+  // A comma is a decimal comma ("62,5"), never a thousands separator: "1,500" is refused rather than read as 1.5.
+  if (/,\d{3}/.test(raw) || (raw.match(/,/g)?.length ?? 0) > 1) return 'invalid';
+  const t = raw.replace(',', '.');
   if (t === '') return null;
   const n = Number(t);
   return Number.isFinite(n) ? n : 'invalid';

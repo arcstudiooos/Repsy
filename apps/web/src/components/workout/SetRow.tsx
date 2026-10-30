@@ -9,10 +9,12 @@ import { cn } from '@/lib/utils';
 
 export type RowStatus =
   | { kind: 'idle' }
+  /** Edited since its last sync and not sent yet. */
+  | { kind: 'unsaved' }
   | { kind: 'syncing' }
   | { kind: 'synced' }
   | { kind: 'error'; message: string }
-  | { kind: 'invalid'; message: string };
+  | { kind: 'invalid'; field: keyof SetDraft; message: string };
 
 const LABELS: Record<keyof SetDraft, (units: Units) => string> = {
   reps: () => 'reps',
@@ -64,7 +66,8 @@ export function SetRow({
                 className="min-h-12"
                 placeholder={placeholder[f]}
                 value={draft[f]}
-                aria-invalid={status.kind === 'invalid' || undefined}
+                aria-invalid={(status.kind === 'invalid' && status.field === f) || undefined}
+                aria-describedby={`${id}-status`}
                 onChange={(ev) => onChange({ ...draft, [f]: ev.target.value })}
                 onBlur={onCommit}
               />
@@ -74,17 +77,19 @@ export function SetRow({
       </div>
       <div className="flex min-h-11 flex-wrap items-center gap-2 text-sm" aria-live="polite">
         <span
+          id={`${id}-status`}
           className={cn(
             failed ? 'text-danger' : status.kind === 'synced' ? 'text-accent' : 'text-secondary',
           )}
         >
           {status.kind === 'syncing' && 'Syncing'}
           {status.kind === 'synced' && 'Synced'}
+          {status.kind === 'unsaved' && 'Not synced yet'}
           {status.kind === 'error' && `Not synced. ${status.message}`}
           {status.kind === 'invalid' && status.message}
         </span>
         {status.kind === 'error' && (
-          <Button size="sm" variant="secondary" onClick={onCommit}>
+          <Button size="sm" variant="secondary" className="md:min-h-11" onClick={onCommit}>
             Retry
           </Button>
         )}

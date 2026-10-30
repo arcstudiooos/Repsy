@@ -38,8 +38,13 @@ export default async function PortalWorkout({
         All workouts
       </Link>
       <WorkoutLogger
-        // A restored (cached) instance must not keep a stale state: remount when the server's state differs.
-        key={data.detail.session.state}
+        // A restored (cached) instance must not keep stale state: remount when the server's state or logs differ.
+        key={`${data.detail.session.state}:${
+          data.detail.logs
+            .map((l) => l.clientUpdatedAt)
+            .sort()
+            .at(-1) ?? ''
+        }`}
         initial={data.detail}
         mode="client"
         units={data.detail.client.preferredUnits}

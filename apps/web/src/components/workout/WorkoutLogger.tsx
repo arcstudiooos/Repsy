@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { SessionDetail, TrackingType, Units } from '@kinetic/core';
 import { LoggedByCoachBadge, SessionStateBadge } from '@/components/sessions/SessionStateBadge';
 import { Button } from '@/components/ui/button';
@@ -105,8 +105,10 @@ export function WorkoutLogger({
       ]),
     ),
   );
-  // Per-row sequence, so a slow earlier response never overwrites a newer status.
-  const seq = useRef<Record<string, number>>({});
+  // The latest drafts, read by saves that resolve after more typing.
+  const draftsRef = useRef(drafts);
+  // Rows with a request in flight: at most one per row, so acks can't arrive out of order.
+  const inflight = useRef<Set<string>>(new Set());
 
   const { session, workout } = detail;
 
@@ -118,49 +120,71 @@ export function WorkoutLogger({
     return Math.min(MAX_SETS, Math.max(e.sets.length, loggedMax + 1, 1) + (extraRows[e.id] ?? 0));
   };
 
-  const save = useCallback(
-    async (e: Exercise, setIndex: number, draft: SetDraft) => {
-      const key = rowKey(e.id, setIndex);
-      const snapshot = JSON.stringify(draft);
-      const parsed = valuesFromDraft(draft, e.trackingType, units);
-      if (!parsed.ok) {
-        setStatus((s) => ({ ...s, [key]: { kind: 'invalid', message: parsed.message } }));
-        return;
-      }
-      if (synced.current[key] === snapshot) return;
-      if (synced.current[key] === undefined && isBlank(parsed.values)) {
-        setStatus((s) => ({ ...s, [key]: { kind: 'idle' } }));
-        return;
-      }
-      const mine = (seq.current[key] = (seq.current[key] ?? 0) + 1);
-      setStatus((s) => ({ ...s, [key]: { kind: 'syncing' } }));
-      const res = await saveSets(session.id, [
-        {
-          workoutVersionExerciseId: e.id,
-          setIndex,
-          ...parsed.values,
-          clientUpdatedAt: new Date().toISOString(),
-          clientMutationId: crypto.randomUUID(),
-        },
-      ]);
-      if (seq.current[key] !== mine) return;
-      if (!res.ok) {
-        setStatus((s) => ({ ...s, [key]: { kind: 'error', message: res.message } }));
-        return;
-      }
-      const ack = res.data[0];
-      if (ack?.status === 'stale') {
-        // Another device wrote a newer value: show what the server keeps.
-        const server = draftFromValues(ack.value, units);
-        synced.current[key] = JSON.stringify(server);
-        setDrafts((d) => ({ ...d, [key]: server }));
-      } else {
-        synced.current[key] = snapshot;
-      }
+  /**
+   * Saves a row's latest draft. "Synced" is shown only when the draft on screen equals what the server acknowledged
+   * (D-004 #6): a commit while a request is in flight waits for it, and every ack re-checks the latest draft, sending
+   * again when the user changed it meanwhile.
+   */
+  async function save(e: Exercise, setIndex: number): Promise<void> {
+    const key = rowKey(e.id, setIndex);
+    if (inflight.current.has(key)) return;
+    const draft = draftsRef.current[key] ?? EMPTY_DRAFT;
+    const snapshot = JSON.stringify(draft);
+    const parsed = valuesFromDraft(draft, e.trackingType, units);
+    if (!parsed.ok) {
+      const { field, message } = parsed;
+      setStatus((s) => ({ ...s, [key]: { kind: 'invalid', field, message } }));
+      return;
+    }
+    if (synced.current[key] === snapshot) {
       setStatus((s) => ({ ...s, [key]: { kind: 'synced' } }));
-    },
-    [session.id, units],
-  );
+      return;
+    }
+    if (synced.current[key] === undefined && isBlank(parsed.values)) {
+      setStatus((s) => ({ ...s, [key]: { kind: 'idle' } }));
+      return;
+    }
+    inflight.current.add(key);
+    setStatus((s) => ({ ...s, [key]: { kind: 'syncing' } }));
+    const res = await saveSets(session.id, [
+      {
+        workoutVersionExerciseId: e.id,
+        setIndex,
+        ...parsed.values,
+        clientUpdatedAt: new Date().toISOString(),
+        clientMutationId: crypto.randomUUID(),
+      },
+    ]);
+    inflight.current.delete(key);
+    if (!res.ok) {
+      setStatus((s) => ({ ...s, [key]: { kind: 'error', message: res.message } }));
+      return;
+    }
+    const ack = res.data[0];
+    if (ack?.status === 'stale') {
+      // Another device wrote a newer value: the server keeps it. Show it unless the user typed on meanwhile.
+      const server = draftFromValues(ack.value, units);
+      synced.current[key] = JSON.stringify(server);
+      if (JSON.stringify(draftsRef.current[key] ?? EMPTY_DRAFT) === snapshot) {
+        draftsRef.current = { ...draftsRef.current, [key]: server };
+        setDrafts((d) => ({ ...d, [key]: server }));
+      }
+    } else {
+      synced.current[key] = snapshot;
+    }
+    // Re-check the latest draft: Synced if unchanged, otherwise save the newer value.
+    await save(e, setIndex);
+  }
+
+  const onDraftChange = (key: string, d: SetDraft) => {
+    draftsRef.current = { ...draftsRef.current, [key]: d };
+    setDrafts((all) => ({ ...all, [key]: d }));
+    // An edit not yet sent is never shown as synced.
+    if (!inflight.current.has(key) && synced.current[key] !== JSON.stringify(d)) {
+      const kind = synced.current[key] === undefined ? 'idle' : 'unsaved';
+      setStatus((s) => ({ ...s, [key]: { kind } }));
+    }
+  };
 
   async function onStart() {
     setStarting(true);
@@ -175,9 +199,7 @@ export function WorkoutLogger({
     }
   }
 
-  const unsynced = Object.values(status).some(
-    (s) => s.kind === 'syncing' || s.kind === 'error' || s.kind === 'invalid',
-  );
+  const unsynced = Object.values(status).some((s) => s.kind !== 'synced' && s.kind !== 'idle');
 
   const header = (
     <div className="mb-6 flex flex-col gap-2">
@@ -253,7 +275,9 @@ export function WorkoutLogger({
         )}
         <ol className="flex flex-col gap-3">
           {workout.exercises.map((e) => {
-            const sets = detail.logs.filter((l) => l.workoutVersionExerciseId === e.id);
+            const sets = detail.logs.filter(
+              (l) => l.workoutVersionExerciseId === e.id && !isBlank(l),
+            );
             return (
               <li key={e.id}>
                 <Card>
@@ -325,8 +349,8 @@ export function WorkoutLogger({
                           status={
                             status[key] ?? (logged.has(key) ? { kind: 'synced' } : { kind: 'idle' })
                           }
-                          onChange={(d) => setDrafts((all) => ({ ...all, [key]: d }))}
-                          onCommit={() => void save(e, i, drafts[key] ?? EMPTY_DRAFT)}
+                          onChange={(d) => onDraftChange(key, d)}
+                          onCommit={() => void save(e, i)}
                         />
                       );
                     })}
