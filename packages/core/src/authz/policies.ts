@@ -17,7 +17,14 @@ export type Action =
   | 'session:read'
   | 'session:log'
   | 'review:read'
-  | 'review:update';
+  | 'review:update'
+  | 'checkin:manage'
+  | 'checkin:read'
+  | 'checkin:submit'
+  | 'message:read'
+  | 'message:send'
+  | 'note:read'
+  | 'note:write';
 
 const POLICY: Record<Action, readonly Role[]> = {
   'org:read': ['owner', 'coach'],
@@ -37,6 +44,15 @@ const POLICY: Record<Action, readonly Role[]> = {
   'session:log': ['owner', 'coach', 'client'],
   'review:read': ['owner', 'coach'],
   'review:update': ['owner', 'coach'],
+  'checkin:manage': ['owner', 'coach'],
+  // Clients too, scoped to their own check-ins and thread by core.
+  'checkin:read': ['owner', 'coach', 'client'],
+  'checkin:submit': ['client'],
+  'message:read': ['owner', 'coach', 'client'],
+  'message:send': ['owner', 'coach', 'client'],
+  // Internal notes never reach a client (S4-5).
+  'note:read': ['owner', 'coach'],
+  'note:write': ['owner', 'coach'],
 };
 
 export const can = (actor: ActorContext, action: Action): boolean =>

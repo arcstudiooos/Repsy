@@ -25,6 +25,7 @@ interface Tenant {
   sessionId: string;
   workoutVersionExerciseId: string;
   setLogId: string;
+  checkinTemplateId: string;
 }
 let a: Tenant;
 let b: Tenant;
@@ -105,8 +106,12 @@ async function seedTenant(tx: SystemTx, label: string): Promise<Tenant> {
       loggedByUserId: user.id,
     },
   });
+  const template = await tx.checkinTemplate.create({
+    data: { organizationId: org.id, title: 'T', questionsJson: [] },
+  });
   return {
     orgId: org.id,
+    checkinTemplateId: template.id,
     setLogId: log.id,
     userId: user.id,
     sessionId: ws.id,
@@ -118,6 +123,16 @@ async function seedTenant(tx: SystemTx, label: string): Promise<Tenant> {
     assignmentId: assignment.id,
   };
 }
+
+const checkinRow = (own: Tenant, clientId: string, templateId: string) => ({
+  organizationId: own.orgId,
+  clientId,
+  templateId,
+  periodLocalDate: new Date(`20${Math.floor(Math.random() * 70) + 30}-01-05`),
+  questionsJson: [],
+  issuedAt: new Date('2026-11-04T06:00:00Z'),
+  dueAt: new Date('2026-11-04T23:59:00Z'),
+});
 
 const session = (own: Tenant, assignmentId: string, clientId: string, day: number) => ({
   organizationId: own.orgId,
@@ -266,6 +281,31 @@ const CASES: [string, Insert][] = [
           tokenHash: `h-${crypto.randomUUID()}`,
           expiresAt: new Date('2099-01-01'),
           createdBy: own.userId,
+        },
+      }),
+  ],
+  [
+    'checkins -> clients',
+    (tx, own, parent) =>
+      tx.checkin.create({ data: checkinRow(own, parent.clientId, own.checkinTemplateId) }),
+  ],
+  [
+    'checkins -> checkin_templates',
+    (tx, own, parent) =>
+      tx.checkin.create({ data: checkinRow(own, own.clientId, parent.checkinTemplateId) }),
+  ],
+  [
+    'clients -> checkin_templates',
+    (tx, own, parent) =>
+      tx.client.create({
+        data: {
+          organizationId: own.orgId,
+          coachUserId: own.userId,
+          name: 'C2',
+          email: `c2-${crypto.randomUUID()}@example.test`,
+          timezone: 'UTC',
+          checkinWeekday: 1,
+          checkinTemplateId: parent.checkinTemplateId,
         },
       }),
   ],

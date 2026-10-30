@@ -178,6 +178,8 @@ model Organization {
   programDrafts           ProgramDraft[]
   setLogRevisions         SetLogRevision[]
   clientPauses            ClientPause[]
+  checkinTemplates        CheckinTemplate[]
+  checkins                Checkin[]
 
   @@map("organizations")
 }
@@ -276,6 +278,9 @@ model Client {
   preferredUnits Units        @default(kg) @map("preferred_units")
   consentVersion String?      @map("consent_version")
   consentAt      DateTime?    @map("consent_at") @db.Timestamptz(3)
+  /// ISO weekday (1 = Monday ... 7 = Sunday) the weekly check-in is issued on; null = no check-ins (S4-1).
+  checkinWeekday    Int?      @map("checkin_weekday")
+  checkinTemplateId String?   @map("checkin_template_id") @db.Uuid
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -287,6 +292,9 @@ model Client {
   assignments     ProgramAssignment[]
   workoutSessions WorkoutSession[]
   pauses          ClientPause[]
+  /// Composite FK (MATCH SIMPLE: null until a weekday is set) keeps the template in this org.
+  checkinTemplate CheckinTemplate?    @relation(fields: [checkinTemplateId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  checkins        Checkin[]
 
   @@unique([organizationId, email])
   @@unique([organizationId, userId])
@@ -732,4 +740,54 @@ model ClientPause {
   /// The worker's due-pause scan.
   @@index([endedAt, resumeLocalDate])
   @@map("client_pauses")
+}
+
+/// The organization's weekly check-in template (S4-1, D-008 #9, Ruling 1: one per organization), created from the
+/// seeded questions on first use and editable by the coach. `questionsJson` is validated by core (`questionsSchema`).
+model CheckinTemplate {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @unique @map("organization_id") @db.Uuid
+  title          String
+  questionsJson  Json     @map("questions_json")
+  isSeeded       Boolean  @default(true) @map("is_seeded")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  clients      Client[]
+  checkins     Checkin[]
+
+  @@unique([id, organizationId])
+  @@map("checkin_templates")
+}
+
+/// One weekly check-in of a client (S4-1, D-010 #3): issued 06:00 local, due 23:59 local. `questionsJson` is the
+/// template's questions when issued, so later template edits never change what was asked.
+model Checkin {
+  id                   String    @id @default(uuid()) @db.Uuid
+  organizationId       String    @map("organization_id") @db.Uuid
+  clientId             String    @map("client_id") @db.Uuid
+  templateId           String    @map("template_id") @db.Uuid
+  periodLocalDate      DateTime  @map("period_local_date") @db.Date
+  questionsJson        Json      @map("questions_json")
+  issuedAt             DateTime  @map("issued_at") @db.Timestamptz(3)
+  dueAt                DateTime  @map("due_at") @db.Timestamptz(3)
+  submittedAt          DateTime? @map("submitted_at") @db.Timestamptz(3)
+  answersJson          Json?     @map("answers_json")
+  draftJson            Json?     @map("draft_json")
+  draftUpdatedAt       DateTime? @map("draft_updated_at") @db.Timestamptz(3)
+  submitIdempotencyKey String?   @map("submit_idempotency_key")
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  client       Client          @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  template     CheckinTemplate @relation(fields: [templateId, organizationId], references: [id, organizationId])
+
+  @@unique([clientId, periodLocalDate])
+  @@unique([id, organizationId])
+  @@index([organizationId, dueAt])
+  @@index([organizationId, submittedAt])
+  @@index([templateId])
+  @@map("checkins")
 }

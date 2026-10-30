@@ -97,6 +97,8 @@ describe('row level security', () => {
             AND col.table_name = c.relname AND col.column_name = 'organization_id'))`;
     expect(tables.map((t) => t.relname).sort()).toEqual([
       'audit_events',
+      'checkin_templates',
+      'checkins',
       'client_invites',
       'client_pauses',
       'clients',
@@ -129,6 +131,8 @@ describe('row level security', () => {
       WHERE schemaname = ${schema} AND policyname = 'tenant_isolation'`;
     expect(policies.map((p) => p.tablename).sort()).toEqual([
       'audit_events',
+      'checkin_templates',
+      'checkins',
       'client_invites',
       'client_pauses',
       'clients',

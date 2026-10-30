@@ -35,6 +35,22 @@ const TEMPLATES: Record<string, Template> = {
     const subject = `${coachName} invited you to Kinetic`.replace(/[\r\n]+/g, ' ');
     return { subject, text, html };
   },
+  // S4-1: no answers or questions in the email, only the link (D-007).
+  checkin_ready: (payload, appBaseUrl) => {
+    const coachName = str(payload, 'coachName') ?? 'Your coach';
+    const id = str(payload, 'checkinId') ?? '';
+    const link = `${appBaseUrl.replace(/\/+$/, '')}/portal/check-ins/${encodeURIComponent(id)}`;
+    const text =
+      `Your weekly check-in from ${coachName} is ready.\n\n` +
+      `Fill it in: ${link}\n\n` +
+      'Every question is optional.';
+    const html =
+      `<p>Your weekly check-in from ${escapeHtml(coachName)} is ready.</p>` +
+      `<p><a href="${escapeHtml(link)}">Fill it in</a></p>` +
+      '<p>Every question is optional.</p>';
+    const subject = 'Your weekly check-in is ready';
+    return { subject, text, html };
+  },
 };
 
 export function renderTemplate(

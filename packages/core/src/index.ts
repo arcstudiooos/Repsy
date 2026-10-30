@@ -103,7 +103,39 @@ export {
   type WorkoutTargets,
 } from './programs/targets';
 export { toDisplay, fromDisplay, type Units } from './units';
-export { scheduleSlots, localDayBounds, ScheduleInputError } from './schedule/scheduleSlots';
+export {
+  scheduleSlots,
+  localDayBounds,
+  localTimeOn,
+  ScheduleInputError,
+} from './schedule/scheduleSlots';
+export {
+  getCheckinTemplate,
+  updateCheckinTemplate,
+  setCheckinWeekday,
+  listCheckins,
+  getCheckin,
+  saveCheckinDraft,
+  submitCheckin,
+  weekActivityBefore,
+  issueDueCheckins,
+  ISSUE_HOUR,
+  type CheckinTemplateView,
+  type CheckinView,
+  type CheckinStatus,
+  type WeekActivity,
+  type CheckinSubmittedHook,
+} from './checkins/checkins';
+export {
+  SEEDED_QUESTIONS,
+  QUESTION_TYPES,
+  MAX_QUESTIONS,
+  SHORT_TEXT_MAX,
+  type CheckinQuestion,
+  type CheckinAnswers,
+  type CheckinAnswer,
+  type QuestionType,
+} from './checkins/questions';
 export type { SlotKey, IsoWeekday, ScheduledSlot, ScheduleSlotsInput } from './schedule/types';
 export {
   assignProgram,
