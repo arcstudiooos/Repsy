@@ -400,7 +400,7 @@ describe('commitProgramVersion', () => {
     expect(after).toEqual(before);
   });
 
-  it('a client copy without an active assignment cannot be committed (CONFLICT) or renamed (NOT_FOUND)', async () => {
+  it('a client copy without an active assignment cannot be committed or renamed (CONFLICT)', async () => {
     const actor = await newActor();
     const copy = await run(actor, (tx) =>
       tx.program.create({
@@ -419,7 +419,7 @@ describe('commitProgramVersion', () => {
       ),
     ).toBe('CONFLICT');
     expect(await code(run(actor, (tx) => renameProgram(tx, actor, copy.id, 'New')))).toBe(
-      'NOT_FOUND',
+      'CONFLICT',
     );
     const row = await run(actor, (tx) => tx.program.findFirstOrThrow({ where: { id: copy.id } }));
     expect(row).toMatchObject({ title: 'Copy', currentVersionId: null });
@@ -538,6 +538,42 @@ describe('commitProgramVersion on client copies (S3-2)', () => {
     expect(await code(commitAs(w, worldGrid(2, 3)))).toBe('CONFLICT');
     expect(strip(await sessionsOf(prisma, w.assignmentId))).toEqual(before);
     expect(await versionOf(w)).toBe(1);
+  });
+
+  it('renameProgram renames an editable client copy (the PATCH title+weeks path) and audits it', async () => {
+    const w = await newClientWorld(prisma, await newOrg(prisma));
+    await runAs(prisma, w.coach, (tx) =>
+      renameProgram(tx, w.coach, w.clientProgramId, '  Client block  '),
+    );
+    const titles = await withSystem(
+      (tx) =>
+        tx.program.findMany({
+          where: { id: { in: [w.clientProgramId, w.templateId] } },
+          select: { id: true, title: true },
+        }),
+      prisma,
+    );
+    expect(titles.find((p) => p.id === w.clientProgramId)?.title).toBe('Client block');
+    // The template it was copied from keeps its title.
+    expect(titles.find((p) => p.id === w.templateId)?.title).not.toBe('Client block');
+    const audit = await runAs(prisma, w.coach, (tx) =>
+      tx.auditEvent.findFirst({
+        where: { action: 'program.renamed', objectId: w.clientProgramId },
+      }),
+    );
+    expect(audit).not.toBeNull();
+  });
+
+  it('renameProgram: another org cannot rename a client copy (NOT_FOUND)', async () => {
+    const w = await newClientWorld(prisma, await newOrg(prisma));
+    const other = await newOrg(prisma);
+    expect(
+      await code(
+        runAs(prisma, other.coach, (tx) =>
+          renameProgram(tx, other.coach, w.clientProgramId, 'Hijack'),
+        ),
+      ),
+    ).toBe('NOT_FOUND');
   });
 
   it('template commit still never touches sessions', async () => {

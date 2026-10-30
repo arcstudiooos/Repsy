@@ -7,6 +7,7 @@ import type { TrackingType } from '../exercises/options';
 import { decodeCursor, encodeCursor, PAGE_SIZE } from '../pagination';
 import { isUuid } from '../uuid';
 import { TITLE_MAX } from './commit';
+import { assertEditableProgram } from './drafts';
 import type { SetTarget } from './targets';
 
 const NUMERIC_TARGET_FIELDS = [
@@ -125,10 +126,11 @@ export async function renameProgram(
   opts: { requestId?: string } = {},
 ): Promise<void> {
   assertCan(actor, 'program:write');
-  if (!isUuid(id)) throw notFound();
-  // Templates only: a client copy keeps the title it was assigned with.
+  // A template, or the client copy of that client's active assignment (Ruling 1); unknown ids and other orgs are
+  // NOT_FOUND, any other client copy is CONFLICT. Renaming a client copy never touches the template it came from.
+  await assertEditableProgram(tx, id);
   const { count } = await tx.program.updateMany({
-    where: { id, kind: 'template' },
+    where: { id },
     data: { title: cleanTitle(title) },
   });
   if (count === 0) throw notFound();

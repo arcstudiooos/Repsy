@@ -148,6 +148,50 @@ describe('assignment API', () => {
     expect(await again.json()).toMatchObject({ error: { code: 'ACTIVE_ASSIGNMENT_EXISTS' } });
   });
 
+  it('PATCH title + weeks on the editable client copy -> 200: renamed and committed as version 2 (S3-1)', async () => {
+    const template = await newTemplate(headersFor(t.coachA));
+    const clientId = (
+      await withSystem(
+        (tx) =>
+          tx.client.create({
+            data: {
+              organizationId: t.orgA.id,
+              coachUserId: t.coachA.id,
+              name: 'Copy edit',
+              email: 'copy-edit@example.test',
+              status: 'active',
+              timezone: 'America/New_York',
+            },
+          }),
+        prisma,
+      )
+    ).id;
+    const created = await assign(headersFor(t.coachA), template, body(clientId));
+    expect(created.status).toBe(201);
+    const { clientProgramId } = ((await created.json()) as { data: { clientProgramId: string } })
+      .data;
+    const weeks = [
+      {
+        days: [
+          { title: 'A2', exercises: [{ exerciseId: BENCH, sets: [{ reps: 6 }] }] },
+          { title: 'B2', exercises: [{ exerciseId: BENCH, sets: [{ reps: 4 }] }] },
+        ],
+      },
+    ];
+    const res = await api()(programPatchRoute)(
+      new Request(`${ORIGIN}/api/v1/programs/${clientProgramId}`, {
+        method: 'PATCH',
+        headers: mutating(headersFor(t.coachA)),
+        body: JSON.stringify({ expectedVersion: 1, title: 'Client block', weeks }),
+      }),
+      ctx(clientProgramId),
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({
+      data: { title: 'Client block', kind: 'client', versionNo: 2 },
+    });
+  });
+
   it('invalid body -> 422 with field errors', async () => {
     const template = await newTemplate(headersFor(t.coachA));
     const res = await assign(headersFor(t.coachA), template, body(clientAId, { weekdays: [0, 9] }));

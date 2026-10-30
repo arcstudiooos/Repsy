@@ -194,7 +194,7 @@ describe('programs API', () => {
     expect((await post(headersFor(t.coachA), { title: '' })).status).toBe(422);
   });
 
-  it('a client copy (kind=client) without an active assignment is readable; commit -> 409, rename -> 404; not listed', async () => {
+  it('a client copy (kind=client) without an active assignment is readable; commit -> 409, rename -> 409; not listed', async () => {
     const copy = await withSystem(
       (tx) =>
         tx.program.create({
@@ -214,7 +214,7 @@ describe('programs API', () => {
     expect(
       (await patch(headersFor(t.coachA), copy.id, { expectedVersion: null, title: 'Renamed' }))
         .status,
-    ).toBe(404);
+    ).toBe(409);
     const read = await get(headersFor(t.coachA), copy.id);
     expect(read.status).toBe(200);
     expect(await read.json()).toMatchObject({
