@@ -140,6 +140,20 @@ export {
   type FlagUpsert,
 } from './review/rules';
 export {
+  listFlags,
+  countOpenFlags,
+  countRecentMissed,
+  updateFlag,
+  createFollowup,
+  SNOOZE_DAYS,
+  REASON_MAX,
+  FOLLOWUP_TITLE_MAX,
+  type FlagView,
+  type FlagState,
+  type FlagFilter,
+  type FlagAction,
+} from './review/flags';
+export {
   getMyThread,
   getClientThread,
   getThread,

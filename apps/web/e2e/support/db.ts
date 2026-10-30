@@ -285,3 +285,21 @@ export async function issueCheckinNow(clientName: string): Promise<string> {
     await client.end();
   }
 }
+
+/** The id of the client's flag for `ruleKey` (admin connection; assertions only). */
+export async function flagIdFor(clientName: string, ruleKey: string): Promise<string> {
+  const client = new pg.Client({ connectionString: readState().adminUrl });
+  await client.connect();
+  try {
+    const { rows } = await client.query<{ id: string }>(
+      `SELECT f.id FROM review_flags f JOIN clients c ON c.id = f.client_id
+        WHERE c.name = $1 AND f.rule_key = $2::review_rule ORDER BY f.created_at DESC LIMIT 1`,
+      [clientName, ruleKey],
+    );
+    const id = rows[0]?.id;
+    if (!id) throw new Error(`no ${ruleKey} flag for ${clientName}`);
+    return id;
+  } finally {
+    await client.end();
+  }
+}
