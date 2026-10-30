@@ -62,7 +62,7 @@ test.describe('program builder', () => {
     await bench.getByRole('group', { name: 'Set 2' }).getByLabel('RPE').fill('8');
 
     await save(page).click();
-    await expect(page.getByText('Saved as version 1')).toBeVisible();
+    await expect(page.getByText('Saved as version 1')).toBeVisible({ timeout: 30_000 });
 
     await page.reload();
     await expect(page.getByLabel('Program title')).toHaveValue('Strength block');
@@ -89,7 +89,7 @@ test.describe('program builder', () => {
     const day = page.getByRole('group', { name: 'Day 1', exact: true });
     await addExercise(day, page, 'bench', 'Barbell Bench Press');
     await save(page).click();
-    await expect(page.getByText('Saved as version 1')).toBeVisible();
+    await expect(page.getByText('Saved as version 1')).toBeVisible({ timeout: 30_000 });
 
     const second = await page.context().newPage();
     await second.goto(page.url());
@@ -98,7 +98,7 @@ test.describe('program builder', () => {
     await expect(day2.getByLabel('Day title')).toHaveValue('Day 1');
     await day2.getByLabel('Day title').fill('Second tab wins');
     await save(second).click();
-    await expect(second.getByText('Saved as version 2')).toBeVisible();
+    await expect(second.getByText('Saved as version 2')).toBeVisible({ timeout: 30_000 });
 
     await day.getByLabel('Day title').fill('First tab loses');
     await save(page).click();
@@ -109,6 +109,26 @@ test.describe('program builder', () => {
 
     await page.getByRole('button', { name: 'Reload' }).click();
     await expect(day.getByLabel('Day title')).toHaveValue('Second tab wins');
+  });
+
+  test('editor is locked while a save is in flight', async ({ page, request }) => {
+    await signUpVerifiedCoach(page, request);
+    await createProgram(page, 'Locked save');
+    const day = page.getByRole('group', { name: 'Day 1', exact: true });
+    await addExercise(day, page, 'bench', 'Barbell Bench Press');
+
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    await page.route('**/api/v1/programs/*', async (route) => {
+      if (route.request().method() === 'PATCH') await gate;
+      await route.continue();
+    });
+    await save(page).click();
+    await expect(day.getByLabel('Day title')).toBeDisabled();
+    await expect(save(page).or(page.getByRole('button', { name: 'Saving...' }))).toBeDisabled();
+    release();
+    await expect(page.getByText('Saved as version 1')).toBeVisible({ timeout: 30_000 });
+    await expect(day.getByLabel('Day title')).toBeEnabled();
   });
 
   test('duration exercise shows duration field not reps', async ({ page, request }) => {

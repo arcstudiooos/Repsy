@@ -370,122 +370,125 @@ export function ProgramEditor({ program, units }: { program: ProgramDetail; unit
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={handleSubmit(onSubmit, onInvalid)} noValidate className="flex flex-col gap-6">
-        <div>
-          <Link href="/app/programs" className="text-sm font-medium text-accent underline">
-            Back to programs
-          </Link>
-          <h1 className="mt-2 text-2xl font-semibold md:text-3xl">Edit program</h1>
-        </div>
+      <form onSubmit={handleSubmit(onSubmit, onInvalid)} noValidate>
+        {/* Locked while saving: an edit typed mid-save would be overwritten by the server response. */}
+        <fieldset disabled={isSubmitting} className="m-0 flex min-w-0 flex-col gap-6 border-0 p-0">
+          <div>
+            <Link href="/app/programs" className="text-sm font-medium text-accent underline">
+              Back to programs
+            </Link>
+            <h1 className="mt-2 text-2xl font-semibold md:text-3xl">Edit program</h1>
+          </div>
 
-        <div className="flex flex-col gap-4 rounded-card bg-surface p-4 shadow-card md:flex-row md:items-end">
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <label htmlFor={titleId} className="text-sm font-medium">
-              Program title
-            </label>
-            <Input
-              id={titleId}
-              maxLength={120}
-              aria-invalid={titleError ? true : undefined}
-              aria-describedby={titleError ? `${titleId}-error` : undefined}
-              {...register('title')}
-            />
-            {titleError && (
-              <p id={`${titleId}-error`} className="text-sm text-danger">
-                {titleError}
+          <div className="flex flex-col gap-4 rounded-card bg-surface p-4 shadow-card md:flex-row md:items-end">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <label htmlFor={titleId} className="text-sm font-medium">
+                Program title
+              </label>
+              <Input
+                id={titleId}
+                maxLength={120}
+                aria-invalid={titleError ? true : undefined}
+                aria-describedby={titleError ? `${titleId}-error` : undefined}
+                {...register('title')}
+              />
+              {titleError && (
+                <p id={`${titleId}-error`} className="text-sm text-danger">
+                  {titleError}
+                </p>
+              )}
+            </div>
+            <div role="group" aria-label="Days per week" className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                aria-label="Fewer days"
+                disabled={daysPerWeek <= 1}
+                onClick={() => setDays(daysPerWeek - 1)}
+              >
+                <Minus aria-hidden className="size-5" />
+              </Button>
+              <output className="min-w-28 text-center text-base font-medium">
+                {daysPerWeek} {daysPerWeek === 1 ? 'day' : 'days'} per week
+              </output>
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                aria-label="More days"
+                disabled={daysPerWeek >= MAX_DAYS}
+                onClick={() => setDays(daysPerWeek + 1)}
+              >
+                <Plus aria-hidden className="size-5" />
+              </Button>
+            </div>
+          </div>
+
+          <Tabs value={activeWeek} onValueChange={setActiveWeek}>
+            <div className="flex items-center gap-2">
+              <TabsList className="min-w-0 flex-1">
+                {weeks.fields.map((f, w) => (
+                  <TabsTrigger key={f.id} value={String(w)}>
+                    Week {w + 1}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={weeks.fields.length >= MAX_WEEK_COUNT}
+                onClick={addWeek}
+              >
+                Add week
+              </Button>
+            </div>
+            {weeks.fields.map((f, w) => (
+              <TabsContent key={f.id} value={String(w)} className="flex flex-col gap-4">
+                {Array.from({ length: daysPerWeek }, (_, d) => (
+                  <DayCard key={d} week={w} day={d} units={units} />
+                ))}
+              </TabsContent>
+            ))}
+          </Tabs>
+
+          {conflict && (
+            <div
+              role="alert"
+              className="flex flex-wrap items-center gap-3 rounded-card border border-danger bg-surface p-4"
+            >
+              <p className="min-w-0 flex-1 text-sm">
+                This program changed in another tab. Reload to see the latest version.
               </p>
-            )}
-          </div>
-          <div role="group" aria-label="Days per week" className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              size="icon"
-              aria-label="Fewer days"
-              disabled={daysPerWeek <= 1}
-              onClick={() => setDays(daysPerWeek - 1)}
-            >
-              <Minus aria-hidden className="size-5" />
-            </Button>
-            <output className="min-w-28 text-center text-base font-medium">
-              {daysPerWeek} {daysPerWeek === 1 ? 'day' : 'days'} per week
-            </output>
-            <Button
-              type="button"
-              variant="secondary"
-              size="icon"
-              aria-label="More days"
-              disabled={daysPerWeek >= MAX_DAYS}
-              onClick={() => setDays(daysPerWeek + 1)}
-            >
-              <Plus aria-hidden className="size-5" />
-            </Button>
-          </div>
-        </div>
-
-        <Tabs value={activeWeek} onValueChange={setActiveWeek}>
-          <div className="flex items-center gap-2">
-            <TabsList className="min-w-0 flex-1">
-              {weeks.fields.map((f, w) => (
-                <TabsTrigger key={f.id} value={String(w)}>
-                  Week {w + 1}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={weeks.fields.length >= MAX_WEEK_COUNT}
-              onClick={addWeek}
-            >
-              Add week
-            </Button>
-          </div>
-          {weeks.fields.map((f, w) => (
-            <TabsContent key={f.id} value={String(w)} className="flex flex-col gap-4">
-              {Array.from({ length: daysPerWeek }, (_, d) => (
-                <DayCard key={d} week={w} day={d} units={units} />
-              ))}
-            </TabsContent>
-          ))}
-        </Tabs>
-
-        {conflict && (
-          <div
-            role="alert"
-            className="flex flex-wrap items-center gap-3 rounded-card border border-danger bg-surface p-4"
-          >
-            <p className="min-w-0 flex-1 text-sm">
-              This program changed in another tab. Reload to see the latest version.
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  skipGuard.current = true;
+                  window.location.reload();
+                }}
+              >
+                Reload
+              </Button>
+            </div>
+          )}
+          {formError && (
+            <p role="alert" className="text-sm text-danger">
+              {formError}
             </p>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => {
-                skipGuard.current = true;
-                window.location.reload();
-              }}
-            >
-              Reload
-            </Button>
-          </div>
-        )}
-        {formError && (
-          <p role="alert" className="text-sm text-danger">
-            {formError}
-          </p>
-        )}
+          )}
 
-        <div className="sticky bottom-16 flex flex-wrap items-center gap-3 rounded-card bg-surface p-4 shadow-card md:bottom-0">
-          <Button type="submit" disabled={isSubmitting || !isDirty}>
-            {isSubmitting ? 'Saving...' : 'Save'}
-          </Button>
-          <p className="text-sm text-secondary">Save to keep changes</p>
-          <p role="status" className="text-sm font-medium">
-            {isDirty ? 'Unsaved changes' : savedAs !== null ? `Saved as version ${savedAs}` : ''}
-          </p>
-        </div>
+          <div className="sticky bottom-16 flex flex-wrap items-center gap-3 rounded-card bg-surface p-4 shadow-card md:bottom-0">
+            <Button type="submit" disabled={isSubmitting || !isDirty}>
+              {isSubmitting ? 'Saving...' : 'Save'}
+            </Button>
+            <p className="text-sm text-secondary">Save to keep changes</p>
+            <p role="status" className="text-sm font-medium">
+              {isDirty ? 'Unsaved changes' : savedAs !== null ? `Saved as version ${savedAs}` : ''}
+            </p>
+          </div>
+        </fieldset>
       </form>
     </FormProvider>
   );
