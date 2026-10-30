@@ -82,6 +82,12 @@ export default async function ProgramsPage({
                     ? 'Not saved yet'
                     : `${plural(p.weekCount ?? 0, 'week', 'weeks')} · ${plural(p.daysPerWeek ?? 0, 'day', 'days')} per week · Version ${p.versionNo}`}
                 </span>
+                {/* Read-only usage (D-001 #7): edits to a template never reach the clients' own copies. */}
+                <span className="text-sm text-secondary">
+                  {p.activeClientCount === 0
+                    ? 'Not assigned'
+                    : `Used by ${plural(p.activeClientCount, 'client', 'clients')}`}
+                </span>
               </Link>
               {p.versionNo !== null && p.daysPerWeek && clients.length > 0 && (
                 <AssignDialog

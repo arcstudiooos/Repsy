@@ -1,21 +1,11 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Minus, Plus, Trash2 } from 'lucide-react';
+import { Minus, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import {
-  FormProvider,
-  get,
-  useFieldArray,
-  useForm,
-  useWatch,
-  useFormContext,
-  type FieldError,
-  type FieldErrors,
-} from 'react-hook-form';
-import type { ExerciseView, ProgramDetail, ProgramDraftView } from '@kinetic/core';
-import type { TrackingType } from '@kinetic/core/exercise-options';
+import { FormProvider, useFieldArray, useForm, useWatch, type FieldErrors } from 'react-hook-form';
+import type { ProgramDetail, ProgramDraftView } from '@kinetic/core';
 import type { Units } from '@kinetic/core/units';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,238 +20,32 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { commitProgram, discardProgramDraft } from '@/lib/program-api';
 import { ConflictNotice } from './ConflictNotice';
-import { ExercisePicker } from './ExercisePicker';
+import type { Slot } from './DaySection';
 import {
   buildEditorSchema,
-  defaultSet,
   fromDraftPayload,
+  mapServerWeekErrors,
   MAX_DAYS,
-  MAX_WEEK_COUNT,
   newDay,
   toDraftPayload,
   toEditorValues,
   toWeekInputs,
+  type EditorDay,
   type EditorValues,
 } from './editorSchema';
 import { PerformanceRail } from './PerformanceRail';
 import { SaveBar } from './SaveBar';
 import { clearLocalDraft, readLocalDraft, useDraftAutosave } from './useDraftAutosave';
+import { WeekSection } from './WeekSection';
 
-const numberField = (v: unknown) =>
-  v === '' || v === null || v === undefined ? undefined : Number(v);
+const INVALID = 'Some fields need attention. Fix them and save again.';
 
-/** Error message at `path`, whether RHF stored it on the field or on an array's `root`. */
-function useError(path: string): string | undefined {
-  const {
-    formState: { errors },
-  } = useFormContext<EditorValues>();
-  const e = get(errors as FieldErrors, path) as (FieldError & { root?: FieldError }) | undefined;
-  return e?.message ?? e?.root?.message;
-}
-
-function NumberField({ path, label, step }: { path: string; label: string; step?: string }) {
-  const { register } = useFormContext<EditorValues>();
-  const id = useId();
-  const error = useError(path);
-  return (
-    <div className="flex min-w-0 flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-medium">
-        {label}
-      </label>
-      <Input
-        id={id}
-        type="number"
-        inputMode="decimal"
-        step={step ?? 'any'}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${id}-error` : undefined}
-        {...register(path as never, { setValueAs: numberField })}
-      />
-      {error && (
-        <p id={`${id}-error`} className="text-sm text-danger">
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function SetRows({
-  base,
-  trackingType,
-  units,
-}: {
-  base: string;
-  trackingType: TrackingType;
-  units: Units;
-}) {
-  const { control, getValues } = useFormContext<EditorValues>();
-  const { fields, append, remove } = useFieldArray({ control, name: `${base}.sets` as never });
-  const setsError = useError(`${base}.sets`);
-  return (
-    <div className="flex flex-col gap-3">
-      {fields.map((f, i) => (
-        <div
-          key={f.id}
-          role="group"
-          aria-label={`Set ${i + 1}`}
-          className="flex items-end gap-2 rounded-control bg-canvas p-3"
-        >
-          <div className="grid min-w-0 flex-1 grid-cols-2 gap-3 md:grid-cols-4">
-            {trackingType === 'reps_load' && (
-              <>
-                <NumberField path={`${base}.sets.${i}.reps`} label="Reps" step="1" />
-                <NumberField path={`${base}.sets.${i}.loadKg`} label={`Load (${units})`} />
-                <NumberField path={`${base}.sets.${i}.rpe`} label="RPE" step="0.5" />
-              </>
-            )}
-            {trackingType === 'duration' && (
-              <NumberField path={`${base}.sets.${i}.durationSec`} label="Duration (s)" step="1" />
-            )}
-            {trackingType === 'distance' && (
-              <NumberField path={`${base}.sets.${i}.distanceM`} label="Distance (m)" />
-            )}
-            <NumberField path={`${base}.sets.${i}.restSec`} label="Rest (s)" step="1" />
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label={`Remove set ${i + 1}`}
-            disabled={fields.length <= 1}
-            onClick={() => remove(i)}
-          >
-            <Trash2 aria-hidden className="size-5" />
-          </Button>
-        </div>
-      ))}
-      {setsError && <p className="text-sm text-danger">{setsError}</p>}
-      <div>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          disabled={fields.length >= 20}
-          onClick={() => {
-            const sets = getValues(`${base}.sets` as never) as unknown as unknown[];
-            const last = sets[sets.length - 1];
-            append((last ? structuredClone(last) : defaultSet(trackingType)) as never);
-          }}
-        >
-          <Plus aria-hidden className="size-4" />
-          Add set
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function DayCard({ week, day, units }: { week: number; day: number; units: Units }) {
-  const { control, register, watch } = useFormContext<EditorValues>();
-  const base = `weeks.${week}.days.${day}`;
-  const exercises = useFieldArray({ control, name: `${base}.exercises` as never });
-  const headingId = useId();
-  const titleId = useId();
-  const titleError = useError(`${base}.title`);
-  const exercisesError = useError(`${base}.exercises`);
-
-  return (
-    <div
-      role="group"
-      aria-labelledby={headingId}
-      className="flex flex-col gap-4 rounded-card bg-surface p-4 shadow-card"
-    >
-      <h3 id={headingId} className="text-lg font-semibold">
-        Day {day + 1}
-      </h3>
-      <div className="flex flex-col gap-1">
-        <label htmlFor={titleId} className="text-sm font-medium">
-          Day title
-        </label>
-        <Input
-          id={titleId}
-          maxLength={120}
-          aria-invalid={titleError ? true : undefined}
-          aria-describedby={titleError ? `${titleId}-error` : undefined}
-          {...register(`weeks.${week}.days.${day}.title`)}
-        />
-        {titleError && (
-          <p id={`${titleId}-error`} className="text-sm text-danger">
-            {titleError}
-          </p>
-        )}
-      </div>
-
-      {exercises.fields.map((f, i) => {
-        const name = watch(`weeks.${week}.days.${day}.exercises.${i}.exerciseName`);
-        const trackingType = watch(`weeks.${week}.days.${day}.exercises.${i}.trackingType`);
-        return (
-          <ExerciseBlock
-            key={f.id}
-            base={`${base}.exercises.${i}`}
-            name={name}
-            trackingType={trackingType}
-            units={units}
-            onRemove={() => exercises.remove(i)}
-          />
-        );
-      })}
-
-      {exercisesError && <p className="text-sm text-danger">{exercisesError}</p>}
-      <div>
-        <ExercisePicker
-          onPick={(e: ExerciseView) =>
-            exercises.append({
-              exerciseId: e.id,
-              exerciseName: e.name,
-              trackingType: e.trackingType,
-              note: '',
-              sets: [defaultSet(e.trackingType)],
-            } as never)
-          }
-        />
-      </div>
-    </div>
-  );
-}
-
-function ExerciseBlock({
-  base,
-  name,
-  trackingType,
-  units,
-  onRemove,
-}: {
-  base: string;
-  name: string;
-  trackingType: TrackingType;
-  units: Units;
-  onRemove: () => void;
-}) {
-  const headingId = useId();
-  return (
-    <div
-      role="group"
-      aria-labelledby={headingId}
-      className="flex flex-col gap-3 rounded-card border border-divider p-3"
-    >
-      <div className="flex items-center justify-between gap-2">
-        <h4 id={headingId} className="text-base font-semibold">
-          {name}
-        </h4>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          aria-label={`Remove ${name}`}
-          onClick={onRemove}
-        >
-          Remove
-        </Button>
-      </div>
-      <SetRows base={base} trackingType={trackingType} units={units} />
-    </div>
-  );
+/** The first week index with an error, so its tab can be shown. */
+function firstErrorWeek(errors: FieldErrors<EditorValues>): number | null {
+  const weeks = errors.weeks;
+  if (!Array.isArray(weeks)) return null;
+  const i = weeks.findIndex(Boolean);
+  return i === -1 ? null : i;
 }
 
 /** Comparable form content: what a commit would send (display units back to kg). */
@@ -340,8 +124,17 @@ export function ProgramEditor({
   const [saving, setSaving] = useState(false);
   const [discarding, setDiscarding] = useState(false);
   const [confirmValues, setConfirmValues] = useState<EditorValues | null>(null);
+  const [confirmFewer, setConfirmFewer] = useState(false);
+  /** Bumped when the active week's tab should take focus. */
+  const [focusTab, setFocusTab] = useState(0);
+  const tabList = useRef<HTMLDivElement>(null);
   const skipGuard = useRef(false);
   const titleId = useId();
+
+  useEffect(() => {
+    if (focusTab === 0) return;
+    tabList.current?.querySelector<HTMLElement>('[role="tab"][data-state="active"]')?.focus();
+  }, [focusTab, activeWeek]);
 
   const draftPayload = useMemo(() => toDraftPayload(current, units), [current, units]);
   const autosave = useDraftAutosave(program.id, draftPayload, {
@@ -416,15 +209,44 @@ export function ProgramEditor({
     );
   }
 
-  function addWeek() {
-    const values = getValues('weeks');
-    const last = values[values.length - 1];
-    weeks.append(structuredClone(last) as EditorValues['weeks'][number]);
-    setActiveWeek(String(values.length));
+  /** "Fewer days" drops the last day of every week; when any of them has content, it asks first. */
+  function fewerDays() {
+    const last = daysPerWeek - 1;
+    const hasContent = getValues('weeks').some((w) => {
+      const d = w.days[last];
+      return d !== undefined && (d.exercises.length > 0 || d.notes.trim() !== '');
+    });
+    if (hasContent) setConfirmFewer(true);
+    else setDays(daysPerWeek - 1);
   }
 
-  function onInvalid() {
-    setFormError('Some fields need attention. Fix them and save again.');
+  /** Shows week `w` and moves focus to its tab (the control that had focus may have unmounted). */
+  function showWeek(w: number) {
+    setActiveWeek(String(w));
+    setFocusTab((n) => n + 1);
+  }
+
+  function duplicateWeek(w: number) {
+    weeks.insert(w + 1, structuredClone(getValues(`weeks.${w}`)));
+    showWeek(w + 1);
+  }
+
+  function removeWeek(w: number) {
+    const count = getValues('weeks').length;
+    weeks.remove(w);
+    showWeek(Math.min(w, count - 2));
+  }
+
+  function copyToOtherWeek(target: Slot, day: EditorDay) {
+    const days = [...getValues(`weeks.${target.week}.days`)];
+    days[target.day] = day;
+    weeks.update(target.week, { days });
+  }
+
+  function onInvalid(invalid: FieldErrors<EditorValues>) {
+    setFormError(INVALID);
+    const w = firstErrorWeek(invalid);
+    if (w !== null) setActiveWeek(String(w));
   }
 
   async function commit(values: EditorValues) {
@@ -461,8 +283,15 @@ export function ProgramEditor({
         return;
       }
       if (res.fieldErrors?.title) setError('title', { message: res.fieldErrors.title[0] });
-      const other = res.fieldErrors?.weeks ?? res.fieldErrors?._form;
-      setFormError(other?.join(' ') ?? res.message);
+      // Server paths ("0.days.1.exercises.0.sets.2: ...") land on their fields; the rest shows above the form.
+      const mapped = mapServerWeekErrors(res.fieldErrors?.weeks ?? []);
+      for (const f of mapped.fields) {
+        setError(f.path as never, { type: 'server', message: f.message });
+      }
+      const first = mapped.fields[0];
+      if (first) setActiveWeek(first.path.split('.')[1]!);
+      const other = [...mapped.other, ...(res.fieldErrors?._form ?? [])];
+      setFormError(other.length ? other.join(' ') : mapped.fields.length ? INVALID : res.message);
     } finally {
       setSaving(false);
     }
@@ -547,6 +376,15 @@ export function ProgramEditor({
               />
             )}
 
+            {formError && (
+              <p
+                role="alert"
+                className="rounded-card border border-danger bg-surface p-4 text-sm text-danger"
+              >
+                {formError}
+              </p>
+            )}
+
             <div className="flex flex-col gap-4 rounded-card bg-surface p-4 shadow-card md:flex-row md:items-end">
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <label htmlFor={titleId} className="text-sm font-medium">
@@ -581,7 +419,7 @@ export function ProgramEditor({
                     size="icon"
                     aria-label="Fewer days"
                     disabled={daysPerWeek <= 1}
-                    onClick={() => setDays(daysPerWeek - 1)}
+                    onClick={fewerDays}
                   >
                     <Minus aria-hidden className="size-5" />
                   </Button>
@@ -603,38 +441,26 @@ export function ProgramEditor({
             </div>
 
             <Tabs value={activeWeek} onValueChange={setActiveWeek}>
-              <div className="flex items-center gap-2">
-                <TabsList className="min-w-0 flex-1">
-                  {weeks.fields.map((f, w) => (
-                    <TabsTrigger key={f.id} value={String(w)}>
-                      Week {w + 1}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={weeks.fields.length >= MAX_WEEK_COUNT}
-                  onClick={addWeek}
-                >
-                  Add week
-                </Button>
-              </div>
+              <TabsList ref={tabList} aria-label="Weeks" className="min-w-0">
+                {weeks.fields.map((f, w) => (
+                  <TabsTrigger key={f.id} value={String(w)}>
+                    Week {w + 1}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
               {weeks.fields.map((f, w) => (
-                <TabsContent key={f.id} value={String(w)} className="flex flex-col gap-4">
-                  {Array.from({ length: daysPerWeek }, (_, d) => (
-                    <DayCard key={d} week={w} day={d} units={units} />
-                  ))}
+                <TabsContent key={f.id} value={String(w)}>
+                  <WeekSection
+                    week={w}
+                    weekCount={weeks.fields.length}
+                    units={units}
+                    onDuplicate={() => duplicateWeek(w)}
+                    onRemove={() => removeWeek(w)}
+                    onCopyToOtherWeek={copyToOtherWeek}
+                  />
                 </TabsContent>
               ))}
             </Tabs>
-
-            {formError && (
-              <p role="alert" className="text-sm text-danger">
-                {formError}
-              </p>
-            )}
 
             <SaveBar status={autosave.status} dirty={dirty} saving={locked} savedAs={savedAs} />
           </fieldset>
@@ -649,6 +475,30 @@ export function ProgramEditor({
           />
         )}
       </div>
+
+      <Dialog open={confirmFewer} onOpenChange={setConfirmFewer}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove day {daysPerWeek} from every week?</DialogTitle>
+            <DialogDescription>Its exercises will be lost.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={() => setConfirmFewer(false)}>
+              Keep day
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              onClick={() => {
+                setConfirmFewer(false);
+                setDays(daysPerWeek - 1);
+              }}
+            >
+              Remove day
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {client && (
         <Dialog

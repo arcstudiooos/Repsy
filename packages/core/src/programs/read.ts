@@ -63,6 +63,8 @@ export interface ProgramSummary {
   daysPerWeek: number | null;
   weekCount: number | null;
   updatedAt: string;
+  /** Distinct clients whose active assignment runs a copy of this template (0 for client copies). */
+  activeClientCount: number;
 }
 
 export interface ProgramDetail {
@@ -115,6 +117,7 @@ export async function createProgram(
     daysPerWeek: null,
     weekCount: null,
     updatedAt: row.updatedAt.toISOString(),
+    activeClientCount: 0,
   };
 }
 
@@ -167,6 +170,21 @@ export async function listPrograms(
   });
   const page = rows.slice(0, PAGE_SIZE);
   const last = page[page.length - 1];
+  // Usage (read-only, D-001 #7): an assignment runs the client's own copy, linked to its template by sourceProgramId.
+  const running = page.length
+    ? await tx.programAssignment.findMany({
+        where: { status: 'active', program: { sourceProgramId: { in: page.map((r) => r.id) } } },
+        select: { clientId: true, program: { select: { sourceProgramId: true } } },
+      })
+    : [];
+  const clientsByTemplate = new Map<string, Set<string>>();
+  for (const a of running) {
+    const source = a.program.sourceProgramId;
+    if (!source) continue;
+    const set = clientsByTemplate.get(source) ?? new Set<string>();
+    set.add(a.clientId);
+    clientsByTemplate.set(source, set);
+  }
   return {
     items: page.map((r) => ({
       id: r.id,
@@ -176,6 +194,7 @@ export async function listPrograms(
       daysPerWeek: r.currentVersion?.daysPerWeek ?? null,
       weekCount: r.currentVersion?.weekCount ?? null,
       updatedAt: r.updatedAt.toISOString(),
+      activeClientCount: clientsByTemplate.get(r.id)?.size ?? 0,
     })),
     nextCursor: rows.length > PAGE_SIZE && last ? encodeCursor(last) : null,
   };

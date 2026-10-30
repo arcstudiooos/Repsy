@@ -1,8 +1,18 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { withSystem, withTenant, type PrismaClient } from '@kinetic/db';
 import { createTestDb } from '@kinetic/db/testing';
+import { assignProgram } from '../assignments/assign';
 import type { ActorContext } from '../authz/actor';
-import { getProgram, readStoredTargets } from './read';
+import {
+  grid,
+  newClientWorld,
+  newOrg,
+  NOW,
+  runAs,
+  type Org,
+} from '../sessions/fixtures.test-helpers';
+import { commitProgramVersion } from './commit';
+import { createProgram, getProgram, listPrograms, readStoredTargets } from './read';
 
 let prisma: PrismaClient;
 let drop: () => Promise<void>;
@@ -92,5 +102,91 @@ describe('readStoredTargets (lenient history read)', () => {
       { reps: 5, loadKg: 60, tempo: '31X1' },
       { durationSec: 30, distanceM: 400 },
     ]);
+  });
+});
+
+describe('listPrograms usage counts', () => {
+  /** An active client in `org` with no program yet. */
+  const addClient = (org: Org, name: string) =>
+    withSystem(async (tx) => {
+      const c = await tx.client.create({
+        data: {
+          organizationId: org.orgId,
+          coachUserId: org.coach.userId,
+          name,
+          email: `${name.toLowerCase()}-${Date.now()}@example.test`,
+          status: 'active',
+          timezone: 'America/New_York',
+        },
+      });
+      return c.id;
+    }, prisma);
+  const newTemplate = async (org: Org, title: string) => {
+    const { id } = await runAs(prisma, org.coach, (tx) => createProgram(tx, org.coach, { title }));
+    await runAs(prisma, org.coach, (tx) =>
+      commitProgramVersion(tx, org.coach, {
+        programId: id,
+        expectedVersionNo: null,
+        weeks: grid(1, 3),
+      }),
+    );
+    return id;
+  };
+  const assign = (org: Org, clientId: string, templateProgramId: string, confirmReplace = false) =>
+    runAs(prisma, org.coach, (tx) =>
+      assignProgram(
+        tx,
+        org.coach,
+        {
+          clientId,
+          templateProgramId,
+          startLocalDate: '2026-11-04',
+          weekdays: [1, 3, 5],
+          readinessConfirmed: true,
+          confirmReplace,
+        },
+        { now: NOW },
+      ),
+    );
+
+  it('activeClientCount counts active assignments only', async () => {
+    const org = await newOrg(prisma);
+    // Ana runs the first template (through her own client copy).
+    const ana = await newClientWorld(prisma, org);
+    const block = ana.templateId;
+    const other = await newTemplate(org, 'Other');
+    const unused = await newTemplate(org, 'Unused');
+
+    // Ben also runs it.
+    await assign(org, await addClient(org, 'Ben'), block);
+    // Cy ran it, then moved to the other template: his old copy's assignment is ended.
+    const cy = await addClient(org, 'Cy');
+    await assign(org, cy, block);
+    await assign(org, cy, other, true);
+    // Di's assignment of it ended without a replacement.
+    const di = await addClient(org, 'Di');
+    const diAssignment = await assign(org, di, block);
+    await withSystem(
+      (tx) =>
+        tx.programAssignment.update({
+          where: { id: diAssignment.assignmentId },
+          data: { status: 'ended', endedAt: new Date() },
+        }),
+      prisma,
+    );
+
+    const { items } = await runAs(prisma, org.coach, (tx) =>
+      listPrograms(tx, org.coach, { kind: 'template' }),
+    );
+    const count = Object.fromEntries(items.map((p) => [p.id, p.activeClientCount]));
+    expect(count).toEqual({ [block]: 2, [other]: 1, [unused]: 0 });
+
+    // Another org's assignments of its own templates never count here.
+    const elsewhere = await newClientWorld(prisma, await newOrg(prisma));
+    const again = await runAs(prisma, org.coach, (tx) =>
+      listPrograms(tx, org.coach, { kind: 'template' }),
+    );
+    expect(again.items.map((p) => p.id)).not.toContain(elsewhere.templateId);
+    expect(Object.fromEntries(again.items.map((p) => [p.id, p.activeClientCount]))).toEqual(count);
   });
 });

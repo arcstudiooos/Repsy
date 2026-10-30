@@ -170,5 +170,15 @@ test.describe('Journey B: editing a client program', () => {
     await expect(page.getByText('No logged sets yet.')).toBeVisible({ timeout: 30_000 });
     await expectNoHorizontalOverflow(page);
     await expectNoAxeViolations(page);
+
+    // Whole weeks can be added to a client copy; its days per week cannot change (Ruling 2).
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(page.getByRole('button', { name: 'Fewer days' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Duplicate week 1' })).toBeEnabled();
+
+    // The template the copy came from counts this client.
+    await page.goto('/app/programs');
+    const row = page.getByRole('listitem').filter({ hasText: 'Journey B block' });
+    await expect(row.getByText('Used by 1 client')).toBeVisible({ timeout: 30_000 });
   });
 });

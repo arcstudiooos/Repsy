@@ -179,6 +179,48 @@ describe('commitProgramVersion', () => {
     expect(await run(actor, (tx) => tx.workoutVersion.count())).toBe(2);
   });
 
+  it('duplicate week produces new slots sharing workout versions', async () => {
+    const actor = await newActor();
+    const { id } = await run(actor, (tx) => createProgram(tx, actor, { title: 'P' }));
+    const first = await run(actor, (tx) =>
+      commitProgramVersion(tx, actor, {
+        programId: id,
+        expectedVersionNo: null,
+        weeks: grid(2, 3),
+      }),
+    );
+    // The builder's "Duplicate week" on week 1: its copy is inserted after it and week 2 shifts to week 3.
+    const [w1, w2] = grid(2, 3);
+    const second = await run(actor, (tx) =>
+      commitProgramVersion(tx, actor, {
+        programId: id,
+        expectedVersionNo: 1,
+        weeks: [w1!, structuredClone(w1!), w2!],
+      }),
+    );
+    const slotsOf = (versionId: string) =>
+      run(actor, (tx) =>
+        tx.programSlot.findMany({
+          where: { programVersionId: versionId },
+          orderBy: [{ weekIndex: 'asc' }, { dayIndex: 'asc' }],
+        }),
+      );
+    const before = await slotsOf(first.versionId);
+    const after = await slotsOf(second.versionId);
+    expect(after).toHaveLength(9);
+    const ids = (rows: typeof after, week: number) =>
+      rows.filter((s) => s.weekIndex === week).map((s) => s.workoutVersionId);
+    expect(ids(after, 0)).toEqual(ids(before, 0));
+    expect(ids(after, 1)).toEqual(ids(before, 0));
+    expect(ids(after, 2)).toEqual(ids(before, 1));
+    expect(await run(actor, (tx) => tx.workoutVersion.count())).toBe(6);
+    expect((await lastCommitAudit(actor, id)).metadataJson).toEqual({
+      versionNo: 2,
+      created: 0,
+      reused: 9,
+    });
+  });
+
   it('stale expectedVersionNo -> CONFLICT with currentVersionNo', async () => {
     const actor = await newActor();
     const { id } = await run(actor, (tx) => createProgram(tx, actor, { title: 'P' }));

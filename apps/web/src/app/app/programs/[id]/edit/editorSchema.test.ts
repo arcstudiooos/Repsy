@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { ProgramDetail } from '@kinetic/core';
 import type { Units } from '@kinetic/core/units';
-import { fromDraftPayload, toDraftPayload, toEditorValues, toWeekInputs } from './editorSchema';
+import {
+  buildEditorSchema,
+  fromDraftPayload,
+  mapServerWeekErrors,
+  maxDisplayLoad,
+  toDraftPayload,
+  toEditorValues,
+  toWeekInputs,
+} from './editorSchema';
 
 const program = (loadKg: number): ProgramDetail => ({
   id: 'p',
@@ -134,5 +142,74 @@ describe('draft payload (autosave, S3-1)', () => {
     expect(fromDraftPayload({ weeks: payload.weeks }, 'Fallback', 'kg')?.title).toBe('Fallback');
     expect(fromDraftPayload({ title: 'X', weeks: [{ days: 'nope' }] }, 'P', 'kg')).toBeNull();
     expect(fromDraftPayload({ title: 'X', weeks: [] }, 'P', 'kg')).toBeNull();
+  });
+});
+
+describe('server week errors (S3-6)', () => {
+  it('mapServerWeekErrors maps a set path to its field', () => {
+    const mapped = mapServerWeekErrors([
+      '1.days.0.exercises.2.sets.3.tempo: Use four characters, each 0-9 or X.',
+      '0.days.1.exercises.0.sets.1: reps is required.',
+      '0.days.2.exercises.0.sets.0: durationSec is required.',
+      '0.days.0.title: Too small: expected string to have >=1 characters',
+      '0.days.0.exercises.1.note: Too big: expected string to have <=500 characters',
+      '2.days.1.notes: Too big',
+      'Every week must have the same number of training days.',
+      'A client program keeps 3 training days per week, one per scheduled weekday.',
+      '0.days.0.exercises.0.exerciseId: Invalid UUID',
+    ]);
+    expect(mapped.fields).toEqual([
+      {
+        path: 'weeks.1.days.0.exercises.2.sets.3.tempo',
+        message: 'Use four characters, each 0-9 or X.',
+      },
+      { path: 'weeks.0.days.1.exercises.0.sets.1.reps', message: 'Enter reps.' },
+      { path: 'weeks.0.days.2.exercises.0.sets.0.durationSec', message: 'Enter a duration.' },
+      {
+        path: 'weeks.0.days.0.title',
+        message: 'Too small: expected string to have >=1 characters',
+      },
+      {
+        path: 'weeks.0.days.0.exercises.1.note',
+        message: 'Too big: expected string to have <=500 characters',
+      },
+      { path: 'weeks.2.days.1.notes', message: 'Too big' },
+    ]);
+    expect(mapped.other).toEqual([
+      'Every week must have the same number of training days.',
+      'A client program keeps 3 training days per week, one per scheduled weekday.',
+      '0.days.0.exercises.0.exerciseId: Invalid UUID',
+    ]);
+  });
+});
+
+describe('load input bounds', () => {
+  const loadIssue = (units: Units, loadKg: number) => {
+    const values = toEditorValues(program(60), units);
+    load(values).loadKg = loadKg;
+    const r = buildEditorSchema(units).safeParse(values);
+    return r.success ? null : r.error.issues[0]?.message;
+  };
+
+  it('lb max floors', () => {
+    // 2000 kg is 4409.2 lb: ceil (4410 lb = 2000.36 kg) would pass here and fail on the server.
+    expect(maxDisplayLoad('lb')).toBe(4409);
+    expect(maxDisplayLoad('kg')).toBe(2000);
+    expect(loadIssue('lb', 4409)).toBeNull();
+    expect(loadIssue('lb', 4410)).toBe('Use 4409 or less.');
+    expect(loadIssue('kg', 2000)).toBeNull();
+  });
+
+  it('tempo uses the server pattern; blank is allowed', () => {
+    const tempoIssue = (tempo: string) => {
+      const values = toEditorValues(program(60), 'kg');
+      load(values).tempo = tempo;
+      const r = buildEditorSchema('kg').safeParse(values);
+      return r.success ? null : r.error.issues[0]?.message;
+    };
+    expect(tempoIssue('')).toBeNull();
+    expect(tempoIssue('31X1')).toBeNull();
+    expect(tempoIssue('31x')).toBe('Use four characters, each 0-9 or X.');
+    expect(tempoIssue('3-1-1')).toBe('Use four characters, each 0-9 or X.');
   });
 });

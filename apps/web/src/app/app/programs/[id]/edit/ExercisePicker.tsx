@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ExerciseView } from '@kinetic/core';
 import { Button } from '@/components/ui/button';
 import {
@@ -45,15 +45,19 @@ function PickerBody({ onPick }: { onPick: (exercise: ExerciseView) => void }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  /** Aborted when the query changes: any response for an older query (first page or "Load more") is ignored. */
+  const current = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const ctrl = new AbortController();
+    current.current = ctrl;
     const timer = setTimeout(
       () => {
         setLoading(true);
         setError(false);
         fetchPage(search.trim(), null, ctrl.signal).then(
           (page) => {
+            if (ctrl.signal.aborted) return;
             setItems(page.items);
             setNextCursor(page.nextCursor);
             setLoading(false);
@@ -74,15 +78,18 @@ function PickerBody({ onPick }: { onPick: (exercise: ExerciseView) => void }) {
   }, [search, attempt]);
 
   const loadMore = useCallback(async () => {
-    if (!nextCursor) return;
+    const ctrl = current.current;
+    if (!nextCursor || !ctrl) return;
     setLoading(true);
     try {
-      const page = await fetchPage(search.trim(), nextCursor, new AbortController().signal);
+      const page = await fetchPage(search.trim(), nextCursor, ctrl.signal);
+      if (ctrl.signal.aborted) return;
       setItems((prev) => [...prev, ...page.items]);
       setNextCursor(page.nextCursor);
+      setLoading(false);
     } catch {
+      if (ctrl.signal.aborted) return;
       setError(true);
-    } finally {
       setLoading(false);
     }
   }, [nextCursor, search]);

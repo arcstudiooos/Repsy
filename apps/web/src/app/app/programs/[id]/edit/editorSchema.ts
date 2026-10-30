@@ -17,6 +17,13 @@ const REQUIRED = {
   distance: ['distanceM', 'Enter a distance.'],
 } as const satisfies Record<TrackingType, readonly [string, string]>;
 
+/** The heaviest load the input accepts in `units`: floored, so it never converts above the server's 2000 kg. */
+export const maxDisplayLoad = (units: Units): number => Math.floor(toDisplay(MAX_LOAD_KG, units));
+
+/** Mirrors `setTargetSchema.tempo` (packages/core/src/programs/targets.ts). */
+const TEMPO = /^[0-9X]{4}$/;
+const TEMPO_MESSAGE = 'Use four characters, each 0-9 or X.';
+
 const optionalNumber = (min: number, max: number) =>
   z
     .number({ error: 'Enter a number.' })
@@ -34,7 +41,7 @@ function setSchema(units: Units) {
     reps: optionalNumber(0, 1000).refine((v) => v === undefined || Number.isInteger(v), {
       error: 'Use a whole number.',
     }),
-    loadKg: optionalNumber(0, Math.ceil(toDisplay(MAX_LOAD_KG, units))),
+    loadKg: optionalNumber(0, maxDisplayLoad(units)),
     exactKg: z.number().optional(),
     rpe: optionalNumber(1, 10).refine((v) => v === undefined || Number.isInteger(v * 2), {
       error: 'Use steps of 0.5.',
@@ -42,7 +49,10 @@ function setSchema(units: Units) {
     restSec: optionalNumber(0, 3600).refine((v) => v === undefined || Number.isInteger(v), {
       error: 'Use a whole number.',
     }),
-    tempo: z.string().optional(),
+    tempo: z
+      .string()
+      .optional()
+      .refine((v) => !v || TEMPO.test(v), { error: TEMPO_MESSAGE }),
     durationSec: optionalNumber(1, 86400).refine((v) => v === undefined || Number.isInteger(v), {
       error: 'Use a whole number.',
     }),
@@ -69,7 +79,7 @@ export function buildEditorSchema(units: Units) {
     });
   const day = z.object({
     title: z.string().trim().min(1, 'Enter a day title.').max(120, 'Use at most 120 characters.'),
-    notes: z.string().max(2000),
+    notes: z.string().max(2000, 'Use at most 2000 characters.'),
     exercises: z
       .array(exercise)
       .min(1, 'Add at least one exercise.')
@@ -284,4 +294,40 @@ export function fromDraftPayload(
       })),
     })),
   };
+}
+
+/** Editor fields a server path can name, below `weeks.{w}.days.{d}`. */
+const FIELD_PATH =
+  /^\d+\.days\.\d+\.(?:title|notes|exercises|exercises\.\d+\.(?:note|sets|sets\.\d+\.(?:reps|loadKg|rpe|restSec|tempo|durationSec|distanceM)))$/;
+/** The editor's own message for a missing tracked field, by field name. */
+const REQUIRED_MESSAGE = new Map<string, string>(Object.values(REQUIRED));
+/** commit.ts reports a missing tracked field on the set: `{path}.sets.{s}: {field} is required.` */
+const REQUIRED_ON_SET = /^(\d+\.days\.\d+\.exercises\.\d+\.sets\.\d+): (\w+) is required\.$/;
+
+/**
+ * Splits a 422's `fieldErrors.weeks` (`"{w}.days.{d}.exercises.{e}.sets.{s}: …"`) into messages for the editor field
+ * each path names and the rest (no path, or a path the editor has no field for), shown above the form.
+ */
+export function mapServerWeekErrors(messages: string[]): {
+  fields: { path: string; message: string }[];
+  other: string[];
+} {
+  const fields: { path: string; message: string }[] = [];
+  const other: string[] = [];
+  for (const m of messages) {
+    const required = REQUIRED_ON_SET.exec(m);
+    const requiredMessage = required ? REQUIRED_MESSAGE.get(required[2]!) : undefined;
+    if (required && requiredMessage) {
+      fields.push({ path: `weeks.${required[1]}.${required[2]}`, message: requiredMessage });
+      continue;
+    }
+    const at = m.indexOf(': ');
+    const path = at > 0 ? m.slice(0, at) : '';
+    if (FIELD_PATH.test(path)) {
+      fields.push({ path: `weeks.${path}`, message: m.slice(at + 2) });
+    } else {
+      other.push(m);
+    }
+  }
+  return { fields, other };
 }
