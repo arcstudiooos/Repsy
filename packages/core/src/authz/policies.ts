@@ -15,7 +15,9 @@ export type Action =
   | 'assignment:read'
   | 'assignment:write'
   | 'session:read'
-  | 'session:log';
+  | 'session:log'
+  | 'review:read'
+  | 'review:update';
 
 const POLICY: Record<Action, readonly Role[]> = {
   'org:read': ['owner', 'coach'],
@@ -33,6 +35,8 @@ const POLICY: Record<Action, readonly Role[]> = {
   // Clients too, but core scopes a client to their own sessions (sessions/read.ts `sessionScope`).
   'session:read': ['owner', 'coach', 'client'],
   'session:log': ['owner', 'coach', 'client'],
+  'review:read': ['owner', 'coach'],
+  'review:update': ['owner', 'coach'],
 };
 
 export const can = (actor: ActorContext, action: Action): boolean =>

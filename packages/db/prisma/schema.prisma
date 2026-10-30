@@ -182,6 +182,8 @@ model Membership {
   organizationId String           @map("organization_id") @db.Uuid
   role           MembershipRole
   status         MembershipStatus @default(active)
+  /// When this coach last marked the review list as seen (Sprint 2 "new completed workouts"). Null = never.
+  reviewSeenAt   DateTime?        @map("review_seen_at") @db.Timestamptz(3)
   createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
 
   user         User         @relation(fields: [userId], references: [id])
