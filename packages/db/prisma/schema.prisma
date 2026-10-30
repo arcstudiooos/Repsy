@@ -79,6 +79,7 @@ model User {
   confirmedAssignments     ProgramAssignment[]     @relation("AssignmentReadinessConfirmer")
   loggedSessions           WorkoutSession[]        @relation("SessionLogger")
   writtenSetLogs           SetLog[]                @relation("SetLogWriter")
+  programDrafts            ProgramDraft[]          @relation("ProgramDraftEditor")
   sessions                 Session[]
   accounts                 Account[]
   coachProfile             CoachProfile?
@@ -172,6 +173,7 @@ model Organization {
   programAssignments      ProgramAssignment[]
   workoutSessions         WorkoutSession[]
   setLogs                 SetLog[]
+  programDrafts           ProgramDraft[]
 
   @@map("organizations")
 }
@@ -412,6 +414,7 @@ model Program {
   currentVersion ProgramVersion?     @relation("ProgramCurrentVersion", fields: [currentVersionId, organizationId], references: [id, organizationId], onDelete: Restrict)
   versions       ProgramVersion[]    @relation("ProgramVersions")
   assignments    ProgramAssignment[]
+  draft          ProgramDraft?
 
   @@unique([id, organizationId])
   /// Lets the 1:1 currentVersion relation use the composite key; currentVersionId alone stays unique too.
@@ -639,4 +642,25 @@ model SetLog {
   @@index([organizationId])
   @@index([workoutVersionExerciseId])
   @@map("set_logs")
+}
+
+/// Unvalidated builder state, one per program (S3-1, Ruling 4: last write wins between tabs). `baseVersionNo` is the
+/// version the editor was opened on (null = no commit yet); conflicts are detected only at commit.
+model ProgramDraft {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  programId      String   @unique @map("program_id") @db.Uuid
+  baseVersionNo  Int?     @map("base_version_no")
+  /// `{ title?: string; weeks: unknown[] }`, at most 256 KiB serialized.
+  draftJson      Json     @map("draft_json")
+  updatedBy      String   @map("updated_by") @db.Uuid
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  program      Program      @relation(fields: [programId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  editor       User         @relation("ProgramDraftEditor", fields: [updatedBy], references: [id])
+
+  @@unique([programId, organizationId])
+  @@index([organizationId])
+  @@map("program_drafts")
 }

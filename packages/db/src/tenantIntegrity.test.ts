@@ -248,6 +248,18 @@ const CASES: [string, Insert][] = [
       }),
   ],
   [
+    'program_drafts -> programs',
+    (tx, own, parent) =>
+      tx.programDraft.create({
+        data: {
+          organizationId: own.orgId,
+          programId: parent.programId,
+          draftJson: { weeks: [] },
+          updatedBy: own.userId,
+        },
+      }),
+  ],
+  [
     'program_versions -> programs',
     (tx, own, parent) =>
       tx.programVersion.create({

@@ -245,6 +245,8 @@ export async function commitProgramVersion(
     data: slotRows.map((s) => ({ ...s, programVersionId: version.id })),
   } as Parameters<typeof tx.programSlot.createMany>[0]);
   await tx.program.updateMany({ where: { id: programId }, data: { currentVersionId: version.id } });
+  // The committed content supersedes the autosaved draft; a 409 above throws first, so the draft survives it.
+  await tx.programDraft.deleteMany({ where: { programId } });
 
   await appendAudit(tx, {
     orgId: actor.orgId,

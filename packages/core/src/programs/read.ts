@@ -179,19 +179,31 @@ export async function listPrograms(
   };
 }
 
-/** The program at its current version, or at `opts.versionId` (an older committed version of the same program). */
+/**
+ * The program at its current version, or at `opts.versionId` / `opts.versionNo` (an older committed version of the
+ * same program, read-only). An unknown version is NOT_FOUND.
+ */
 export async function getProgram(
   tx: TenantTx,
   actor: ActorContext,
   id: string,
-  opts: { versionId?: string } = {},
+  opts: { versionId?: string; versionNo?: number } = {},
 ): Promise<ProgramDetail> {
   assertCan(actor, 'program:read');
   if (!isUuid(id)) throw notFound();
   const program = await tx.program.findFirst({ where: { id } });
   if (!program) throw notFound();
 
-  const wanted = opts.versionId ?? program.currentVersionId;
+  let wanted = opts.versionId ?? program.currentVersionId;
+  if (opts.versionNo !== undefined) {
+    if (!Number.isInteger(opts.versionNo)) throw notFound();
+    const byNo = await tx.programVersion.findFirst({
+      where: { programId: id, versionNo: opts.versionNo },
+      select: { id: true },
+    });
+    if (!byNo) throw notFound();
+    wanted = byNo.id;
+  }
   const base = { id: program.id, title: program.title, kind: program.kind };
   if (wanted === null) {
     return { ...base, versionNo: null, versionId: null, daysPerWeek: 0, weekCount: 0, weeks: [] };

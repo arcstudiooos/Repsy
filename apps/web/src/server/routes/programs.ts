@@ -2,10 +2,14 @@ import { z } from 'zod';
 import {
   commitProgramVersion,
   createProgram,
+  discardDraft,
   DomainError,
+  getDraft,
   getProgram,
+  listProgramVersions,
   listPrograms,
   renameProgram,
+  saveDraft,
   type WeekInput,
 } from '@kinetic/core';
 import { ApiResult, type RouteDef } from '../api';
@@ -79,5 +83,49 @@ export const programPatchRoute: RouteDef<typeof patchSchema, true> = {
       }
       return getProgram(tx, actor, id);
     });
+  },
+};
+
+export const programDraftGetRoute: RouteDef<undefined, true> = {
+  can: 'program:read',
+  handler: ({ actor, params, tenant }) => tenant((tx) => getDraft(tx, actor, params.id ?? '')),
+};
+
+// Only the outer shape is checked here and in core: drafts hold raw, possibly invalid editor state.
+const draftSchema = z.object({
+  baseVersionNo: z.number().int().min(1).nullable(),
+  title: z.string().max(120).optional(),
+  weeks: z.array(z.unknown()),
+});
+
+/** Autosave target: 60 writes/min per user. */
+export const programDraftPutRoute: RouteDef<typeof draftSchema, true> = {
+  can: 'program:write',
+  input: draftSchema,
+  rateLimit: { capacity: 60, refillPerSecond: 1 },
+  handler: ({ actor, input, params, tenant }) =>
+    tenant((tx) => saveDraft(tx, actor, params.id ?? '', input)),
+};
+
+export const programDraftDeleteRoute: RouteDef<undefined, true> = {
+  can: 'program:write',
+  handler: async ({ actor, params, tenant }) => {
+    await tenant((tx) => discardDraft(tx, actor, params.id ?? ''));
+    return new ApiResult(null, { status: 204 });
+  },
+};
+
+export const programVersionsListRoute: RouteDef<undefined, true> = {
+  can: 'program:read',
+  handler: ({ actor, params, tenant }) =>
+    tenant((tx) => listProgramVersions(tx, actor, params.id ?? '')),
+};
+
+export const programVersionGetRoute: RouteDef<undefined, true> = {
+  can: 'program:read',
+  handler: ({ actor, params, tenant }) => {
+    // Anything but a positive integer is an unknown version.
+    const versionNo = /^[1-9]\d{0,8}$/.test(params.no ?? '') ? Number(params.no) : 0;
+    return tenant((tx) => getProgram(tx, actor, params.id ?? '', { versionNo }));
   },
 };

@@ -236,6 +236,9 @@ export function createApiHandler(deps: ApiDeps = {}) {
           result instanceof ApiResult
             ? { data: result.data, options: result.options }
             : { data: result, options: {} };
+        if (options.status === 204) {
+          return new Response(null, { status: 204, headers: { 'x-request-id': requestId } });
+        }
         return Response.json(options.meta ? { data, meta: options.meta } : { data }, {
           status: options.status ?? 200,
           headers: { 'x-request-id': requestId, ...options.headers },

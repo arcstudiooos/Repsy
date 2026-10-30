@@ -126,6 +126,15 @@ export {
   type PortalHome,
 } from './sessions/read';
 export { readStoredTargets } from './programs/read';
+export {
+  assertEditableProgram,
+  saveDraft,
+  getDraft,
+  discardDraft,
+  MAX_DRAFT_BYTES,
+  type ProgramDraftView,
+} from './programs/drafts';
+export { listProgramVersions, type ProgramVersionListItem } from './programs/versions';
 export { startSession, completeSession, skipSession, type FinishInput } from './sessions/lifecycle';
 export {
   getSessionDetail,
