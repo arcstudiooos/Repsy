@@ -1,6 +1,13 @@
 import { z } from 'zod';
 import { appendAudit } from '@kinetic/db';
-import { createClient, getClient, listClients, updateClient, type ClientView } from '@kinetic/core';
+import {
+  createClient,
+  getClient,
+  getClientHistory,
+  listClients,
+  updateClient,
+  type ClientView,
+} from '@kinetic/core';
 import { ApiResult, type RouteDef } from '../api';
 
 // Unknown keys (including any `organizationId`) are stripped by Zod and never read.
@@ -82,5 +89,21 @@ export const clientPatchRoute: RouteDef<typeof patchSchema, true> = {
       });
       return updated;
     });
+  },
+};
+
+// Comma-separated exercise ids; count and format are checked by getClientHistory (fieldErrors.exerciseIds).
+const historySchema = z.object({ exerciseIds: z.string().max(2000).optional() });
+
+/** `:id` is the client. Per exerciseId, the sets of the client's last completed session that logged it. */
+export const clientHistoryRoute: RouteDef<typeof historySchema, true> = {
+  can: 'client:read',
+  input: historySchema,
+  handler: ({ actor, input, params, tenant }) => {
+    const ids = (input.exerciseIds ?? '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter((id) => id !== '');
+    return tenant((tx) => getClientHistory(tx, actor, params.id ?? '', ids));
   },
 };

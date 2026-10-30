@@ -5,6 +5,15 @@ import type { ActorContext } from '../authz/actor';
 import { DomainError } from '../errors';
 import { commitProgramVersion, type DayInput, type WeekInput } from './commit';
 import { createProgram, getProgram, renameProgram } from './read';
+import {
+  grid as worldGrid,
+  newClientWorld,
+  newOrg,
+  NOW,
+  runAs,
+  sessionsOf,
+  type ClientWorld,
+} from '../sessions/fixtures.test-helpers';
 
 let prisma: PrismaClient;
 let drop: () => Promise<void>;
@@ -391,7 +400,7 @@ describe('commitProgramVersion', () => {
     expect(after).toEqual(before);
   });
 
-  it('client copies (kind=client) cannot be committed or renamed: NOT_FOUND, nothing written', async () => {
+  it('a client copy without an active assignment cannot be committed (CONFLICT) or renamed (NOT_FOUND)', async () => {
     const actor = await newActor();
     const copy = await run(actor, (tx) =>
       tx.program.create({
@@ -408,7 +417,7 @@ describe('commitProgramVersion', () => {
           }),
         ),
       ),
-    ).toBe('NOT_FOUND');
+    ).toBe('CONFLICT');
     expect(await code(run(actor, (tx) => renameProgram(tx, actor, copy.id, 'New')))).toBe(
       'NOT_FOUND',
     );
@@ -417,5 +426,122 @@ describe('commitProgramVersion', () => {
     expect(await run(actor, (tx) => tx.programVersion.count())).toBe(0);
     // Still readable (assignment summaries need it).
     expect((await run(actor, (tx) => getProgram(tx, actor, copy.id))).kind).toBe('client');
+  });
+});
+
+describe('commitProgramVersion on client copies (S3-2)', () => {
+  const versionOf = (w: ClientWorld, programId = w.clientProgramId) =>
+    withSystem(
+      async (tx) =>
+        (
+          await tx.program.findUniqueOrThrow({
+            where: { id: programId },
+            select: { currentVersion: { select: { versionNo: true } } },
+          })
+        ).currentVersion?.versionNo ?? null,
+      prisma,
+    );
+  const commitAs = async (w: ClientWorld, weeks: WeekInput[], programId = w.clientProgramId) => {
+    const expectedVersionNo = await versionOf(w, programId);
+    return runAs(prisma, w.coach, (tx) =>
+      commitProgramVersion(tx, w.coach, { programId, expectedVersionNo, weeks }, { now: NOW }),
+    );
+  };
+  const strip = (rows: Awaited<ReturnType<typeof sessionsOf>>) =>
+    rows.map(({ id, state, scheduledAt, dueAt, workoutVersionId }) => ({
+      id,
+      state,
+      scheduledAt,
+      dueAt,
+      workoutVersionId,
+    }));
+
+  it('client copy commit reconciles and audits counts', async () => {
+    // Two weeks of Mon/Wed/Fri; the commit adds a third week.
+    const w = await newClientWorld(prisma, await newOrg(prisma), { weeks: worldGrid(2, 3) });
+    const res = await commitAs(w, worldGrid(3, 3));
+    expect(res.versionNo).toBe(2);
+    const rows = await sessionsOf(prisma, w.assignmentId);
+    expect(rows).toHaveLength(9);
+    expect(rows.filter((s) => s.slotWeekIndex === 2).every((s) => s.state === 'scheduled')).toBe(
+      true,
+    );
+    const audit = await runAs(prisma, w.coach, (tx) =>
+      tx.auditEvent.findFirstOrThrow({
+        where: { action: 'program.version_committed', objectId: w.clientProgramId },
+      }),
+    );
+    expect(audit.metadataJson).toEqual({
+      versionNo: 2,
+      created: 3,
+      reused: 6,
+      slotsAdded: 3,
+      slotsRemoved: 0,
+      sessionsCancelled: 0,
+      sessionsCreated: 3,
+    });
+
+    await commitAs(w, worldGrid(1, 3));
+    const latest = await runAs(prisma, w.coach, (tx) =>
+      tx.auditEvent.findFirstOrThrow({
+        where: { action: 'program.version_committed', objectId: w.clientProgramId },
+        orderBy: { createdAt: 'desc' },
+      }),
+    );
+    expect(latest.metadataJson).toMatchObject({
+      versionNo: 3,
+      slotsAdded: 0,
+      slotsRemoved: 6,
+      sessionsCancelled: 6,
+      sessionsCreated: 0,
+    });
+  });
+
+  it('client copy days-per-week change → VALIDATION weeks', async () => {
+    const w = await newClientWorld(prisma, await newOrg(prisma), { weeks: worldGrid(1, 3) });
+    const err = await commitAs(w, worldGrid(1, 2)).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(DomainError);
+    expect(err).toMatchObject({
+      code: 'VALIDATION',
+      fieldErrors: {
+        weeks: ['A client program keeps 3 training days per week, one per scheduled weekday.'],
+      },
+    });
+    expect(await versionOf(w)).toBe(1);
+  });
+
+  it('copy of ended assignment → CONFLICT', async () => {
+    const w = await newClientWorld(prisma, await newOrg(prisma));
+    await withSystem(
+      (tx) =>
+        tx.programAssignment.update({
+          where: { id: w.assignmentId },
+          data: { status: 'ended', endedAt: NOW },
+        }),
+      prisma,
+    );
+    const before = strip(await sessionsOf(prisma, w.assignmentId));
+    expect(await code(commitAs(w, worldGrid(2, 3)))).toBe('CONFLICT');
+    expect(strip(await sessionsOf(prisma, w.assignmentId))).toEqual(before);
+    expect(await versionOf(w)).toBe(1);
+  });
+
+  it('template commit still never touches sessions', async () => {
+    const w = await newClientWorld(prisma, await newOrg(prisma), { weeks: worldGrid(2, 3) });
+    const before = strip(await sessionsOf(prisma, w.assignmentId));
+    const res = await commitAs(w, worldGrid(1, 2), w.templateId);
+    expect(res.versionNo).toBe(2);
+    expect(strip(await sessionsOf(prisma, w.assignmentId))).toEqual(before);
+    const audit = await runAs(prisma, w.coach, (tx) =>
+      tx.auditEvent.findFirstOrThrow({
+        where: { action: 'program.version_committed', objectId: w.templateId },
+        orderBy: { createdAt: 'desc' },
+      }),
+    );
+    expect(Object.keys(audit.metadataJson as object).sort()).toEqual([
+      'created',
+      'reused',
+      'versionNo',
+    ]);
   });
 });

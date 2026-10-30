@@ -94,7 +94,7 @@ export {
   type WorkoutTargets,
 } from './programs/targets';
 export { toDisplay, fromDisplay, type Units } from './units';
-export { scheduleSlots, ScheduleInputError } from './schedule/scheduleSlots';
+export { scheduleSlots, localDayBounds, ScheduleInputError } from './schedule/scheduleSlots';
 export type { SlotKey, IsoWeekday, ScheduledSlot, ScheduleSlotsInput } from './schedule/types';
 export {
   assignProgram,
@@ -103,6 +103,7 @@ export {
   type AssignProgramResult,
   type AssignmentSummary,
 } from './assignments/assign';
+export { reconcileSessions } from './assignments/reconcile';
 export {
   SESSION_STATES,
   OPEN_STATES,
@@ -142,6 +143,11 @@ export {
   type LoggedSet,
   type PreviousPerformance,
 } from './sessions/detail';
+export {
+  getClientHistory,
+  getExercisePerformance,
+  MAX_HISTORY_EXERCISES,
+} from './sessions/history';
 export { upsertSetLogs, type SetLogAck } from './logging/upsertSetLogs';
 export { toSetLogValue, type SetLogValue } from './logging/values';
 export {

@@ -5,19 +5,16 @@ import { DomainError } from '../errors';
 import { toSetLogValue, type SetLogValue } from '../logging/values';
 import type { Units } from '../units';
 import { isUuid } from '../uuid';
-import { fromDbDate, sessionScope, summarize, SUMMARY_SELECT } from './read';
+import { getExercisePerformance, type PreviousPerformance } from './history';
+import { sessionScope, summarize, SUMMARY_SELECT } from './read';
 import { resolveSessionWorkout } from './resolve';
 import type { SessionSummary, WorkoutVersionView } from './types';
+
+export type { PreviousPerformance };
 
 const notFound = () => new DomainError('NOT_FOUND', 'Not found.');
 
 export type LoggedSet = SetLogValue & { workoutVersionExerciseId: string; setIndex: number };
-
-export interface PreviousPerformance {
-  /** The earlier session's client-local date. */
-  localDate: string;
-  sets: (Omit<SetLogValue, 'clientUpdatedAt'> & { setIndex: number })[];
-}
 
 export interface SessionDetail {
   session: SessionSummary & { comment: string | null; workoutVersionId: string | null };
@@ -57,49 +54,12 @@ export async function getSessionDetail(
     orderBy: [{ workoutVersionExerciseId: 'asc' }, { setIndex: 'asc' }],
   });
 
-  // Per exercise, the client's most recent other completed session that logged it, then that session's sets.
-  // One small lookup per distinct exercise (at most 30 per workout), so a rarely trained exercise is never crowded
-  // out by frequent ones.
-  const exerciseIds = [...new Set(workout.exercises.map((e) => e.exerciseId))];
-  const previous: Record<string, PreviousPerformance> = {};
-  for (const exerciseId of exerciseIds) {
-    const latest = await tx.setLog.findFirst({
-      where: {
-        sessionId: { not: row.id },
-        session: { is: { clientId: row.clientId, state: 'completed' } },
-        workoutVersionExercise: { is: { exerciseId } },
-      },
-      orderBy: [{ session: { completedAt: 'desc' } }, { sessionId: 'desc' }],
-      select: {
-        sessionId: true,
-        workoutVersionExerciseId: true,
-        session: { select: { scheduledLocalDate: true } },
-      },
-    });
-    if (!latest) continue;
-    const sets = await tx.setLog.findMany({
-      // One exercise row: an exercise listed twice in that workout must not merge its sets.
-      where: {
-        sessionId: latest.sessionId,
-        workoutVersionExerciseId: latest.workoutVersionExerciseId,
-      },
-      orderBy: [{ setIndex: 'asc' }],
-    });
-    previous[exerciseId] = {
-      localDate: fromDbDate(latest.session.scheduledLocalDate),
-      sets: sets.map((log) => {
-        const v = toSetLogValue(log);
-        return {
-          setIndex: log.setIndex,
-          reps: v.reps,
-          weightKg: v.weightKg,
-          rpe: v.rpe,
-          durationSeconds: v.durationSeconds,
-          distanceM: v.distanceM,
-        };
-      }),
-    };
-  }
+  const previous = await getExercisePerformance(
+    tx,
+    row.clientId,
+    workout.exercises.map((e) => e.exerciseId),
+    { excludeSessionId: row.id },
+  );
 
   return {
     session: { ...summary, comment: row.comment, workoutVersionId: row.workoutVersionId },

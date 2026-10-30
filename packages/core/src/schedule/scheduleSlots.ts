@@ -90,6 +90,23 @@ function localInstant(
 }
 
 /**
+ * 00:00 and 23:59 local on `localDate` (YYYY-MM-DD) in `timeZone`, as UTC instants, with the same DST rules as
+ * `scheduleSlots` (gap: next valid local time; fold: first occurrence). Throws ScheduleInputError for a bad date or
+ * zone.
+ */
+export function localDayBounds(
+  localDate: string,
+  timeZone: string,
+): { scheduledAtUtc: Date; dueAtUtc: Date } {
+  const zone = resolveTimeZone(timeZone);
+  const { y, m, d } = parseLocalDate(localDate);
+  return {
+    scheduledAtUtc: localInstant(y, m, d, 0, 0, zone),
+    dueAtUtc: localInstant(y, m, d, 23, 59, zone),
+  };
+}
+
+/**
  * Fill ordered program slots onto selected weekdays (D-010 #1). Pure and DST-correct:
  * dates are walked as calendar dates, then converted to UTC per local day.
  */
@@ -141,15 +158,8 @@ export function scheduleSlots(input: ScheduleSlotsInput): ScheduledSlot[] {
     // Advance to the next selected weekday on or after the cursor.
     while (!selected.has(isoWeekday(cursor))) cursor += DAY_MS;
     const dt = new Date(cursor);
-    const y = dt.getUTCFullYear();
-    const m = dt.getUTCMonth() + 1;
-    const d = dt.getUTCDate();
-    out.push({
-      slot,
-      localDate: `${pad(y, 4)}-${pad(m)}-${pad(d)}`,
-      scheduledAtUtc: localInstant(y, m, d, 0, 0, timeZone),
-      dueAtUtc: localInstant(y, m, d, 23, 59, timeZone),
-    });
+    const localDate = `${pad(dt.getUTCFullYear(), 4)}-${pad(dt.getUTCMonth() + 1)}-${pad(dt.getUTCDate())}`;
+    out.push({ slot, localDate, ...localDayBounds(localDate, timeZone) });
     cursor += DAY_MS;
   }
   return out;

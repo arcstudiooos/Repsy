@@ -194,7 +194,7 @@ describe('programs API', () => {
     expect((await post(headersFor(t.coachA), { title: '' })).status).toBe(422);
   });
 
-  it('a client copy (kind=client) is readable but PATCH (commit or rename) -> 404 and it is not listed', async () => {
+  it('a client copy (kind=client) without an active assignment is readable; commit -> 409, rename -> 404; not listed', async () => {
     const copy = await withSystem(
       (tx) =>
         tx.program.create({
@@ -210,7 +210,7 @@ describe('programs API', () => {
     expect(
       (await patch(headersFor(t.coachA), copy.id, { expectedVersion: null, weeks: weeks('X') }))
         .status,
-    ).toBe(404);
+    ).toBe(409);
     expect(
       (await patch(headersFor(t.coachA), copy.id, { expectedVersion: null, title: 'Renamed' }))
         .status,

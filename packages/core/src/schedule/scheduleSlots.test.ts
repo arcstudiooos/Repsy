@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ScheduleInputError, scheduleSlots } from './scheduleSlots';
+import { localDayBounds, ScheduleInputError, scheduleSlots } from './scheduleSlots';
 import type { IsoWeekday, SlotKey } from './types';
 
 const days = (weeks: number, perWeek: number): SlotKey[] =>
@@ -211,5 +211,27 @@ describe('scheduleSlots', () => {
         timeZone: 'UTC',
       }),
     ).toThrow(ScheduleInputError);
+  });
+});
+
+describe('localDayBounds', () => {
+  it('localDayBounds across the America/New_York fall-back day 2026-11-01', () => {
+    const b = localDayBounds('2026-11-01', 'America/New_York');
+    // 00:00 is still EDT (UTC-4); 23:59 is EST (UTC-5) after the 02:00 fall-back.
+    expect(b.scheduledAtUtc.toISOString()).toBe('2026-11-01T04:00:00.000Z');
+    expect(b.dueAtUtc.toISOString()).toBe('2026-11-02T04:59:00.000Z');
+    // Same values scheduleSlots produces for that day.
+    const [slot] = scheduleSlots({
+      slots: [{ weekIndex: 0, dayIndex: 0 }],
+      weekdays: [7],
+      startLocalDate: '2026-11-01',
+      timeZone: 'America/New_York',
+    });
+    expect({ scheduledAtUtc: slot!.scheduledAtUtc, dueAtUtc: slot!.dueAtUtc }).toEqual(b);
+  });
+
+  it('rejects a bad date or zone', () => {
+    expect(() => localDayBounds('2026-02-30', 'UTC')).toThrow(ScheduleInputError);
+    expect(() => localDayBounds('2026-11-01', 'Mars/Base')).toThrow(ScheduleInputError);
   });
 });

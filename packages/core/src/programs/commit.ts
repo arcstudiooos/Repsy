@@ -4,7 +4,9 @@ import { appendAudit, type TenantTx } from '@kinetic/db';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';
+import { reconcileSessions } from '../assignments/reconcile';
 import { isUuid } from '../uuid';
+import { assertEditableProgram } from './drafts';
 import { targetSchema, type SetTarget } from './targets';
 
 export const MAX_WEEKS = 16;
@@ -106,12 +108,16 @@ export interface CommitInput {
  * Commits a new immutable ProgramVersion (D-001/D-002). Slots whose workout content is unchanged keep pointing
  * at the existing WorkoutVersion; only changed content creates rows. The program row is locked first, so two
  * commits with the same `expectedVersionNo` cannot both pass the version check.
+ *
+ * A client copy is editable only while its assignment is active (Ruling 1) and keeps one training day per scheduled
+ * weekday (Ruling 2); its sessions are then reconciled with the new slots in the same transaction (S3-2).
+ * Templates never touch sessions.
  */
 export async function commitProgramVersion(
   tx: TenantTx,
   actor: ActorContext,
   input: CommitInput,
-  opts: { requestId?: string } = {},
+  opts: { requestId?: string; now?: Date } = {},
 ): Promise<{ versionNo: number; versionId: string }> {
   assertCan(actor, 'program:write');
   const { programId, expectedVersionNo } = input;
@@ -119,13 +125,38 @@ export async function commitProgramVersion(
   const weeks = parseWeeks(input.weeks);
 
   // No raw SQL in TenantTx: a no-op UPDATE takes the same row lock as SELECT ... FOR UPDATE and holds it
-  // until the surrounding transaction ends. Zero rows means the program is absent, belongs to another org, or is
-  // a client copy: copies are never edited here (structural reconciliation of their sessions is S3-2).
+  // until the surrounding transaction ends. Zero rows means the program is absent or belongs to another org.
   const touched = await tx.program.updateMany({
-    where: { id: programId, kind: 'template' },
+    where: { id: programId },
     data: { updatedAt: new Date() },
   });
   if (touched.count === 0) throw new DomainError('NOT_FOUND', 'Not found.');
+  const { kind } = await assertEditableProgram(tx, programId);
+
+  let assignment: { id: string; weekdays: number[] } | null = null;
+  if (kind === 'client') {
+    // Lock the active assignment too (no-op UPDATE): a concurrent replace (assignProgram ends it and cancels its
+    // sessions) then waits for this commit instead of interleaving with the reconcile below.
+    const held = await tx.programAssignment.updateMany({
+      where: { programId, status: 'active' },
+      data: { status: 'active' },
+    });
+    assignment = held.count
+      ? await tx.programAssignment.findFirst({
+          where: { programId, status: 'active' },
+          select: { id: true, weekdays: true },
+        })
+      : null;
+    if (!assignment) {
+      throw new DomainError('CONFLICT', 'This program is no longer active for this client.');
+    }
+    const weekdays = assignment.weekdays.length;
+    if (weeks[0]!.days.length !== weekdays) {
+      throw weeksInvalid(
+        `A client program keeps ${weekdays} training days per week, one per scheduled weekday.`,
+      );
+    }
+  }
 
   const program = await tx.program.findFirst({
     where: { id: programId },
@@ -248,13 +279,32 @@ export async function commitProgramVersion(
   // The committed content supersedes the autosaved draft; a 409 above throws first, so the draft survives it.
   await tx.programDraft.deleteMany({ where: { programId } });
 
+  let reconciled = {};
+  if (assignment && current) {
+    const toKeys = new Set(slotRows.map((r) => `${r.weekIndex}:${r.dayIndex}`));
+    const fromKeys = [...previous.keys()];
+    const { cancelled, created: sessionsCreated } = await reconcileSessions(
+      tx,
+      assignment.id,
+      current.id,
+      version.id,
+      { now: opts.now },
+    );
+    reconciled = {
+      slotsAdded: [...toKeys].filter((k) => !previous.has(k)).length,
+      slotsRemoved: fromKeys.filter((k) => !toKeys.has(k)).length,
+      sessionsCancelled: cancelled,
+      sessionsCreated,
+    };
+  }
+
   await appendAudit(tx, {
     orgId: actor.orgId,
     actorId: actor.userId,
     objectType: 'program',
     objectId: programId,
     action: 'program.version_committed',
-    metadata: { versionNo, created, reused: slotRows.length - created },
+    metadata: { versionNo, created, reused: slotRows.length - created, ...reconciled },
     requestId: opts.requestId,
   });
   return { versionNo, versionId: version.id };
