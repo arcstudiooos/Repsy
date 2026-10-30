@@ -11,6 +11,9 @@ import { signUpVerifiedCoach } from './helpers/users';
 const SAFETY = 'Tell your coach about anything that affects safe training before you begin.';
 
 test.describe('client portal', () => {
+  // A full journey (sign-up, invite, build, assign) on a cold dev server.
+  test.describe.configure({ timeout: 180_000 });
+
   test('home shows the next workout, weekly progress and the safety reminder; list and history', async ({
     page,
     request,

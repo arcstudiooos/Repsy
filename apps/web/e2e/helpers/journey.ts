@@ -63,7 +63,7 @@ export async function onboardClient(
   const page = await context.newPage();
   await page.goto(link);
   await page.getByLabel('Choose a password').fill(E2E_PASSWORD);
-  if (opts.units === 'lb') await page.getByLabel('lb', { exact: true }).check();
+  if (opts.units === 'lb') await page.getByLabel('Units').selectOption('lb');
   await page.getByLabel('I agree to share my training data with').check();
   await page.getByRole('button', { name: 'Accept invite' }).click();
   await expect(page).toHaveURL(/\/portal$/, { timeout: 30_000 });

@@ -117,3 +117,40 @@ export async function renameOwnerOrg(coachEmail: string, name: string): Promise<
     await client.end();
   }
 }
+
+/** Audit rows with `action` for one object (admin connection; test assertions only). */
+export async function countAudits(objectId: string, action: string): Promise<number> {
+  const client = new pg.Client({ connectionString: readState().adminUrl });
+  await client.connect();
+  try {
+    const { rows } = await client.query<{ n: string }>(
+      'SELECT count(*) AS n FROM audit_events WHERE object_id = $1 AND action = $2',
+      [objectId, action],
+    );
+    return Number(rows[0]?.n ?? 0);
+  } finally {
+    await client.end();
+  }
+}
+
+/** Stored set logs of one session, as text (weight_kg exactly as Postgres keeps it). Admin connection. */
+export async function storedSetLogs(
+  sessionId: string,
+): Promise<{ set_index: number; reps: number | null; weight_kg: string | null }[]> {
+  const client = new pg.Client({ connectionString: readState().adminUrl });
+  await client.connect();
+  try {
+    const { rows } = await client.query<{
+      set_index: number;
+      reps: number | null;
+      weight_kg: string | null;
+    }>(
+      `SELECT set_index, reps, weight_kg::text AS weight_kg FROM set_logs
+       WHERE session_id = $1 ORDER BY workout_version_exercise_id, set_index`,
+      [sessionId],
+    );
+    return rows;
+  } finally {
+    await client.end();
+  }
+}
