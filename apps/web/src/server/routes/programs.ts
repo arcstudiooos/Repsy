@@ -91,6 +91,9 @@ export const programDraftGetRoute: RouteDef<undefined, true> = {
   handler: ({ actor, params, tenant }) => tenant((tx) => getDraft(tx, actor, params.id ?? '')),
 };
 
+const isUniqueViolation = (error: unknown): boolean =>
+  typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'P2002';
+
 // Only the outer shape is checked here and in core: drafts hold raw, possibly invalid editor state.
 const draftSchema = z.object({
   baseVersionNo: z.number().int().min(1).nullable(),
@@ -103,8 +106,18 @@ export const programDraftPutRoute: RouteDef<typeof draftSchema, true> = {
   can: 'program:write',
   input: draftSchema,
   rateLimit: { capacity: 60, refillPerSecond: 1 },
-  handler: ({ actor, input, params, tenant }) =>
-    tenant((tx) => saveDraft(tx, actor, params.id ?? '', input)),
+  handler: async ({ actor, input, params, tenant }) => {
+    const save = () => tenant((tx) => saveDraft(tx, actor, params.id ?? '', input));
+    try {
+      return await save();
+    } catch (error) {
+      // Two first saves racing on the draft's unique indexes can still raise P2002 (Postgres aborts the transaction,
+      // so it cannot be retried inside it). One retry in a fresh transaction finds the row and updates it: last
+      // write wins (Ruling 4).
+      if (isUniqueViolation(error)) return save();
+      throw error;
+    }
+  },
 };
 
 export const programDraftDeleteRoute: RouteDef<undefined, true> = {

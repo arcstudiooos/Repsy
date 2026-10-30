@@ -4,7 +4,7 @@ import { DomainError, logger } from '@kinetic/core';
 import { withSystem, type PrismaClient } from '@kinetic/db';
 import { createTestDb } from '@kinetic/db/testing';
 import { createAuth, type Auth } from '@/lib/auth';
-import { createApiHandler } from '@/server/api';
+import { ApiResult, createApiHandler } from '@/server/api';
 import { InMemoryRateLimiter } from '@/server/rateLimit';
 import { seedTwoTenants, headersFor, TEST_SECRET, type TwoTenants } from './harness/tenants';
 
@@ -58,6 +58,16 @@ describe('api envelope', () => {
     const res = await handler(req('GET', headersFor(t.coachA)));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ data: { ok: true } });
+    expect(res.headers.get('x-request-id')).toBeTruthy();
+  });
+
+  it('a 204 result keeps its own headers next to x-request-id', async () => {
+    const handler = make()({
+      handler: () => new ApiResult(null, { status: 204, headers: { 'x-extra': 'kept' } }),
+    });
+    const res = await handler(req('GET', headersFor(t.coachA)));
+    expect(res.status).toBe(204);
+    expect(res.headers.get('x-extra')).toBe('kept');
     expect(res.headers.get('x-request-id')).toBeTruthy();
   });
 

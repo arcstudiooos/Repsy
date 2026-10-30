@@ -209,4 +209,32 @@ describe('program drafts', () => {
     expect(await codeOf(run(actor, (tx) => discardDraft(tx, actor, ended)))).toBe('CONFLICT');
     expect(await codeOf(save(active))).toBe('ok');
   });
+
+  it('two concurrent first saves both succeed; the later write wins (no unique violation)', async () => {
+    const actor = await newActor();
+    const id = await mk(actor);
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    let saved!: () => void;
+    const firstSaved = new Promise<void>((resolve) => (saved = resolve));
+
+    const first = run(actor, async (tx) => {
+      const out = await saveDraft(tx, actor, id, { baseVersionNo: null, title: 'one', weeks: [] });
+      saved();
+      await held; // keep the first insert uncommitted
+      return out;
+    });
+    await firstSaved;
+    const second = codeOf(
+      run(actor, (tx) =>
+        saveDraft(tx, actor, id, { baseVersionNo: null, title: 'two', weeks: [] }),
+      ),
+    );
+    await new Promise((r) => setTimeout(r, 300)); // let the second reach the row
+    release();
+    await first;
+    expect(await second).toBe('ok');
+    expect((await run(actor, (tx) => getDraft(tx, actor, id)))?.title).toBe('two');
+    expect(await run(actor, (tx) => tx.programDraft.count({ where: { programId: id } }))).toBe(1);
+  });
 });
