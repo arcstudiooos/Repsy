@@ -126,3 +126,20 @@ export {
   type PortalHome,
 } from './sessions/read';
 export { readStoredTargets } from './programs/read';
+export { startSession, completeSession, skipSession, type FinishInput } from './sessions/lifecycle';
+export {
+  getSessionDetail,
+  type SessionDetail,
+  type LoggedSet,
+  type PreviousPerformance,
+} from './sessions/detail';
+export { upsertSetLogs, type SetLogAck } from './logging/upsertSetLogs';
+export { toSetLogValue, type SetLogValue } from './logging/values';
+export {
+  setLogInputSchema,
+  logsBodySchema,
+  finishBodySchema,
+  MAX_SETS,
+  COMMENT_MAX,
+  type SetLogInput,
+} from './logging/schema';

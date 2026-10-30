@@ -22,6 +22,8 @@ interface Tenant {
   programVersionId: string;
   workoutVersionId: string;
   assignmentId: string;
+  sessionId: string;
+  workoutVersionExerciseId: string;
 }
 let a: Tenant;
 let b: Tenant;
@@ -67,9 +69,34 @@ async function seedTenant(tx: SystemTx, label: string): Promise<Tenant> {
       timezone: 'UTC',
     },
   });
+  const wve = await tx.workoutVersionExercise.create({
+    data: {
+      organizationId: org.id,
+      workoutVersionId: wv.id,
+      exerciseId: BENCH,
+      position: 0,
+      targetJson: [{ reps: 5 }],
+    },
+  });
+  const ws = await tx.workoutSession.create({
+    data: {
+      organizationId: org.id,
+      assignmentId: assignment.id,
+      clientId: client.id,
+      slotWeekIndex: 9,
+      slotDayIndex: 0,
+      scheduledLocalDate: new Date('2026-11-04'),
+      scheduledAt: new Date('2026-11-04T00:00:00Z'),
+      dueAt: new Date('2026-11-04T23:59:00Z'),
+      workoutVersionId: wv.id,
+      state: 'in_progress',
+    },
+  });
   return {
     orgId: org.id,
     userId: user.id,
+    sessionId: ws.id,
+    workoutVersionExerciseId: wve.id,
     clientId: client.id,
     programId: program.id,
     programVersionId: pv.id,
@@ -97,6 +124,17 @@ const assignmentRow = (own: Tenant, clientId: string, programId: string) => ({
   weekdays: [1],
   timezone: 'UTC',
   status: 'ended' as const,
+});
+
+const setLog = (own: Tenant, sessionId: string, wveId: string, setIndex: number) => ({
+  organizationId: own.orgId,
+  sessionId,
+  workoutVersionExerciseId: wveId,
+  setIndex,
+  reps: 5,
+  clientUpdatedAt: new Date(),
+  clientMutationId: crypto.randomUUID(),
+  loggedByUserId: own.userId,
 });
 
 type Insert = (tx: SystemTx, own: Tenant, parent: Tenant) => Promise<unknown>;
@@ -162,6 +200,16 @@ const CASES: [string, Insert][] = [
           createdBy: own.userId,
         },
       }),
+  ],
+  [
+    'set_logs -> workout_sessions',
+    (tx, own, parent) =>
+      tx.setLog.create({ data: setLog(own, parent.sessionId, own.workoutVersionExerciseId, 0) }),
+  ],
+  [
+    'set_logs -> workout_version_exercises',
+    (tx, own, parent) =>
+      tx.setLog.create({ data: setLog(own, own.sessionId, parent.workoutVersionExerciseId, 1) }),
   ],
   [
     'program_assignments -> clients',
@@ -344,5 +392,36 @@ describe('session sweep index', () => {
     expect(rows.map((r) => r.indexdef)).toContainEqual(
       expect.stringMatching(/\(organization_id, state, due_at\)$/),
     );
+  });
+});
+
+describe('set_logs constraints', () => {
+  it('range CHECKs reject out-of-range values even from system scope', async () => {
+    const bad = [{ reps: 1001 }, { rpe: 11 }, { weightKg: 2000.5 }, { setIndex: 20 }];
+    for (const [i, over] of bad.entries()) {
+      const res = await outcome(
+        withSystem(
+          (tx) =>
+            tx.setLog.create({
+              data: { ...setLog(b, b.sessionId, b.workoutVersionExerciseId, 10 + i), ...over },
+            }),
+          prisma,
+        ),
+      );
+      expect(res).toMatch(/check|23514/i);
+    }
+  });
+
+  it('one row per (session, exercise, set index)', async () => {
+    const row = setLog(b, b.sessionId, b.workoutVersionExerciseId, 18);
+    expect(await outcome(withSystem((tx) => tx.setLog.create({ data: row }), prisma))).toBe('ok');
+    expect(
+      await outcome(
+        withSystem(
+          (tx) => tx.setLog.create({ data: { ...row, clientMutationId: crypto.randomUUID() } }),
+          prisma,
+        ),
+      ),
+    ).toMatch(/P2002/);
   });
 });

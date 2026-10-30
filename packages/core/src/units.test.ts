@@ -17,4 +17,11 @@ describe('units', () => {
     expect(fromDisplay(61.2349, 'kg')).toBe(61.235);
     expect(fromDisplay(0, 'lb')).toBe(0);
   });
+
+  it('every lb value to one decimal survives the kg round trip (Review Focus #5)', () => {
+    for (let tenths = 0; tenths <= 44000; tenths++) {
+      const lb = tenths / 10;
+      expect(toDisplay(fromDisplay(lb, 'lb'), 'lb')).toBe(lb);
+    }
+  });
 });
