@@ -192,7 +192,8 @@ test.describe('client invite', () => {
       // Send again: the new link works.
       await page.getByRole('link', { name: 'Uma Ui' }).click();
       await page.getByRole('button', { name: 'Send invite' }).click();
-      await expect(page.getByText(/Invite sent · expires/)).toBeVisible();
+      // The card updates on router.refresh(); under a loaded parallel run that can exceed 5s (as for revoke above).
+      await expect(page.getByText(/Invite sent · expires/)).toBeVisible({ timeout: 30_000 });
       await expect
         .poll(async () => {
           const res = await request.get('/api/dev/emails');
