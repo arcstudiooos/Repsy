@@ -200,6 +200,7 @@ describe('getPortalHome', () => {
       week: { completed: 0, total: 0, startLocalDate: '2026-11-02', endLocalDate: '2026-11-08' },
       showSafetyReminder: true,
       hasAssignment: false,
+      todayLocalDate: '2026-11-04',
     });
     expect(await codeOf(runAs(prisma, w.coach, (tx) => getPortalHome(tx, w.coach)))).toBe(
       'FORBIDDEN',

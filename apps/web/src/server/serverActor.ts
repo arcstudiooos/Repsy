@@ -47,3 +47,28 @@ export async function withServerTenant<T>(
   const actor = await getServerActor();
   return withTenant(actor.orgId, (tx) => fn(tx, actor), undefined, { userId: actor.userId });
 }
+
+/**
+ * Runs `fn` scoped to the signed-in client's organization, with `actor.clientId` set from their own Client row
+ * (exactly as apiHandler does), so core can scope reads to "my sessions". Portal pages only: the portal layout gate
+ * guarantees the client role and the row; anything else is a 404.
+ */
+export async function withPortalTenant<T>(
+  fn: (tx: TenantTx, actor: ActorContext) => Promise<T>,
+): Promise<T> {
+  const base = await getServerActor();
+  if (base.role !== 'client') throw new DomainError('NOT_FOUND', 'Not found.');
+  return withTenant(
+    base.orgId,
+    async (tx) => {
+      const own = await tx.client.findFirst({
+        where: { userId: base.userId },
+        select: { id: true },
+      });
+      if (!own) throw new DomainError('NOT_FOUND', 'Not found.');
+      return fn(tx, { ...base, clientId: own.id });
+    },
+    undefined,
+    { userId: base.userId },
+  );
+}

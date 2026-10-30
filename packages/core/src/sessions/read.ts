@@ -217,6 +217,8 @@ export interface PortalHome {
   /** D-007 #5: shown until the client's first workout is started, completed or skipped. */
   showSafetyReminder: boolean;
   hasAssignment: boolean;
+  /** Today in the client's time zone (YYYY-MM-DD), for date labels. */
+  todayLocalDate: string;
 }
 
 /** The portal home for the acting client (S2-1). */
@@ -250,7 +252,8 @@ export async function getPortalHome(
       select: SUMMARY_SELECT,
     }));
 
-  const { start, end } = isoWeekOf(todayInZone(client.timezone, now));
+  const today = todayInZone(client.timezone, now);
+  const { start, end } = isoWeekOf(today);
   const weekWhere = {
     clientId: client.id,
     scheduledLocalDate: { gte: toDbDate(start), lte: toDbDate(end) },
@@ -273,5 +276,6 @@ export async function getPortalHome(
     week: { completed, total, startLocalDate: start, endLocalDate: end },
     showSafetyReminder: begun === 0,
     hasAssignment: assignments > 0,
+    todayLocalDate: today,
   };
 }

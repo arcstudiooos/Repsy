@@ -224,7 +224,7 @@ export async function getClient(
   if (!isUuid(id)) throw new DomainError('NOT_FOUND', 'Not found.');
   const row = await tx.client.findFirst({ where: { id } });
   if (!row) throw new DomainError('NOT_FOUND', 'Not found.');
-  return toClientView(row, (await inviteStatuses(tx, [id])).get(id));
+  return toClientView(row, (await inviteStatuses(tx, [row.id])).get(row.id));
 }
 
 const LABEL: Record<ClientStatus, string> = {
@@ -322,5 +322,5 @@ export async function updateClient(
     data.status = next;
   }
   const row = await tx.client.update({ where: { id }, data });
-  return toClientView(row, (await inviteStatuses(tx, [id])).get(id));
+  return toClientView(row, (await inviteStatuses(tx, [row.id])).get(row.id));
 }
