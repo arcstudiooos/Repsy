@@ -165,6 +165,33 @@ export {
   type FlagAction,
 } from './review/flags';
 export {
+  requestDeletion,
+  deletionStatusFor,
+  eraseClientData,
+  type DeletionRequestView,
+  type DeletionStatus,
+  type ErasureResult,
+} from './privacy/deletion';
+export {
+  assertPlatformAdmin,
+  listPilotCodes,
+  createPilotCode,
+  lookupAccount,
+  listDeletionRequests,
+  decideDeletion,
+  grantSupportAccess,
+  revokeSupportAccess,
+  listMyGrants,
+  readClientForSupport,
+  SUPPORT_GRANT_MS,
+  type PlatformAdmin,
+  type PilotCodeView,
+  type AccountView,
+  type DeletionQueueItem,
+  type SupportGrantView,
+  type SupportClientView,
+} from './admin/admin';
+export {
   requestExport,
   listMyExports,
   exportFileFor,

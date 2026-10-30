@@ -1,4 +1,5 @@
 import { checkinsIssueJob } from './checkinsIssue';
+import { deletionsRunJob } from './deletionsRun';
 import { emailDeliverJob } from './emailDeliver';
 import { exportsBuildJob } from './exportsBuild';
 import { pausesEndJob } from './pausesEnd';
@@ -11,4 +12,5 @@ export const jobs = [
   checkinsIssueJob,
   reviewSweepJob,
   exportsBuildJob,
+  deletionsRunJob,
 ] as const;

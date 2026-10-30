@@ -303,3 +303,14 @@ export async function flagIdFor(clientName: string, ruleKey: string): Promise<st
     await client.end();
   }
 }
+
+/** Makes the account with `email` a platform admin (admin connection; test setup only). */
+export async function makePlatformAdmin(email: string): Promise<void> {
+  const client = new pg.Client({ connectionString: readState().adminUrl });
+  await client.connect();
+  try {
+    await client.query('UPDATE users SET is_platform_admin = true WHERE email = $1', [email]);
+  } finally {
+    await client.end();
+  }
+}

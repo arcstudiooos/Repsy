@@ -88,6 +88,10 @@ model User {
   createdFlags             ReviewFlag[]            @relation("FlagCreator")
   internalNotes            InternalNote[]          @relation("NoteAuthor")
   exportJobs               ExportJob[]             @relation("ExportRequester")
+  deletionSubjects         DeletionRequest[]       @relation("DeletionSubject")
+  deletionRequested        DeletionRequest[]       @relation("DeletionRequester")
+  deletionVerified         DeletionRequest[]       @relation("DeletionVerifier")
+  supportGrants            SupportAccessGrant[]    @relation("SupportAdmin")
   sessions                 Session[]
   accounts                 Account[]
   coachProfile             CoachProfile?
@@ -191,6 +195,8 @@ model Organization {
   reviewFlags             ReviewFlag[]
   internalNotes           InternalNote[]
   exportJobs              ExportJob[]
+  deletionRequests        DeletionRequest[]
+  supportAccessGrants     SupportAccessGrant[]
 
   @@map("organizations")
 }
@@ -310,6 +316,8 @@ model Client {
   reviewFlags     ReviewFlag[]
   internalNotes   InternalNote[]
   exportJobs      ExportJob[]
+  deletionRequests DeletionRequest[]
+  supportGrants   SupportAccessGrant[]
 
   @@unique([organizationId, email])
   @@unique([organizationId, userId])
@@ -978,4 +986,65 @@ model ExportJob {
   @@index([status, createdAt])
   @@index([organizationId, requestedBy, createdAt])
   @@map("export_jobs")
+}
+
+enum DeletionStatus {
+  requested
+  verified
+  processing
+  done
+  rejected
+
+  @@map("deletion_status")
+}
+
+/// A request to erase a client's data in one organization (S5-3, D-008 #16, D-010 #4): by the client or the
+/// organization's owner, verified by a platform admin, then run by the worker (`deletions.run`). `legalHold` blocks
+/// the run. One open request per client (partial unique index, migration).
+model DeletionRequest {
+  id              String         @id @default(uuid()) @db.Uuid
+  organizationId  String         @map("organization_id") @db.Uuid
+  subjectClientId String         @map("subject_client_id") @db.Uuid
+  /// The client's account at request time (kept for the admin; the account is anonymized, not deleted).
+  subjectUserId   String?        @map("subject_user_id") @db.Uuid
+  requestedBy     String         @map("requested_by") @db.Uuid
+  status          DeletionStatus @default(requested)
+  legalHold       Boolean        @default(false) @map("legal_hold")
+  verifiedBy      String?        @map("verified_by") @db.Uuid
+  verifiedAt      DateTime?      @map("verified_at") @db.Timestamptz(3)
+  completedAt     DateTime?      @map("completed_at") @db.Timestamptz(3)
+  rejectedReason  String?        @map("rejected_reason")
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  client       Client       @relation(fields: [subjectClientId, organizationId], references: [id, organizationId])
+  subject      User?        @relation("DeletionSubject", fields: [subjectUserId], references: [id])
+  requester    User         @relation("DeletionRequester", fields: [requestedBy], references: [id])
+  verifier     User?        @relation("DeletionVerifier", fields: [verifiedBy], references: [id])
+
+  @@index([status, createdAt])
+  @@index([organizationId])
+  @@map("deletion_requests")
+}
+
+/// Explicit, audited platform-admin access to one client's data (S5-3, D-006 roles, D-008 #19): a reason and a
+/// 24-hour expiry. Without an unexpired, unrevoked grant an admin can't read client data.
+model SupportAccessGrant {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  adminUserId    String    @map("admin_user_id") @db.Uuid
+  clientId       String    @map("client_id") @db.Uuid
+  reason         String
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt      DateTime? @map("revoked_at") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  admin        User         @relation("SupportAdmin", fields: [adminUserId], references: [id])
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@index([adminUserId, clientId, expiresAt])
+  @@index([organizationId])
+  @@map("support_access_grants")
 }

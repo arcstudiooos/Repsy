@@ -63,6 +63,18 @@ const TEMPLATES: Record<string, Template> = {
     const subject = `New message from ${sender}`.replace(/[\r\n]+/g, ' ');
     return { subject, text, html };
   },
+  // S5-3: the coach is told a client asked for deletion (D-010 #4). No content beyond the client's name.
+  deletion_requested: (payload, appBaseUrl) => {
+    const name = str(payload, 'clientName') ?? 'A client';
+    const text =
+      `${name} asked for their data in your Kinetic workspace to be deleted.\n\n` +
+      'Kinetic will verify the request and then delete it. You need to do nothing.\n\n' +
+      `${appBaseUrl.replace(/\/+$/, '')}/app/clients`;
+    const html =
+      `<p>${escapeHtml(name)} asked for their data in your Kinetic workspace to be deleted.</p>` +
+      '<p>Kinetic will verify the request and then delete it. You need to do nothing.</p>';
+    return { subject: 'A client asked for data deletion', text, html };
+  },
 };
 
 export function renderTemplate(

@@ -35,7 +35,8 @@ export async function guardRequest(
   const user = await getSessionUser(request.headers, deps.auth);
   const decision = decideAccess(pathname, user);
   if (decision.type === 'redirect') return NextResponse.redirect(new URL(decision.to, request.url));
-  if (decision.type === 'forbidden') return new NextResponse('Forbidden', { status: 403 });
+  // The admin console is invisible to non-admins (S5-3): not found, not forbidden.
+  if (decision.type === 'forbidden') return new NextResponse('Not Found', { status: 404 });
   // Verified but no workspace (Google-less orphans, failed provisioning): redeem a pilot code.
   if (user && isAppPath(pathname) && !(await hasCoachMembership(deps.prisma, user.id))) {
     return NextResponse.redirect(new URL(ONBOARDING_PATH, request.url));

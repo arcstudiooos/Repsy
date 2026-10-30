@@ -1,5 +1,8 @@
 import type { Metadata } from 'next';
+import { deletionStatusFor } from '@kinetic/core';
+import { DeletionRequestButton } from '@/components/settings/DeletionRequestButton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { withServerTenant } from '@/server/serverActor';
 import { formatDate } from '../StatusBadge';
 import { loadClient } from './data';
 import { InviteControls } from './InviteControls';
@@ -8,6 +11,10 @@ export const metadata: Metadata = { title: 'Client | Kinetic' };
 
 export default async function ClientOverviewPage({ params }: { params: Promise<{ id: string }> }) {
   const client = await loadClient((await params).id);
+  const { isOwner, deletion } = await withServerTenant(async (tx, actor) => ({
+    isOwner: actor.role === 'owner',
+    deletion: await deletionStatusFor(tx, actor, client.id),
+  }));
   const joined = client.joinedAt ? client.joinedAt.slice(0, 10) : null;
   const rows: [string, string][] = [
     ['Email', client.email],
@@ -51,6 +58,16 @@ export default async function ClientOverviewPage({ params }: { params: Promise<{
           </dl>
         </CardContent>
       </Card>
+      {isOwner && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Data</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <DeletionRequestButton clientId={client.id} current={deletion} />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

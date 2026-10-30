@@ -325,6 +325,30 @@ const CASES: [string, Insert][] = [
       }),
   ],
   [
+    'deletion_requests -> clients',
+    (tx, own, parent) =>
+      tx.deletionRequest.create({
+        data: {
+          organizationId: own.orgId,
+          subjectClientId: parent.spareClientId,
+          requestedBy: own.userId,
+        },
+      }),
+  ],
+  [
+    'support_access_grants -> clients',
+    (tx, own, parent) =>
+      tx.supportAccessGrant.create({
+        data: {
+          organizationId: own.orgId,
+          adminUserId: own.userId,
+          clientId: parent.clientId,
+          reason: 'r',
+          expiresAt: new Date('2099-01-01'),
+        },
+      }),
+  ],
+  [
     'export_jobs -> clients',
     (tx, own, parent) =>
       tx.exportJob.create({

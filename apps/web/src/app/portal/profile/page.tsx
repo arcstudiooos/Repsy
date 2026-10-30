@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
-import { getSettings, listMyExports } from '@kinetic/core';
+import { deletionStatusFor, getSettings, listMyExports } from '@kinetic/core';
+import { DeletionRequestButton } from '@/components/settings/DeletionRequestButton';
 import { DataExportSection } from '@/components/settings/DataExportSection';
 import { ClientPreferencesSection } from '@/components/settings/ClientSections';
 import { NotificationsSection } from '@/components/settings/NotificationsSection';
 import { SecuritySection } from '@/components/settings/SecuritySection';
 import { SignOutButton } from '@/components/nav/SignOutButton';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';
 
@@ -13,9 +13,10 @@ export const metadata: Metadata = { title: 'Profile | Kinetic' };
 
 // Access is enforced by src/proxy.ts and the portal layout's client gate.
 export default async function PortalProfile() {
-  const { settings, exports } = await withServerTenant(async (tx, actor) => ({
+  const { settings, exports, deletion } = await withServerTenant(async (tx, actor) => ({
     settings: await getSettings(tx, actor),
     exports: await listMyExports(tx, actor),
+    deletion: await deletionStatusFor(tx, actor),
   }));
   return (
     <>
@@ -24,9 +25,7 @@ export default async function PortalProfile() {
         {settings.client && <ClientPreferencesSection client={settings.client} />}
         <NotificationsSection notifications={settings.notifications} />
         <DataExportSection scope="client_self" initial={exports}>
-          <Button type="button" variant="secondary" disabled>
-            Request deletion · Available soon
-          </Button>
+          <DeletionRequestButton current={deletion} />
         </DataExportSection>
         <SecuritySection />
         <Card>
