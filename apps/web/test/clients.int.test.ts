@@ -186,4 +186,44 @@ describe('clients API', () => {
     };
     expect(read.data.status).toBe('invited');
   });
+
+  it('empty PATCH changes nothing: no write, no audit (follow-up)', async () => {
+    const res = await post(headersFor(t.coachA), { name: 'Still', email: 'still@example.test' });
+    const { data } = (await res.json()) as { data: { id: string } };
+    const before = await withSystem(
+      (tx) => tx.client.findUniqueOrThrow({ where: { id: data.id } }),
+      prisma,
+    );
+    const empty = await patch(headersFor(t.coachA), data.id, { organizationId: t.orgB.id });
+    expect(empty.status).toBe(200);
+    expect(await empty.json()).toMatchObject({ data: { id: data.id, name: 'Still' } });
+    const after = await withSystem(
+      (tx) => tx.client.findUniqueOrThrow({ where: { id: data.id } }),
+      prisma,
+    );
+    expect(after.updatedAt).toEqual(before.updatedAt);
+    const audits = await withSystem(
+      (tx) => tx.auditEvent.count({ where: { objectId: data.id, action: 'client.updated' } }),
+      prisma,
+    );
+    expect(audits).toBe(0);
+    // A cross-tenant empty PATCH is still a 404, never an existence leak.
+    expect((await patch(headersFor(t.coachB), data.id, {})).status).toBe(404);
+  });
+
+  it('PATCH audit objectId is the canonical client id, not the raw URL segment', async () => {
+    const res = await post(headersFor(t.coachA), { name: 'Upper', email: 'upper@example.test' });
+    const { data } = (await res.json()) as { data: { id: string } };
+    const shouted = data.id.toUpperCase();
+    expect((await patch(headersFor(t.coachA), shouted, { name: 'Upper Case' })).status).toBe(200);
+    const audits = await withSystem(
+      (tx) =>
+        tx.auditEvent.findMany({
+          where: { action: 'client.updated', objectId: { in: [data.id, shouted] } },
+          select: { objectId: true },
+        }),
+      prisma,
+    );
+    expect(audits).toEqual([{ objectId: data.id }]);
+  });
 });

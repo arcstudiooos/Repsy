@@ -68,12 +68,15 @@ export const clientPatchRoute: RouteDef<typeof patchSchema, true> = {
   handler: ({ actor, input, params, requestId, tenant }) => {
     const id = params.id ?? '';
     return tenant(async (tx) => {
+      // Nothing to change (unknown keys are stripped): no write, no audit; still a 404 for an unknown id.
+      if (Object.values(input).every((v) => v === undefined)) return getClient(tx, actor, id);
       const updated = await updateClient(tx, actor, id, input);
       await appendAudit(tx, {
         orgId: actor.orgId,
         actorId: actor.userId,
         objectType: 'client',
-        objectId: id,
+        // The stored id, not the raw URL segment (which may differ in case).
+        objectId: updated.id,
         action: 'client.updated',
         requestId,
       });

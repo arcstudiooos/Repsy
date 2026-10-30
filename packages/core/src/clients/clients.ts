@@ -115,6 +115,8 @@ async function assertUnderLimit(tx: TenantTx, limit: number) {
     throw new DomainError(
       'CLIENT_LIMIT_REACHED',
       `You have reached your limit of ${limit} active clients.`,
+      undefined,
+      { limit },
     );
   }
 }
