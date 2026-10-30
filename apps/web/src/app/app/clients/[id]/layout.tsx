@@ -3,6 +3,7 @@ import { Breadcrumbs } from '@/components/nav/Breadcrumbs';
 import { StatusBadge } from '../StatusBadge';
 import { ClientTabs } from './ClientTabs';
 import { loadClient } from './data';
+import { PauseControls } from './PauseControls';
 
 export default async function ClientLayout({
   children,
@@ -19,6 +20,9 @@ export default async function ClientLayout({
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-semibold break-words md:text-3xl">{client.name}</h1>
         <StatusBadge status={client.status} />
+      </div>
+      <div className="mb-4">
+        <PauseControls client={client} />
       </div>
       <div className="flex flex-col gap-6">
         <ClientTabs clientId={client.id} />

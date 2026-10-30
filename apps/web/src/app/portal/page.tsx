@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ShieldCheck } from 'lucide-react';
 import { getPortalHome } from '@kinetic/core';
+import { PausedBanner } from '@/components/portal/PausedBanner';
 import { EmptyState } from '@/components/states/EmptyState';
 import { LoggedByCoachBadge, SessionStateBadge } from '@/components/sessions/SessionStateBadge';
 import { buttonVariants } from '@/components/ui/button';
@@ -26,6 +27,7 @@ export default async function PortalHome() {
       <h1 className="mb-2 text-2xl font-semibold md:text-3xl">Home</h1>
       {org && <p className="mb-6 text-secondary">Coached by {org.name}</p>}
       <div className="flex flex-col gap-6">
+        {home.pause && <PausedBanner resumeLocalDate={home.pause.resumeLocalDate} />}
         {home.showSafetyReminder && (
           <aside
             aria-label="Before you start"
