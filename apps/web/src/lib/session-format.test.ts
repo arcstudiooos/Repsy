@@ -10,6 +10,18 @@ describe('formatSessionDate', () => {
     expect(formatSessionDate('2026-11-01', '2026-11-04')).toBe('Sun 1 Nov');
     expect(formatSessionDate('2027-01-02', '2026-12-31')).toBe('Sat 2 Jan');
   });
+
+  it('does not depend on the process time zone', () => {
+    const original = process.env.TZ;
+    try {
+      for (const tz of ['Pacific/Kiritimati', 'Pacific/Pago_Pago', 'America/New_York']) {
+        process.env.TZ = tz;
+        expect(formatSessionDate('2026-11-01', '2026-11-04')).toBe('Sun 1 Nov');
+      }
+    } finally {
+      process.env.TZ = original;
+    }
+  });
 });
 
 describe('sessionStateLabel', () => {

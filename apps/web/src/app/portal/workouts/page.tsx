@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { DomainError, listSessions, todayInZone, type SessionListScope } from '@kinetic/core';
 import { EmptyState } from '@/components/states/EmptyState';
-import { ErrorState } from '@/components/states/ErrorState';
 import { LoggedByCoachBadge, SessionStateBadge } from '@/components/sessions/SessionStateBadge';
 import { buttonVariants } from '@/components/ui/button';
 import { formatSessionDate, plural } from '@/lib/session-format';
@@ -47,7 +46,14 @@ export default async function PortalWorkouts({
       return (
         <>
           <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Workouts</h1>
-          <ErrorState message="That page link is no longer valid. Go back to the first page." />
+          <EmptyState
+            title="That page link is no longer valid"
+            action={
+              <Link href="/portal/workouts" className={buttonVariants()}>
+                Back to the first page
+              </Link>
+            }
+          />
         </>
       );
     }
@@ -118,14 +124,24 @@ export default async function PortalWorkouts({
           ))}
         </ul>
       )}
-      {data.nextCursor && (
-        <div className="mt-6 flex justify-center">
-          <Link
-            href={`/portal/workouts?scope=${scope}&cursor=${encodeURIComponent(data.nextCursor)}`}
-            className={buttonVariants({ variant: 'secondary' })}
-          >
-            Next page
-          </Link>
+      {(data.nextCursor || cursor !== undefined) && (
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          {cursor !== undefined && (
+            <Link
+              href={`/portal/workouts?scope=${scope}`}
+              className={buttonVariants({ variant: 'secondary' })}
+            >
+              First page
+            </Link>
+          )}
+          {data.nextCursor && (
+            <Link
+              href={`/portal/workouts?scope=${scope}&cursor=${encodeURIComponent(data.nextCursor)}`}
+              className={buttonVariants({ variant: 'secondary' })}
+            >
+              Next page
+            </Link>
+          )}
         </div>
       )}
     </>

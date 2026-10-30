@@ -1,6 +1,6 @@
 import { cache } from 'react';
 import { headers } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { DomainError, type ActorContext, type MembershipRef } from '@kinetic/core';
 import { withTenant, type TenantTx } from '@kinetic/db';
 import { getSessionUser, type SessionUser } from '@/lib/auth';
@@ -51,13 +51,13 @@ export async function withServerTenant<T>(
 /**
  * Runs `fn` scoped to the signed-in client's organization, with `actor.clientId` set from their own Client row
  * (exactly as apiHandler does), so core can scope reads to "my sessions". Portal pages only: the portal layout gate
- * guarantees the client role and the row; anything else is a 404.
+ * guarantees the client role and the row; anything else renders the 404 page.
  */
 export async function withPortalTenant<T>(
   fn: (tx: TenantTx, actor: ActorContext) => Promise<T>,
 ): Promise<T> {
   const base = await getServerActor();
-  if (base.role !== 'client') throw new DomainError('NOT_FOUND', 'Not found.');
+  if (base.role !== 'client') notFound();
   return withTenant(
     base.orgId,
     async (tx) => {
@@ -65,7 +65,7 @@ export async function withPortalTenant<T>(
         where: { userId: base.userId },
         select: { id: true },
       });
-      if (!own) throw new DomainError('NOT_FOUND', 'Not found.');
+      if (!own) notFound();
       return fn(tx, { ...base, clientId: own.id });
     },
     undefined,

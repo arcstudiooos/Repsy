@@ -105,4 +105,18 @@ describe('GET /api/v1/sessions', () => {
     const past = await list(headersFor(t.clientA, t.orgA.id), '?scope=past');
     expect(await ids(past)).toEqual([]);
   });
+
+  it('a malformed cursor is 422; a client-role user without a Client row gets 404', async () => {
+    const bad = await list(headersFor(t.clientA, t.orgA.id), '?cursor=garbage');
+    expect(bad.status).toBe(422);
+    const orphan = await createUser(prisma, auth, 'orphan');
+    await withSystem(
+      (tx) =>
+        tx.membership.create({
+          data: { userId: orphan.id, organizationId: t.orgA.id, role: 'client' },
+        }),
+      prisma,
+    );
+    expect((await list(headersFor(orphan, t.orgA.id))).status).toBe(404);
+  });
 });
