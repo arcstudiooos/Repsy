@@ -28,6 +28,14 @@ Open http://localhost:3000 and sign in as `coach@example.test` (or `admin@exampl
 - `pnpm dev`, `pnpm db:migrate`, `pnpm db:seed`, `pilot-code:create` and `pgboss:migrate` read the root `.env` (Node's built-in env-file loader; variables already set in the shell win). `pnpm test` does not.
 - `pnpm db:down` stops the container (data persists in a named volume).
 
+## What works locally (Sprint 4)
+
+- Weekly check-ins: the coach edits one set of questions (1-5 scale, short text, yes/no; all optional) at `/app/check-ins` and picks each client's check-in day on their Check-ins tab. The worker (`checkins.issue`, every 10 minutes) sends it at 06:00 in the client's time zone with a "check-in ready" email; it is due 23:59 that day and never sent while the program is paused. The client fills it in from the portal (the draft autosaves and survives a reload); the coach reads the answers beside the week before.
+- Messages: one conversation per client, text only, with unread counts and sent/read state, at `/app/messages` (two panes on desktop), on the client's Messages tab and at `/portal/messages`. Email notifications only for users who opted in, and they never contain the message.
+- Review queue: workouts not done by their due time plus the grace period become missed (or incomplete if started). The worker (`review.sweep`, every 10 minutes) raises "Needs review" items for 2+ missed workouts in 7 days, overdue check-ins and (for coaches who opted in) client messages unread for 24 hours; a sent check-in raises one at once. At `/app/review` the coach filters by state and rule, resolves or dismisses with a reason, snoozes for 1 day, 3 days, 1 week or to a date, messages the client or creates a follow-up. The dashboard shows what needs attention first.
+- Each client has private Notes (coaches only, never in any client view) and a History timeline: assignments and program versions, workouts, log changes, check-ins, pauses and notes.
+- E2E: `closed-loop.spec.ts` (invite → assign → log → check-in → review → note → resolve) and `journey-d.spec.ts` (the review queue) join the golden path.
+
 ## What works locally (Sprint 3)
 
 - Program builder: drafts autosave (to the server, and on the device while offline) and are restored after a reload; "Save changes" creates a new version, a save from a stale tab is a conflict that keeps the draft, and every program has a version history. Weeks can be duplicated and removed, days and exercises reordered, workouts copied to another day; day and exercise notes and per-set tempo are editable. Templates show how many clients use them.

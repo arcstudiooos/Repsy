@@ -185,6 +185,7 @@ test.describe('client directory', () => {
         'Check-ins',
         'Messages',
         'Notes',
+        'History',
       ]);
       await expect(tabs.getByRole('link', { name: 'Overview' })).toHaveAttribute(
         'aria-current',

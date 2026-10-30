@@ -325,6 +325,18 @@ const CASES: [string, Insert][] = [
       }),
   ],
   [
+    'internal_notes -> clients',
+    (tx, own, parent) =>
+      tx.internalNote.create({
+        data: {
+          organizationId: own.orgId,
+          clientId: parent.clientId,
+          authorUserId: own.userId,
+          body: 'n',
+        },
+      }),
+  ],
+  [
     'review_flags -> clients',
     (tx, own, parent) =>
       tx.reviewFlag.create({

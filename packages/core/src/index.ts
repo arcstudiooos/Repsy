@@ -154,6 +154,20 @@ export {
   type FlagAction,
 } from './review/flags';
 export {
+  listNotes,
+  createNote,
+  updateNote,
+  deleteNote,
+  NOTE_MAX,
+  type NoteView,
+} from './history/notes';
+export {
+  getClientTimeline,
+  TIMELINE_MAX,
+  type TimelineEvent,
+  type TimelineKind,
+} from './history/timeline';
+export {
   getMyThread,
   getClientThread,
   getThread,

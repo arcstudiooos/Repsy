@@ -86,6 +86,7 @@ model User {
   sentMessages             Message[]               @relation("MessageSender")
   resolvedFlags            ReviewFlag[]            @relation("FlagResolver")
   createdFlags             ReviewFlag[]            @relation("FlagCreator")
+  internalNotes            InternalNote[]          @relation("NoteAuthor")
   sessions                 Session[]
   accounts                 Account[]
   coachProfile             CoachProfile?
@@ -187,6 +188,7 @@ model Organization {
   conversationThreads     ConversationThread[]
   messages                Message[]
   reviewFlags             ReviewFlag[]
+  internalNotes           InternalNote[]
 
   @@map("organizations")
 }
@@ -304,6 +306,7 @@ model Client {
   checkins        Checkin[]
   thread          ConversationThread?
   reviewFlags     ReviewFlag[]
+  internalNotes   InternalNote[]
 
   @@unique([organizationId, email])
   @@unique([organizationId, userId])
@@ -898,4 +901,24 @@ model ReviewFlag {
   @@index([organizationId, state])
   @@index([clientId, ruleKey, state])
   @@map("review_flags")
+}
+
+/// A coach's private note about a client (S4-5, F12). Coach/owner only: never in a client API or portal payload.
+/// Only the author edits or deletes it.
+model InternalNote {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  clientId       String   @map("client_id") @db.Uuid
+  authorUserId   String   @map("author_user_id") @db.Uuid
+  body           String
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  author       User         @relation("NoteAuthor", fields: [authorUserId], references: [id])
+
+  @@index([clientId, createdAt])
+  @@index([organizationId])
+  @@map("internal_notes")
 }
