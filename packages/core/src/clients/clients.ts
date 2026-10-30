@@ -115,6 +115,8 @@ async function assertUnderLimit(tx: TenantTx, limit: number) {
     throw new DomainError(
       'CLIENT_LIMIT_REACHED',
       `You have reached your limit of ${limit} active clients.`,
+      undefined,
+      { limit },
     );
   }
 }
@@ -222,7 +224,7 @@ export async function getClient(
   if (!isUuid(id)) throw new DomainError('NOT_FOUND', 'Not found.');
   const row = await tx.client.findFirst({ where: { id } });
   if (!row) throw new DomainError('NOT_FOUND', 'Not found.');
-  return toClientView(row, (await inviteStatuses(tx, [id])).get(id));
+  return toClientView(row, (await inviteStatuses(tx, [row.id])).get(row.id));
 }
 
 const LABEL: Record<ClientStatus, string> = {
@@ -320,5 +322,5 @@ export async function updateClient(
     data.status = next;
   }
   const row = await tx.client.update({ where: { id }, data });
-  return toClientView(row, (await inviteStatuses(tx, [id])).get(id));
+  return toClientView(row, (await inviteStatuses(tx, [row.id])).get(row.id));
 }

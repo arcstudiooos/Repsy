@@ -78,6 +78,7 @@ model User {
   committedProgramVersions ProgramVersion[]        @relation("ProgramVersionCommitter")
   confirmedAssignments     ProgramAssignment[]     @relation("AssignmentReadinessConfirmer")
   loggedSessions           WorkoutSession[]        @relation("SessionLogger")
+  writtenSetLogs           SetLog[]                @relation("SetLogWriter")
   sessions                 Session[]
   accounts                 Account[]
   coachProfile             CoachProfile?
@@ -170,6 +171,7 @@ model Organization {
   workoutVersionExercises WorkoutVersionExercise[]
   programAssignments      ProgramAssignment[]
   workoutSessions         WorkoutSession[]
+  setLogs                 SetLog[]
 
   @@map("organizations")
 }
@@ -180,6 +182,8 @@ model Membership {
   organizationId String           @map("organization_id") @db.Uuid
   role           MembershipRole
   status         MembershipStatus @default(active)
+  /// When this coach last marked the review list as seen (Sprint 2 "new completed workouts"). Null = never.
+  reviewSeenAt   DateTime?        @map("review_seen_at") @db.Timestamptz(3)
   createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
 
   user         User         @relation(fields: [userId], references: [id])
@@ -401,14 +405,17 @@ model Program {
   /// since SET NULL would also null organization_id (migration 000016).
   client         Client?             @relation(fields: [clientId, organizationId], references: [id, organizationId], onDelete: Restrict)
   creator        User                @relation("ProgramCreator", fields: [createdBy], references: [id])
-  sourceProgram  Program?            @relation("ProgramSource", fields: [sourceProgramId], references: [id])
+  /// Composite FKs (MATCH SIMPLE: null skips the check) keep the source and current version in this org (migration 000017).
+  sourceProgram  Program?            @relation("ProgramSource", fields: [sourceProgramId, organizationId], references: [id, organizationId], onDelete: Restrict)
   copies         Program[]           @relation("ProgramSource")
-  sourceVersion  ProgramVersion?     @relation("ProgramSourceVersion", fields: [sourceVersionId], references: [id])
-  currentVersion ProgramVersion?     @relation("ProgramCurrentVersion", fields: [currentVersionId], references: [id])
+  sourceVersion  ProgramVersion?     @relation("ProgramSourceVersion", fields: [sourceVersionId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  currentVersion ProgramVersion?     @relation("ProgramCurrentVersion", fields: [currentVersionId, organizationId], references: [id, organizationId], onDelete: Restrict)
   versions       ProgramVersion[]    @relation("ProgramVersions")
   assignments    ProgramAssignment[]
 
   @@unique([id, organizationId])
+  /// Lets the 1:1 currentVersion relation use the composite key; currentVersionId alone stays unique too.
+  @@unique([currentVersionId, organizationId])
   @@index([organizationId, kind, status, createdAt, id])
   @@index([organizationId, clientId])
   @@map("programs")
@@ -493,8 +500,11 @@ model WorkoutVersionExercise {
   organization   Organization   @relation(fields: [organizationId], references: [id])
   workoutVersion WorkoutVersion @relation(fields: [workoutVersionId, organizationId], references: [id, organizationId])
   exercise       Exercise       @relation(fields: [exerciseId], references: [id])
+  setLogs        SetLog[]
 
   @@unique([workoutVersionId, position])
+  /// Target of set_logs' composite tenant FK.
+  @@unique([id, organizationId])
   @@index([organizationId])
   @@index([exerciseId])
   @@map("workout_version_exercises")
@@ -579,12 +589,54 @@ model WorkoutSession {
   organization   Organization      @relation(fields: [organizationId], references: [id])
   assignment     ProgramAssignment @relation(fields: [assignmentId, organizationId], references: [id, organizationId])
   client         Client            @relation(fields: [clientId, organizationId], references: [id, organizationId])
-  workoutVersion WorkoutVersion?   @relation(fields: [workoutVersionId], references: [id], onDelete: Restrict)
+  /// Composite FK (MATCH SIMPLE: null until locked) keeps the locked version in this org (migration 000017).
+  workoutVersion WorkoutVersion?   @relation(fields: [workoutVersionId, organizationId], references: [id, organizationId], onDelete: Restrict)
   loggedBy       User?             @relation("SessionLogger", fields: [loggedByUserId], references: [id])
+  setLogs        SetLog[]
 
   @@unique([assignmentId, slotWeekIndex, slotDayIndex])
+  /// Target of set_logs' composite tenant FK.
+  @@unique([id, organizationId])
   @@index([organizationId, clientId, dueAt])
+  /// Portal "upcoming" reads and the S4 missed-session sweep.
+  @@index([organizationId, state, dueAt])
+  /// Review list "new completed workouts" (S2-4).
+  @@index([organizationId, state, completedAt])
   @@index([assignmentId])
   @@index([workoutVersionId])
   @@map("workout_sessions")
+}
+
+/// One logged set (F08, D-004 #7, D-008 #8): upserted on (session, workout version exercise, set index), so replays
+/// never double-enter. Weight is stored in kg. The newest client-recorded write wins (D-004 multi-device rule).
+/// Range CHECKs live in the migration. Editing after submission (S3-4) adds audited SetLogRevisions.
+model SetLog {
+  id                       String   @id @default(uuid()) @db.Uuid
+  organizationId           String   @map("organization_id") @db.Uuid
+  sessionId                String   @map("session_id") @db.Uuid
+  workoutVersionExerciseId String   @map("workout_version_exercise_id") @db.Uuid
+  /// Zero-based, 0-19.
+  setIndex                 Int      @map("set_index")
+  reps                     Int?
+  weightKg                 Decimal? @map("weight_kg") @db.Decimal(7, 3)
+  rpe                      Decimal? @db.Decimal(3, 1)
+  durationSeconds          Int?     @map("duration_seconds")
+  distanceM                Decimal? @map("distance_m") @db.Decimal(9, 3)
+  /// When the device recorded this value; older writes than the stored one are ignored.
+  clientUpdatedAt          DateTime @map("client_updated_at") @db.Timestamptz(3)
+  clientMutationId         String   @map("client_mutation_id") @db.Uuid
+  /// Who wrote the current value (the client, or a coach logging on their behalf).
+  loggedByUserId           String   @map("logged_by_user_id") @db.Uuid
+  createdAt                DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization           Organization           @relation(fields: [organizationId], references: [id])
+  session                WorkoutSession         @relation(fields: [sessionId, organizationId], references: [id, organizationId])
+  workoutVersionExercise WorkoutVersionExercise @relation(fields: [workoutVersionExerciseId, organizationId], references: [id, organizationId])
+  loggedBy               User                   @relation("SetLogWriter", fields: [loggedByUserId], references: [id])
+
+  @@unique([sessionId, workoutVersionExerciseId, setIndex])
+  @@index([organizationId])
+  @@index([workoutVersionExerciseId])
+  @@map("set_logs")
 }

@@ -195,7 +195,11 @@ export function createApiHandler(deps: ApiDeps = {}) {
         // A client's own Client row id, so handlers can scope to "my data" without trusting input.
         if (actor?.role === 'client') {
           const own = await runTenant(actor.orgId, (tx) =>
-            tx.client.findFirst({ where: { userId: user.id }, select: { id: true } }),
+            // An archived client has no access to this organization (D-010 #4): no clientId, so core finds nothing.
+            tx.client.findFirst({
+              where: { userId: user.id, status: { not: 'archived' } },
+              select: { id: true },
+            }),
           );
           if (own) actor.clientId = own.id;
         }

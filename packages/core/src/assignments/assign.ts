@@ -264,14 +264,25 @@ export async function getAssignmentSummary(
   const sessionCount = await tx.workoutSession.count({
     where: { assignmentId: assignment.id, state: { not: 'cancelled' } },
   });
-  const next = await tx.workoutSession.findFirst({
-    where: {
-      assignmentId: assignment.id,
-      state: { in: ['scheduled', 'in_progress'] },
-      dueAt: { gte: opts.now ?? new Date() },
-    },
-    orderBy: [{ dueAt: 'asc' }, { slotWeekIndex: 'asc' }, { slotDayIndex: 'asc' }],
-  });
+  const order = [
+    { dueAt: 'asc' as const },
+    { slotWeekIndex: 'asc' as const },
+    { slotDayIndex: 'asc' as const },
+  ];
+  // A started session is the one to finish next, even when it is overdue; otherwise the next one still due.
+  const next =
+    (await tx.workoutSession.findFirst({
+      where: { assignmentId: assignment.id, state: 'in_progress' },
+      orderBy: order,
+    })) ??
+    (await tx.workoutSession.findFirst({
+      where: {
+        assignmentId: assignment.id,
+        state: { in: ['scheduled', 'in_progress'] },
+        dueAt: { gte: opts.now ?? new Date() },
+      },
+      orderBy: order,
+    }));
 
   let nextSession: AssignmentSummary['nextSession'] = null;
   if (next) {

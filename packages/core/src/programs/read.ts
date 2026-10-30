@@ -2,24 +2,44 @@ import { appendAudit, type TenantTx } from '@kinetic/db';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';
+import { logger } from '../log';
 import type { TrackingType } from '../exercises/options';
 import { decodeCursor, encodeCursor, PAGE_SIZE } from '../pagination';
 import { isUuid } from '../uuid';
 import { TITLE_MAX } from './commit';
 import type { SetTarget } from './targets';
 
+const NUMERIC_TARGET_FIELDS = [
+  'reps',
+  'loadKg',
+  'rpe',
+  'restSec',
+  'durationSec',
+  'distanceM',
+] as const;
+
 /**
- * Stored targets were validated when they were committed. History reads must keep rendering even after
- * targetSchema tightens, so this checks only the shape (array of objects) and never re-applies bounds.
+ * Lenient history read of stored targets. They were validated when committed, and history must keep rendering even
+ * after targetSchema tightens, so bounds are never re-applied. Unexpected shapes degrade instead of failing the page:
+ * a non-array becomes [] (logged without values), non-object items are dropped, and each set keeps only its finite
+ * numeric fields plus a string `tempo`.
  */
-function storedTargets(json: unknown): SetTarget[] {
-  if (
-    !Array.isArray(json) ||
-    json.some((s) => s === null || typeof s !== 'object' || Array.isArray(s))
-  ) {
-    throw new Error('Stored workout targets have an unexpected shape.');
+export function readStoredTargets(json: unknown): SetTarget[] {
+  if (!Array.isArray(json)) {
+    logger.warn({ event: 'stored_targets_shape' }, 'Stored workout targets are not an array.');
+    return [];
   }
-  return json as SetTarget[];
+  return json.flatMap((item: unknown) => {
+    if (item === null || typeof item !== 'object' || Array.isArray(item)) return [];
+    const raw = item as Record<string, unknown>;
+    const set: Record<string, number | string> = {};
+    for (const key of NUMERIC_TARGET_FIELDS) {
+      const v = raw[key];
+      if (typeof v === 'number' && Number.isFinite(v)) set[key] = v;
+    }
+    if (typeof raw.tempo === 'string') set.tempo = raw.tempo;
+    return [set as SetTarget];
+  });
 }
 
 const notFound = () => new DomainError('NOT_FOUND', 'Not found.');
@@ -207,7 +227,7 @@ export async function getProgram(
         exerciseName: e.exercise.name,
         trackingType: e.exercise.trackingType,
         note: e.note,
-        sets: storedTargets(e.targetJson),
+        sets: readStoredTargets(e.targetJson),
       })),
     });
   }

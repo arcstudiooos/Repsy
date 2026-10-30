@@ -117,6 +117,11 @@ describe('createClient', () => {
         run(actor, (tx) => createClient(tx, actor, { name: 'X', email: 'x31@example.test' })),
       ),
     ).toBe('CLIENT_LIMIT_REACHED');
+    const err = await run(actor, (tx) =>
+      createClient(tx, actor, { name: 'Y', email: 'y31@example.test' }),
+    ).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(DomainError);
+    expect((err as DomainError).details).toEqual({ limit: 30 });
   });
 
   it('limit holds under concurrency', async () => {

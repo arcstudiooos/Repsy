@@ -103,3 +103,52 @@ export {
   type AssignProgramResult,
   type AssignmentSummary,
 } from './assignments/assign';
+export {
+  SESSION_STATES,
+  OPEN_STATES,
+  PAST_STATES,
+  type SessionState,
+  type SessionSummary,
+  type WorkoutVersionView,
+} from './sessions/types';
+export {
+  resolveSessionWorkout,
+  resolveSlotWorkoutVersionId,
+  loadWorkoutVersionView,
+} from './sessions/resolve';
+export {
+  listSessions,
+  getPortalHome,
+  isoWeekOf,
+  encodeSessionCursor,
+  decodeSessionCursor,
+  type SessionListScope,
+  type PortalHome,
+} from './sessions/read';
+export { readStoredTargets } from './programs/read';
+export { startSession, completeSession, skipSession, type FinishInput } from './sessions/lifecycle';
+export {
+  getSessionDetail,
+  type SessionDetail,
+  type LoggedSet,
+  type PreviousPerformance,
+} from './sessions/detail';
+export { upsertSetLogs, type SetLogAck } from './logging/upsertSetLogs';
+export { toSetLogValue, type SetLogValue } from './logging/values';
+export {
+  setLogInputSchema,
+  logsBodySchema,
+  finishBodySchema,
+  MAX_SETS,
+  COMMENT_MAX,
+  type SetLogInput,
+} from './logging/schema';
+export {
+  getReviewOverview,
+  getReviewCounts,
+  markReviewSeen,
+  REVIEW_LIST_MAX,
+  type ReviewOverview,
+  type ReviewItem,
+  type ReviewSection,
+} from './review/review';

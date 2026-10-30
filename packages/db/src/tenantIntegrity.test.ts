@@ -11,6 +11,7 @@ import type { PrismaClient } from './generated/client';
 const BENCH = 'e0000000-0000-4000-8000-000000000001';
 
 let prisma: PrismaClient;
+let schema: string;
 let drop: () => Promise<void>;
 
 interface Tenant {
@@ -21,6 +22,8 @@ interface Tenant {
   programVersionId: string;
   workoutVersionId: string;
   assignmentId: string;
+  sessionId: string;
+  workoutVersionExerciseId: string;
 }
 let a: Tenant;
 let b: Tenant;
@@ -66,9 +69,34 @@ async function seedTenant(tx: SystemTx, label: string): Promise<Tenant> {
       timezone: 'UTC',
     },
   });
+  const wve = await tx.workoutVersionExercise.create({
+    data: {
+      organizationId: org.id,
+      workoutVersionId: wv.id,
+      exerciseId: BENCH,
+      position: 0,
+      targetJson: [{ reps: 5 }],
+    },
+  });
+  const ws = await tx.workoutSession.create({
+    data: {
+      organizationId: org.id,
+      assignmentId: assignment.id,
+      clientId: client.id,
+      slotWeekIndex: 9,
+      slotDayIndex: 0,
+      scheduledLocalDate: new Date('2026-11-04'),
+      scheduledAt: new Date('2026-11-04T00:00:00Z'),
+      dueAt: new Date('2026-11-04T23:59:00Z'),
+      workoutVersionId: wv.id,
+      state: 'in_progress',
+    },
+  });
   return {
     orgId: org.id,
     userId: user.id,
+    sessionId: ws.id,
+    workoutVersionExerciseId: wve.id,
     clientId: client.id,
     programId: program.id,
     programVersionId: pv.id,
@@ -98,6 +126,17 @@ const assignmentRow = (own: Tenant, clientId: string, programId: string) => ({
   status: 'ended' as const,
 });
 
+const setLog = (own: Tenant, sessionId: string, wveId: string, setIndex: number) => ({
+  organizationId: own.orgId,
+  sessionId,
+  workoutVersionExerciseId: wveId,
+  setIndex,
+  reps: 5,
+  clientUpdatedAt: new Date(),
+  clientMutationId: crypto.randomUUID(),
+  loggedByUserId: own.userId,
+});
+
 type Insert = (tx: SystemTx, own: Tenant, parent: Tenant) => Promise<unknown>;
 
 /** Each case inserts one child row in org `own` whose parent fields come from `parent`. */
@@ -111,6 +150,66 @@ const CASES: [string, Insert][] = [
     'workout_sessions -> clients',
     (tx, own, parent) =>
       tx.workoutSession.create({ data: session(own, own.assignmentId, parent.clientId, 1) }),
+  ],
+  [
+    'workout_sessions -> workout_versions (locked version)',
+    (tx, own, parent) =>
+      tx.workoutSession.create({
+        data: {
+          ...session(own, own.assignmentId, own.clientId, 2),
+          workoutVersionId: parent.workoutVersionId,
+        },
+      }),
+  ],
+  [
+    'programs.current_version_id -> program_versions',
+    (tx, own, parent) =>
+      tx.program.create({
+        data: {
+          organizationId: own.orgId,
+          title: 'Current',
+          createdBy: own.userId,
+          currentVersionId: parent.programVersionId,
+        },
+      }),
+  ],
+  [
+    'programs.source_program_id -> programs',
+    (tx, own, parent) =>
+      tx.program.create({
+        data: {
+          organizationId: own.orgId,
+          title: 'Copy',
+          kind: 'client',
+          clientId: own.clientId,
+          sourceProgramId: parent.programId,
+          createdBy: own.userId,
+        },
+      }),
+  ],
+  [
+    'programs.source_version_id -> program_versions',
+    (tx, own, parent) =>
+      tx.program.create({
+        data: {
+          organizationId: own.orgId,
+          title: 'Copy',
+          kind: 'client',
+          clientId: own.clientId,
+          sourceVersionId: parent.programVersionId,
+          createdBy: own.userId,
+        },
+      }),
+  ],
+  [
+    'set_logs -> workout_sessions',
+    (tx, own, parent) =>
+      tx.setLog.create({ data: setLog(own, parent.sessionId, own.workoutVersionExerciseId, 0) }),
+  ],
+  [
+    'set_logs -> workout_version_exercises',
+    (tx, own, parent) =>
+      tx.setLog.create({ data: setLog(own, own.sessionId, parent.workoutVersionExerciseId, 1) }),
   ],
   [
     'program_assignments -> clients',
@@ -214,7 +313,7 @@ const outcome = (p: Promise<unknown>) =>
   );
 
 beforeAll(async () => {
-  ({ prisma, drop } = await createTestDb());
+  ({ prisma, schema, drop } = await createTestDb());
   ({ a, b } = await withSystem(
     async (tx) => ({ a: await seedTenant(tx, 'a'), b: await seedTenant(tx, 'b') }),
     prisma,
@@ -236,6 +335,39 @@ describe('cross-tenant parent links are refused by the database', () => {
     expect(await outcome(withSystem((tx) => insert(tx, a, a), prisma))).toBe('ok');
   });
 
+  // Production writes these two links with UPDATE (session start lock, program commit), not INSERT.
+  it('updating a session lock or a program current version to another org is a FK violation', async () => {
+    const own = await withSystem(
+      async (tx) => ({
+        session: await tx.workoutSession.create({
+          data: session(a, a.assignmentId, a.clientId, 4),
+        }),
+        program: await tx.program.create({
+          data: { organizationId: a.orgId, title: 'U', createdBy: a.userId },
+        }),
+      }),
+      prisma,
+    );
+    const lock = (wv: string) =>
+      withSystem(
+        (tx) =>
+          tx.workoutSession.updateMany({
+            where: { id: own.session.id },
+            data: { workoutVersionId: wv },
+          }),
+        prisma,
+      );
+    const current = (pv: string) =>
+      withSystem(
+        (tx) =>
+          tx.program.updateMany({ where: { id: own.program.id }, data: { currentVersionId: pv } }),
+        prisma,
+      );
+    expect(await outcome(lock(b.workoutVersionId))).toBe('FK');
+    expect(await outcome(current(b.programVersionId))).toBe('FK');
+    expect(await outcome(lock(a.workoutVersionId))).toBe('ok');
+  });
+
   it('a client copy with no client (MATCH SIMPLE) is still allowed', async () => {
     const created = withSystem(
       (tx) =>
@@ -245,5 +377,90 @@ describe('cross-tenant parent links are refused by the database', () => {
       prisma,
     );
     expect(await outcome(created)).toBe('ok');
+  });
+});
+
+describe('session sweep index', () => {
+  it('workout_sessions has an (organization_id, state, due_at) index', async () => {
+    const rows = await withSystem(
+      (tx) =>
+        tx.$queryRaw<{ indexdef: string }[]>`
+          SELECT indexdef FROM pg_indexes
+          WHERE schemaname = ${schema} AND tablename = 'workout_sessions'`,
+      prisma,
+    );
+    expect(rows.map((r) => r.indexdef)).toContainEqual(
+      expect.stringMatching(/\(organization_id, state, due_at\)$/),
+    );
+  });
+});
+
+describe('set_logs constraints', () => {
+  it('range CHECKs reject out-of-range values even from system scope', async () => {
+    const bad = [{ reps: 1001 }, { rpe: 11 }, { weightKg: 2000.5 }, { setIndex: 20 }];
+    for (const [i, over] of bad.entries()) {
+      const res = await outcome(
+        withSystem(
+          (tx) =>
+            tx.setLog.create({
+              data: { ...setLog(b, b.sessionId, b.workoutVersionExerciseId, 10 + i), ...over },
+            }),
+          prisma,
+        ),
+      );
+      expect(res).toMatch(/check|23514/i);
+    }
+  });
+
+  it('one row per (session, exercise, set index)', async () => {
+    const row = setLog(b, b.sessionId, b.workoutVersionExerciseId, 18);
+    expect(await outcome(withSystem((tx) => tx.setLog.create({ data: row }), prisma))).toBe('ok');
+    expect(
+      await outcome(
+        withSystem(
+          (tx) => tx.setLog.create({ data: { ...row, clientMutationId: crypto.randomUUID() } }),
+          prisma,
+        ),
+      ),
+    ).toMatch(/P2002/);
+  });
+});
+
+describe('session version lock (D-002 #6)', () => {
+  it('a locked workout version can not be replaced or cleared, even from system scope', async () => {
+    const other = await withSystem(
+      (tx) =>
+        tx.workoutVersion.create({
+          data: { organizationId: b.orgId, title: 'Other', contentHash: 'other' },
+        }),
+      prisma,
+    );
+    const set = (workoutVersionId: string | null) =>
+      outcome(
+        withSystem(
+          (tx) =>
+            tx.workoutSession.updateMany({
+              where: { id: b.sessionId },
+              data: { workoutVersionId },
+            }),
+          prisma,
+        ),
+      );
+    expect(await set(other.id)).toMatch(/locked/);
+    expect(await set(null)).toMatch(/locked/);
+    // Rewriting the same value and touching other columns stay allowed.
+    expect(await set(b.workoutVersionId)).toBe('ok');
+    expect(
+      await outcome(
+        withSystem(
+          (tx) =>
+            tx.workoutSession.updateMany({
+              where: { id: b.sessionId },
+              data: { state: 'completed' },
+            }),
+          prisma,
+        ),
+      ),
+    ).toBe('ok');
   });
 });

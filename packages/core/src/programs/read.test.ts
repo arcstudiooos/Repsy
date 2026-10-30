@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { withSystem, withTenant, type PrismaClient } from '@kinetic/db';
 import { createTestDb } from '@kinetic/db/testing';
 import type { ActorContext } from '../authz/actor';
-import { getProgram } from './read';
+import { getProgram, readStoredTargets } from './read';
 
 let prisma: PrismaClient;
 let drop: () => Promise<void>;
@@ -72,6 +72,25 @@ describe('getProgram history reads', () => {
     );
     expect(detail.weeks[0]!.days[0]!.exercises[0]!.sets).toEqual([
       { reps: 5000, rpe: 11, loadKg: 99999 },
+    ]);
+  });
+});
+
+describe('readStoredTargets (lenient history read)', () => {
+  it('degrades unexpected shapes instead of throwing', () => {
+    expect(readStoredTargets({ sets: 3 })).toEqual([]);
+    expect(readStoredTargets(null)).toEqual([]);
+    expect(
+      readStoredTargets([
+        { reps: 5, loadKg: 60, junk: 'x', rpe: 'hard', restSec: Number.NaN, tempo: '31X1' },
+        null,
+        'set',
+        [1, 2],
+        { durationSec: 30, distanceM: 400 },
+      ]),
+    ).toEqual([
+      { reps: 5, loadKg: 60, tempo: '31X1' },
+      { durationSec: 30, distanceM: 400 },
     ]);
   });
 });

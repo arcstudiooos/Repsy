@@ -21,12 +21,15 @@ interface ApiError {
   code: string;
   message: string;
   fieldErrors?: Record<string, string[]>;
+  details?: Record<string, unknown>;
 }
 
 const DEFAULT_LIMIT = 30;
 
-function limitMessage(apiMessage: string): string {
-  const n = /limit of (\d+)/.exec(apiMessage)?.[1] ?? String(DEFAULT_LIMIT);
+/** The limit comes from `error.details.limit` (CLIENT_LIMIT_REACHED), never parsed out of the message. */
+function limitMessage(details: ApiError['details']): string {
+  const limit = details?.limit;
+  const n = typeof limit === 'number' && Number.isInteger(limit) ? limit : DEFAULT_LIMIT;
   return `Pilot access includes up to ${n} active clients.`;
 }
 
@@ -102,7 +105,7 @@ export function NewClientDialog() {
       }
       const body = (await res.json().catch(() => null)) as { error?: ApiError } | null;
       const error = body?.error;
-      if (error?.code === 'CLIENT_LIMIT_REACHED') setFormError(limitMessage(error.message));
+      if (error?.code === 'CLIENT_LIMIT_REACHED') setFormError(limitMessage(error.details));
       else if (error?.code === 'EMAIL_TAKEN') setFieldErrors({ email: [error.message] });
       else if (error?.fieldErrors) {
         setFieldErrors(error.fieldErrors);
