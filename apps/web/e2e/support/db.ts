@@ -258,3 +258,30 @@ export async function seedCoachWithClient(opts: {
     await client.end();
   }
 }
+
+/**
+ * Issues today's check-in for the client with `clientName` now, as the `checkins.issue` job would (admin
+ * connection; the job runs every 10 minutes, too slow for a spec). Uses the organization's template questions.
+ */
+export async function issueCheckinNow(clientName: string): Promise<string> {
+  const client = new pg.Client({ connectionString: readState().adminUrl });
+  await client.connect();
+  try {
+    const { rows } = await client.query<{ id: string }>(
+      `INSERT INTO checkins (id, organization_id, client_id, template_id, period_local_date, questions_json,
+                             issued_at, due_at, updated_at)
+       SELECT gen_random_uuid(), c.organization_id, c.id, t.id,
+              (now() AT TIME ZONE c.timezone)::date, t.questions_json,
+              now(), now() + interval '12 hours', now()
+         FROM clients c JOIN checkin_templates t ON t.organization_id = c.organization_id
+        WHERE c.name = $1
+       RETURNING id`,
+      [clientName],
+    );
+    const id = rows[0]?.id;
+    if (!id) throw new Error(`no client ${clientName} with a check-in template`);
+    return id;
+  } finally {
+    await client.end();
+  }
+}

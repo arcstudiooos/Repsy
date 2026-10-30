@@ -221,6 +221,8 @@ export interface PortalHome {
   todayLocalDate: string;
   /** The open pause of the client's program (S3-5), for the "Program paused" banner. */
   pause: { startLocalDate: string; resumeLocalDate: string } | null;
+  /** The newest check-in not yet sent (S4-1), for the portal home card. */
+  openCheckin: { id: string; title: string; dueAt: string } | null;
 }
 
 /** The portal home for the acting client (S2-1). */
@@ -272,6 +274,11 @@ export async function getPortalHome(
     },
   });
   const assignments = await tx.programAssignment.count({ where: { clientId: client.id } });
+  const checkin = await tx.checkin.findFirst({
+    where: { clientId: client.id, submittedAt: null },
+    orderBy: { periodLocalDate: 'desc' },
+    select: { id: true, dueAt: true, template: { select: { title: true } } },
+  });
   const pause = await tx.clientPause.findFirst({
     where: { clientId: client.id, endedAt: null },
     select: { startLocalDate: true, resumeLocalDate: true },
@@ -288,6 +295,9 @@ export async function getPortalHome(
           startLocalDate: fromDbDate(pause.startLocalDate),
           resumeLocalDate: fromDbDate(pause.resumeLocalDate),
         }
+      : null,
+    openCheckin: checkin
+      ? { id: checkin.id, title: checkin.template.title, dueAt: checkin.dueAt.toISOString() }
       : null,
   };
 }

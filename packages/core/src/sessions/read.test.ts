@@ -202,6 +202,7 @@ describe('getPortalHome', () => {
       hasAssignment: false,
       todayLocalDate: '2026-11-04',
       pause: null,
+      openCheckin: null,
     });
     expect(await codeOf(runAs(prisma, w.coach, (tx) => getPortalHome(tx, w.coach)))).toBe(
       'FORBIDDEN',

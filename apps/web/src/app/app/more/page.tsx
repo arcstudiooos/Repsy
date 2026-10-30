@@ -7,6 +7,7 @@ export const metadata: Metadata = { title: 'More | Kinetic' };
 
 const links = [
   { label: 'Programs', href: '/app/programs' },
+  { label: 'Check-in questions', href: '/app/check-ins' },
   { label: 'Analytics', href: '/app/analytics' },
   { label: 'Settings', href: '/settings' },
 ];

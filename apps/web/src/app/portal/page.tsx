@@ -28,6 +28,22 @@ export default async function PortalHome() {
       {org && <p className="mb-6 text-secondary">Coached by {org.name}</p>}
       <div className="flex flex-col gap-6">
         {home.pause && <PausedBanner resumeLocalDate={home.pause.resumeLocalDate} />}
+        {home.openCheckin && (
+          <Card>
+            <CardHeader>
+              <CardDescription>Check-in ready</CardDescription>
+              <CardTitle className="text-xl break-words">{home.openCheckin.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Link
+                href={`/portal/check-ins/${home.openCheckin.id}`}
+                className={cn(buttonVariants({ variant: 'secondary' }), 'min-h-12 w-full')}
+              >
+                Fill in check-in
+              </Link>
+            </CardContent>
+          </Card>
+        )}
         {home.showSafetyReminder && (
           <aside
             aria-label="Before you start"

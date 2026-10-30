@@ -26,6 +26,8 @@ export interface ClientView {
   joinedAt: string | null;
   /** The open pause (S3-5); null when the program is not paused. */
   pause: PauseView | null;
+  /** ISO weekday of the weekly check-in (S4-1); null = no check-ins. */
+  checkinWeekday: number | null;
   createdAt: string;
 }
 
@@ -38,6 +40,7 @@ interface ClientRow {
   goals: string | null;
   timezone: string;
   preferredUnits: 'kg' | 'lb';
+  checkinWeekday: number | null;
   createdAt: Date;
 }
 
@@ -82,6 +85,7 @@ export function toClientView(
     inviteExpiresAt: invite.expiresAt ? invite.expiresAt.toISOString() : null,
     joinedAt: invite.acceptedAt ? invite.acceptedAt.toISOString() : null,
     pause: pause ? toPauseView(pause) : null,
+    checkinWeekday: row.checkinWeekday,
     createdAt: row.createdAt.toISOString(),
   };
 }
