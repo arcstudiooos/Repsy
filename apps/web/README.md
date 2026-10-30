@@ -17,6 +17,16 @@ Run from `apps/web` (or with `pnpm --filter @kinetic/web <script>` from the repo
 
 Unit and integration tests run from the repo root with `pnpm test`.
 
+### E2E isolation
+
+`pnpm test:e2e` never touches a running `pnpm dev`:
+
+- it builds into `.next-e2e` (`NEXT_DIST_DIR`), not `.next`; to start it clean, delete `apps/web/.next-e2e` (never `.next`, which belongs to the dev server);
+- it serves on port 3200 (worker health on 8281); override with `E2E_WEB_PORT` / `E2E_WORKER_PORT`;
+- it creates and drops its own `kinetic_e2e` database (or an embedded Postgres when `DATABASE_URL` is unset), never the dev database.
+
+A one-off production build check that should not disturb a dev server can use its own dir too: `NEXT_DIST_DIR=.next-build pnpm build`.
+
 ## Design tokens and shells
 
 - Tokens: `src/styles/tokens.css` (CSS variables, mapped into the Tailwind theme in `src/app/globals.css`) and `src/lib/tokens.ts` (same values for TypeScript, plus `contrastRatio`).

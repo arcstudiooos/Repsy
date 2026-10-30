@@ -62,7 +62,7 @@ Sprint 0 (Foundations) was completed on branch `sprint-0` (2026-10-29). Every ta
   - all anonymous traffic shares `ip:unknown` when `X-Forwarded-For` is missing
 - **Code duplication:** pilot-code functions are imported by relative path from db scripts; the E2E normalization copy; the duplicated enforcement predicate (export `runtimeRoleEnforced(env)`); Crockford alias mapping.
 - **Tooling:**
-  - `pnpm dev` and `pnpm test:e2e` share `apps/web/.next`; give E2E its own `distDir`
+  - ~~`pnpm dev` and `pnpm test:e2e` share `apps/web/.next`~~ (done: E2E builds into `.next-e2e`, port 3200)
   - a Playwright hard-kill leaves `.state.json`
   - E2E runs `next dev`, not `next start`
   - `docs/decisions.md` and `docs/implementation-plan.md` are not Prettier-formatted

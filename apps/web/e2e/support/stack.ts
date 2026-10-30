@@ -25,8 +25,10 @@ import { STATE_FILE, type E2EState } from './state';
 const here = dirname(fileURLToPath(import.meta.url));
 const webDir = join(here, '..', '..');
 const repoRoot = join(webDir, '..', '..');
-const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? 3100);
-const WORKER_PORT = Number(process.env.E2E_WORKER_PORT ?? 8181);
+// Not 3100: that is where `pnpm dev` runs locally, and the stack must not collide with it.
+const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? 3200);
+// Not 8181 either: a locally running dev worker may hold it.
+const WORKER_PORT = Number(process.env.E2E_WORKER_PORT ?? 8281);
 const DB_NAME = 'kinetic_e2e';
 const APP_ROLE = 'kinetic_app_e2e';
 
@@ -181,6 +183,8 @@ async function main(): Promise<void> {
     // Production shape: boot-time role guard on, owner credential absent, no root .env.
     ENFORCE_RUNTIME_ROLE: 'true',
     KINETIC_DOTENV: 'off',
+    // Own build dir: a concurrently running `next dev` keeps `.next` to itself.
+    NEXT_DIST_DIR: '.next-e2e',
     PORT: undefined,
   };
   delete env.PORT;

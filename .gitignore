@@ -4,6 +4,8 @@ _old-scaffold/
 # node / next
 node_modules/
 .next/
+.next-e2e/
+.next-build/
 out/
 dist/
 coverage/

@@ -17,7 +17,8 @@ if (process.env.KINETIC_DOTENV !== 'off') {
 }
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // The E2E stack (and ad-hoc build checks) use their own build dir so they never share `.next` with `next dev`.
+  distDir: process.env.NEXT_DIST_DIR?.trim() || '.next',
   cacheComponents: true,
   transpilePackages: ['@kinetic/core', '@kinetic/db'],
   serverExternalPackages: ['pg'],

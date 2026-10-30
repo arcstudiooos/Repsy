@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const port = Number(process.env.E2E_WEB_PORT ?? 3100);
+// Must match e2e/support/stack.ts (3100 is left to `pnpm dev`).
+const port = Number(process.env.E2E_WEB_PORT ?? 3200);
 // STAGING_URL points the smoke spec at a hosted environment; no local stack is started then.
 const stagingUrl = process.env.STAGING_URL;
 const baseURL = stagingUrl ?? `http://localhost:${port}`;
