@@ -4,6 +4,7 @@ import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';
 import { summarizeInvites, type InviteStatus } from '../invites/invites';
 import { decodeCursor, encodeCursor, PAGE_SIZE } from '../pagination';
+import { canonicalTimezone } from '../timezone';
 import { isUuid } from '../uuid';
 
 export type ClientStatus = 'invited' | 'active' | 'paused' | 'archived';
@@ -161,7 +162,14 @@ export async function createClient(
   // Scalar FKs only: the tenant extension injects scalar organizationId, which
   // Prisma rejects next to a relation connect.
   const row = await tx.client.create({
-    data: { coachUserId: actor.userId, name, email, goals, timezone: org.timezone },
+    // Canonical even when the org row predates canonicalization.
+    data: {
+      coachUserId: actor.userId,
+      name,
+      email,
+      goals,
+      timezone: canonicalTimezone(org.timezone) ?? org.timezone,
+    },
   } as Parameters<typeof tx.client.create>[0]);
   return toClientView(row);
 }

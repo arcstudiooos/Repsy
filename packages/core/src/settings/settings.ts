@@ -3,7 +3,7 @@ import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { countActiveClients } from '../clients/clients';
 import { DomainError } from '../errors';
-import { isIanaTimezone } from '../timezone';
+import { canonicalTimezone } from '../timezone';
 
 type Units = 'kg' | 'lb';
 
@@ -132,7 +132,8 @@ function validate(patch: SettingsPatch): Cleaned {
       } else o.name = v;
     }
     if (timezone !== undefined) {
-      if (isIanaTimezone(timezone)) o.timezone = timezone;
+      const zone = canonicalTimezone(timezone);
+      if (zone) o.timezone = zone;
       else add(errors, 'org.timezone', 'Choose a valid time zone.');
     }
     if (graceHours !== undefined) {
@@ -154,7 +155,8 @@ function validate(patch: SettingsPatch): Cleaned {
     const c: NonNullable<Cleaned['client']> = {};
     const { timezone, preferredUnits } = patch.client;
     if (timezone !== undefined) {
-      if (isIanaTimezone(timezone)) c.timezone = timezone;
+      const zone = canonicalTimezone(timezone);
+      if (zone) c.timezone = zone;
       else add(errors, 'client.timezone', 'Choose a valid time zone.');
     }
     if (preferredUnits !== undefined) {

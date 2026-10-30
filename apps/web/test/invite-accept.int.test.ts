@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { PRIVACY_NOTICE_VERSION } from '@kinetic/core';
+import { canonicalTimezone, PRIVACY_NOTICE_VERSION } from '@kinetic/core';
 import { withSystem, type PrismaClient } from '@kinetic/db';
 import { createTestDb } from '@kinetic/db/testing';
 import { createAuth, type Auth } from '@/lib/auth';
@@ -155,6 +155,33 @@ describe('invite acceptance', () => {
       prisma,
     );
     expect(pending).toBe(0);
+  });
+
+  it('a browser alias zone (Asia/Kolkata) is accepted on both paths and stored canonical', async () => {
+    const email = freshEmail();
+    const { token, clientId } = await issueFor(t.coachA, t.orgA.id, email);
+    const result = await acceptWithSignup(deps(), {
+      token,
+      password: TEST_PASSWORD,
+      ...onboarding,
+      timezone: 'Asia/Kolkata',
+    });
+    expect(result).toMatchObject({ ok: true });
+    const row = await withSystem(
+      (tx) => tx.client.findUniqueOrThrow({ where: { id: clientId } }),
+      prisma,
+    );
+    expect(row.timezone).toBe(canonicalTimezone('Asia/Kolkata'));
+
+    const user = await createUser(prisma, auth, 'kolkata');
+    const signedIn = await issueFor(t.coachB, t.orgB.id, user.email);
+    const res = await acceptVia(user, signedIn.token, { timezone: 'Asia/Kolkata' });
+    expect(res.status).toBe(200);
+    const linked = await withSystem(
+      (tx) => tx.client.findUniqueOrThrow({ where: { id: signedIn.clientId } }),
+      prisma,
+    );
+    expect(linked.timezone).toBe(canonicalTimezone('Asia/Kolkata'));
   });
 
   it('rejects bad fields without creating a user', async () => {

@@ -4,6 +4,7 @@ import { createTestDb } from '@kinetic/db/testing';
 import type { ActorContext } from '../authz/actor';
 import { DomainError } from '../errors';
 import { decodeCursor, encodeCursor } from '../pagination';
+import { canonicalTimezone } from '../timezone';
 import { createClient, listClients, updateClient } from './clients';
 
 let prisma: PrismaClient;
@@ -90,6 +91,14 @@ describe('createClient', () => {
       prisma,
     );
     expect(row).toMatchObject({ organizationId: actor.orgId, coachUserId: coachId, userId: null });
+  });
+
+  it('the default zone from a legacy org row is stored canonical', async () => {
+    const actor = await newOrg('Asia/Kolkata');
+    const view = await run(actor, (tx) =>
+      createClient(tx, actor, { name: 'Z', email: 'zone@example.test' }),
+    );
+    expect(view.timezone).toBe(canonicalTimezone('Asia/Kolkata'));
   });
 
   it('31st invited-or-active client → CLIENT_LIMIT_REACHED (archived do not count)', async () => {

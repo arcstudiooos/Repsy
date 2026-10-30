@@ -3,6 +3,7 @@ import { withSystem, type PrismaClient } from '@kinetic/db';
 import { createTestDb } from '@kinetic/db/testing';
 import { DomainError } from '../errors';
 import { hashPilotCode } from './pilotCode';
+import { canonicalTimezone } from '../timezone';
 import { signupCoach } from './signupCoach';
 
 let prisma: PrismaClient;
@@ -86,6 +87,27 @@ describe('signupCoach', () => {
   it('accepts lowercase and hyphenless input', async () => {
     await seedCode('MIXED-Case-9');
     await expect(signup('mixedcase9')).resolves.toHaveProperty('orgId');
+  });
+
+  it('stores the canonical zone for a browser alias; an invalid zone is VALIDATION and leaves the code unused', async () => {
+    await seedCode('ZONE-CODE');
+    const bad = await withSystem(
+      (tx) => signupCoach(tx, { ...input('ZONE-CODE'), timezone: '+05:30' }),
+      prisma,
+    ).catch((e: unknown) => e);
+    expect(bad).toMatchObject({
+      code: 'VALIDATION',
+      fieldErrors: { timezone: [expect.any(String)] },
+    });
+    const { orgId } = await withSystem(
+      (tx) => signupCoach(tx, { ...input('ZONE-CODE'), timezone: 'Asia/Kolkata' }),
+      prisma,
+    );
+    const org = await withSystem(
+      (tx) => tx.organization.findUniqueOrThrow({ where: { id: orgId } }),
+      prisma,
+    );
+    expect(org.timezone).toBe(canonicalTimezone('Asia/Kolkata'));
   });
 
   it('a code cannot be redeemed twice', async () => {

@@ -3,6 +3,7 @@ import { withSystem, withTenant, type PrismaClient } from '@kinetic/db';
 import { createTestDb } from '@kinetic/db/testing';
 import type { ActorContext, Role } from '../authz/actor';
 import { DomainError } from '../errors';
+import { canonicalTimezone } from '../timezone';
 import { getSettings, updateSettings } from './settings';
 
 let prisma: PrismaClient;
@@ -136,6 +137,23 @@ describe('updateSettings', () => {
     expect(
       await failure(run(c, (tx) => updateSettings(tx, c, { client: { timezone: 'Nope' } }))),
     ).toMatchObject({ code: 'VALIDATION' });
+  });
+
+  it('browser aliases and any letter case are stored canonical (org and client)', async () => {
+    const a = actor('owner');
+    await run(a, (tx) => updateSettings(tx, a, { org: { timezone: 'europe/london' } }));
+    const org = await withSystem(
+      (tx) => tx.organization.findUniqueOrThrow({ where: { id: a.orgId } }),
+      prisma,
+    );
+    expect(org.timezone).toBe('Europe/London');
+    const c = actor('client');
+    await run(c, (tx) => updateSettings(tx, c, { client: { timezone: 'Asia/Kolkata' } }));
+    expect((await run(c, (tx) => getSettings(tx, c))).client?.timezone).toBe(
+      canonicalTimezone('Asia/Kolkata'),
+    );
+    await run(c, (tx) => updateSettings(tx, c, { client: { timezone: 'Etc/UTC' } }));
+    expect((await run(c, (tx) => getSettings(tx, c))).client?.timezone).toBe('UTC');
   });
 
   it('client cannot patch org', async () => {

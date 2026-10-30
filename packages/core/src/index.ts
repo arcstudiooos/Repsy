@@ -52,7 +52,7 @@ export {
 } from './invites/invites';
 export { newInviteToken, hashInviteToken } from './invites/token';
 export { PRIVACY_NOTICE_VERSION, PRIVACY_NOTICE_TEXT } from './privacy';
-export { isIanaTimezone, todayInZone } from './timezone';
+export { canonicalTimezone, isIanaTimezone, todayInZone } from './timezone';
 export {
   getSettings,
   updateSettings,

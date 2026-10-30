@@ -1,5 +1,5 @@
 import { TZDate } from '@date-fns/tz';
-import { isIanaTimezone } from '../timezone';
+import { canonicalTimezone } from '../timezone';
 import type { ScheduledSlot, ScheduleSlotsInput } from './types';
 
 export class ScheduleInputError extends Error {
@@ -26,8 +26,11 @@ function parseLocalDate(s: string): { y: number; m: number; d: number; utcMs: nu
   return { y, m, d, utcMs };
 }
 
-function assertTimeZone(timeZone: string): void {
-  if (!isIanaTimezone(timeZone)) throw new ScheduleInputError(`Invalid time zone: ${timeZone}`);
+/** The canonical id of a valid IANA zone (aliases resolve), else ScheduleInputError. */
+function resolveTimeZone(timeZone: string): string {
+  const zone = canonicalTimezone(timeZone);
+  if (!zone) throw new ScheduleInputError(`Invalid time zone: ${timeZone}`);
+  return zone;
 }
 
 /** ISO weekday (Mon=1..Sun=7) of a UTC-midnight calendar date. */
@@ -91,8 +94,8 @@ function localInstant(
  * dates are walked as calendar dates, then converted to UTC per local day.
  */
 export function scheduleSlots(input: ScheduleSlotsInput): ScheduledSlot[] {
-  const { slots, weekdays, startLocalDate, timeZone } = input;
-  assertTimeZone(timeZone);
+  const { slots, weekdays, startLocalDate } = input;
+  const timeZone = resolveTimeZone(input.timeZone);
   const start = parseLocalDate(startLocalDate);
 
   if (new Set(weekdays).size !== weekdays.length) {

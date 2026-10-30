@@ -6,7 +6,7 @@ import { cleanGoals } from '../clients/clients';
 import { DomainError } from '../errors';
 import { enqueueEmail } from '../outbox';
 import { PRIVACY_NOTICE_VERSION } from '../privacy';
-import { isIanaTimezone } from '../timezone';
+import { canonicalTimezone, isIanaTimezone } from '../timezone';
 import { isUuid } from '../uuid';
 import { newInviteToken } from './token';
 
@@ -217,7 +217,8 @@ export async function acceptInvite(
           status: 'active',
           consentVersion: input.consentVersion,
           consentAt: now,
-          timezone: input.timezone,
+          // Validated above; stored as the runtime's canonical id (Asia/Kolkata and Asia/Calcutta are one zone).
+          timezone: canonicalTimezone(input.timezone) ?? input.timezone,
           preferredUnits: input.preferredUnits,
           ...(goals !== null ? { goals } : {}),
         },

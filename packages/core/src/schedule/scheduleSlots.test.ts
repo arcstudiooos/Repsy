@@ -94,7 +94,14 @@ describe('scheduleSlots', () => {
     ).toThrow(ScheduleInputError);
   });
 
-  it.each(['+05:30', 'europe/london', ''])('non-IANA zone %j -> ScheduleInputError', (timeZone) => {
+  it('an alias zone (Asia/Kolkata) schedules like its canonical id', () => {
+    const run = (timeZone: string) =>
+      scheduleSlots({ slots: days(1, 1), weekdays: [3], startLocalDate: '2026-11-04', timeZone });
+    expect(run('Asia/Kolkata')).toEqual(run('Asia/Calcutta'));
+    expect(run('Asia/Kolkata')[0]!.scheduledAtUtc.toISOString()).toBe('2026-11-03T18:30:00.000Z');
+  });
+
+  it.each(['+05:30', 'Not/AZone', ''])('non-IANA zone %j -> ScheduleInputError', (timeZone) => {
     expect(() =>
       scheduleSlots({ slots: days(1, 1), weekdays: [1], startLocalDate: '2026-11-04', timeZone }),
     ).toThrow(ScheduleInputError);

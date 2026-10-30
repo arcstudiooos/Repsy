@@ -1,5 +1,6 @@
 import { appendAudit, type SystemTx } from '@kinetic/db';
 import { DomainError } from '../errors';
+import { canonicalTimezone } from '../timezone';
 import { hashPilotCode } from './pilotCode';
 
 export interface SignupCoachInput {
@@ -18,6 +19,12 @@ export async function signupCoach(
   tx: SystemTx,
   input: SignupCoachInput,
 ): Promise<{ orgId: string }> {
+  const timezone = canonicalTimezone(input.timezone);
+  if (!timezone) {
+    throw new DomainError('VALIDATION', 'Some fields are invalid.', {
+      timezone: ['Choose a valid time zone.'],
+    });
+  }
   // Atomic claim: only one concurrent caller can flip an unused, unexpired code.
   const claimed = await tx.pilotCode.updateMany({
     where: {
@@ -33,7 +40,7 @@ export async function signupCoach(
   }
 
   const org = await tx.organization.create({
-    data: { name: input.orgName, timezone: input.timezone, ownerUserId: input.userId },
+    data: { name: input.orgName, timezone, ownerUserId: input.userId },
   });
   await tx.membership.create({
     data: { userId: input.userId, organizationId: org.id, role: 'owner' },

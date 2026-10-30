@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { canonicalTimezone } from '../timezone';
 import { findInviteByTokenHash, withSystem, withTenant, type PrismaClient } from '@kinetic/db';
 import { createTestDb } from '@kinetic/db/testing';
 import type { ActorContext } from '../authz/actor';
@@ -306,6 +307,16 @@ describe('acceptInvite input validation', () => {
     expect(Object.keys((err as DomainError).fieldErrors ?? {})).toContain(field);
     expect(row).toMatchObject({ status: 'invited', userId: null });
   });
+
+  it.each(['Asia/Kolkata', 'Europe/Kyiv', 'Etc/UTC', 'europe/london'])(
+    'browser zone %j is accepted and stored canonical',
+    async (timezone) => {
+      const { err, row } = await attempt({ timezone });
+      expect(err).toBeNull();
+      expect(row.timezone).toBe(canonicalTimezone(timezone));
+      expect(row.timezone).not.toBeNull();
+    },
+  );
 
   it('trims goals; blank goals leave the coach-entered goals alone', async () => {
     const ok = await attempt({ goals: '  Get strong  ' });
