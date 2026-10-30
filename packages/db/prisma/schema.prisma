@@ -279,6 +279,8 @@ model Client {
 
   @@unique([organizationId, email])
   @@unique([organizationId, userId])
+  /// Target of the composite (child_fk, organization_id) FKs that keep parent and child in one tenant (D-008).
+  @@unique([id, organizationId])
   @@index([organizationId, status])
   @@index([organizationId, createdAt, id])
   @@map("clients")
@@ -297,7 +299,7 @@ model ClientInvite {
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id])
-  client       Client       @relation(fields: [clientId], references: [id])
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
   creator      User         @relation(fields: [createdBy], references: [id])
 
   @@index([clientId])
@@ -395,7 +397,9 @@ model Program {
   updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   organization   Organization        @relation(fields: [organizationId], references: [id])
-  client         Client?             @relation(fields: [clientId], references: [id])
+  /// Composite FK (MATCH SIMPLE: null for templates) keeps a copy in its client's org; RESTRICT, not SET NULL,
+  /// since SET NULL would also null organization_id (migration 000016).
+  client         Client?             @relation(fields: [clientId, organizationId], references: [id, organizationId], onDelete: Restrict)
   creator        User                @relation("ProgramCreator", fields: [createdBy], references: [id])
   sourceProgram  Program?            @relation("ProgramSource", fields: [sourceProgramId], references: [id])
   copies         Program[]           @relation("ProgramSource")
@@ -404,6 +408,7 @@ model Program {
   versions       ProgramVersion[]    @relation("ProgramVersions")
   assignments    ProgramAssignment[]
 
+  @@unique([id, organizationId])
   @@index([organizationId, kind, status, createdAt, id])
   @@index([organizationId, clientId])
   @@map("programs")
@@ -421,13 +426,14 @@ model ProgramVersion {
   weekCount      Int      @map("week_count")
 
   organization   Organization  @relation(fields: [organizationId], references: [id])
-  program        Program       @relation("ProgramVersions", fields: [programId], references: [id])
+  program        Program       @relation("ProgramVersions", fields: [programId, organizationId], references: [id, organizationId])
   committer      User          @relation("ProgramVersionCommitter", fields: [committedBy], references: [id])
   slots          ProgramSlot[]
   currentOf      Program?      @relation("ProgramCurrentVersion")
   sourceOfCopies Program[]     @relation("ProgramSourceVersion")
 
   @@unique([programId, versionNo])
+  @@unique([id, organizationId])
   @@index([organizationId])
   @@map("program_versions")
 }
@@ -443,8 +449,8 @@ model ProgramSlot {
   workoutVersionId String @map("workout_version_id") @db.Uuid
 
   organization   Organization   @relation(fields: [organizationId], references: [id])
-  programVersion ProgramVersion @relation(fields: [programVersionId], references: [id])
-  workoutVersion WorkoutVersion @relation(fields: [workoutVersionId], references: [id])
+  programVersion ProgramVersion @relation(fields: [programVersionId, organizationId], references: [id, organizationId])
+  workoutVersion WorkoutVersion @relation(fields: [workoutVersionId, organizationId], references: [id, organizationId])
 
   @@unique([programVersionId, weekIndex, dayIndex])
   @@index([organizationId])
@@ -468,6 +474,7 @@ model WorkoutVersion {
   slots           ProgramSlot[]
   workoutSessions WorkoutSession[]
 
+  @@unique([id, organizationId])
   @@index([organizationId, contentHash])
   @@map("workout_versions")
 }
@@ -484,7 +491,7 @@ model WorkoutVersionExercise {
   note             String?
 
   organization   Organization   @relation(fields: [organizationId], references: [id])
-  workoutVersion WorkoutVersion @relation(fields: [workoutVersionId], references: [id])
+  workoutVersion WorkoutVersion @relation(fields: [workoutVersionId, organizationId], references: [id, organizationId])
   exercise       Exercise       @relation(fields: [exerciseId], references: [id])
 
   @@unique([workoutVersionId, position])
@@ -533,11 +540,12 @@ model ProgramAssignment {
   createdAt            DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
 
   organization    Organization     @relation(fields: [organizationId], references: [id])
-  client          Client           @relation(fields: [clientId], references: [id])
-  program         Program          @relation(fields: [programId], references: [id])
+  client          Client           @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  program         Program          @relation(fields: [programId, organizationId], references: [id, organizationId])
   readinessBy     User?            @relation("AssignmentReadinessConfirmer", fields: [readinessConfirmedBy], references: [id])
   workoutSessions WorkoutSession[]
 
+  @@unique([id, organizationId])
   @@index([organizationId])
   @@index([clientId])
   @@index([programId])
@@ -569,8 +577,8 @@ model WorkoutSession {
   createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
 
   organization   Organization      @relation(fields: [organizationId], references: [id])
-  assignment     ProgramAssignment @relation(fields: [assignmentId], references: [id])
-  client         Client            @relation(fields: [clientId], references: [id])
+  assignment     ProgramAssignment @relation(fields: [assignmentId, organizationId], references: [id, organizationId])
+  client         Client            @relation(fields: [clientId, organizationId], references: [id, organizationId])
   workoutVersion WorkoutVersion?   @relation(fields: [workoutVersionId], references: [id], onDelete: Restrict)
   loggedBy       User?             @relation("SessionLogger", fields: [loggedByUserId], references: [id])
 
