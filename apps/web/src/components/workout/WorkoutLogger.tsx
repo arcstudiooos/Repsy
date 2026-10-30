@@ -111,6 +111,8 @@ export function WorkoutLogger({
   const inflight = useRef<Set<string>>(new Set());
 
   const { session, workout } = detail;
+  // Coach mode sits under the client page's h1 and a workout h2.
+  const titleLevel = mode === 'coach' ? 'h3' : 'h2';
 
   const rowCount = (e: Exercise) => {
     const loggedMax = Math.max(
@@ -234,7 +236,7 @@ export function WorkoutLogger({
             <li key={e.id}>
               <Card>
                 <CardHeader className="mb-1">
-                  <CardTitle>{e.name}</CardTitle>
+                  <CardTitle as={titleLevel}>{e.name}</CardTitle>
                   <CardDescription>{describeTarget(e, units)}</CardDescription>
                 </CardHeader>
                 {e.note && <CardContent className="text-sm">{e.note}</CardContent>}
@@ -287,7 +289,7 @@ export function WorkoutLogger({
               <li key={e.id}>
                 <Card>
                   <CardHeader className="mb-2">
-                    <CardTitle>{e.name}</CardTitle>
+                    <CardTitle as={titleLevel}>{e.name}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     {sets.length === 0 ? (
@@ -322,7 +324,7 @@ export function WorkoutLogger({
               <section aria-label={e.name}>
                 <Card>
                   <CardHeader className="mb-3">
-                    <CardTitle>{e.name}</CardTitle>
+                    <CardTitle as={titleLevel}>{e.name}</CardTitle>
                     <CardDescription>Target: {describeTarget(e, units)}</CardDescription>
                     {prev && (
                       <CardDescription>

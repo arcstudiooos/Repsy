@@ -14,8 +14,12 @@ export function CardHeader({ className, ...props }: ComponentProps<'div'>) {
   return <div className={cn('mb-4 flex flex-col gap-1', className)} {...props} />;
 }
 
-export function CardTitle({ className, ...props }: ComponentProps<'h2'>) {
-  return <h2 className={cn('text-lg font-semibold', className)} {...props} />;
+export function CardTitle({
+  className,
+  as: Heading = 'h2',
+  ...props
+}: ComponentProps<'h2'> & { as?: 'h2' | 'h3' }) {
+  return <Heading className={cn('text-lg font-semibold', className)} {...props} />;
 }
 
 export function CardDescription({ className, ...props }: ComponentProps<'p'>) {
