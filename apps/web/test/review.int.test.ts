@@ -37,8 +37,13 @@ const getReview = (headers: Headers) =>
 const markSeen = (headers: Headers, origin = true) => {
   const h = new Headers(headers);
   if (origin) h.set('origin', ORIGIN);
+  h.set('content-type', 'application/json');
   return api()(reviewSeenRoute)(
-    new Request(`${ORIGIN}/api/v1/review/seen`, { method: 'POST', headers: h }),
+    new Request(`${ORIGIN}/api/v1/review/seen`, {
+      method: 'POST',
+      headers: h,
+      body: JSON.stringify({ through: new Date().toISOString() }),
+    }),
   );
 };
 

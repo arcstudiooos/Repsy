@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { getReviewOverview } from '@kinetic/core';
+import { getReviewCounts } from '@kinetic/core';
 import { EmptyState } from '@/components/states/EmptyState';
 import { buttonVariants } from '@/components/ui/button';
 import { withServerTenant } from '@/server/serverActor';
@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: 'Dashboard | Kinetic' };
 export default async function AppHome() {
   const { clientCount, review } = await withServerTenant(async (tx, actor) => ({
     clientCount: await tx.client.count(),
-    review: await getReviewOverview(tx, actor),
+    review: await getReviewCounts(tx, actor),
   }));
 
   if (clientCount === 0) {
@@ -32,9 +32,9 @@ export default async function AppHome() {
   }
 
   const cards = [
-    { label: 'New completed workouts', count: review.newCompleted.count, anchor: 'new' },
-    { label: 'Due this week', count: review.dueThisWeek.count, anchor: 'due' },
-    { label: 'Skipped this week', count: review.skippedThisWeek.count, anchor: 'skipped' },
+    { label: 'New completed workouts', count: review.newCompleted, anchor: 'new' },
+    { label: 'Due this week', count: review.dueThisWeek, anchor: 'due' },
+    { label: 'Skipped this week', count: review.skippedThisWeek, anchor: 'skipped' },
   ];
   return (
     <>

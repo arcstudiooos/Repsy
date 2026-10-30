@@ -145,6 +145,7 @@ export {
 } from './logging/schema';
 export {
   getReviewOverview,
+  getReviewCounts,
   markReviewSeen,
   REVIEW_LIST_MAX,
   type ReviewOverview,

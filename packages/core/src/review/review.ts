@@ -28,6 +28,8 @@ export interface ReviewSection {
 }
 
 export interface ReviewOverview {
+  /** The instant this overview was read: "Mark all as seen" marks through it, never later. */
+  generatedAt: string;
   seenAt: string | null;
   /** The ISO week (Mon–Sun) used for "this week", in the organization's time zone. */
   week: { startLocalDate: string; endLocalDate: string };
@@ -39,10 +41,26 @@ export interface ReviewOverview {
 /** The acting coach's own membership row in this org (owner or coach). */
 function ownMembership(tx: TenantTx, actor: ActorContext) {
   return tx.membership.findFirst({
-    where: { userId: actor.userId, role: { in: ['owner', 'coach'] } },
+    where: { userId: actor.userId, role: { in: ['owner', 'coach'] }, status: 'active' },
     orderBy: { createdAt: 'asc' },
     select: { id: true, reviewSeenAt: true },
   });
+}
+
+/** The acting coach's "new since" instant and this week's dates in the organization's time zone. */
+async function reviewWindow(tx: TenantTx, actor: ActorContext, now: Date) {
+  assertCan(actor, 'review:read');
+  const membership = await ownMembership(tx, actor);
+  const org = await tx.organization.findFirst({
+    where: { id: actor.orgId },
+    select: { timezone: true },
+  });
+  if (!org) throw new DomainError('NOT_FOUND', 'Not found.');
+  const seenAt = membership?.reviewSeenAt ?? null;
+  const since = seenAt ?? new Date(now.getTime() - REVIEW_FIRST_WINDOW_MS);
+  const { start, end } = isoWeekOf(todayInZone(org.timezone, now));
+  const week = { scheduledLocalDate: { gte: toDbDate(start), lte: toDbDate(end) } };
+  return { seenAt, since, start, end, week };
 }
 
 /**
@@ -56,18 +74,8 @@ export async function getReviewOverview(
   actor: ActorContext,
   opts: { now?: Date } = {},
 ): Promise<ReviewOverview> {
-  assertCan(actor, 'review:read');
   const now = opts.now ?? new Date();
-  const membership = await ownMembership(tx, actor);
-  const org = await tx.organization.findFirst({
-    where: { id: actor.orgId },
-    select: { timezone: true },
-  });
-  if (!org) throw new DomainError('NOT_FOUND', 'Not found.');
-  const seenAt = membership?.reviewSeenAt ?? null;
-  const since = seenAt ?? new Date(now.getTime() - REVIEW_FIRST_WINDOW_MS);
-  const { start, end } = isoWeekOf(todayInZone(org.timezone, now));
-  const week = { scheduledLocalDate: { gte: toDbDate(start), lte: toDbDate(end) } };
+  const { seenAt, since, start, end, week } = await reviewWindow(tx, actor, now);
 
   const section = async (
     where: Record<string, unknown>,
@@ -104,6 +112,7 @@ export async function getReviewOverview(
   };
 
   return {
+    generatedAt: now.toISOString(),
     seenAt: seenAt?.toISOString() ?? null,
     week: { startLocalDate: start, endLocalDate: end },
     newCompleted: await section({ state: 'completed', completedAt: { gt: since } }, [
@@ -121,17 +130,29 @@ export async function getReviewOverview(
   };
 }
 
-/** "Mark all as seen": completions up to now stop counting as new for this coach. */
+/**
+ * "Mark all as seen" for the list the coach was shown: the marker moves to `through` (the overview's `generatedAt`),
+ * capped at now and never backwards, so a completion that arrived after the list was rendered stays new.
+ */
 export async function markReviewSeen(
   tx: TenantTx,
   actor: ActorContext,
+  input: { through: string },
   opts: { now?: Date; requestId?: string } = {},
 ): Promise<{ seenAt: string }> {
   assertCan(actor, 'review:update');
   const now = opts.now ?? new Date();
+  const through = new Date(input.through);
+  if (Number.isNaN(through.getTime())) {
+    throw new DomainError('VALIDATION', 'Some fields are invalid.', { through: ['Invalid.'] });
+  }
+  const mark = through < now ? through : now;
   const membership = await ownMembership(tx, actor);
   if (!membership) throw new DomainError('NOT_FOUND', 'Not found.');
-  await tx.membership.updateMany({ where: { id: membership.id }, data: { reviewSeenAt: now } });
+  if (membership.reviewSeenAt && membership.reviewSeenAt >= mark) {
+    return { seenAt: membership.reviewSeenAt.toISOString() };
+  }
+  await tx.membership.updateMany({ where: { id: membership.id }, data: { reviewSeenAt: mark } });
   await appendAudit(tx, {
     orgId: actor.orgId,
     actorId: actor.userId,
@@ -140,5 +161,23 @@ export async function markReviewSeen(
     action: 'review.seen',
     requestId: opts.requestId,
   });
-  return { seenAt: now.toISOString() };
+  return { seenAt: mark.toISOString() };
+}
+
+/** Dashboard counts only: three counts, no list reads. Same filters as `getReviewOverview`. */
+export async function getReviewCounts(
+  tx: TenantTx,
+  actor: ActorContext,
+  opts: { now?: Date } = {},
+): Promise<{ newCompleted: number; dueThisWeek: number; skippedThisWeek: number }> {
+  const { since, week } = await reviewWindow(tx, actor, opts.now ?? new Date());
+  return {
+    newCompleted: await tx.workoutSession.count({
+      where: { state: 'completed', completedAt: { gt: since } },
+    }),
+    dueThisWeek: await tx.workoutSession.count({
+      where: { state: { in: ['scheduled', 'in_progress'] }, ...week },
+    }),
+    skippedThisWeek: await tx.workoutSession.count({ where: { state: 'skipped', ...week } }),
+  };
 }

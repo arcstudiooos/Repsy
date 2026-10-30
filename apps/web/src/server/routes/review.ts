@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { getReviewOverview, markReviewSeen } from '@kinetic/core';
 import type { RouteDef } from '../api';
 
@@ -7,9 +8,12 @@ export const reviewGetRoute: RouteDef<undefined, true> = {
   handler: ({ actor, tenant }) => tenant((tx) => getReviewOverview(tx, actor)),
 };
 
-/** `POST /api/v1/review/seen`: marks every completion so far as seen for the acting coach. */
-export const reviewSeenRoute: RouteDef<undefined, true> = {
+const seenSchema = z.object({ through: z.iso.datetime({ offset: true }) });
+
+/** `POST /api/v1/review/seen`: marks completions up to `through` (the list's `generatedAt`) as seen. */
+export const reviewSeenRoute: RouteDef<typeof seenSchema, true> = {
   can: 'review:update',
-  handler: ({ actor, requestId, tenant }) =>
-    tenant((tx) => markReviewSeen(tx, actor, { requestId })),
+  input: seenSchema,
+  handler: ({ actor, input, requestId, tenant }) =>
+    tenant((tx) => markReviewSeen(tx, actor, input, { requestId })),
 };

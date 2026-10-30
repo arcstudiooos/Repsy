@@ -96,7 +96,7 @@ export default async function ReviewPage() {
         })
       )?.timezone ?? 'UTC',
   }));
-  const today = todayInZone(timezone);
+  const today = todayInZone(timezone, new Date(review.generatedAt));
   return (
     <>
       <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Review</h1>
@@ -112,7 +112,11 @@ export default async function ReviewPage() {
           empty="No new completed workouts."
           section={review.newCompleted}
           today={today}
-          action={review.newCompleted.count > 0 ? <MarkSeenButton /> : undefined}
+          action={
+            review.newCompleted.count > 0 ? (
+              <MarkSeenButton through={review.generatedAt} />
+            ) : undefined
+          }
         />
         <Section
           id="due"

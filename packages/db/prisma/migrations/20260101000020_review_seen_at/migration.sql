@@ -4,3 +4,6 @@
 -- AlterTable
 ALTER TABLE "memberships" ADD COLUMN     "review_seen_at" TIMESTAMPTZ(3);
 
+
+-- CreateIndex: "new completed workouts" filters and sorts on completed_at.
+CREATE INDEX "workout_sessions_organization_id_state_completed_at_idx" ON "workout_sessions"("organization_id", "state", "completed_at");

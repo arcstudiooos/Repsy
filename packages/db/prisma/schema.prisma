@@ -600,6 +600,8 @@ model WorkoutSession {
   @@index([organizationId, clientId, dueAt])
   /// Portal "upcoming" reads and the S4 missed-session sweep.
   @@index([organizationId, state, dueAt])
+  /// Review list "new completed workouts" (S2-4).
+  @@index([organizationId, state, completedAt])
   @@index([assignmentId])
   @@index([workoutVersionId])
   @@map("workout_sessions")

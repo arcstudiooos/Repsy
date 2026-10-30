@@ -12,7 +12,7 @@ import {
   runAs,
   sessionsOf,
 } from '../sessions/fixtures.test-helpers';
-import { getReviewOverview, markReviewSeen } from './review';
+import { getReviewCounts, getReviewOverview, markReviewSeen } from './review';
 
 let prisma: PrismaClient;
 let drop: () => Promise<void>;
@@ -73,7 +73,7 @@ describe('review overview (S2-4)', () => {
       ),
     );
     const seen = await runAs(prisma, w.coach, (tx) =>
-      markReviewSeen(tx, w.coach, { now: at(-HOUR) }),
+      markReviewSeen(tx, w.coach, { through: at(-HOUR).toISOString() }, { now: NOW }),
     );
     expect(seen.seenAt).toBe(at(-HOUR).toISOString());
     let view = await runAs(prisma, w.coach, (tx) => getReviewOverview(tx, w.coach, { now: NOW }));
@@ -111,9 +111,51 @@ describe('review overview (S2-4)', () => {
 
   it('client role → FORBIDDEN', async () => {
     const w = await newClientWorld(prisma, await newOrg(prisma));
-    for (const fn of [getReviewOverview, markReviewSeen]) {
-      const err = await runAs(prisma, w.client, (tx) => fn(tx, w.client)).catch((e: unknown) => e);
-      expect((err as DomainError).code).toBe('FORBIDDEN');
-    }
+    const codes = await Promise.all([
+      runAs(prisma, w.client, (tx) => getReviewOverview(tx, w.client)).catch((e: unknown) => e),
+      runAs(prisma, w.client, (tx) =>
+        markReviewSeen(tx, w.client, { through: NOW.toISOString() }),
+      ).catch((e: unknown) => e),
+      runAs(prisma, w.client, (tx) => getReviewCounts(tx, w.client)).catch((e: unknown) => e),
+    ]);
+    expect(codes.map((e) => (e as DomainError).code)).toEqual([
+      'FORBIDDEN',
+      'FORBIDDEN',
+      'FORBIDDEN',
+    ]);
+  });
+
+  it('marking seen covers only what the coach was shown: a completion after the read stays new', async () => {
+    const w = await newClientWorld(prisma, await newOrg(prisma), { weeks: grid(2, 3) });
+    const [a, b] = await sessionsOf(prisma, w.assignmentId);
+    await runAs(prisma, w.client, (tx) =>
+      completeSession(tx, w.client, a!.id, { idempotencyKey: randomUUID() }, { now: at(-HOUR) }),
+    );
+    const shown = await runAs(prisma, w.coach, (tx) =>
+      getReviewOverview(tx, w.coach, { now: NOW }),
+    );
+    // A completion lands between the read and the click.
+    await runAs(prisma, w.client, (tx) =>
+      completeSession(tx, w.client, b!.id, { idempotencyKey: randomUUID() }, { now: at(HOUR) }),
+    );
+    await runAs(prisma, w.coach, (tx) =>
+      markReviewSeen(tx, w.coach, { through: shown.generatedAt }, { now: at(2 * HOUR) }),
+    );
+    const later = await runAs(prisma, w.coach, (tx) =>
+      getReviewOverview(tx, w.coach, { now: at(2 * HOUR) }),
+    );
+    expect(later.newCompleted.items.map((i) => i.sessionId)).toEqual([b!.id]);
+    // Never backwards; a future `through` is capped at now.
+    await runAs(prisma, w.coach, (tx) =>
+      markReviewSeen(tx, w.coach, { through: at(-10 * HOUR).toISOString() }, { now: at(2 * HOUR) }),
+    );
+    expect(
+      (await runAs(prisma, w.coach, (tx) => getReviewOverview(tx, w.coach, { now: at(2 * HOUR) })))
+        .seenAt,
+    ).toBe(NOW.toISOString());
+    const counts = await runAs(prisma, w.coach, (tx) =>
+      getReviewCounts(tx, w.coach, { now: at(2 * HOUR) }),
+    );
+    expect(counts.newCompleted).toBe(1);
   });
 });
