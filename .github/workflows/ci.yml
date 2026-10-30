@@ -51,4 +51,5 @@ jobs:
           BETTER_AUTH_SECRET: ci-build-placeholder-secret-0123456789abcdef
           NEXT_PUBLIC_SENTRY_DSN: ''
       - run: pnpm --filter @kinetic/web exec playwright install --with-deps
+      # Includes e2e/golden-path.spec.ts, which must pass on every PR from Sprint 2 on (D-009 rule 2).
       - run: pnpm test:e2e

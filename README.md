@@ -28,7 +28,16 @@ Open http://localhost:3000 and sign in as `coach@example.test` (or `admin@exampl
 - `pnpm dev`, `pnpm db:migrate`, `pnpm db:seed`, `pilot-code:create` and `pgboss:migrate` read the root `.env` (Node's built-in env-file loader; variables already set in the shell win). `pnpm test` does not.
 - `pnpm db:down` stops the container (data persists in a named volume).
 
-## What works locally (Sprint 1)
+## What works locally (Sprint 2)
+
+- Client portal home: the next workout with a Start/Continue button, this week's progress ("n of m workouts done"), and a safety reminder until the first workout starts.
+- Workouts list with Upcoming and History; each workout opens the logging screen.
+- Online workout logging: Start locks the workout version; each set saves when a field loses focus and shows "Syncing", then "Synced" once the server has it; Complete or Skip with an optional comment. Weights are entered and shown in the client's units and stored in kg. Replays and double taps never create duplicates.
+- Coaches can log a workout for a client from the client's Sessions tab; both sides see "Logged by coach".
+- Coach dashboard with counts (new completed workouts, due this week, skipped this week) and a review list at `/app/review` with "Mark all as seen".
+- `apps/web/e2e/golden-path.spec.ts` covers the whole loop (sign-up → invite → program → assign → log → complete → review) and must pass on every PR.
+
+### Sprint 1
 
 - Sign up with a pilot code, verify email, create your coaching organization.
 - Exercise library, and a program builder with explicit save (weeks, training days, exercises, sets).
