@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { DomainError, getSessionDetail, todayInZone, type Units } from '@kinetic/core';
+import { LogEditor } from '@/components/workout/LogEditor';
+import { RevisionTrail } from '@/components/workout/RevisionTrail';
 import { WorkoutLogger } from '@/components/workout/WorkoutLogger';
 import { withServerTenant } from '@/server/serverActor';
 import { loadClient } from '../../data';
@@ -46,13 +48,18 @@ export default async function CoachSessionPage({
             .map((l) => l.clientUpdatedAt)
             .sort()
             .at(-1) ?? ''
-        }`}
+        }:${data.detail.revisions.length}`}
         initial={data.detail}
         mode="coach"
         units={data.units}
         todayLocalDate={todayInZone(client.timezone)}
         backHref={backHref}
       />
+      {/* S3-4: a coach corrects a finished workout at any time, with a reason. */}
+      {(data.detail.session.state === 'completed' || data.detail.session.state === 'skipped') && (
+        <LogEditor detail={data.detail} mode="coach" units={data.units} />
+      )}
+      <RevisionTrail detail={data.detail} units={data.units} timeZone={client.timezone} />
     </div>
   );
 }

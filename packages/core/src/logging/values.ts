@@ -28,3 +28,6 @@ export function toSetLogValue(row: {
     clientUpdatedAt: row.clientUpdatedAt.toISOString(),
   };
 }
+
+/** The values a set log revision records before and after a change (S3-4): kg for weight, numbers, no timestamp. */
+export type RevisionValues = Omit<SetLogValue, 'clientUpdatedAt'>;

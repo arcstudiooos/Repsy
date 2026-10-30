@@ -19,7 +19,8 @@ export interface SetLogAck {
 const invalid = (field: string, message: string) =>
   new DomainError('VALIDATION', 'Some fields are invalid.', { [field]: [message] });
 
-function parseItems(items: unknown, now: Date): ParsedSetLog[] {
+/** Validates a batch (1–100 items) against `setLogInputSchema` and refuses device clocks too far ahead. */
+export function parseSetLogItems(items: unknown, now: Date): ParsedSetLog[] {
   const parsed = z.array(setLogInputSchema).min(1).max(100).safeParse(items);
   if (!parsed.success) {
     const messages = parsed.error.issues
@@ -36,7 +37,7 @@ function parseItems(items: unknown, now: Date): ParsedSetLog[] {
 }
 
 /** Only the fields the device sent: an omitted field keeps its stored value, `null` clears it. */
-function values(item: ParsedSetLog) {
+export function providedValues(item: ParsedSetLog) {
   const out: Record<string, number | null> = {};
   for (const key of ['reps', 'weightKg', 'rpe', 'durationSeconds', 'distanceM'] as const) {
     const v = item[key];
@@ -61,7 +62,7 @@ export async function upsertSetLogs(
 ): Promise<SetLogAck[]> {
   assertCan(actor, 'session:log');
   const now = opts.now ?? new Date();
-  const parsed = parseItems(items, now);
+  const parsed = parseSetLogItems(items, now);
   const session = await lockSession(tx, actor, sessionId);
   if (session.state === 'scheduled') {
     throw new DomainError('SESSION_NOT_STARTED', 'Start the workout before logging sets.');
@@ -100,7 +101,7 @@ export async function upsertSetLogs(
       row = await tx.setLog.create({
         data: {
           ...key,
-          ...values(item),
+          ...providedValues(item),
           clientUpdatedAt,
           clientMutationId: item.clientMutationId,
           loggedByUserId: actor.userId,
@@ -118,7 +119,7 @@ export async function upsertSetLogs(
       await tx.setLog.updateMany({
         where: { id: existing.id },
         data: {
-          ...values(item),
+          ...providedValues(item),
           clientUpdatedAt,
           clientMutationId: item.clientMutationId,
           loggedByUserId: actor.userId,

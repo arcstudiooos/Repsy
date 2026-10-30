@@ -4,6 +4,7 @@ import {
   finishBodySchema,
   getSessionDetail,
   listSessions,
+  reviseSetLogs,
   skipSession,
   startSession,
   upsertSetLogs,
@@ -52,6 +53,32 @@ export const sessionLogsRoute: RouteDef<typeof logsSchema, true> = {
   rateLimit: { capacity: 120, refillPerSecond: 2 },
   handler: ({ actor, input, params, requestId, tenant }) =>
     tenant((tx) => upsertSetLogs(tx, actor, params.id ?? '', input.items, { requestId })),
+};
+
+// Items and the reason are validated in core (fieldErrors `items` and `reason`).
+const reviseSchema = z.object({
+  items: z.array(z.unknown()).min(1).max(100),
+  reason: z.unknown().optional(),
+});
+
+/**
+ * `PATCH /api/v1/sessions/:id/logs`: edits a finished workout's sets (S3-4). The client within 24h of finishing
+ * (else 403 `EDIT_WINDOW_CLOSED`), a coach at any time with a reason (else 422 `reason`). Each change is a revision.
+ */
+export const sessionLogsReviseRoute: RouteDef<typeof reviseSchema, true> = {
+  can: 'session:log',
+  input: reviseSchema,
+  rateLimit: { capacity: 120, refillPerSecond: 2 },
+  handler: ({ actor, input, params, requestId, tenant }) =>
+    tenant((tx) =>
+      reviseSetLogs(
+        tx,
+        actor,
+        params.id ?? '',
+        { items: input.items, reason: input.reason },
+        { requestId },
+      ),
+    ),
 };
 
 /** `POST /api/v1/sessions/:id/complete`: idempotent per session (Review Focus #2). */

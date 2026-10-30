@@ -80,6 +80,7 @@ model User {
   loggedSessions           WorkoutSession[]        @relation("SessionLogger")
   writtenSetLogs           SetLog[]                @relation("SetLogWriter")
   programDrafts            ProgramDraft[]          @relation("ProgramDraftEditor")
+  setLogRevisions          SetLogRevision[]        @relation("SetLogReviser")
   sessions                 Session[]
   accounts                 Account[]
   coachProfile             CoachProfile?
@@ -174,6 +175,7 @@ model Organization {
   workoutSessions         WorkoutSession[]
   setLogs                 SetLog[]
   programDrafts           ProgramDraft[]
+  setLogRevisions         SetLogRevision[]
 
   @@map("organizations")
 }
@@ -596,6 +598,7 @@ model WorkoutSession {
   workoutVersion WorkoutVersion?   @relation(fields: [workoutVersionId, organizationId], references: [id, organizationId], onDelete: Restrict)
   loggedBy       User?             @relation("SessionLogger", fields: [loggedByUserId], references: [id])
   setLogs        SetLog[]
+  setLogRevisions SetLogRevision[]
 
   @@unique([assignmentId, slotWeekIndex, slotDayIndex])
   /// Target of set_logs' composite tenant FK.
@@ -637,11 +640,48 @@ model SetLog {
   session                WorkoutSession         @relation(fields: [sessionId, organizationId], references: [id, organizationId])
   workoutVersionExercise WorkoutVersionExercise @relation(fields: [workoutVersionExerciseId, organizationId], references: [id, organizationId])
   loggedBy               User                   @relation("SetLogWriter", fields: [loggedByUserId], references: [id])
+  revisions              SetLogRevision[]
 
   @@unique([sessionId, workoutVersionExerciseId, setIndex])
+  /// Target of set_log_revisions' composite tenant FK.
+  @@unique([id, organizationId])
   @@index([organizationId])
   @@index([workoutVersionExerciseId])
   @@map("set_logs")
+}
+
+enum SetLogRevisionRole {
+  client
+  coach
+
+  @@map("set_log_revision_role")
+}
+
+/// One change to a set log after its session was submitted (S3-4, Ruling 5): a client's own edit within 24 hours or a
+/// coach's correction (reason required, shown to coaches only). Append-only: the database rejects UPDATE, DELETE and
+/// TRUNCATE (migration 000022). `before`/`after` are `{ reps, weightKg, rpe, durationSeconds, distanceM }` as numbers;
+/// `beforeJson` is null when the edit created the set. Reason length (<= 500) is a CHECK in the migration.
+model SetLogRevision {
+  id             String             @id @default(uuid()) @db.Uuid
+  organizationId String             @map("organization_id") @db.Uuid
+  setLogId       String             @map("set_log_id") @db.Uuid
+  sessionId      String             @map("session_id") @db.Uuid
+  beforeJson     Json?              @map("before_json")
+  afterJson      Json               @map("after_json")
+  reason         String?
+  revisedBy      String             @map("revised_by") @db.Uuid
+  revisedByRole  SetLogRevisionRole @map("revised_by_role")
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  setLog       SetLog         @relation(fields: [setLogId, organizationId], references: [id, organizationId])
+  session      WorkoutSession @relation(fields: [sessionId, organizationId], references: [id, organizationId])
+  reviser      User           @relation("SetLogReviser", fields: [revisedBy], references: [id])
+
+  @@index([sessionId, createdAt])
+  @@index([organizationId])
+  @@index([setLogId])
+  @@map("set_log_revisions")
 }
 
 /// Unvalidated builder state, one per program (S3-1, Ruling 4: last write wins between tabs). `baseVersionNo` is the

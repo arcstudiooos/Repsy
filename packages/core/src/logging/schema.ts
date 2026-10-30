@@ -11,6 +11,10 @@ const round3 = (v: number): number => Math.round(v * 1000) / 1000;
 export const MAX_CLOCK_SKEW_MS = 5 * 60_000;
 export const MAX_SETS = 20;
 export const COMMENT_MAX = 1000;
+/** A client may edit a finished workout's log until this long after submitting it (S3-4), boundary inclusive. */
+export const EDIT_WINDOW_MS = 24 * 60 * 60_000;
+/** A coach's correction reason (S3-4), after trimming. */
+export const REVISION_REASON_MAX = 500;
 
 /**
  * One set as the device sends it (PRD §9.1, D-004 #7). Values are optional and nullable (a cleared field is null);

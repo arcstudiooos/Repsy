@@ -18,7 +18,7 @@ export function CardTitle({
   className,
   as: Heading = 'h2',
   ...props
-}: ComponentProps<'h2'> & { as?: 'h2' | 'h3' }) {
+}: ComponentProps<'h2'> & { as?: 'h2' | 'h3' | 'h4' }) {
   return <Heading className={cn('text-lg font-semibold', className)} {...props} />;
 }
 

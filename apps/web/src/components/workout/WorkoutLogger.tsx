@@ -3,7 +3,11 @@
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import type { SessionDetail, TrackingType, Units } from '@kinetic/core';
-import { LoggedByCoachBadge, SessionStateBadge } from '@/components/sessions/SessionStateBadge';
+import {
+  LoggedByCoachBadge,
+  RevisionMark,
+  SessionStateBadge,
+} from '@/components/sessions/SessionStateBadge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/toast';
@@ -271,6 +275,20 @@ export function WorkoutLogger({
   }
 
   if (session.state !== 'in_progress') {
+    // S3-4 markers: a coach correction wins over the client's own edit (Ruling 5: never the coach's reason here).
+    const marks = new Map<string, 'client' | 'coach'>();
+    for (const r of detail.revisions) {
+      const key = rowKey(r.workoutVersionExerciseId, r.setIndex);
+      if (r.role === 'coach' || !marks.has(key)) marks.set(key, r.role);
+    }
+    const markLabel = (role: 'client' | 'coach') =>
+      role === 'coach'
+        ? mode === 'client'
+          ? 'Corrected by your coach'
+          : 'Corrected'
+        : mode === 'client'
+          ? 'Edited'
+          : 'Edited by client';
     return (
       <>
         {header}
@@ -298,11 +316,17 @@ export function WorkoutLogger({
                       <p className="text-secondary">No sets logged.</p>
                     ) : (
                       <ul className="flex flex-col gap-1">
-                        {sets.map((l) => (
-                          <li key={l.setIndex}>
-                            Set {l.setIndex + 1}: {describeSet(e.trackingType, l, units)}
-                          </li>
-                        ))}
+                        {sets.map((l) => {
+                          const mark = marks.get(rowKey(e.id, l.setIndex));
+                          return (
+                            <li key={l.setIndex} className="flex flex-wrap items-center gap-2">
+                              <span>
+                                Set {l.setIndex + 1}: {describeSet(e.trackingType, l, units)}
+                              </span>
+                              {mark && <RevisionMark label={markLabel(mark)} />}
+                            </li>
+                          );
+                        })}
                       </ul>
                     )}
                   </CardContent>

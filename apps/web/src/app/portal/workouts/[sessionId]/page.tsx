@@ -2,7 +2,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { DomainError, getSessionDetail, todayInZone } from '@kinetic/core';
+import { LogEditor } from '@/components/workout/LogEditor';
 import { WorkoutLogger } from '@/components/workout/WorkoutLogger';
+import { editWindowOpen, formatLocalDateTime } from '@/lib/session-format';
 import { withPortalTenant } from '@/server/serverActor';
 
 export const metadata: Metadata = { title: 'Workout | Kinetic' };
@@ -22,7 +24,9 @@ export default async function PortalWorkout({
         where: { id: actor.clientId },
         select: { timezone: true },
       });
-      return { detail, today: todayInZone(client?.timezone ?? 'UTC') };
+      // S3-4: the client may edit a finished workout until `editableUntil` (the server enforces it too).
+      const editable = editWindowOpen(detail.editableUntil);
+      return { detail, today: todayInZone(client?.timezone ?? 'UTC'), editable };
     });
   } catch (error) {
     // Unknown, cancelled-elsewhere or another client's session: the same 404 (no existence leak).
@@ -44,13 +48,24 @@ export default async function PortalWorkout({
             .map((l) => l.clientUpdatedAt)
             .sort()
             .at(-1) ?? ''
-        }`}
+        }:${data.detail.revisions.length}`}
         initial={data.detail}
         mode="client"
         units={data.detail.client.preferredUnits}
         todayLocalDate={data.today}
         backHref="/portal/workouts"
       />
+      {data.editable && data.detail.editableUntil && (
+        <LogEditor
+          detail={data.detail}
+          mode="client"
+          units={data.detail.client.preferredUnits}
+          deadlineLabel={formatLocalDateTime(
+            data.detail.editableUntil,
+            data.detail.client.timezone,
+          )}
+        />
+      )}
     </>
   );
 }

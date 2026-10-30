@@ -3,6 +3,8 @@ export const ERROR_STATUS = {
   BAD_REQUEST: 400,
   UNAUTHENTICATED: 401,
   FORBIDDEN: 403,
+  /** A client's 24h log edit window (S3-4) has passed. */
+  EDIT_WINDOW_CLOSED: 403,
   NOT_FOUND: 404,
   CONFLICT: 409,
   ORG_SELECTION_REQUIRED: 409,

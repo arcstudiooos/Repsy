@@ -22,6 +22,8 @@ export interface LockedSession {
   state: SessionState;
   workoutVersionId: string | null;
   loggedByUserId: string | null;
+  /** When the session was completed or skipped (the start of the client's 24h edit window, S3-4). */
+  submittedAt: Date | null;
 }
 
 /**
@@ -58,6 +60,7 @@ export async function lockSession(
       state: true,
       workoutVersionId: true,
       loggedByUserId: true,
+      submittedAt: true,
     },
   });
   if (!row) throw notFound();

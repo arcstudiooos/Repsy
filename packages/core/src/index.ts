@@ -143,6 +143,7 @@ export {
   type SessionDetail,
   type LoggedSet,
   type PreviousPerformance,
+  type SetLogRevisionView,
 } from './sessions/detail';
 export {
   getClientHistory,
@@ -150,13 +151,16 @@ export {
   MAX_HISTORY_EXERCISES,
 } from './sessions/history';
 export { upsertSetLogs, type SetLogAck } from './logging/upsertSetLogs';
-export { toSetLogValue, type SetLogValue } from './logging/values';
+export { reviseSetLogs, type ReviseInput } from './logging/revise';
+export { toSetLogValue, type SetLogValue, type RevisionValues } from './logging/values';
 export {
   setLogInputSchema,
   logsBodySchema,
   finishBodySchema,
   MAX_SETS,
   COMMENT_MAX,
+  EDIT_WINDOW_MS,
+  REVISION_REASON_MAX,
   type SetLogInput,
 } from './logging/schema';
 export {

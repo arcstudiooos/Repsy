@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestDb } from './testing/createTestDb';
-import { withSystem, type SystemTx } from './tenant';
+import { withSystem, withTenant, type SystemTx } from './tenant';
 import type { PrismaClient } from './generated/client';
 
 /**
@@ -24,6 +24,7 @@ interface Tenant {
   assignmentId: string;
   sessionId: string;
   workoutVersionExerciseId: string;
+  setLogId: string;
 }
 let a: Tenant;
 let b: Tenant;
@@ -92,8 +93,21 @@ async function seedTenant(tx: SystemTx, label: string): Promise<Tenant> {
       state: 'in_progress',
     },
   });
+  const log = await tx.setLog.create({
+    data: {
+      organizationId: org.id,
+      sessionId: ws.id,
+      workoutVersionExerciseId: wve.id,
+      setIndex: 17,
+      reps: 5,
+      clientUpdatedAt: new Date(),
+      clientMutationId: crypto.randomUUID(),
+      loggedByUserId: user.id,
+    },
+  });
   return {
     orgId: org.id,
+    setLogId: log.id,
     userId: user.id,
     sessionId: ws.id,
     workoutVersionExerciseId: wve.id,
@@ -135,6 +149,17 @@ const setLog = (own: Tenant, sessionId: string, wveId: string, setIndex: number)
   clientUpdatedAt: new Date(),
   clientMutationId: crypto.randomUUID(),
   loggedByUserId: own.userId,
+});
+
+const revision = (own: Tenant, setLogId: string, sessionId: string) => ({
+  organizationId: own.orgId,
+  setLogId,
+  sessionId,
+  beforeJson: { reps: 5, weightKg: null, rpe: null, durationSeconds: null, distanceM: null },
+  afterJson: { reps: 6, weightKg: null, rpe: null, durationSeconds: null, distanceM: null },
+  reason: 'Miscounted',
+  revisedBy: own.userId,
+  revisedByRole: 'coach' as const,
 });
 
 type Insert = (tx: SystemTx, own: Tenant, parent: Tenant) => Promise<unknown>;
@@ -210,6 +235,16 @@ const CASES: [string, Insert][] = [
     'set_logs -> workout_version_exercises',
     (tx, own, parent) =>
       tx.setLog.create({ data: setLog(own, own.sessionId, parent.workoutVersionExerciseId, 1) }),
+  ],
+  [
+    'set_log_revisions -> set_logs',
+    (tx, own, parent) =>
+      tx.setLogRevision.create({ data: revision(own, parent.setLogId, own.sessionId) }),
+  ],
+  [
+    'set_log_revisions -> workout_sessions',
+    (tx, own, parent) =>
+      tx.setLogRevision.create({ data: revision(own, own.setLogId, parent.sessionId) }),
   ],
   [
     'program_assignments -> clients',
@@ -435,6 +470,71 @@ describe('set_logs constraints', () => {
         ),
       ),
     ).toMatch(/P2002/);
+  });
+});
+
+describe('set_log_revisions (S3-4)', () => {
+  it('are append-only: UPDATE, DELETE and TRUNCATE fail even from system scope', async () => {
+    const row = await withSystem(
+      (tx) => tx.setLogRevision.create({ data: revision(b, b.setLogId, b.sessionId) }),
+      prisma,
+    );
+    await expect(
+      withSystem(
+        (tx) =>
+          tx.setLogRevision.updateMany({ where: { id: row.id }, data: { reason: 'Changed' } }),
+        prisma,
+      ),
+    ).rejects.toThrow(/append-only/);
+    await expect(
+      withSystem(
+        (tx) => tx.$executeRawUnsafe(`UPDATE "${schema}"."set_log_revisions" SET reason = 'x'`),
+        prisma,
+      ),
+    ).rejects.toThrow(/append-only/);
+    await expect(
+      withSystem((tx) => tx.setLogRevision.deleteMany({ where: { id: row.id } }), prisma),
+    ).rejects.toThrow(/append-only/);
+    await expect(
+      prisma.$executeRawUnsafe(`TRUNCATE "${schema}"."set_log_revisions" CASCADE`),
+    ).rejects.toThrow(/append-only/);
+    expect(
+      await withSystem((tx) => tx.setLogRevision.count({ where: { id: row.id } }), prisma),
+    ).toBe(1);
+  });
+
+  it('a reason over 500 characters is refused by the database', async () => {
+    const res = await outcome(
+      withSystem(
+        (tx) =>
+          tx.setLogRevision.create({
+            data: { ...revision(b, b.setLogId, b.sessionId), reason: 'x'.repeat(501) },
+          }),
+        prisma,
+      ),
+    );
+    expect(res).toMatch(/check|23514/i);
+  });
+
+  it("a tenant transaction sees only its own organization's revisions", async () => {
+    await withSystem(
+      (tx) => tx.setLogRevision.create({ data: revision(a, a.setLogId, a.sessionId) }),
+      prisma,
+    );
+    const seen = await withTenant(
+      a.orgId,
+      (tx) => tx.setLogRevision.findMany({ select: { organizationId: true } }),
+      prisma,
+    );
+    expect(seen.length).toBeGreaterThan(0);
+    expect(new Set(seen.map((r) => r.organizationId))).toEqual(new Set([a.orgId]));
+    await expect(
+      withTenant(
+        a.orgId,
+        (tx) => tx.setLogRevision.create({ data: revision(b, b.setLogId, b.sessionId) }),
+        prisma,
+      ),
+    ).rejects.toThrow();
   });
 });
 

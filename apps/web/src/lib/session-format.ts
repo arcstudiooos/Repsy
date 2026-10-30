@@ -1,4 +1,5 @@
-import type { PreviousPerformance, SessionState } from '@kinetic/core';
+import type { PreviousPerformance, RevisionValues, SessionState } from '@kinetic/core';
+import type { TrackingType } from '@kinetic/core/exercise-options';
 import { toDisplay, type Units } from '@kinetic/core/units';
 
 const DAY_MS = 86_400_000;
@@ -59,3 +60,51 @@ export function formatLoggedSet(
   if (s.distanceM !== null) return `${s.distanceM} m`;
   return null;
 }
+
+const REVISION_FIELDS: Record<TrackingType, (keyof RevisionValues)[]> = {
+  reps_load: ['reps', 'weightKg', 'rpe'],
+  duration: ['durationSeconds'],
+  distance: ['distanceM'],
+};
+
+/**
+ * What a set log revision changed (S3-4), e.g. "8 → 10 reps" or "60 → 62.5 kg, RPE 8 → 9" (loads in `units`). A
+ * field that was empty reads "–". Only the fields the exercise's tracking type shows are described.
+ */
+export function describeRevisionChange(
+  before: RevisionValues | null,
+  after: RevisionValues,
+  trackingType: TrackingType,
+  units: Units,
+): string {
+  const show = (key: keyof RevisionValues, v: number | null) =>
+    v === null ? '–' : key === 'weightKg' ? String(toDisplay(v, units)) : String(v);
+  const parts = REVISION_FIELDS[trackingType]
+    .filter((key) => (before?.[key] ?? null) !== after[key])
+    .map((key) => {
+      const change = `${show(key, before?.[key] ?? null)} → ${show(key, after[key])}`;
+      if (key === 'reps') return `${change} reps`;
+      if (key === 'weightKg') return `${change} ${units}`;
+      if (key === 'rpe') return `RPE ${change}`;
+      if (key === 'durationSeconds') return `${change} s`;
+      return `${change} m`;
+    });
+  return parts.length > 0 ? parts.join(', ') : 'no visible change';
+}
+
+/** An instant as "Fri 30 Oct, 14:05" in `timeZone` (the client's): the edit window deadline, revision times. */
+export function formatLocalDateTime(iso: string, timeZone: string): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone,
+  }).format(new Date(iso));
+}
+
+/** S3-4: true while a client's edit window (`editableUntil` from the session detail) is still open. */
+export const editWindowOpen = (editableUntil: string | null, now: Date = new Date()): boolean =>
+  editableUntil !== null && Date.parse(editableUntil) > now.getTime();

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { formatLoggedSet, formatSessionDate, sessionStateLabel } from './session-format';
+import {
+  describeRevisionChange,
+  editWindowOpen,
+  formatLocalDateTime,
+  formatLoggedSet,
+  formatSessionDate,
+  sessionStateLabel,
+} from './session-format';
 
 describe('formatSessionDate', () => {
   it('names nearby days and formats the rest without a time zone shift', () => {
@@ -51,5 +58,48 @@ describe('formatLoggedSet (builder performance rail)', () => {
     expect(formatLoggedSet(set({ durationSeconds: 45 }), 'kg')).toBe('45 s');
     expect(formatLoggedSet(set({ distanceM: 1000 }), 'kg')).toBe('1000 m');
     expect(formatLoggedSet(set({}), 'kg')).toBeNull();
+  });
+});
+
+describe('describeRevisionChange (S3-4)', () => {
+  const v = (over: Record<string, number | null>) => ({
+    reps: null,
+    weightKg: null,
+    rpe: null,
+    durationSeconds: null,
+    distanceM: null,
+    ...over,
+  });
+  it('lists the changed fields the tracking type shows, loads in the viewer units', () => {
+    expect(describeRevisionChange(v({ reps: 8 }), v({ reps: 10 }), 'reps_load', 'kg')).toBe(
+      '8 → 10 reps',
+    );
+    expect(
+      describeRevisionChange(
+        v({ reps: 5, weightKg: 61.235, rpe: 8 }),
+        v({ reps: 5, weightKg: 70, rpe: 9 }),
+        'reps_load',
+        'lb',
+      ),
+    ).toBe('135 → 154.3 lb, RPE 8 → 9');
+    expect(describeRevisionChange(null, v({ durationSeconds: 45 }), 'duration', 'kg')).toBe(
+      '– → 45 s',
+    );
+    expect(describeRevisionChange(v({ distanceM: 500 }), v({}), 'distance', 'kg')).toBe(
+      '500 → – m',
+    );
+  });
+
+  it('formats the edit deadline in the given zone', () => {
+    expect(formatLocalDateTime('2026-10-30T18:05:00Z', 'America/New_York')).toBe(
+      'Fri 30 Oct, 14:05',
+    );
+  });
+
+  it('the edit window is open only before editableUntil', () => {
+    const now = new Date('2026-10-30T12:00:00Z');
+    expect(editWindowOpen('2026-10-30T12:00:01Z', now)).toBe(true);
+    expect(editWindowOpen('2026-10-30T12:00:00Z', now)).toBe(false);
+    expect(editWindowOpen(null, now)).toBe(false);
   });
 });
