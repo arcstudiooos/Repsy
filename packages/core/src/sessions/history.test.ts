@@ -79,6 +79,13 @@ describe('client history', () => {
       ],
     });
 
+    // Keys match the caller's spelling of each id (UUIDs compare case-insensitively).
+    const upper = await runAs(prisma, w.coach, (tx) =>
+      getClientHistory(tx, w.coach, w.clientId, [BENCH.toUpperCase(), BENCH]),
+    );
+    expect(Object.keys(upper)).toEqual([BENCH.toUpperCase()]);
+    expect(upper[BENCH.toUpperCase()]).toEqual(history[BENCH]);
+
     // Excluding the latest session falls back to the one before it.
     const earlier = await runAs(prisma, w.coach, (tx) =>
       getExercisePerformance(tx, w.clientId, [BENCH], { excludeSessionId: second }),

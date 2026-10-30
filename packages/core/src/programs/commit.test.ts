@@ -510,6 +510,20 @@ describe('commitProgramVersion on client copies (S3-2)', () => {
     expect(await versionOf(w)).toBe(1);
   });
 
+  it('client copy: a stale expectedVersion wins over a days-per-week change → CONFLICT', async () => {
+    const w = await newClientWorld(prisma, await newOrg(prisma), { weeks: worldGrid(1, 3) });
+    await commitAs(w, worldGrid(2, 3)); // another tab moved the copy to version 2
+    const err = await runAs(prisma, w.coach, (tx) =>
+      commitProgramVersion(
+        tx,
+        w.coach,
+        { programId: w.clientProgramId, expectedVersionNo: 1, weeks: worldGrid(1, 2) },
+        { now: NOW },
+      ),
+    ).catch((e: unknown) => e);
+    expect(err).toMatchObject({ code: 'CONFLICT', details: { currentVersionNo: 2 } });
+  });
+
   it('copy of ended assignment → CONFLICT', async () => {
     const w = await newClientWorld(prisma, await newOrg(prisma));
     await withSystem(

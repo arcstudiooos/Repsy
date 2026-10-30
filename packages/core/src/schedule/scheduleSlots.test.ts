@@ -231,6 +231,10 @@ describe('localDayBounds', () => {
   });
 
   it('rejects a bad date or zone', () => {
+    expect(() => localDayBounds('2026-02-30', 'UTC')).toThrow(
+      'localDate is not a real calendar date',
+    );
+    expect(() => localDayBounds('11/01/2026', 'UTC')).toThrow('localDate must be YYYY-MM-DD');
     expect(() => localDayBounds('2026-02-30', 'UTC')).toThrow(ScheduleInputError);
     expect(() => localDayBounds('2026-11-01', 'Mars/Base')).toThrow(ScheduleInputError);
   });

@@ -18,8 +18,8 @@ const addDays = (localDate: string, days: number): string =>
 
 /**
  * Brings an assignment's sessions in line with a structural change of its client program (S3-2, Rulings 2-3).
- * Slot keys `(weekIndex, dayIndex)` only in `fromVersionId` are removed: their still-`scheduled` sessions are
- * cancelled and nothing else changes (in progress, completed and skipped sessions are history). Slot keys only in
+ * Slot keys `(weekIndex, dayIndex)` only in `fromVersionId` are removed: their still-`scheduled` sessions dated today
+ * or later (assignment zone) are cancelled and nothing else changes (in progress, completed and skipped sessions are history). Slot keys only in
  * `toVersionId` are added, in slot order, on the assignment's weekdays after its latest non-cancelled session and
  * never before today in the assignment's zone. A cancelled row for an added slot is revived (the unique
  * `(assignment, week, day)` index allows one row per slot); otherwise a session is created. Both count as created.
@@ -51,12 +51,16 @@ export async function reconcileSessions(
   const removed = from.filter((s) => !toKeys.has(keyOf(s)));
   const added = to.filter((s) => !fromKeys.has(keyOf(s)));
 
+  const today = todayInZone(assignment.timezone, opts.now ?? new Date());
+
   let cancelled = 0;
   if (removed.length > 0) {
     const res = await tx.workoutSession.updateMany({
       where: {
         assignmentId: assignment.id,
         state: 'scheduled',
+        // A past-due session that was never logged is about to become missed history: it stays (like assignProgram).
+        scheduledLocalDate: { gte: toDbDate(today) },
         OR: removed.map((s) => ({ slotWeekIndex: s.weekIndex, slotDayIndex: s.dayIndex })),
       },
       data: { state: 'cancelled' },
@@ -71,7 +75,6 @@ export async function reconcileSessions(
     orderBy: { scheduledLocalDate: 'desc' },
     select: { scheduledLocalDate: true },
   });
-  const today = todayInZone(assignment.timezone, opts.now ?? new Date());
   const afterLatest = latest ? addDays(fromDbDate(latest.scheduledLocalDate), 1) : today;
   let cursor = afterLatest > today ? afterLatest : today;
   const weekdays = new Set(assignment.weekdays);

@@ -150,12 +150,6 @@ export async function commitProgramVersion(
     if (!assignment) {
       throw new DomainError('CONFLICT', 'This program is no longer active for this client.');
     }
-    const weekdays = assignment.weekdays.length;
-    if (weeks[0]!.days.length !== weekdays) {
-      throw weeksInvalid(
-        `A client program keeps ${weekdays} training days per week, one per scheduled weekday.`,
-      );
-    }
   }
 
   const program = await tx.program.findFirst({
@@ -168,6 +162,13 @@ export async function commitProgramVersion(
     throw new DomainError('CONFLICT', 'This program changed since you opened it.', undefined, {
       currentVersionNo,
     });
+  }
+  // After the version check, so a stale tab gets 409 rather than a 422 about content it can't see.
+  if (assignment && weeks[0]!.days.length !== assignment.weekdays.length) {
+    const n = assignment.weekdays.length;
+    throw weeksInvalid(
+      `A client program keeps ${n} training days per week, one per scheduled weekday.`,
+    );
   }
 
   // Exercises must be global or this org's own: the tenant read scope hides every other org's.

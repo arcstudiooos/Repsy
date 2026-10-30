@@ -59,6 +59,28 @@ async function commitCopy(w: ClientWorld, weeks: WeekInput[], now = NOW) {
 const setState = (id: string, data: Record<string, unknown>) =>
   withSystem((tx) => tx.workoutSession.update({ where: { id }, data }), prisma);
 
+/** The workout version the client copy's current version holds at slot (week, day), zero-based. */
+const slotVersion = async (w: ClientWorld, weekIndex: number, dayIndex: number) =>
+  (
+    await withSystem(
+      (tx) =>
+        tx.program.findUniqueOrThrow({
+          where: { id: w.clientProgramId },
+          select: { currentVersion: { select: { slots: { where: { weekIndex, dayIndex } } } } },
+        }),
+      prisma,
+    )
+  ).currentVersion!.slots[0]!.workoutVersionId;
+
+/** Marks a session completed the way the app leaves it: locked to its slot's version. */
+const completed = async (w: ClientWorld, id: string, weekIndex: number, dayIndex: number) =>
+  setState(id, {
+    state: 'completed',
+    workoutVersionId: await slotVersion(w, weekIndex, dayIndex),
+    startedAt: NOW,
+    completedAt: NOW,
+  });
+
 const keyed = async (w: ClientWorld) => {
   const rows = await sessionsOf(prisma, w.assignmentId);
   return new Map(rows.map((s) => [`W${s.slotWeekIndex + 1}D${s.slotDayIndex + 1}`, s]));
@@ -70,19 +92,24 @@ describe('reconcileSessions (through client-copy commits)', () => {
     // Slots are positional, so "remove week 3" of a 3-week block drops slot keys W3D1/W3D2.
     const w = await world(3);
     const before = await keyed(w);
-    await setState(before.get('W1D1')!.id, { state: 'completed', completedAt: NOW });
-    await setState(before.get('W1D2')!.id, { state: 'completed', completedAt: NOW });
-    await setState(before.get('W3D1')!.id, { state: 'completed', completedAt: NOW });
+    await completed(w, before.get('W1D1')!.id, 0, 0);
+    await completed(w, before.get('W1D2')!.id, 0, 1);
+    await completed(w, before.get('W3D1')!.id, 2, 0);
+    const locked = await keyed(w);
 
     await commitCopy(w, grid(2, 2));
     const after = await keyed(w);
     expect(after.get('W3D2')!.state).toBe('cancelled');
     expect(after.get('W3D1')!.state).toBe('completed');
     for (const key of ['W1D1', 'W1D2', 'W2D1', 'W2D2', 'W3D1']) {
-      const { state, scheduledAt, dueAt, scheduledLocalDate, workoutVersionId } = before.get(key)!;
-      const now = after.get(key)!;
-      if (key !== 'W1D1' && key !== 'W1D2' && key !== 'W3D1') expect(now.state).toBe(state);
-      expect(now).toMatchObject({ scheduledAt, dueAt, scheduledLocalDate, workoutVersionId });
+      const { state, scheduledAt, dueAt, scheduledLocalDate, workoutVersionId } = locked.get(key)!;
+      expect(after.get(key)).toMatchObject({
+        state,
+        scheduledAt,
+        dueAt,
+        scheduledLocalDate,
+        workoutVersionId,
+      });
     }
     expect(after.size).toBe(6);
   });
@@ -200,5 +227,15 @@ describe('reconcileSessions (through client-copy commits)', () => {
     expect(ids).not.toContain(before.get('W4D1')!.id);
     expect(ids).not.toContain(before.get('W4D2')!.id);
     expect(ids).toHaveLength(6);
+  });
+
+  it('removed slot whose session is past-due and still scheduled stays scheduled', async () => {
+    const w = await world();
+    // Tuesday 2026-12-01 in New York: W4D1 (Mon 2026-11-30) is past due but was never logged.
+    const later = new Date('2026-12-01T15:00:00Z');
+    await commitCopy(w, grid(3, 2), later);
+    const after = await keyed(w);
+    expect(after.get('W4D1')!.state).toBe('scheduled');
+    expect(after.get('W4D2')!.state).toBe('cancelled');
   });
 });

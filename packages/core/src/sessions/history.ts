@@ -80,7 +80,15 @@ export async function getClientHistory(
 ): Promise<Record<string, PreviousPerformance>> {
   assertCan(actor, 'client:read');
   if (!isUuid(clientId)) throw new DomainError('NOT_FOUND', 'Not found.');
-  const ids = [...new Set(exerciseIds.map((id) => id.toLowerCase()))];
+  // De-duplicated case-insensitively; result keys keep the caller's first spelling of each id (the uuid columns
+  // compare case-insensitively, so any spelling finds the same rows).
+  const seen = new Set<string>();
+  const ids = exerciseIds.filter((id) => {
+    const key = id.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
   if (ids.length > MAX_HISTORY_EXERCISES) {
     throw invalidIds(`Use at most ${MAX_HISTORY_EXERCISES} exercise ids.`);
   }

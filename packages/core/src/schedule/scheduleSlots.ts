@@ -12,16 +12,19 @@ export class ScheduleInputError extends Error {
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const DAY_MS = 86_400_000;
 
-function parseLocalDate(s: string): { y: number; m: number; d: number; utcMs: number } {
+function parseLocalDate(
+  s: string,
+  field = 'startLocalDate',
+): { y: number; m: number; d: number; utcMs: number } {
   const match = DATE_RE.exec(s);
-  if (!match) throw new ScheduleInputError('startLocalDate must be YYYY-MM-DD');
+  if (!match) throw new ScheduleInputError(`${field} must be YYYY-MM-DD`);
   const y = Number(match[1]);
   const m = Number(match[2]);
   const d = Number(match[3]);
   const utcMs = Date.UTC(y, m - 1, d);
   const check = new Date(utcMs);
   if (check.getUTCFullYear() !== y || check.getUTCMonth() !== m - 1 || check.getUTCDate() !== d) {
-    throw new ScheduleInputError('startLocalDate is not a real calendar date');
+    throw new ScheduleInputError(`${field} is not a real calendar date`);
   }
   return { y, m, d, utcMs };
 }
@@ -99,7 +102,7 @@ export function localDayBounds(
   timeZone: string,
 ): { scheduledAtUtc: Date; dueAtUtc: Date } {
   const zone = resolveTimeZone(timeZone);
-  const { y, m, d } = parseLocalDate(localDate);
+  const { y, m, d } = parseLocalDate(localDate, 'localDate');
   return {
     scheduledAtUtc: localInstant(y, m, d, 0, 0, zone),
     dueAtUtc: localInstant(y, m, d, 23, 59, zone),
