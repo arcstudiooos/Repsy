@@ -92,3 +92,5 @@ export {
   type WorkoutTargets,
 } from './programs/targets';
 export { toDisplay, fromDisplay, type Units } from './units';
+export { scheduleSlots, ScheduleInputError } from './schedule/scheduleSlots';
+export type { SlotKey, IsoWeekday, ScheduledSlot, ScheduleSlotsInput } from './schedule/types';
