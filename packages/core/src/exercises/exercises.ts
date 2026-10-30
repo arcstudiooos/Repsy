@@ -3,6 +3,7 @@ import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';
 import { escapeLike } from '../clients/clients';
+import { isUuid } from '../uuid';
 import { TRACKING_TYPES, type TrackingType } from './options';
 
 export {
@@ -19,7 +20,6 @@ const LABEL_MAX = 40;
 const INSTRUCTIONS_MAX = 2000;
 const MEDIA_URL_MAX = 500;
 const QUERY_MAX = 100;
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export interface ExerciseView {
   id: string;
@@ -186,7 +186,7 @@ function decodeNameCursor(cursor: string): NameCursor {
     throw fail();
   }
   const { n, i } = (parsed ?? {}) as { n?: unknown; i?: unknown };
-  if (typeof n !== 'string' || typeof i !== 'string' || !UUID.test(i)) throw fail();
+  if (typeof n !== 'string' || typeof i !== 'string' || !isUuid(i)) throw fail();
   return { name: n, id: i };
 }
 

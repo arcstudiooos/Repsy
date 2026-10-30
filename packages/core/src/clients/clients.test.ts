@@ -298,3 +298,88 @@ describe('updateClient', () => {
     );
   });
 });
+
+describe('updateClient status transitions', () => {
+  type S = 'invited' | 'active' | 'paused' | 'archived';
+  let n = 0;
+  /** One client in `status`; `linked` gives it a user (as if it accepted an invite). */
+  async function seedOne(actor: ActorContext, status: S, linked = false): Promise<string> {
+    n += 1;
+    return withSystem(async (tx) => {
+      const user = linked
+        ? await tx.user.create({ data: { email: `u${n}@example.test`, name: 'U' } })
+        : null;
+      const row = await tx.client.create({
+        data: {
+          organizationId: actor.orgId,
+          coachUserId: coachId,
+          userId: user?.id ?? null,
+          name: 'C',
+          email: `t${n}@example.test`,
+          status,
+          timezone: 'UTC',
+        },
+      });
+      return row.id;
+    }, prisma);
+  }
+
+  const allowed: [S, boolean, S, S][] = [
+    ['invited', false, 'archived', 'archived'],
+    ['active', true, 'paused', 'paused'],
+    ['paused', true, 'active', 'active'],
+    ['active', true, 'archived', 'archived'],
+    ['paused', true, 'archived', 'archived'],
+    ['archived', true, 'active', 'active'],
+    // Never accepted: restoring puts the client back to invited, not active (D-007 consent).
+    ['archived', false, 'active', 'invited'],
+    ['archived', false, 'invited', 'invited'],
+  ];
+  it.each(allowed)('%s (linked=%s) -> %s gives %s', async (from, linked, to, expected) => {
+    const actor = await newOrg();
+    const id = await seedOne(actor, from, linked);
+    const view = await run(actor, (tx) => updateClient(tx, actor, id, { status: to }));
+    expect(view.status).toBe(expected);
+  });
+
+  const forbidden: [S, boolean, S][] = [
+    ['invited', false, 'active'],
+    ['invited', false, 'paused'],
+    ['active', true, 'invited'],
+    ['paused', true, 'invited'],
+    ['archived', true, 'invited'],
+    ['archived', true, 'paused'],
+    ['archived', false, 'paused'],
+  ];
+  it.each(forbidden)(
+    '%s (linked=%s) -> %s is CONFLICT and changes nothing',
+    async (from, linked, to) => {
+      const actor = await newOrg();
+      const id = await seedOne(actor, from, linked);
+      const err = await run(actor, (tx) => updateClient(tx, actor, id, { status: to })).catch(
+        (e: unknown) => e,
+      );
+      expect(err).toBeInstanceOf(DomainError);
+      expect((err as DomainError).code).toBe('CONFLICT');
+      expect((err as DomainError).message).toMatch(/can't|cannot/i);
+      const row = await withSystem((tx) => tx.client.findUniqueOrThrow({ where: { id } }), prisma);
+      expect(row.status).toBe(from);
+    },
+  );
+
+  it('paused -> active and archived -> invited re-check the limit', async () => {
+    const actor = await newOrg();
+    const paused = await seedOne(actor, 'paused', true);
+    const archived = await seedOne(actor, 'archived', false);
+    await seedClients(
+      actor,
+      Array.from({ length: 30 }, (_, i) => ({ name: `f${i}`, email: `full${i}@example.test` })),
+    );
+    expect(
+      await code(run(actor, (tx) => updateClient(tx, actor, paused, { status: 'active' }))),
+    ).toBe('CLIENT_LIMIT_REACHED');
+    expect(
+      await code(run(actor, (tx) => updateClient(tx, actor, archived, { status: 'invited' }))),
+    ).toBe('CLIENT_LIMIT_REACHED');
+  });
+});

@@ -296,6 +296,7 @@ describe('acceptInvite input validation', () => {
   it.each([
     ['goals over 2000 chars', { goals: 'x'.repeat(2001) }, 'goals'],
     ['invalid timezone', { timezone: 'Mars/Olympus' }, 'timezone'],
+    ['offset timezone (not IANA)', { timezone: '+05:30' }, 'timezone'],
     ['invalid units', { preferredUnits: 'stone' }, 'preferredUnits'],
     ['wrong consent version', { consentVersion: 'old' }, 'consentVersion'],
   ])('%s -> VALIDATION, nothing written', async (_name, patch, field) => {

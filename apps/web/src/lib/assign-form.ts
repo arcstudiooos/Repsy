@@ -36,6 +36,14 @@ export function todayInZone(timeZone: string, now: Date = new Date()): string {
   }
 }
 
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Client-side mirror of the server rule: a start date is required and can't be before `min` (today in the client zone). */
+export function startDateError(startDate: string, min: string): string | null {
+  if (!DATE_RE.test(startDate)) return 'Choose a start date.';
+  return startDate < min ? "Start date can't be in the past." : null;
+}
+
 export const READINESS_ERROR = 'Confirm this client is ready to start this program.';
 
 export interface AssignFieldErrors {

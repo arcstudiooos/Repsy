@@ -4,7 +4,8 @@ import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';
 import type { TrackingType } from '../exercises/options';
 import { decodeCursor, encodeCursor, PAGE_SIZE } from '../pagination';
-import { TITLE_MAX, UUID } from './commit';
+import { isUuid } from '../uuid';
+import { TITLE_MAX } from './commit';
 import type { SetTarget } from './targets';
 
 /**
@@ -104,9 +105,10 @@ export async function renameProgram(
   opts: { requestId?: string } = {},
 ): Promise<void> {
   assertCan(actor, 'program:write');
-  if (!UUID.test(id)) throw notFound();
+  if (!isUuid(id)) throw notFound();
+  // Templates only: a client copy keeps the title it was assigned with.
   const { count } = await tx.program.updateMany({
-    where: { id },
+    where: { id, kind: 'template' },
     data: { title: cleanTitle(title) },
   });
   if (count === 0) throw notFound();
@@ -165,7 +167,7 @@ export async function getProgram(
   opts: { versionId?: string } = {},
 ): Promise<ProgramDetail> {
   assertCan(actor, 'program:read');
-  if (!UUID.test(id)) throw notFound();
+  if (!isUuid(id)) throw notFound();
   const program = await tx.program.findFirst({ where: { id } });
   if (!program) throw notFound();
 
@@ -174,7 +176,7 @@ export async function getProgram(
   if (wanted === null) {
     return { ...base, versionNo: null, versionId: null, daysPerWeek: 0, weekCount: 0, weeks: [] };
   }
-  if (!UUID.test(wanted)) throw notFound();
+  if (!isUuid(wanted)) throw notFound();
   const version = await tx.programVersion.findFirst({ where: { id: wanted, programId: id } });
   if (!version) throw notFound();
 

@@ -20,5 +20,7 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
     if (error instanceof DomainError && error.code === 'NOT_FOUND') notFound();
     throw error;
   }
+  // Client copies are not editable here (the PATCH route rejects them too); only templates open in the builder.
+  if (loaded.program.kind !== 'template') notFound();
   return <ProgramEditor program={loaded.program} units={loaded.units} />;
 }

@@ -53,7 +53,8 @@ export const clientGetRoute: RouteDef<undefined, true> = {
 const patchSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   goals: z.string().max(2000).nullable().optional(),
-  status: z.enum(['active', 'paused', 'archived']).optional(),
+  // Transitions are enforced by updateClient (nextClientStatus); `invited` is only reachable from archived.
+  status: z.enum(['invited', 'active', 'paused', 'archived']).optional(),
   startDate: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)

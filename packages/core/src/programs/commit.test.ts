@@ -4,7 +4,7 @@ import { createTestDb } from '@kinetic/db/testing';
 import type { ActorContext } from '../authz/actor';
 import { DomainError } from '../errors';
 import { commitProgramVersion, type DayInput, type WeekInput } from './commit';
-import { createProgram, getProgram } from './read';
+import { createProgram, getProgram, renameProgram } from './read';
 
 let prisma: PrismaClient;
 let drop: () => Promise<void>;
@@ -389,5 +389,33 @@ describe('commitProgramVersion', () => {
       tx.workoutVersionExercise.findMany({ where: { id: { in: before.map((r) => r.id) } } }),
     );
     expect(after).toEqual(before);
+  });
+
+  it('client copies (kind=client) cannot be committed or renamed: NOT_FOUND, nothing written', async () => {
+    const actor = await newActor();
+    const copy = await run(actor, (tx) =>
+      tx.program.create({
+        data: { title: 'Copy', kind: 'client', createdBy: actor.userId },
+      } as Parameters<typeof tx.program.create>[0]),
+    );
+    expect(
+      await code(
+        run(actor, (tx) =>
+          commitProgramVersion(tx, actor, {
+            programId: copy.id,
+            expectedVersionNo: null,
+            weeks: grid(1, 1),
+          }),
+        ),
+      ),
+    ).toBe('NOT_FOUND');
+    expect(await code(run(actor, (tx) => renameProgram(tx, actor, copy.id, 'New')))).toBe(
+      'NOT_FOUND',
+    );
+    const row = await run(actor, (tx) => tx.program.findFirstOrThrow({ where: { id: copy.id } }));
+    expect(row).toMatchObject({ title: 'Copy', currentVersionId: null });
+    expect(await run(actor, (tx) => tx.programVersion.count())).toBe(0);
+    // Still readable (assignment summaries need it).
+    expect((await run(actor, (tx) => getProgram(tx, actor, copy.id))).kind).toBe('client');
   });
 });

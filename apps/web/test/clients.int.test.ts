@@ -174,4 +174,16 @@ describe('clients API', () => {
     );
     expect(audits).toBe(1);
   });
+
+  it('PATCH invited -> active is 409 CONFLICT (a client activates only by accepting an invite)', async () => {
+    const res = await post(headersFor(t.coachA), { name: 'Never', email: 'never@example.test' });
+    const { data } = (await res.json()) as { data: { id: string } };
+    const bad = await patch(headersFor(t.coachA), data.id, { status: 'active' });
+    expect(bad.status).toBe(409);
+    expect(await bad.json()).toMatchObject({ error: { code: 'CONFLICT' } });
+    const read = (await (await get(headersFor(t.coachA), data.id)).json()) as {
+      data: { status: string };
+    };
+    expect(read.data.status).toBe('invited');
+  });
 });

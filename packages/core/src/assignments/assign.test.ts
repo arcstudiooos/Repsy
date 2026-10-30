@@ -85,8 +85,11 @@ const input = (w: World, over: Partial<AssignInput> = {}): AssignInput => ({
   ...over,
 });
 
-const assign = (w: World, over: Partial<AssignInput> = {}) =>
-  run(w.actor, (tx) => assignProgram(tx, w.actor, input(w, over)));
+/** Fixed clock: 2026-11-01 08:00 in New York, so the 2026-11-04 start dates stay in the future. */
+const NOW = new Date('2026-11-01T13:00:00Z');
+
+const assign = (w: World, over: Partial<AssignInput> = {}, now: Date = NOW) =>
+  run(w.actor, (tx) => assignProgram(tx, w.actor, input(w, over), { now }));
 
 const sessionsOf = (assignmentId: string) =>
   withSystem(
@@ -203,6 +206,58 @@ describe('assignProgram', () => {
       prisma,
     );
     expect(audits.map((x) => x.action)).toEqual(['assignment.created']);
+    // D-007: the readiness confirmation is part of the audit trail.
+    expect(audits[0]!.metadataJson).toMatchObject({ readinessConfirmed: true });
+  });
+
+  it('a replacement without readiness does not claim it in the audit metadata', async () => {
+    const w = await world();
+    await assign(w);
+    const res = await assign(w, { readinessConfirmed: false, confirmReplace: true });
+    const audit = await withSystem(
+      (tx) =>
+        tx.auditEvent.findFirstOrThrow({
+          where: { objectId: res.assignmentId, action: 'assignment.created' },
+        }),
+      prisma,
+    );
+    expect(audit.metadataJson).not.toHaveProperty('readinessConfirmed');
+  });
+
+  it('start date before today in the client zone -> VALIDATION startLocalDate, nothing written', async () => {
+    const w = await world();
+    // 03:00Z on Nov 4 is still Nov 3 (22:00) in New York: Nov 3 is today there, Nov 2 is the past.
+    const now = new Date('2026-11-04T03:00:00Z');
+    const err = await assign(w, { startLocalDate: '2026-11-02' }, now).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(DomainError);
+    expect(err).toMatchObject({
+      code: 'VALIDATION',
+      fieldErrors: { startLocalDate: ["Start date can't be in the past."] },
+    });
+    expect(
+      await withSystem(
+        (tx) => tx.programAssignment.count({ where: { clientId: w.clientId } }),
+        prisma,
+      ),
+    ).toBe(0);
+    expect(await codeOf(assign(w, { startLocalDate: '2026-11-03' }, now))).toBe('ok');
+  });
+
+  it('a back-dated replacement is rejected and cancels nothing', async () => {
+    const w = await world();
+    const first = await assign(w);
+    const later = new Date('2026-11-10T15:00:00Z');
+    const err = await assign(
+      w,
+      { startLocalDate: '2026-11-05', readinessConfirmed: false, confirmReplace: true },
+      later,
+    ).catch((e: unknown) => e);
+    expect(err).toMatchObject({
+      code: 'VALIDATION',
+      fieldErrors: { startLocalDate: [expect.any(String)] },
+    });
+    const sessions = await sessionsOf(first.assignmentId);
+    expect(sessions.every((s) => s.state === 'scheduled')).toBe(true);
   });
 
   it('first assignment requires readiness', async () => {

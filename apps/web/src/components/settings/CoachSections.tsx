@@ -2,6 +2,7 @@
 
 import { Input } from '@/components/ui/input';
 import { Field, fieldAria, Select, SectionForm, useTimezones } from './form';
+import { graceHoursValue } from './graceHours';
 
 const textarea =
   'block w-full rounded-control border border-input-border bg-surface px-3 py-2 text-base text-ink aria-invalid:border-danger';
@@ -143,7 +144,7 @@ export function TrainingDefaultsSection({
       title="Training defaults"
       description="Applies across your organization."
       readOnlyNote={canEdit ? undefined : 'Only the owner can change training defaults.'}
-      buildPatch={(data) => ({ org: { graceHours: Number(data.get('graceHours')) } })}
+      buildPatch={(data) => ({ org: { graceHours: graceHoursValue(data.get('graceHours')) } })}
     >
       {(errors, uid) => {
         const id = `${uid}-grace`;

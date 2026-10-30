@@ -2,8 +2,9 @@ import { appendAudit, type TenantTx } from '@kinetic/db';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';
-import { UUID } from '../programs/commit';
+import { isUuid } from '../uuid';
 import { scheduleSlots, ScheduleInputError } from '../schedule/scheduleSlots';
+import { todayInZone } from '../timezone';
 import type { IsoWeekday } from '../schedule/types';
 
 export interface AssignProgramInput {
@@ -57,11 +58,11 @@ export async function assignProgram(
   tx: TenantTx,
   actor: ActorContext,
   input: AssignProgramInput,
-  opts: { requestId?: string } = {},
+  opts: { requestId?: string; now?: Date } = {},
 ): Promise<AssignProgramResult> {
   assertCan(actor, 'assignment:write');
   const { clientId, templateProgramId, startLocalDate, weekdays } = input;
-  if (!UUID.test(clientId) || !UUID.test(templateProgramId)) throw notFound();
+  if (!isUuid(clientId) || !isUuid(templateProgramId)) throw notFound();
 
   // No raw SQL in TenantTx: a no-op UPDATE takes the same row lock as SELECT ... FOR UPDATE until the tx ends.
   const locked = await tx.client.updateMany({
@@ -120,6 +121,11 @@ export async function assignProgram(
   } catch (error) {
     if (error instanceof ScheduleInputError) throw scheduleError(error);
     throw error;
+  }
+  // A back-dated start would create already-due sessions and, on replacement, cancel past scheduled sessions that
+  // are about to become missed history. Compared as YYYY-MM-DD strings (validated above) in the client's zone.
+  if (startLocalDate < todayInZone(client.timezone, opts.now ?? new Date())) {
+    throw invalid('startLocalDate', "Start date can't be in the past.");
   }
 
   let cancelledSessions = 0;
@@ -204,7 +210,13 @@ export async function assignProgram(
     objectType: 'assignment',
     objectId: assignment.id,
     action: 'assignment.created',
-    metadata: { clientId, programId: copy.id, sessionCount: scheduled.length },
+    metadata: {
+      clientId,
+      programId: copy.id,
+      sessionCount: scheduled.length,
+      // D-007: the coach's readiness confirmation is audited with the assignment it was given for.
+      ...(input.readinessConfirmed ? { readinessConfirmed: true } : {}),
+    },
     requestId: opts.requestId,
   });
   if (active) {
@@ -239,7 +251,7 @@ export async function getAssignmentSummary(
   opts: { now?: Date } = {},
 ): Promise<AssignmentSummary | null> {
   assertCan(actor, 'assignment:read');
-  if (!UUID.test(clientId)) throw notFound();
+  if (!isUuid(clientId)) throw notFound();
   const client = await tx.client.findFirst({ where: { id: clientId }, select: { id: true } });
   if (!client) throw notFound();
 

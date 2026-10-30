@@ -17,6 +17,7 @@ import { toast } from '@/components/ui/toast';
 import {
   mapAssignFieldErrors,
   READINESS_ERROR,
+  startDateError,
   todayInZone,
   weekdayError,
   WEEKDAYS,
@@ -60,8 +61,6 @@ const READINESS = "I've confirmed this client is ready to start this program.";
 const REPLACE_COPY =
   'This update will apply only to upcoming workouts. Completed and already-started workouts will remain unchanged.';
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
 export function AssignDialog({
   templates,
   clients,
@@ -95,6 +94,8 @@ export function AssignDialog({
   const client = clients.find((c) => c.id === clientId);
   const [readinessForced, setReadinessForced] = useState(false);
   const showReadiness = !hasActive || readinessForced;
+  // Today in the chosen client's zone: the earliest start the server accepts.
+  const minDate = todayInZone(client?.timezone ?? 'UTC');
   const daysError = template ? weekdayError(template.daysPerWeek, weekdays) : null;
   const shownDaysError = errors.weekdays ?? (weekdaysTouched ? daysError : null);
 
@@ -137,7 +138,8 @@ export function AssignDialog({
     const found: Record<string, string> = {};
     if (!template) found.template = 'Choose a program.';
     if (!client) found.client = 'Choose a client.';
-    if (!DATE_RE.test(startDate)) found.startDate = 'Choose a start date.';
+    const dateError = startDateError(startDate, minDate);
+    if (dateError) found.startDate = dateError;
     if (daysError) found.weekdays = daysError;
     if (showReadiness && !readiness) found.readiness = READINESS_ERROR;
     return found;
@@ -326,6 +328,7 @@ export function AssignDialog({
               <Input
                 id={id('date')}
                 type="date"
+                min={minDate}
                 value={startDate}
                 onChange={(e) => {
                   setDateEdited(true);

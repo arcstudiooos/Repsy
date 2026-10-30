@@ -21,6 +21,7 @@ export { enforceAttemptLimit, ATTEMPT_LIMIT, ATTEMPT_WINDOW_MS } from './identit
 export { signupCoach, type SignupCoachInput } from './identity/signupCoach';
 export { generatePilotCode, hashPilotCode, normalizePilotCode } from './identity/pilotCode';
 export { createLogger, logger, type Logger } from './log';
+export { UUID, isUuid } from './uuid';
 export { encodeCursor, decodeCursor, PAGE_SIZE, type CursorRow } from './pagination';
 export {
   createClient,
@@ -31,6 +32,7 @@ export {
   escapeLike,
   cleanGoals,
   countActiveClients,
+  nextClientStatus,
   GOALS_MAX,
   type ClientView,
   type ClientStatus,
@@ -50,7 +52,7 @@ export {
 } from './invites/invites';
 export { newInviteToken, hashInviteToken } from './invites/token';
 export { PRIVACY_NOTICE_VERSION, PRIVACY_NOTICE_TEXT } from './privacy';
-export { isValidTimezone } from './invites/invites';
+export { isIanaTimezone, todayInZone } from './timezone';
 export {
   getSettings,
   updateSettings,

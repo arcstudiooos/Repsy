@@ -94,6 +94,12 @@ describe('scheduleSlots', () => {
     ).toThrow(ScheduleInputError);
   });
 
+  it.each(['+05:30', 'europe/london', ''])('non-IANA zone %j -> ScheduleInputError', (timeZone) => {
+    expect(() =>
+      scheduleSlots({ slots: days(1, 1), weekdays: [1], startLocalDate: '2026-11-04', timeZone }),
+    ).toThrow(ScheduleInputError);
+  });
+
   it('invalid timezone -> ScheduleInputError', () => {
     expect(() =>
       scheduleSlots({

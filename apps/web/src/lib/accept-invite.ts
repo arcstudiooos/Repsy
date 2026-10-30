@@ -7,7 +7,7 @@ import {
   GOALS_MAX,
   hashInviteToken,
   inviteFailureMessage,
-  isValidTimezone,
+  isIanaTimezone,
   PRIVACY_NOTICE_VERSION,
   type ErrorCode,
 } from '@kinetic/core';
@@ -38,7 +38,7 @@ function validateFields(input: OnboardingInput & { password?: string }): Record<
     errors.password = `Use at least ${MIN_PASSWORD_LENGTH} characters.`;
   }
   if (!input.consent) errors.consent = CONSENT_REQUIRED;
-  if (!isValidTimezone(input.timezone)) errors.timezone = 'Choose a valid time zone.';
+  if (!isIanaTimezone(input.timezone)) errors.timezone = 'Choose a valid time zone.';
   if (input.preferredUnits !== 'kg' && input.preferredUnits !== 'lb') {
     errors.preferredUnits = 'Choose kg or lb.';
   }

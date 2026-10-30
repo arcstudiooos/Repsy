@@ -18,7 +18,8 @@ const patchSchema = z.object({
     .object({
       name: z.string().max(500).optional(),
       timezone: z.string().max(100).optional(),
-      graceHours: z.number().optional(),
+      // null (a blank form field) reaches core, which rejects it on `org.graceHours`.
+      graceHours: z.number().nullable().optional(),
     })
     .optional(),
   notifications: z

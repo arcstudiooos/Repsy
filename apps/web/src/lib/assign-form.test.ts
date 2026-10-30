@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { formatWeekdays, mapAssignFieldErrors, todayInZone, weekdayError } from './assign-form';
+import {
+  formatWeekdays,
+  mapAssignFieldErrors,
+  startDateError,
+  todayInZone,
+  weekdayError,
+} from './assign-form';
 
 describe('assign form helpers', () => {
   it('formats weekdays Mon to Sun regardless of stored order', () => {
@@ -19,6 +25,15 @@ describe('assign form helpers', () => {
     expect(todayInZone('Pacific/Auckland', instant)).toBe('2026-01-02');
     expect(todayInZone('America/Los_Angeles', instant)).toBe('2026-01-01');
     expect(todayInZone('Not/AZone', instant)).toBe('2026-01-01');
+  });
+});
+
+describe('startDateError', () => {
+  it('requires a date on or after today (the input min) in the client zone', () => {
+    expect(startDateError('', '2026-11-04')).toBe('Choose a start date.');
+    expect(startDateError('2026-11-03', '2026-11-04')).toBe("Start date can't be in the past.");
+    expect(startDateError('2026-11-04', '2026-11-04')).toBeNull();
+    expect(startDateError('2027-01-01', '2026-11-04')).toBeNull();
   });
 });
 

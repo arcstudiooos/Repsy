@@ -3,6 +3,7 @@ import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { countActiveClients } from '../clients/clients';
 import { DomainError } from '../errors';
+import { isIanaTimezone } from '../timezone';
 
 type Units = 'kg' | 'lb';
 
@@ -30,17 +31,9 @@ export interface SettingsView {
 
 export interface SettingsPatch {
   profile?: { bio?: string | null; specialties?: string[]; units?: Units };
-  org?: { name?: string; timezone?: string; graceHours?: number };
+  org?: { name?: string; timezone?: string; graceHours?: number | null };
   notifications?: { messageEmailOptIn?: boolean; marketingOptIn?: boolean };
   client?: { timezone?: string; preferredUnits?: Units };
-}
-
-let zones: ReadonlySet<string> | undefined;
-/** True for IANA zone names from `Intl.supportedValuesOf('timeZone')` (plus UTC, which that list omits). */
-export function isIanaTimezone(tz: unknown): tz is string {
-  if (typeof tz !== 'string') return false;
-  zones ??= new Set(Intl.supportedValuesOf('timeZone'));
-  return tz === 'UTC' || zones.has(tz);
 }
 
 const isCoach = (actor: ActorContext) => actor.role === 'owner' || actor.role === 'coach';
@@ -143,7 +136,12 @@ function validate(patch: SettingsPatch): Cleaned {
       else add(errors, 'org.timezone', 'Choose a valid time zone.');
     }
     if (graceHours !== undefined) {
-      if (Number.isInteger(graceHours) && graceHours >= 0 && graceHours <= GRACE_HOURS_MAX) {
+      if (
+        typeof graceHours === 'number' &&
+        Number.isInteger(graceHours) &&
+        graceHours >= 0 &&
+        graceHours <= GRACE_HOURS_MAX
+      ) {
         o.graceHours = graceHours;
       } else add(errors, 'org.graceHours', `Use a whole number from 0 to ${GRACE_HOURS_MAX}.`);
     }

@@ -3,6 +3,7 @@ import {
   DomainError,
   enforceAttemptLimit,
   hashPilotCode,
+  isIanaTimezone,
   logger,
   signupCoach,
   type SignupCoachInput,
@@ -30,14 +31,8 @@ type Redeem = (
   input: SignupCoachInput,
 ) => ReturnType<typeof signupCoach>;
 
-export function validTimezone(tz: string): boolean {
-  try {
-    new Intl.DateTimeFormat('en', { timeZone: tz });
-    return true;
-  } catch {
-    return false;
-  }
-}
+/** Same strict check as every other time zone input (core `isIanaTimezone`). */
+export const validTimezone = (tz: string): boolean => isIanaTimezone(tz);
 
 async function pilotCodeUsable(prisma: PrismaClient, code: string): Promise<boolean> {
   const n = await withSystem(

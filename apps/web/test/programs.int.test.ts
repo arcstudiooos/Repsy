@@ -194,6 +194,36 @@ describe('programs API', () => {
     expect((await post(headersFor(t.coachA), { title: '' })).status).toBe(422);
   });
 
+  it('a client copy (kind=client) is readable but PATCH (commit or rename) -> 404 and it is not listed', async () => {
+    const copy = await withSystem(
+      (tx) =>
+        tx.program.create({
+          data: {
+            organizationId: t.orgA.id,
+            title: 'Copy',
+            kind: 'client',
+            createdBy: t.coachA.id,
+          },
+        }),
+      prisma,
+    );
+    expect(
+      (await patch(headersFor(t.coachA), copy.id, { expectedVersion: null, weeks: weeks('X') }))
+        .status,
+    ).toBe(404);
+    expect(
+      (await patch(headersFor(t.coachA), copy.id, { expectedVersion: null, title: 'Renamed' }))
+        .status,
+    ).toBe(404);
+    const read = await get(headersFor(t.coachA), copy.id);
+    expect(read.status).toBe(200);
+    expect(await read.json()).toMatchObject({
+      data: { title: 'Copy', kind: 'client', versionNo: null },
+    });
+    const listed = (await (await list(headersFor(t.coachA))).json()) as { data: { id: string }[] };
+    expect(listed.data.map((p) => p.id)).not.toContain(copy.id);
+  });
+
   it('cross-tenant: other org gets 404 on read and patch; list is scoped; ids are UUID-guarded', async () => {
     const id = await newProgram('Mine');
     expect((await get(headersFor(t.coachB), id)).status).toBe(404);

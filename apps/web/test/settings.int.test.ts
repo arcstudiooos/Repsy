@@ -123,6 +123,22 @@ describe('settings API', () => {
     expect(JSON.stringify(audit)).not.toContain('Renamed');
   });
 
+  it('blank graceHours (sent as null) → 422 on org.graceHours, nothing saved', async () => {
+    const before = await withSystem(
+      (tx) => tx.organization.findUniqueOrThrow({ where: { id: t.orgA.id } }),
+      prisma,
+    );
+    const res = await patchSettings(headersFor(t.coachA, t.orgA.id), { org: { graceHours: null } });
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { error: { fieldErrors: Record<string, string[]> } };
+    expect(body.error.fieldErrors['org.graceHours']?.[0]).toMatch(/whole number/);
+    const after = await withSystem(
+      (tx) => tx.organization.findUniqueOrThrow({ where: { id: t.orgA.id } }),
+      prisma,
+    );
+    expect(after.graceHours).toBe(before.graceHours);
+  });
+
   it('graceHours 73 → 422', async () => {
     const res = await patchSettings(headersFor(t.coachA, t.orgA.id), { org: { graceHours: 73 } });
     expect(res.status).toBe(422);

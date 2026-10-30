@@ -6,11 +6,11 @@ import { cleanGoals } from '../clients/clients';
 import { DomainError } from '../errors';
 import { enqueueEmail } from '../outbox';
 import { PRIVACY_NOTICE_VERSION } from '../privacy';
+import { isIanaTimezone } from '../timezone';
+import { isUuid } from '../uuid';
 import { newInviteToken } from './token';
 
 export const INVITE_TTL_MS = 7 * 86_400_000;
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type InviteFailure = 'INVITE_INVALID' | 'INVITE_EXPIRED' | 'INVITE_USED' | 'INVITE_REVOKED';
 export type InviteClass = 'ok' | InviteFailure;
@@ -59,7 +59,7 @@ export async function issueInvite(
   requestId?: string,
 ): Promise<{ inviteId: string; expiresAt: Date }> {
   assertCan(actor, 'client:update');
-  if (!UUID.test(clientId)) throw notFound();
+  if (!isUuid(clientId)) throw notFound();
   // A no-op UPDATE takes the client row lock, so concurrent resends serialize
   // and cannot leave two open invites.
   const touched = await tx.client.updateMany({ where: { id: clientId }, data: { updatedAt: now } });
@@ -113,7 +113,7 @@ export async function revokeInvite(
   now: Date = new Date(),
 ): Promise<{ revoked: number }> {
   assertCan(actor, 'client:update');
-  if (!UUID.test(clientId)) throw notFound();
+  if (!isUuid(clientId)) throw notFound();
   if (!(await tx.client.findFirst({ where: { id: clientId }, select: { id: true } }))) {
     throw notFound();
   }
@@ -157,23 +157,13 @@ export interface AcceptInviteInput {
   goals?: string;
 }
 
-export function isValidTimezone(tz: string): boolean {
-  if (typeof tz !== 'string' || tz.trim() === '') return false;
-  try {
-    new Intl.DateTimeFormat('en', { timeZone: tz });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 /** Validates onboarding input so every caller is safe; returns the cleaned goals (null = leave as is). */
 function validateAcceptInput(input: AcceptInviteInput): string | null {
   const fieldErrors: Record<string, string[]> = {};
   if (input.consentVersion !== PRIVACY_NOTICE_VERSION) {
     fieldErrors.consentVersion = ['Agree to the current privacy notice to continue.'];
   }
-  if (!isValidTimezone(input.timezone)) fieldErrors.timezone = ['Choose a valid time zone.'];
+  if (!isIanaTimezone(input.timezone)) fieldErrors.timezone = ['Choose a valid time zone.'];
   if (input.preferredUnits !== 'kg' && input.preferredUnits !== 'lb') {
     fieldErrors.preferredUnits = ['Choose kg or lb.'];
   }

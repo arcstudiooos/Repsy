@@ -1,4 +1,5 @@
 import { TZDate } from '@date-fns/tz';
+import { isIanaTimezone } from '../timezone';
 import type { ScheduledSlot, ScheduleSlotsInput } from './types';
 
 export class ScheduleInputError extends Error {
@@ -26,11 +27,7 @@ function parseLocalDate(s: string): { y: number; m: number; d: number; utcMs: nu
 }
 
 function assertTimeZone(timeZone: string): void {
-  try {
-    new Intl.DateTimeFormat('en-US', { timeZone });
-  } catch {
-    throw new ScheduleInputError(`Invalid time zone: ${timeZone}`);
-  }
+  if (!isIanaTimezone(timeZone)) throw new ScheduleInputError(`Invalid time zone: ${timeZone}`);
 }
 
 /** ISO weekday (Mon=1..Sun=7) of a UTC-midnight calendar date. */

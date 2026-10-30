@@ -4,9 +4,8 @@ import { appendAudit, type TenantTx } from '@kinetic/db';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';
+import { isUuid } from '../uuid';
 import { targetSchema, type SetTarget } from './targets';
-
-export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const MAX_WEEKS = 16;
 export const MAX_DAYS_PER_WEEK = 7;
@@ -116,13 +115,14 @@ export async function commitProgramVersion(
 ): Promise<{ versionNo: number; versionId: string }> {
   assertCan(actor, 'program:write');
   const { programId, expectedVersionNo } = input;
-  if (!UUID.test(programId)) throw new DomainError('NOT_FOUND', 'Not found.');
+  if (!isUuid(programId)) throw new DomainError('NOT_FOUND', 'Not found.');
   const weeks = parseWeeks(input.weeks);
 
   // No raw SQL in TenantTx: a no-op UPDATE takes the same row lock as SELECT ... FOR UPDATE and holds it
-  // until the surrounding transaction ends. Zero rows means the program is absent or belongs to another org.
+  // until the surrounding transaction ends. Zero rows means the program is absent, belongs to another org, or is
+  // a client copy: copies are never edited here (structural reconciliation of their sessions is S3-2).
   const touched = await tx.program.updateMany({
-    where: { id: programId },
+    where: { id: programId, kind: 'template' },
     data: { updatedAt: new Date() },
   });
   if (touched.count === 0) throw new DomainError('NOT_FOUND', 'Not found.');

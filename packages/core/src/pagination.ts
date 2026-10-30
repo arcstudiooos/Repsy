@@ -1,4 +1,5 @@
 import { DomainError } from './errors';
+import { isUuid } from './uuid';
 
 export const PAGE_SIZE = 25;
 
@@ -14,8 +15,6 @@ export function encodeCursor(row: CursorRow): string {
   );
 }
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 export function decodeCursor(cursor: string): CursorRow {
   const invalid = () => new DomainError('VALIDATION', 'Invalid cursor.', { cursor: ['Invalid.'] });
   let parsed: unknown;
@@ -26,7 +25,7 @@ export function decodeCursor(cursor: string): CursorRow {
   }
   if (parsed === null || typeof parsed !== 'object') throw invalid();
   const { c, i } = parsed as { c?: unknown; i?: unknown };
-  if (typeof c !== 'string' || typeof i !== 'string' || !UUID.test(i)) throw invalid();
+  if (typeof c !== 'string' || typeof i !== 'string' || !isUuid(i)) throw invalid();
   const createdAt = new Date(c);
   if (Number.isNaN(createdAt.getTime()) || createdAt.toISOString() !== c) throw invalid();
   return { createdAt, id: i };

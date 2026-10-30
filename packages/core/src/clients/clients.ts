@@ -4,6 +4,7 @@ import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';
 import { summarizeInvites, type InviteStatus } from '../invites/invites';
 import { decodeCursor, encodeCursor, PAGE_SIZE } from '../pagination';
+import { isUuid } from '../uuid';
 
 export type ClientStatus = 'invited' | 'active' | 'paused' | 'archived';
 
@@ -40,7 +41,6 @@ export const NAME_MAX = 120;
 export const GOALS_MAX = 2000;
 export const QUERY_MAX = 100;
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 /** Statuses that occupy a slot under `Organization.activeClientLimit`. */
@@ -211,11 +211,53 @@ export async function getClient(
   id: string,
 ): Promise<ClientView> {
   assertCan(actor, 'client:read');
-  if (!UUID.test(id)) throw new DomainError('NOT_FOUND', 'Not found.');
+  if (!isUuid(id)) throw new DomainError('NOT_FOUND', 'Not found.');
   const row = await tx.client.findFirst({ where: { id } });
   if (!row) throw new DomainError('NOT_FOUND', 'Not found.');
   return toClientView(row, (await inviteStatuses(tx, [id])).get(id));
 }
+
+const LABEL: Record<ClientStatus, string> = {
+  invited: 'invited',
+  active: 'active',
+  paused: 'paused',
+  archived: 'archived',
+};
+
+/**
+ * Coach-driven status changes (a client becomes `active` only by accepting an invite, never by a PATCH):
+ * invited -> archived; active <-> paused; active|paused -> archived; archived -> active only for a client that has
+ * accepted (linked user), otherwise a restore goes back to invited. Asking for the current status is a no-op.
+ * Everything else is CONFLICT.
+ */
+export function nextClientStatus(
+  from: ClientStatus,
+  requested: ClientStatus,
+  hasUser: boolean,
+): ClientStatus {
+  if (from === requested) return from;
+  if (from === 'archived') {
+    if (requested === 'active') return hasUser ? 'active' : 'invited';
+    if (requested === 'invited' && !hasUser) return 'invited';
+  } else if (requested === 'archived') {
+    return 'archived';
+  } else if (
+    (from === 'active' && requested === 'paused') ||
+    (from === 'paused' && requested === 'active')
+  ) {
+    return requested;
+  }
+  const hint =
+    from === 'invited' && (requested === 'active' || requested === 'paused')
+      ? ' The client becomes active when they accept their invite.'
+      : '';
+  throw new DomainError(
+    'CONFLICT',
+    `A client can't move from ${LABEL[from]} to ${LABEL[requested]}.${hint}`,
+  );
+}
+
+const STATUSES: ClientStatus[] = ['invited', 'active', 'paused', 'archived'];
 
 export async function updateClient(
   tx: TenantTx,
@@ -224,25 +266,22 @@ export async function updateClient(
   patch: {
     name?: string;
     goals?: string | null;
-    status?: 'active' | 'paused' | 'archived';
+    status?: ClientStatus;
     startDate?: string | null;
   },
 ): Promise<ClientView> {
   assertCan(actor, 'client:update');
-  if (!UUID.test(id)) throw new DomainError('NOT_FOUND', 'Not found.');
+  if (!isUuid(id)) throw new DomainError('NOT_FOUND', 'Not found.');
   const data: {
     name?: string;
     goals?: string | null;
-    status?: 'active' | 'paused' | 'archived';
+    status?: ClientStatus;
     startDate?: Date | null;
   } = {};
   if (patch.name !== undefined) data.name = cleanName(patch.name);
   if (patch.goals !== undefined) data.goals = cleanGoals(patch.goals);
-  if (patch.status !== undefined) {
-    if (!['active', 'paused', 'archived'].includes(patch.status)) {
-      throw invalid('status', 'Invalid status.');
-    }
-    data.status = patch.status;
+  if (patch.status !== undefined && !STATUSES.includes(patch.status)) {
+    throw invalid('status', 'Invalid status.');
   }
   if (patch.startDate !== undefined) {
     if (patch.startDate === null) {
@@ -256,10 +295,22 @@ export async function updateClient(
     }
   }
 
-  const org = patch.status === 'active' ? await lockOrganization(tx, actor) : undefined;
-  const current = await tx.client.findFirst({ where: { id }, select: { status: true } });
+  // Any change that can land in a counted status takes the org lock before reading the client, so the limit check
+  // and the write are serialized with every other create/activation in this organization.
+  const mayCount = patch.status === 'active' || patch.status === 'invited';
+  const org = mayCount ? await lockOrganization(tx, actor) : undefined;
+  const current = await tx.client.findFirst({
+    where: { id },
+    select: { status: true, userId: true },
+  });
   if (!current) throw new DomainError('NOT_FOUND', 'Not found.');
-  if (org && !COUNTED.includes(current.status)) await assertUnderLimit(tx, org.activeClientLimit);
+  if (patch.status !== undefined) {
+    const next = nextClientStatus(current.status, patch.status, current.userId !== null);
+    if (org && COUNTED.includes(next) && !COUNTED.includes(current.status)) {
+      await assertUnderLimit(tx, org.activeClientLimit);
+    }
+    data.status = next;
+  }
   const row = await tx.client.update({ where: { id }, data });
   return toClientView(row, (await inviteStatuses(tx, [id])).get(id));
 }

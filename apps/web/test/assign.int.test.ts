@@ -84,9 +84,11 @@ async function newTemplate(headers: Headers): Promise<string> {
   return id;
 }
 
+// Far in the future: the route uses the real clock and rejects past start dates.
+const START = '2099-11-04';
 const body = (clientId: string, over: Record<string, unknown> = {}) => ({
   clientId,
-  startLocalDate: '2026-11-04',
+  startLocalDate: START,
   weekdays: [1, 3],
   readinessConfirmed: true,
   confirmReplace: false,
@@ -135,7 +137,7 @@ describe('assignment API', () => {
       data: {
         assignmentId: created.data.assignmentId,
         programTitle: 'Template',
-        startLocalDate: '2026-11-04',
+        startLocalDate: START,
         weekdays: [1, 3],
         sessionCount: 2,
       },
