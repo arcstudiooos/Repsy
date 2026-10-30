@@ -287,6 +287,39 @@ describe('cross-tenant parent links are refused by the database', () => {
     expect(await outcome(withSystem((tx) => insert(tx, a, a), prisma))).toBe('ok');
   });
 
+  // Production writes these two links with UPDATE (session start lock, program commit), not INSERT.
+  it('updating a session lock or a program current version to another org is a FK violation', async () => {
+    const own = await withSystem(
+      async (tx) => ({
+        session: await tx.workoutSession.create({
+          data: session(a, a.assignmentId, a.clientId, 4),
+        }),
+        program: await tx.program.create({
+          data: { organizationId: a.orgId, title: 'U', createdBy: a.userId },
+        }),
+      }),
+      prisma,
+    );
+    const lock = (wv: string) =>
+      withSystem(
+        (tx) =>
+          tx.workoutSession.updateMany({
+            where: { id: own.session.id },
+            data: { workoutVersionId: wv },
+          }),
+        prisma,
+      );
+    const current = (pv: string) =>
+      withSystem(
+        (tx) =>
+          tx.program.updateMany({ where: { id: own.program.id }, data: { currentVersionId: pv } }),
+        prisma,
+      );
+    expect(await outcome(lock(b.workoutVersionId))).toBe('FK');
+    expect(await outcome(current(b.programVersionId))).toBe('FK');
+    expect(await outcome(lock(a.workoutVersionId))).toBe('ok');
+  });
+
   it('a client copy with no client (MATCH SIMPLE) is still allowed', async () => {
     const created = withSystem(
       (tx) =>
