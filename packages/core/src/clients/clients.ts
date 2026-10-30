@@ -6,6 +6,7 @@ import { summarizeInvites, type InviteStatus } from '../invites/invites';
 import { decodeCursor, encodeCursor, PAGE_SIZE } from '../pagination';
 import { canonicalTimezone } from '../timezone';
 import { isUuid } from '../uuid';
+import { closePauseOnArchive, toPauseView, type PauseView } from './pause';
 
 export type ClientStatus = 'invited' | 'active' | 'paused' | 'archived';
 
@@ -23,6 +24,8 @@ export interface ClientView {
   inviteExpiresAt: string | null;
   /** When the client accepted their invite; null if they have not. */
   joinedAt: string | null;
+  /** The open pause (S3-5); null when the program is not paused. */
+  pause: PauseView | null;
   createdAt: string;
 }
 
@@ -44,8 +47,11 @@ export const QUERY_MAX = 100;
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
-/** Statuses that occupy a slot under `Organization.activeClientLimit`. */
-const COUNTED: ClientStatus[] = ['invited', 'active'];
+/**
+ * Statuses that occupy a slot under `Organization.activeClientLimit`. A pause is temporary (at most 90 days) and ends
+ * on its own without a limit check, so a paused client keeps their slot.
+ */
+const COUNTED: ClientStatus[] = ['invited', 'active', 'paused'];
 
 const invalid = (field: string, message: string) =>
   new DomainError('VALIDATION', 'Some fields are invalid.', { [field]: [message] });
@@ -58,7 +64,11 @@ export interface InviteSummary {
 
 const NO_INVITE: InviteSummary = { status: 'none', expiresAt: null, acceptedAt: null };
 
-export function toClientView(row: ClientRow, invite: InviteSummary = NO_INVITE): ClientView {
+export function toClientView(
+  row: ClientRow,
+  invite: InviteSummary = NO_INVITE,
+  pause: { startLocalDate: Date; resumeLocalDate: Date } | null = null,
+): ClientView {
   return {
     id: row.id,
     name: row.name,
@@ -71,6 +81,7 @@ export function toClientView(row: ClientRow, invite: InviteSummary = NO_INVITE):
     inviteStatus: invite.status,
     inviteExpiresAt: invite.expiresAt ? invite.expiresAt.toISOString() : null,
     joinedAt: invite.acceptedAt ? invite.acceptedAt.toISOString() : null,
+    pause: pause ? toPauseView(pause) : null,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -145,6 +156,16 @@ async function inviteStatuses(tx: TenantTx, ids: string[]): Promise<Map<string, 
   return out;
 }
 
+/** Open pauses per client (S3-5). */
+async function openPauses(tx: TenantTx, ids: string[]) {
+  if (ids.length === 0) return new Map<string, { startLocalDate: Date; resumeLocalDate: Date }>();
+  const rows = await tx.clientPause.findMany({
+    where: { clientId: { in: ids }, endedAt: null },
+    select: { clientId: true, startLocalDate: true, resumeLocalDate: true },
+  });
+  return new Map(rows.map((r) => [r.clientId, r]));
+}
+
 export async function createClient(
   tx: TenantTx,
   actor: ActorContext,
@@ -208,9 +229,13 @@ export async function listClients(
     tx,
     page.map((row) => row.id),
   );
+  const pauses = await openPauses(
+    tx,
+    page.map((row) => row.id),
+  );
   const last = page[page.length - 1];
   return {
-    items: page.map((row) => toClientView(row, statuses.get(row.id))),
+    items: page.map((row) => toClientView(row, statuses.get(row.id), pauses.get(row.id) ?? null)),
     nextCursor: rows.length > PAGE_SIZE && last ? encodeCursor(last) : null,
   };
 }
@@ -224,7 +249,8 @@ export async function getClient(
   if (!isUuid(id)) throw new DomainError('NOT_FOUND', 'Not found.');
   const row = await tx.client.findFirst({ where: { id } });
   if (!row) throw new DomainError('NOT_FOUND', 'Not found.');
-  return toClientView(row, (await inviteStatuses(tx, [row.id])).get(row.id));
+  const invite = (await inviteStatuses(tx, [row.id])).get(row.id);
+  return toClientView(row, invite, (await openPauses(tx, [row.id])).get(row.id) ?? null);
 }
 
 const LABEL: Record<ClientStatus, string> = {
@@ -315,12 +341,21 @@ export async function updateClient(
   });
   if (!current) throw new DomainError('NOT_FOUND', 'Not found.');
   if (patch.status !== undefined) {
+    // Ruling 6: pausing and resuming move sessions, so they go through the pause API only.
+    const intoPause = current.status === 'active' && patch.status === 'paused';
+    const outOfPause = current.status === 'paused' && patch.status === 'active';
+    if (intoPause || outOfPause) throw invalid('status', 'Use Pause program to pause or resume.');
     const next = nextClientStatus(current.status, patch.status, current.userId !== null);
     if (org && COUNTED.includes(next) && !COUNTED.includes(current.status)) {
       await assertUnderLimit(tx, org.activeClientLimit);
     }
     data.status = next;
   }
+  // The client row first, then the pause row: the same lock order as the pause operations.
   const row = await tx.client.update({ where: { id }, data });
-  return toClientView(row, (await inviteStatuses(tx, [row.id])).get(row.id));
+  if (data.status === 'archived' && current.status !== 'archived') {
+    await closePauseOnArchive(tx, id, new Date());
+  }
+  const invite = (await inviteStatuses(tx, [row.id])).get(row.id);
+  return toClientView(row, invite, (await openPauses(tx, [row.id])).get(row.id) ?? null);
 }

@@ -270,6 +270,19 @@ const CASES: [string, Insert][] = [
       }),
   ],
   [
+    'client_pauses -> clients',
+    (tx, own, parent) =>
+      tx.clientPause.create({
+        data: {
+          organizationId: own.orgId,
+          clientId: parent.clientId,
+          startLocalDate: new Date('2099-01-01'),
+          resumeLocalDate: new Date('2099-01-08'),
+          createdBy: own.userId,
+        },
+      }),
+  ],
+  [
     'programs -> clients',
     (tx, own, parent) =>
       tx.program.create({

@@ -98,6 +98,7 @@ describe('row level security', () => {
     expect(tables.map((t) => t.relname).sort()).toEqual([
       'audit_events',
       'client_invites',
+      'client_pauses',
       'clients',
       'exercises',
       'memberships',
@@ -129,6 +130,7 @@ describe('row level security', () => {
     expect(policies.map((p) => p.tablename).sort()).toEqual([
       'audit_events',
       'client_invites',
+      'client_pauses',
       'clients',
       'memberships',
       'organizations',

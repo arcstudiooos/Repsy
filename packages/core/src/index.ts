@@ -38,6 +38,15 @@ export {
   type ClientStatus,
 } from './clients/clients';
 export {
+  applyPause,
+  updatePause,
+  resumeNow,
+  endDuePause,
+  openPauseOf,
+  MAX_PAUSE_DAYS,
+  type PauseView,
+} from './clients/pause';
+export {
   issueInvite,
   revokeInvite,
   acceptInvite,

@@ -81,6 +81,7 @@ model User {
   writtenSetLogs           SetLog[]                @relation("SetLogWriter")
   programDrafts            ProgramDraft[]          @relation("ProgramDraftEditor")
   setLogRevisions          SetLogRevision[]        @relation("SetLogReviser")
+  clientPauses             ClientPause[]           @relation("ClientPauseCreator")
   sessions                 Session[]
   accounts                 Account[]
   coachProfile             CoachProfile?
@@ -176,6 +177,7 @@ model Organization {
   setLogs                 SetLog[]
   programDrafts           ProgramDraft[]
   setLogRevisions         SetLogRevision[]
+  clientPauses            ClientPause[]
 
   @@map("organizations")
 }
@@ -284,6 +286,7 @@ model Client {
   programs        Program[]
   assignments     ProgramAssignment[]
   workoutSessions WorkoutSession[]
+  pauses          ClientPause[]
 
   @@unique([organizationId, email])
   @@unique([organizationId, userId])
@@ -703,4 +706,30 @@ model ProgramDraft {
   @@unique([programId, organizationId])
   @@index([organizationId])
   @@map("program_drafts")
+}
+
+/// A pause of a client's program (S3-5, D-003, Ruling 6). `appliedOffsetDays` is how far the client's scheduled
+/// sessions from `startLocalDate` on have been moved for this pause, so every reschedule shifts only the difference
+/// and nothing moves twice. At most one open pause (`endedAt` null) per client (partial unique index, migration).
+model ClientPause {
+  id                String    @id @default(uuid()) @db.Uuid
+  organizationId    String    @map("organization_id") @db.Uuid
+  clientId          String    @map("client_id") @db.Uuid
+  startLocalDate    DateTime  @map("start_local_date") @db.Date
+  resumeLocalDate   DateTime  @map("resume_local_date") @db.Date
+  appliedOffsetDays Int       @default(0) @map("applied_offset_days")
+  endedAt           DateTime? @map("ended_at") @db.Timestamptz(3)
+  createdBy         String    @map("created_by") @db.Uuid
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  creator      User         @relation("ClientPauseCreator", fields: [createdBy], references: [id])
+
+  @@index([clientId])
+  @@index([organizationId])
+  /// The worker's due-pause scan.
+  @@index([endedAt, resumeLocalDate])
+  @@map("client_pauses")
 }

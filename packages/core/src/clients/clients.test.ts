@@ -283,20 +283,19 @@ describe('updateClient', () => {
     expect(
       await code(run(actor, (tx) => updateClient(tx, actor, first!.id, { status: 'active' }))),
     ).toBe('CLIENT_LIMIT_REACHED');
-    // an already-counted client can be "activated" (invited → active) without a limit error
-    const paused = await run(actor, (tx) =>
+    const renamed = await run(actor, (tx) =>
       updateClient(tx, actor, second!.id, {
-        status: 'paused',
         name: ' Renamed ',
         startDate: '2026-02-01',
         goals: 'g',
       }),
     );
-    expect(paused).toMatchObject({
-      status: 'paused',
+    expect(renamed).toMatchObject({
+      status: 'active',
       name: 'Renamed',
       startDate: '2026-02-01',
       goals: 'g',
+      pause: null,
     });
   });
 
@@ -340,8 +339,6 @@ describe('updateClient status transitions', () => {
 
   const allowed: [S, boolean, S, S][] = [
     ['invited', false, 'archived', 'archived'],
-    ['active', true, 'paused', 'paused'],
-    ['paused', true, 'active', 'active'],
     ['active', true, 'archived', 'archived'],
     ['paused', true, 'archived', 'archived'],
     ['archived', true, 'active', 'active'],
@@ -381,16 +378,34 @@ describe('updateClient status transitions', () => {
     },
   );
 
-  it('paused -> active and archived -> invited re-check the limit', async () => {
+  // Ruling 6: pausing and resuming move sessions, so they go through the pause API.
+  it.each([
+    ['active', 'paused'],
+    ['paused', 'active'],
+  ] as [S, S][])('%s -> %s is VALIDATION (use the pause API)', async (from, to) => {
     const actor = await newOrg();
-    const paused = await seedOne(actor, 'paused', true);
+    const id = await seedOne(actor, from, true);
+    const err = await run(actor, (tx) => updateClient(tx, actor, id, { status: to })).catch(
+      (e: unknown) => e,
+    );
+    expect(err).toMatchObject({
+      code: 'VALIDATION',
+      fieldErrors: { status: ['Use Pause program to pause or resume.'] },
+    });
+  });
+
+  it('a paused client keeps their slot; archived -> invited re-checks the limit', async () => {
+    const actor = await newOrg();
+    await seedOne(actor, 'paused', true);
     const archived = await seedOne(actor, 'archived', false);
     await seedClients(
       actor,
-      Array.from({ length: 30 }, (_, i) => ({ name: `f${i}`, email: `full${i}@example.test` })),
+      Array.from({ length: 29 }, (_, i) => ({ name: `f${i}`, email: `full${i}@example.test` })),
     );
     expect(
-      await code(run(actor, (tx) => updateClient(tx, actor, paused, { status: 'active' }))),
+      await code(
+        run(actor, (tx) => createClient(tx, actor, { name: 'X', email: 'x@example.test' })),
+      ),
     ).toBe('CLIENT_LIMIT_REACHED');
     expect(
       await code(run(actor, (tx) => updateClient(tx, actor, archived, { status: 'invited' }))),

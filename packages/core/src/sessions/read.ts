@@ -219,6 +219,8 @@ export interface PortalHome {
   hasAssignment: boolean;
   /** Today in the client's time zone (YYYY-MM-DD), for date labels. */
   todayLocalDate: string;
+  /** The open pause of the client's program (S3-5), for the "Program paused" banner. */
+  pause: { startLocalDate: string; resumeLocalDate: string } | null;
 }
 
 /** The portal home for the acting client (S2-1). */
@@ -270,6 +272,10 @@ export async function getPortalHome(
     },
   });
   const assignments = await tx.programAssignment.count({ where: { clientId: client.id } });
+  const pause = await tx.clientPause.findFirst({
+    where: { clientId: client.id, endedAt: null },
+    select: { startLocalDate: true, resumeLocalDate: true },
+  });
 
   return {
     nextWorkout: next ? ((await summarize(tx, [next], now))[0] ?? null) : null,
@@ -277,5 +283,11 @@ export async function getPortalHome(
     showSafetyReminder: begun === 0,
     hasAssignment: assignments > 0,
     todayLocalDate: today,
+    pause: pause
+      ? {
+          startLocalDate: fromDbDate(pause.startLocalDate),
+          resumeLocalDate: fromDbDate(pause.resumeLocalDate),
+        }
+      : null,
   };
 }
