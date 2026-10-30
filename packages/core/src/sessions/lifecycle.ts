@@ -3,6 +3,7 @@ import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';
 import { COMMENT_MAX } from '../logging/schema';
+import { resolveStaleMissedFlags } from '../review/rules';
 import { isUuid } from '../uuid';
 import { getSessionDetail, type SessionDetail } from './detail';
 import { sessionScope } from './read';
@@ -10,6 +11,8 @@ import { resolveSlotWorkoutVersionId } from './resolve';
 import type { SessionState } from './types';
 
 const notFound = () => new DomainError('NOT_FOUND', 'Not found.');
+/** States a complete or skip may still end (missed and incomplete are derived, S4-2). */
+const FINISHABLE: SessionState[] = ['scheduled', 'in_progress', 'missed', 'incomplete'];
 const finished = () =>
   new DomainError('SESSION_FINISHED', 'This workout is already finished and can no longer change.');
 
@@ -114,15 +117,17 @@ export async function startSession(
   const now = opts.now ?? new Date();
   const session = await lockSession(tx, actor, sessionId);
   if (session.state === 'in_progress') return getSessionDetail(tx, actor, session.id, { now });
-  if (session.state !== 'scheduled') throw finished();
+  // A missed session may still be started late (S4-2 Ruling 4); its version was locked by the sweep.
+  if (session.state !== 'scheduled' && session.state !== 'missed') throw finished();
 
   // A version already locked is never replaced (D-002 #6; the database refuses it too, migration 000019).
   const workoutVersionId =
     session.workoutVersionId ?? (await resolveSlotWorkoutVersionId(tx, session));
   await tx.workoutSession.updateMany({
-    where: { id: session.id, state: 'scheduled' },
+    where: { id: session.id, state: { in: ['scheduled', 'missed'] } },
     data: { state: 'in_progress', workoutVersionId, startedAt: now },
   });
+  if (session.state === 'missed') await resolveStaleMissedFlags(tx, now, session.clientId);
   await appendAudit(tx, {
     orgId: actor.orgId,
     actorId: actor.userId,
@@ -170,13 +175,14 @@ async function finishSession(
   const session = await lockSession(tx, actor, sessionId);
   // Replay of the same action (retry, double tap, outbox replay): the stored outcome, no second write or audit.
   if (session.state === kind) return getSessionDetail(tx, actor, session.id, { now });
-  if (session.state !== 'scheduled' && session.state !== 'in_progress') throw finished();
+  // Missed and incomplete are derived, not final (S4-2 Ruling 4): a late sync may still finish them.
+  if (!FINISHABLE.includes(session.state)) throw finished();
 
   // Completing or skipping without starting still locks the version (D-002 #6).
   const workoutVersionId =
     session.workoutVersionId ?? (await resolveSlotWorkoutVersionId(tx, session));
   await tx.workoutSession.updateMany({
-    where: { id: session.id, state: { in: ['scheduled', 'in_progress'] } },
+    where: { id: session.id, state: { in: FINISHABLE } },
     data: {
       state: kind,
       workoutVersionId,
@@ -202,6 +208,8 @@ async function finishSession(
     requestId: opts.requestId,
   });
   await markCoachLogged(tx, actor, session, opts.requestId);
+  // A late finish can end a missed-workouts episode (S4-2: Rule 1 is re-evaluated).
+  if (session.state === 'missed') await resolveStaleMissedFlags(tx, now, session.clientId);
   return getSessionDetail(tx, actor, session.id, { now });
 }
 

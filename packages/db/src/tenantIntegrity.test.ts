@@ -325,6 +325,20 @@ const CASES: [string, Insert][] = [
       }),
   ],
   [
+    'review_flags -> clients',
+    (tx, own, parent) =>
+      tx.reviewFlag.create({
+        data: {
+          organizationId: own.orgId,
+          clientId: parent.clientId,
+          ruleKey: 'coach_followup',
+          sourceType: 'followup',
+          dedupeKey: `coach_followup:${crypto.randomUUID()}`,
+          evidenceJson: {},
+        },
+      }),
+  ],
+  [
     'checkins -> clients',
     (tx, own, parent) =>
       tx.checkin.create({ data: checkinRow(own, parent.clientId, own.checkinTemplateId) }),

@@ -127,6 +127,19 @@ export {
   type CheckinSubmittedHook,
 } from './checkins/checkins';
 export {
+  evaluateRules,
+  deriveSessionStates,
+  resolveStaleMissedFlags,
+  onCheckinSubmittedRules,
+  raiseFlag,
+  RULE_TEXT,
+  AUTO_RESOLVED,
+  SWEEP_RULES,
+  type RuleKey,
+  type Rule,
+  type FlagUpsert,
+} from './review/rules';
+export {
   getMyThread,
   getClientThread,
   getThread,

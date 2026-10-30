@@ -84,6 +84,8 @@ model User {
   clientPauses             ClientPause[]           @relation("ClientPauseCreator")
   coachThreads             ConversationThread[]    @relation("ThreadCoach")
   sentMessages             Message[]               @relation("MessageSender")
+  resolvedFlags            ReviewFlag[]            @relation("FlagResolver")
+  createdFlags             ReviewFlag[]            @relation("FlagCreator")
   sessions                 Session[]
   accounts                 Account[]
   coachProfile             CoachProfile?
@@ -184,6 +186,7 @@ model Organization {
   checkins                Checkin[]
   conversationThreads     ConversationThread[]
   messages                Message[]
+  reviewFlags             ReviewFlag[]
 
   @@map("organizations")
 }
@@ -300,6 +303,7 @@ model Client {
   checkinTemplate CheckinTemplate?    @relation(fields: [checkinTemplateId, organizationId], references: [id, organizationId], onDelete: Restrict)
   checkins        Checkin[]
   thread          ConversationThread?
+  reviewFlags     ReviewFlag[]
 
   @@unique([organizationId, email])
   @@unique([organizationId, userId])
@@ -837,4 +841,61 @@ model Message {
   @@index([threadId, createdAt, id])
   @@index([organizationId, readAt])
   @@map("messages")
+}
+
+enum ReviewRule {
+  missed_workouts
+  checkin_overdue
+  checkin_new
+  message_unread
+  coach_followup
+
+  @@map("review_rule")
+}
+
+enum ReviewFlagState {
+  open
+  snoozed
+  resolved
+  dismissed
+
+  @@map("review_flag_state")
+}
+
+/// A "Needs review" item in the coach's queue (S4-2/S4-3, F10, D-008 #11). Raised by the rules engine (time-based,
+/// `review.sweep`) or in the triggering transaction (check-in submitted, coach follow-up). `dedupeKey` makes each
+/// raise idempotent; `evidenceJson` lists the rule text, dates and source ids (never free text).
+model ReviewFlag {
+  id               String          @id @default(uuid()) @db.Uuid
+  organizationId   String          @map("organization_id") @db.Uuid
+  clientId         String          @map("client_id") @db.Uuid
+  ruleKey          ReviewRule      @map("rule_key")
+  /// Always "needs_review" in R1 ("Needs review", never "At risk").
+  severity         String          @default("needs_review")
+  sourceType       String          @map("source_type")
+  sourceId         String?         @map("source_id") @db.Uuid
+  dedupeKey        String          @map("dedupe_key")
+  evidenceJson     Json            @map("evidence_json")
+  /// When the source was due (session or check-in), for sorting and display; unchanged by a snooze.
+  sourceDueAt      DateTime?       @map("source_due_at") @db.Timestamptz(3)
+  state            ReviewFlagState @default(open)
+  snoozedUntil     DateTime?       @map("snoozed_until") @db.Timestamptz(3)
+  resolvedBy       String?         @map("resolved_by") @db.Uuid
+  resolvedAt       DateTime?       @map("resolved_at") @db.Timestamptz(3)
+  resolutionReason String?         @map("resolution_reason")
+  reopenedAt       DateTime?       @map("reopened_at") @db.Timestamptz(3)
+  /// The coach who created a follow-up (null for rule-raised flags).
+  createdBy        String?         @map("created_by") @db.Uuid
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  resolver     User?        @relation("FlagResolver", fields: [resolvedBy], references: [id])
+  creator      User?        @relation("FlagCreator", fields: [createdBy], references: [id])
+
+  @@unique([organizationId, dedupeKey])
+  @@index([organizationId, state])
+  @@index([clientId, ruleKey, state])
+  @@map("review_flags")
 }

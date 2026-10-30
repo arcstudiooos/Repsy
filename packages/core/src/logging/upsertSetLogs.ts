@@ -67,7 +67,11 @@ export async function upsertSetLogs(
   if (session.state === 'scheduled') {
     throw new DomainError('SESSION_NOT_STARTED', 'Start the workout before logging sets.');
   }
-  if (session.state !== 'in_progress' || session.workoutVersionId === null) {
+  // An incomplete session (past due + grace, S4-2) still takes a late sync of its sets.
+  if (
+    (session.state !== 'in_progress' && session.state !== 'incomplete') ||
+    session.workoutVersionId === null
+  ) {
     throw new DomainError(
       'SESSION_FINISHED',
       'This workout is already finished and can no longer change.',
