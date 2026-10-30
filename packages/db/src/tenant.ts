@@ -280,11 +280,24 @@ export type SystemTx = Prisma.TransactionClient;
 /**
  * SYSTEM CODE ONLY (worker sweeps, auth bootstrap, seeding, test setup).
  * Bypasses tenant isolation by setting `app.bypass_rls = 'on'` for the
- * transaction. Never call this from request handlers acting for a user.
- * The one sanctioned request-path exception is `findInviteByTokenHash`
- * (invites.ts): an invitee has no membership yet, so it looks up a single
- * invite by token hash. `acceptInvite` (core/invites) is the second: it also
- * runs pre-membership, authorized solely by possession of the invite token.
+ * transaction. Never call this from request handlers acting for a user,
+ * except the sanctioned request-path uses below. Each one runs before an active
+ * organization exists (or spans the user's organizations) and touches only rows
+ * keyed by the caller's own user id or by a secret they hold. Add a line here
+ * before adding another.
+ *
+ * - `findInviteByTokenHash` (db/invites.ts): an invitee has no membership yet; one invite, looked up by token hash.
+ * - `acceptInvite` (core/invites): pre-membership; authorized solely by possession of the invite token.
+ * - `acceptWithSignup` (web lib/accept-invite.ts) user lookups: checks the just-created user row exists (Better
+ *   Auth fakes one for a taken email), marks it emailVerified (the invite proved the mailbox) and purges its
+ *   pending verification mail; users/outbox rows of that one new user only.
+ * - select-org page (web app/select-org): names of the organizations the user is a member of, to choose one.
+ * - `loadMemberships` (web server/actor.ts): the user's own memberships across orgs, to resolve the active org.
+ * - `hasCoachMembership` (web lib/membership.ts): whether the user has any owner/coach membership (proxy and
+ *   onboarding gates), before an org is chosen.
+ * - `registerCoach` / `redeemPilotCode` / `deleteUser` (web lib/register-coach.ts) and auth bootstrap (web
+ *   lib/auth.ts outbox enqueue): sign-up creates the user's first organization and membership, checks/uses a pilot
+ *   code (platform table), undoes a half-finished sign-up, and enqueues platform auth emails; no org exists yet.
  */
 export function withSystem<T>(
   fn: (tx: SystemTx) => Promise<T>,
