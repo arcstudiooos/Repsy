@@ -95,12 +95,66 @@ describe('useDraftAutosave (DraftAutosaver)', () => {
     saver.dispose();
   });
 
-  it('disabled (nothing to save) sends nothing and cancels a pending save', async () => {
+  it('never enabled (nothing to save) sends nothing', async () => {
     const saver = create();
-    saver.update(values('a'), 1, true);
     saver.update(values('a'), 1, false);
+    saver.update(values('b'), 1, false);
     await vi.advanceTimersByTimeAsync(DRAFT_DEBOUNCE_MS * 2);
     expect(fetchMock).not.toHaveBeenCalled();
+    saver.dispose();
+  });
+
+  it('enabled → false after a saved PUT discards the server draft and the device copy', async () => {
+    const saver = create();
+    saver.update(values('edited'), 1, true);
+    await vi.advanceTimersByTimeAsync(DRAFT_DEBOUNCE_MS);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    storage.setItem(localDraftKey('p1'), JSON.stringify({ stale: true }));
+
+    // The coach undoes the edit: the form is back at the committed content.
+    saver.update(values('committed'), 1, false);
+    await vi.advanceTimersByTimeAsync(DRAFT_DEBOUNCE_MS * 2);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const [url, init] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(url).toBe('/api/v1/programs/p1/draft');
+    expect(init.method).toBe('DELETE');
+    expect(storage.getItem(localDraftKey('p1'))).toBeNull();
+    expect(statuses.at(-1)).toBe('idle');
+
+    // Editing to the same value again saves it again (the server no longer has it).
+    saver.update(values('edited'), 1, true);
+    await vi.advanceTimersByTimeAsync(DRAFT_DEBOUNCE_MS);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect((fetchMock.mock.calls[2] as [string, RequestInit])[1].method).toBe('PUT');
+    saver.dispose();
+  });
+
+  it('an edit undone inside the debounce window sends no PUT, only the discard', async () => {
+    const saver = create();
+    saver.update(values('a'), 1, true);
+    saver.update(values('committed'), 1, false);
+    await vi.advanceTimersByTimeAsync(DRAFT_DEBOUNCE_MS * 2);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect((fetchMock.mock.calls[0] as [string, RequestInit])[1].method).toBe('DELETE');
+    saver.dispose();
+  });
+
+  it('a discard while offline clears the device copy and runs when back online', async () => {
+    online = false;
+    const saver = create();
+    saver.update(values('edited offline'), 1, true);
+    await vi.advanceTimersByTimeAsync(DRAFT_DEBOUNCE_MS);
+    expect(storage.getItem(localDraftKey('p1'))).not.toBeNull();
+    saver.update(values('committed'), 1, false);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(storage.getItem(localDraftKey('p1'))).toBeNull();
+
+    online = true;
+    target.dispatchEvent(new Event('online'));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect((fetchMock.mock.calls[0] as [string, RequestInit])[1].method).toBe('DELETE');
     saver.dispose();
   });
 

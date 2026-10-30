@@ -65,6 +65,20 @@ test.describe('Journey B: editing a client program', () => {
     await expectNoAxeViolations(page);
     const editorUrl = page.url();
 
+    // An edit undone back to the saved content leaves no draft behind: nothing is restored on reload.
+    await reps(page).fill('9');
+    await expect(draftSaved(page)).toBeVisible({ timeout: 30_000 });
+    const discarded = page.waitForResponse(
+      (r) => r.url().endsWith('/draft') && r.request().method() === 'DELETE',
+    );
+    await reps(page).fill('10');
+    expect((await discarded).status()).toBe(204);
+    await page.reload();
+    await expect(reps(page)).toHaveValue('10');
+    await expect(page.getByText('Version 1', { exact: true })).toBeVisible();
+    await expect(page.getByText('Restored your unsaved draft.')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Save changes', exact: true })).toBeDisabled();
+
     // Edit a target: the draft autosaves, and a reload mid-edit restores it.
     await reps(page).fill('6');
     await expect(draftSaved(page)).toBeVisible({ timeout: 30_000 });

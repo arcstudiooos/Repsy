@@ -111,6 +111,8 @@ export class DraftAutosaver {
   private chain: Promise<void> = Promise.resolve();
   private offline = false;
   private inFlight = false;
+  /** The form went back to the saved content: the server draft must go (sent when online). */
+  private discardPending = false;
   private disposed = false;
   private readonly deps: AutosaverDeps;
 
@@ -128,13 +130,23 @@ export class DraftAutosaver {
   update(values: DraftPayload, baseVersionNo: number | null, enabled: boolean): void {
     const key = JSON.stringify({ baseVersionNo, values });
     const changed = key !== this.latest?.key;
+    const wasEnabled = this.enabled;
     this.latest = { values, baseVersionNo, key };
     this.enabled = enabled;
     if (!enabled) {
       if (this.timer) this.onStatus('idle');
       this.clearTimer();
+      if (wasEnabled) {
+        // Nothing unsaved any more (an undo back to the saved content, a commit, a discard). A draft or device copy
+        // left holding the earlier edit would be restored on the next load, so both go. Idempotent after a commit,
+        // which already deleted the draft.
+        this.discardPending = true;
+        clearLocalDraft(this.programId, this.deps.storage());
+        void this.enqueue();
+      }
       return;
     }
+    this.discardPending = false;
     if (!changed && this.timer) return; // a re-render with the same values keeps the pending save
     if (key === this.savedKey && !this.inFlight) {
       // Back to what the server already holds (an edit undone inside the debounce window).
@@ -170,7 +182,7 @@ export class DraftAutosaver {
   }
 
   private readonly onOnline = () => {
-    if (this.offline && this.enabled) void this.enqueue();
+    if (this.offline && (this.enabled || this.discardPending)) void this.enqueue();
   };
 
   /** A reload or tab close inside the debounce window: keep the unsent edit on the device. */
@@ -205,7 +217,33 @@ export class DraftAutosaver {
     }
   }
 
+  private async discard(): Promise<void> {
+    if (!this.deps.isOnline()) {
+      this.offline = true;
+      return;
+    }
+    let res: Response;
+    try {
+      res = await this.deps.fetch(`/api/v1/programs/${encodeURIComponent(this.programId)}/draft`, {
+        method: 'DELETE',
+        credentials: 'same-origin',
+      });
+    } catch {
+      this.offline = true;
+      return;
+    }
+    // Re-enabled meanwhile: the next PUT replaces the draft anyway.
+    if (!this.enabled) this.discardPending = false;
+    this.offline = false;
+    this.savedKey = null;
+    this.status(res.ok ? 'idle' : 'error');
+  }
+
   private async send(): Promise<void> {
+    if (!this.enabled) {
+      if (this.discardPending) await this.discard();
+      return;
+    }
     const snap = this.latest;
     if (!snap) return;
     if (snap.key === this.savedKey) {
