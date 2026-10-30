@@ -14,7 +14,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/toast';
-import { todayInZone, weekdayError, WEEKDAYS } from '@/lib/assign-form';
+import {
+  mapAssignFieldErrors,
+  READINESS_ERROR,
+  todayInZone,
+  weekdayError,
+  WEEKDAYS,
+} from '@/lib/assign-form';
 
 export interface TemplateOption {
   id: string;
@@ -37,6 +43,8 @@ interface Props {
   fixed: 'client' | 'template';
   /** The client already has an active assignment, so go straight to the replace confirmation. */
   hasActive?: boolean;
+  /** The option lists were cut at the cap. */
+  capped?: boolean;
   triggerLabel: string;
   triggerAriaLabel?: string;
   triggerVariant?: 'default' | 'secondary';
@@ -49,7 +57,6 @@ interface ApiError {
 }
 
 const READINESS = "I've confirmed this client is ready to start this program.";
-const READINESS_ERROR = 'Confirm this client is ready to start this program.';
 const REPLACE_COPY =
   'This update will apply only to upcoming workouts. Completed and already-started workouts will remain unchanged.';
 
@@ -60,6 +67,7 @@ export function AssignDialog({
   clients,
   fixed,
   hasActive = false,
+  capped = false,
   triggerLabel,
   triggerAriaLabel,
   triggerVariant = 'default',
@@ -85,7 +93,8 @@ export function AssignDialog({
 
   const template = templates.find((t) => t.id === templateId);
   const client = clients.find((c) => c.id === clientId);
-  const showReadiness = !hasActive;
+  const [readinessForced, setReadinessForced] = useState(false);
+  const showReadiness = !hasActive || readinessForced;
   const daysError = template ? weekdayError(template.daysPerWeek, weekdays) : null;
   const shownDaysError = errors.weekdays ?? (weekdaysTouched ? daysError : null);
 
@@ -101,6 +110,7 @@ export function AssignDialog({
     setWeekdays([]);
     setWeekdaysTouched(false);
     setReadiness(false);
+    setReadinessForced(false);
     setErrors({});
     setFormError(null);
     setDateEdited(false);
@@ -152,6 +162,7 @@ export function AssignDialog({
       });
       if (res.ok) {
         setOpen(false);
+        reset();
         toast.success(confirmReplace ? 'Program replaced' : 'Program assigned');
         if (fixed === 'template') router.push(`/app/clients/${client.id}/program`);
         else router.refresh();
@@ -165,12 +176,8 @@ export function AssignDialog({
       }
       if (res.status === 422 && error?.fieldErrors) {
         setStep('details');
-        const fe = error.fieldErrors;
-        const next: Record<string, string> = {};
-        if (fe.readinessConfirmed?.[0]) next.readiness = READINESS_ERROR;
-        if (fe.weekdays?.[0]) next.weekdays = fe.weekdays[0];
-        if (fe.startLocalDate?.[0]) next.startDate = fe.startLocalDate[0];
-        if (fe.templateProgramId?.[0]) next.template = fe.templateProgramId[0];
+        const { errors: next, needsReadiness } = mapAssignFieldErrors(error.fieldErrors);
+        if (needsReadiness) setReadinessForced(true);
         setErrors(next);
         if (Object.keys(next).length === 0) setFormError(error.message ?? null);
         return;
@@ -279,6 +286,7 @@ export function AssignDialog({
                   ))}
                 </select>
                 {fieldError('template', errors.template)}
+                {capped && <p className="text-sm text-secondary">Showing the first 200</p>}
               </div>
             ) : (
               <>
@@ -306,6 +314,7 @@ export function AssignDialog({
                     ))}
                   </select>
                   {fieldError('client', errors.client)}
+                  {capped && <p className="text-sm text-secondary">Showing the first 200</p>}
                 </div>
               </>
             )}

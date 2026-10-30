@@ -115,6 +115,14 @@ test.describe('Sprint 1 journey', () => {
     await expect(page.getByText('Mon, Thu')).toBeVisible();
     await expect(page.getByText('Next session')).toBeVisible();
     await expectNoAxeViolations(page);
+
+    // Reopening after success starts fresh at the details step, not the stale confirm step.
+    await page.getByRole('button', { name: 'Change program' }).click();
+    const reopened = page.getByRole('dialog', { name: 'Assign a program' });
+    await expect(reopened.getByRole('button', { name: 'Continue' })).toBeVisible();
+    await expect(reopened.getByText(D001)).toHaveCount(0);
+    await expect(reopened.getByLabel('Monday')).not.toBeChecked();
+    await expect(reopened.getByLabel('Program', { exact: true })).toHaveValue('');
   });
 
   test('replacing shows the D-001 confirmation copy', async ({ page, request, browser }) => {
@@ -151,5 +159,13 @@ test.describe('Sprint 1 journey', () => {
     await expect(dialog).toBeHidden({ timeout: 30_000 });
     await expect(page.getByText('Mon, Thu')).toBeVisible();
     await expect(page.getByText('2 sessions')).toBeVisible();
+
+    // The dialog stays mounted across the refresh: it must not reopen on the stale confirm step.
+    await page.getByRole('button', { name: 'Change program' }).click();
+    const reopened = page.getByRole('dialog', { name: 'Assign a program' });
+    await expect(reopened.getByRole('button', { name: 'Continue' })).toBeVisible();
+    await expect(reopened.getByText(D001)).toHaveCount(0);
+    await expect(reopened.getByRole('button', { name: 'Replace program' })).toHaveCount(0);
+    await expect(reopened.getByLabel('Monday')).not.toBeChecked();
   });
 });

@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { getAssignmentSummary, listPrograms } from '@kinetic/core';
+import { getAssignmentSummary } from '@kinetic/core';
 import { EmptyState } from '@/components/states/EmptyState';
 import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatWeekdays } from '@/lib/assign-form';
+import { loadAllTemplates } from '@/server/selectOptions';
 import { withServerTenant } from '@/server/serverActor';
 import { formatDate } from '../../StatusBadge';
 import { loadClient } from '../data';
@@ -16,14 +17,18 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 
 export default async function ClientProgramPage({ params }: { params: Promise<{ id: string }> }) {
   const client = await loadClient((await params).id);
-  const { summary, templates } = await withServerTenant(async (tx, actor) => ({
-    summary: await getAssignmentSummary(tx, actor, client.id),
-    templates: (await listPrograms(tx, actor, { kind: 'template' })).items.flatMap((p) =>
-      p.versionNo !== null && p.daysPerWeek
-        ? [{ id: p.id, title: p.title, daysPerWeek: p.daysPerWeek }]
-        : [],
-    ),
-  }));
+  const { summary, templates, capped } = await withServerTenant(async (tx, actor) => {
+    const all = await loadAllTemplates(tx, actor);
+    return {
+      summary: await getAssignmentSummary(tx, actor, client.id),
+      capped: all.capped,
+      templates: all.items.flatMap((p) =>
+        p.versionNo !== null && p.daysPerWeek
+          ? [{ id: p.id, title: p.title, daysPerWeek: p.daysPerWeek }]
+          : [],
+      ),
+    };
+  });
 
   const dialog = (label: string, variant: 'default' | 'secondary', hasActive: boolean) => (
     <AssignDialog
@@ -31,6 +36,7 @@ export default async function ClientProgramPage({ params }: { params: Promise<{ 
       templates={templates}
       clients={[{ id: client.id, name: client.name, timezone: client.timezone }]}
       hasActive={hasActive}
+      capped={capped}
       triggerLabel={label}
       triggerVariant={variant}
     />

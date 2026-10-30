@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { DomainError, listClients, listPrograms } from '@kinetic/core';
+import { DomainError, listPrograms } from '@kinetic/core';
 import { EmptyState } from '@/components/states/EmptyState';
 import { ErrorState } from '@/components/states/ErrorState';
 import { buttonVariants } from '@/components/ui/button';
+import { loadActiveClients } from '@/server/selectOptions';
 import { withServerTenant } from '@/server/serverActor';
 import { AssignDialog } from '../clients/[id]/program/AssignDialog';
 import { NewProgramDialog } from './NewProgramDialog';
@@ -24,15 +25,11 @@ export default async function ProgramsPage({
   const cursor = first(sp.cursor);
 
   let result: Awaited<ReturnType<typeof listPrograms>>;
-  let clients: { id: string; name: string; timezone: string }[];
+  let clientOptions: Awaited<ReturnType<typeof loadActiveClients>>;
   try {
-    [result, clients] = await withServerTenant(async (tx, actor) => [
+    [result, clientOptions] = await withServerTenant(async (tx, actor) => [
       await listPrograms(tx, actor, { kind: 'template', cursor }),
-      (await listClients(tx, actor, { status: 'active' })).items.map((c) => ({
-        id: c.id,
-        name: c.name,
-        timezone: c.timezone,
-      })),
+      await loadActiveClients(tx, actor),
     ]);
   } catch (error) {
     // A malformed cursor in the URL is the only user-reachable validation failure.
@@ -47,6 +44,11 @@ export default async function ProgramsPage({
     throw error;
   }
 
+  const clients = clientOptions.items.map((c) => ({
+    id: c.id,
+    name: c.name,
+    timezone: c.timezone,
+  }));
   const isEmpty = result.items.length === 0 && cursor === undefined;
 
   return (
@@ -86,6 +88,7 @@ export default async function ProgramsPage({
                   fixed="template"
                   templates={[{ id: p.id, title: p.title, daysPerWeek: p.daysPerWeek }]}
                   clients={clients}
+                  capped={clientOptions.capped}
                   triggerLabel="Assign"
                   triggerAriaLabel={`Assign ${p.title}`}
                   triggerVariant="secondary"
