@@ -1,6 +1,7 @@
 node_modules
 .next
 .next-e2e
+.next-e2e-prod
 .next-build
 pnpm-lock.yaml
 _old-scaffold

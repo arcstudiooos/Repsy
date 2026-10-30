@@ -11,6 +11,7 @@ const eslintConfig = defineConfig([
     '.next/**',
     // Separate dist dirs for the E2E stack and ad-hoc builds (NEXT_DIST_DIR).
     '.next-e2e/**',
+    '.next-e2e-prod/**',
     '.next-build/**',
     'out/**',
     'build/**',

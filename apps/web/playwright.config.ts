@@ -8,6 +8,8 @@ const baseURL = stagingUrl ?? `http://localhost:${port}`;
 
 export default defineConfig({
   testDir: './e2e',
+  // Runs against a production build instead: playwright.offline.config.ts.
+  testIgnore: ['**/offline.spec.ts'],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

@@ -8,6 +8,8 @@
  *   4. run web + worker as that role with ENFORCE_RUNTIME_ROLE=true and no
  *      MIGRATION_DATABASE_URL, so the boot-time role guard and RLS are exercised;
  *   5. record connection details for the tests in e2e/.state.json.
+ * E2E_WEB_MODE=prod (playwright.offline.config.ts) runs `next build` + `next start` instead of `next dev`: the
+ * offline spec needs a service worker serving stable build assets, which the dev server does not have.
  */
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -25,8 +27,9 @@ import { STATE_FILE, type E2EState } from './state';
 const here = dirname(fileURLToPath(import.meta.url));
 const webDir = join(here, '..', '..');
 const repoRoot = join(webDir, '..', '..');
+const PROD = process.env.E2E_WEB_MODE === 'prod';
 // Not 3100: that is where `pnpm dev` runs locally, and the stack must not collide with it.
-const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? 3200);
+const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? (PROD ? 3300 : 3200));
 // Not 8181 either: a locally running dev worker may hold it.
 const WORKER_PORT = Number(process.env.E2E_WORKER_PORT ?? 8281);
 const DB_NAME = 'kinetic_e2e';
@@ -184,16 +187,21 @@ async function main(): Promise<void> {
     ENFORCE_RUNTIME_ROLE: 'true',
     KINETIC_DOTENV: 'off',
     // Own build dir: a concurrently running `next dev` keeps `.next` to itself.
-    NEXT_DIST_DIR: '.next-e2e',
+    NEXT_DIST_DIR: PROD ? '.next-e2e-prod' : '.next-e2e',
     PORT: undefined,
   };
   delete env.PORT;
   delete env.MIGRATION_DATABASE_URL;
+  // A production server refuses to run without the breached-password check; specs on it seed their users.
+  if (PROD) delete env.DISABLE_BREACHED_PASSWORD_CHECK;
 
   const nextBin = require.resolve('next/dist/bin/next', { paths: [webDir] });
+  // A fresh build dir every run (S2 tooling follow-up): stale dev output breaks the first compile of a route.
+  await rm(join(webDir, env.NEXT_DIST_DIR as string), { recursive: true, force: true });
+  if (PROD) await run(process.execPath, [nextBin, 'build'], webDir, env);
   children.push(
     spawn(process.execPath, [tsxCli, 'src/index.ts'], { cwd: workerDir, env, stdio: 'inherit' }),
-    spawn(process.execPath, [nextBin, 'dev', '--port', String(WEB_PORT)], {
+    spawn(process.execPath, [nextBin, PROD ? 'start' : 'dev', '--port', String(WEB_PORT)], {
       cwd: webDir,
       env,
       stdio: 'inherit',

@@ -28,6 +28,15 @@ Open http://localhost:3000 and sign in as `coach@example.test` (or `admin@exampl
 - `pnpm dev`, `pnpm db:migrate`, `pnpm db:seed`, `pilot-code:create` and `pgboss:migrate` read the root `.env` (Node's built-in env-file loader; variables already set in the shell win). `pnpm test` does not.
 - `pnpm db:down` stops the container (data persists in a named volume).
 
+## What works locally (Sprint 3)
+
+- Program builder: drafts autosave (to the server, and on the device while offline) and are restored after a reload; "Save changes" creates a new version, a save from a stale tab is a conflict that keeps the draft, and every program has a version history. Weeks can be duplicated and removed, days and exercises reordered, workouts copied to another day; day and exercise notes and per-set tempo are editable. Templates show how many clients use them.
+- A client's own program can be edited from their Program tab. Saving applies only to upcoming workouts (completed and started workouts never change); removed weeks cancel their unstarted sessions and added weeks are scheduled after the last one.
+- Clients can fix a finished workout's log for 24 hours ("Edited"); coaches can correct a log at any time with a reason (the client sees "Corrected by your coach", never the reason). Every change keeps a revision.
+- Pause and resume: "Pause program" on a client moves upcoming workouts forward by the pause length (1-90 days), the portal shows "Program paused" with the expected date, and the program resumes on that date (worker job) or with "Resume now". Changing the resume date or resuming early moves workouts only by the difference.
+- Offline workouts: once a workout is started online, the client can log it, complete it, close the page and reopen it with no connection. Every set reads "Saved on device", then "Syncing", then "Synced" once the server has acknowledged everything; nothing is applied twice. A workout that was never started can't be started offline.
+- `pnpm test:e2e` runs every spec on the dev server, then `e2e/offline.spec.ts` against a production build (`next build` + `next start` on port 3300, build dir `apps/web/.next-e2e-prod`): the service worker needs stable build assets. Run it alone with `pnpm --filter @kinetic/web exec playwright test -c playwright.offline.config.ts`. Its users are seeded in the database because a production server keeps the breached-password check on.
+
 ## What works locally (Sprint 2)
 
 - Client portal home: the next workout with a Start/Continue button, this week's progress ("n of m workouts done"), and a safety reminder until the first workout starts.

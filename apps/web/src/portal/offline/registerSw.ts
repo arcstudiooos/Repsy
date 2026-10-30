@@ -5,7 +5,7 @@ const supported = () => typeof navigator !== 'undefined' && 'serviceWorker' in n
 /** Registers the portal service worker (S3-3). Does nothing where service workers are unavailable. */
 export function registerServiceWorker(): void {
   if (!supported()) return;
-  void navigator.serviceWorker.register('/sw.js', { scope: '/portal/' }).catch(() => undefined);
+  void navigator.serviceWorker.register('/sw.js', { scope: '/portal' }).catch(() => undefined);
 }
 
 async function post(message: Record<string, unknown>): Promise<void> {

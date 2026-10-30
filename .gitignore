@@ -5,6 +5,7 @@ _old-scaffold/
 node_modules/
 .next/
 .next-e2e/
+.next-e2e-prod/
 .next-build/
 out/
 dist/

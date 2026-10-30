@@ -1,5 +1,5 @@
 /*
- * Kinetic portal service worker (S3-3, D-004). Scope /portal/. Minimal on purpose:
+ * Kinetic portal service worker (S3-3, D-004). Scope /portal (the home and every page under it). Minimal:
  * - /_next/static/* is cache-first (content-hashed build assets);
  * - navigations under /portal are network-first; only /portal and the workout pages the app asked for
  *   ("cache-workout" on Start) are stored, and served from the cache when the network fails;
@@ -37,10 +37,23 @@ async function store(cacheName, url) {
   try {
     const res = await fetch(url, { credentials: 'same-origin' });
     // Only real pages: a redirect to sign-in or an error page is never kept.
-    if (res.ok && !res.redirected) await (await caches.open(cacheName)).put(url, res);
+    if (!res.ok || res.redirected) return;
+    if (cacheName === PAGES) await storeAssetsOf(await res.clone().text());
+    await (await caches.open(cacheName)).put(url, res);
   } catch {
     // Offline: nothing to store now.
   }
+}
+
+/** Every build asset a stored page references (scripts, styles, fonts), so the page hydrates offline. */
+async function storeAssetsOf(html) {
+  const found = new Set(html.match(/\/_next\/static\/[^"'\s)\\]+/g) || []);
+  const cache = await caches.open(ASSETS);
+  await Promise.all(
+    [...found].map(async (u) => {
+      if (!(await cache.match(u))) await store(ASSETS, u);
+    }),
+  );
 }
 
 self.addEventListener('message', (event) => {
