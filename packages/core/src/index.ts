@@ -154,6 +154,16 @@ export {
   type FlagAction,
 } from './review/flags';
 export {
+  adherence,
+  getAnalytics,
+  parseRange,
+  MAX_RANGE_DAYS,
+  type AnalyticsView,
+  type AdherenceCounts,
+  type DateRange,
+  type Ratio,
+} from './analytics/adherence';
+export {
   listNotes,
   createNote,
   updateNote,

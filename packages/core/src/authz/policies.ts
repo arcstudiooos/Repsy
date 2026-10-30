@@ -24,7 +24,8 @@ export type Action =
   | 'message:read'
   | 'message:send'
   | 'note:read'
-  | 'note:write';
+  | 'note:write'
+  | 'analytics:read';
 
 const POLICY: Record<Action, readonly Role[]> = {
   'org:read': ['owner', 'coach'],
@@ -53,6 +54,7 @@ const POLICY: Record<Action, readonly Role[]> = {
   // Internal notes never reach a client (S4-5).
   'note:read': ['owner', 'coach'],
   'note:write': ['owner', 'coach'],
+  'analytics:read': ['owner', 'coach'],
 };
 
 export const can = (actor: ActorContext, action: Action): boolean =>
