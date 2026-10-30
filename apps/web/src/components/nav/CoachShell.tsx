@@ -1,14 +1,18 @@
-import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { Suspense, type ReactNode } from 'react';
-import { prisma } from '@kinetic/db';
+import { isCoachRole } from '@kinetic/core';
 import { CoachNav } from '@/components/nav/CoachNav';
 import { PathBreadcrumbs } from '@/components/nav/PathBreadcrumbs';
+import { WorkspaceSwitchLink } from '@/components/nav/WorkspaceSwitchLink';
 import { LoadingState } from '@/components/states/LoadingState';
-import { getSessionUser } from '@/lib/auth';
-import { hasCoachMembership } from '@/lib/membership';
+import { getServerActorOutcome, getServerSession } from '@/server/serverActor';
+import { shellRedirect } from '@/server/shellGate';
 
-/** Defense in depth behind src/proxy.ts: needs a verified user with an active owner/coach membership. */
+/**
+ * Defense in depth behind src/proxy.ts: needs a verified user with an active owner/coach membership, and the
+ * active org must be one where they coach. A client role there goes to /portal; no chosen or a stale active org
+ * goes to /select-org (I4: dual-role users never hit a generic FORBIDDEN error page).
+ */
 async function MembershipGate({
   children,
   loginNext,
@@ -18,10 +22,12 @@ async function MembershipGate({
   loginNext: string;
   noMembershipPath: string;
 }) {
-  const user = await getSessionUser(await headers());
+  const { user, memberships } = await getServerSession();
   if (!user) redirect(`/login?next=${encodeURIComponent(loginNext)}`);
   if (!user.emailVerified) redirect('/verify-email');
-  if (!(await hasCoachMembership(prisma, user.id))) redirect(noMembershipPath);
+  if (!memberships.some((m) => isCoachRole(m.role))) redirect(noMembershipPath);
+  const target = shellRedirect('coach', await getServerActorOutcome(user));
+  if (target) redirect(target);
   return children;
 }
 
@@ -48,11 +54,20 @@ export function CoachShell({
       </a>
       {/* usePathname() is runtime data: keep it out of the prerendered shell for dynamic routes. */}
       <Suspense fallback={null}>
-        <CoachNav />
+        <CoachNav
+          switcher={
+            <Suspense fallback={null}>
+              <WorkspaceSwitchLink />
+            </Suspense>
+          }
+        />
       </Suspense>
       <div className="flex min-w-0 flex-col">
-        <header className="border-b border-divider bg-surface px-4 py-3 md:hidden">
+        <header className="flex items-center justify-between gap-2 border-b border-divider bg-surface px-4 py-2 md:hidden">
           <p className="text-lg font-semibold">Kinetic</p>
+          <Suspense fallback={null}>
+            <WorkspaceSwitchLink className="text-sm" />
+          </Suspense>
         </header>
         <main
           id="main"

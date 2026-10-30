@@ -1,24 +1,23 @@
 import { redirect } from 'next/navigation';
 import { Suspense, type ReactNode } from 'react';
-import { DomainError } from '@kinetic/core';
 import { PortalNav } from '@/components/nav/PortalNav';
+import { WorkspaceSwitchLink } from '@/components/nav/WorkspaceSwitchLink';
 import { EmptyState } from '@/components/states/EmptyState';
 import { LoadingState } from '@/components/states/LoadingState';
-import { getServerActor, withServerTenant } from '@/server/serverActor';
+import { getServerActorOutcome, getServerSession, withServerTenant } from '@/server/serverActor';
+import { shellRedirect } from '@/server/shellGate';
 
 /**
  * Portal gate (behind src/proxy.ts, which checks session + verified email):
  * the active org must give this user a `client` role AND a linked Client row.
- * Anything else goes back to `/`, which routes by role (coaches to /app).
+ * Mirrors the coach shell: a coach role in the active org goes to /app; no chosen or a stale active org goes to
+ * /select-org; no workspace at all goes to `/`.
  */
 async function ClientGate({ children }: { children: ReactNode }) {
-  let isClient = false;
-  try {
-    isClient = (await getServerActor()).role === 'client';
-  } catch (error) {
-    if (!(error instanceof DomainError)) throw error;
-  }
-  if (!isClient) redirect('/');
+  const { user } = await getServerSession();
+  if (!user) redirect('/login?next=%2Fportal');
+  const target = shellRedirect('portal', await getServerActorOutcome(user));
+  if (target) redirect(target);
   const linked = await withServerTenant((tx, actor) =>
     tx.client.findFirst({ where: { userId: actor.userId }, select: { id: true } }),
   );
@@ -45,8 +44,13 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
       >
         Skip to content
       </a>
-      <header className="border-b border-divider bg-surface px-4 py-3 md:border-b-0 md:pb-0">
-        <p className="mx-auto max-w-3xl text-lg font-semibold md:px-8">Kinetic</p>
+      <header className="border-b border-divider bg-surface px-4 py-2 md:border-b-0 md:pb-0">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-2 md:px-8">
+          <p className="text-lg font-semibold">Kinetic</p>
+          <Suspense fallback={null}>
+            <WorkspaceSwitchLink className="text-sm" />
+          </Suspense>
+        </div>
       </header>
       <PortalNav />
       <main

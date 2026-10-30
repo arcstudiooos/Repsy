@@ -1,10 +1,33 @@
 import { cache } from 'react';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import type { ActorContext } from '@kinetic/core';
+import { DomainError, type ActorContext, type MembershipRef } from '@kinetic/core';
 import { withTenant, type TenantTx } from '@kinetic/db';
-import { getSessionUser } from '@/lib/auth';
+import { getSessionUser, type SessionUser } from '@/lib/auth';
 import { loadMemberships, resolveActor } from './actor';
+import type { ActorOutcome } from './shellGate';
+
+/** Session user (null when signed out) and their live memberships. Memoized per request. */
+export const getServerSession = cache(
+  async (): Promise<{ user: SessionUser | null; memberships: MembershipRef[] }> => {
+    const user = await getSessionUser(await headers());
+    return { user, memberships: user ? await loadMemberships(user.id) : [] };
+  },
+);
+
+/**
+ * The active org's role for a signed-in user, or the DomainError code resolving it threw
+ * (ORG_SELECTION_REQUIRED, NOT_FOUND for a stale cookie, FORBIDDEN for no workspace). Shells route on it.
+ */
+export async function getServerActorOutcome(user: SessionUser): Promise<ActorOutcome> {
+  const { memberships } = await getServerSession();
+  try {
+    return { role: resolveActor((await headers()).get('cookie'), user, memberships).role };
+  } catch (error) {
+    if (error instanceof DomainError) return { error: error.code };
+    throw error;
+  }
+}
 
 /**
  * Actor for server components, resolved exactly like apiHandler does (session,
@@ -12,11 +35,9 @@ import { loadMemberships, resolveActor } from './actor';
  * Memoized per request.
  */
 export const getServerActor = cache(async (): Promise<ActorContext> => {
-  const h = await headers();
-  const user = await getSessionUser(h);
+  const { user, memberships } = await getServerSession();
   if (!user) redirect('/login?next=%2Fapp');
-  const memberships = await loadMemberships(user.id);
-  return resolveActor(h.get('cookie'), user, memberships);
+  return resolveActor((await headers()).get('cookie'), user, memberships);
 });
 
 /** Runs `fn` in a transaction scoped to the signed-in actor's organization. */

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { SignOutButton } from '@/components/nav/SignOutButton';
 import {
@@ -49,7 +50,7 @@ function MobileLink({ item, pathname }: { item: NavItem; pathname: string }) {
 }
 
 /** Coach navigation: left rail from 768px up, bottom bar below. */
-export function CoachNav() {
+export function CoachNav({ switcher }: { switcher?: ReactNode }) {
   const pathname = usePathname();
   return (
     <>
@@ -68,6 +69,7 @@ export function CoachNav() {
               <DesktopLink item={coachSettingsItem} pathname={pathname} />
             </li>
           </ul>
+          {switcher}
         </nav>
         <div className="mt-2 border-t border-divider pt-4">
           <SignOutButton />

@@ -47,6 +47,11 @@ export function readCookie(header: string | null, name: string): string | undefi
   return undefined;
 }
 
+/** Set-Cookie value that removes the active-org cookie (sign-out). */
+export function clearOrgCookie(secure: boolean): string {
+  return `${ORG_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure ? '; Secure' : ''}`;
+}
+
 /** Set-Cookie value for the org switcher. */
 export function serializeOrgCookie(
   userId: string,

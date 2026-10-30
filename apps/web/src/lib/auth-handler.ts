@@ -1,3 +1,4 @@
+import { clearOrgCookie } from '../server/orgCookie';
 import type { Auth } from './auth';
 
 /** Better Auth codes that are input-validation failures (API contract: 422, not 400). */
@@ -23,8 +24,22 @@ async function withValidationStatus(response: Response): Promise<Response> {
   });
 }
 
+/** Signing out also forgets the active organization, so the next user of this browser starts clean. */
+function withOrgCookieCleared(request: Request, response: Response): Response {
+  const url = new URL(request.url);
+  if (!url.pathname.endsWith('/sign-out')) return response;
+  const headers = new Headers(response.headers);
+  headers.append('set-cookie', clearOrgCookie(url.protocol === 'https:'));
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 export function createAuthHandlers(instance: Pick<Auth, 'handler'>) {
   // Resolved per request so the lazy `auth` is not built at import/build time.
-  const handle = async (request: Request) => withValidationStatus(await instance.handler(request));
+  const handle = async (request: Request) =>
+    withOrgCookieCleared(request, await withValidationStatus(await instance.handler(request)));
   return { GET: handle, POST: handle };
 }
