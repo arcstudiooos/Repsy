@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { DomainError, listPrograms } from '@kinetic/core';
+import { DomainError, listClients, listPrograms } from '@kinetic/core';
 import { EmptyState } from '@/components/states/EmptyState';
 import { ErrorState } from '@/components/states/ErrorState';
 import { buttonVariants } from '@/components/ui/button';
 import { withServerTenant } from '@/server/serverActor';
+import { AssignDialog } from '../clients/[id]/program/AssignDialog';
 import { NewProgramDialog } from './NewProgramDialog';
 
 export const metadata: Metadata = { title: 'Programs | Kinetic' };
@@ -23,10 +24,16 @@ export default async function ProgramsPage({
   const cursor = first(sp.cursor);
 
   let result: Awaited<ReturnType<typeof listPrograms>>;
+  let clients: { id: string; name: string; timezone: string }[];
   try {
-    result = await withServerTenant((tx, actor) =>
-      listPrograms(tx, actor, { kind: 'template', cursor }),
-    );
+    [result, clients] = await withServerTenant(async (tx, actor) => [
+      await listPrograms(tx, actor, { kind: 'template', cursor }),
+      (await listClients(tx, actor, { status: 'active' })).items.map((c) => ({
+        id: c.id,
+        name: c.name,
+        timezone: c.timezone,
+      })),
+    ]);
   } catch (error) {
     // A malformed cursor in the URL is the only user-reachable validation failure.
     if (error instanceof DomainError && error.code === 'VALIDATION') {
@@ -62,10 +69,10 @@ export default async function ProgramsPage({
       ) : (
         <ul className="flex flex-col gap-3" aria-label="Programs">
           {result.items.map((p) => (
-            <li key={p.id}>
+            <li key={p.id} className="flex flex-wrap items-center gap-2">
               <Link
                 href={`/app/programs/${p.id}/edit`}
-                className="flex min-h-11 flex-col gap-1 rounded-card bg-surface p-4 shadow-card hover:bg-canvas"
+                className="flex min-h-11 min-w-0 flex-1 flex-col gap-1 rounded-card bg-surface p-4 shadow-card hover:bg-canvas"
               >
                 <span className="text-base font-semibold">{p.title}</span>
                 <span className="text-sm text-secondary">
@@ -74,6 +81,16 @@ export default async function ProgramsPage({
                     : `${plural(p.weekCount ?? 0, 'week', 'weeks')} · ${plural(p.daysPerWeek ?? 0, 'day', 'days')} per week · Version ${p.versionNo}`}
                 </span>
               </Link>
+              {p.versionNo !== null && p.daysPerWeek && clients.length > 0 && (
+                <AssignDialog
+                  fixed="template"
+                  templates={[{ id: p.id, title: p.title, daysPerWeek: p.daysPerWeek }]}
+                  clients={clients}
+                  triggerLabel="Assign"
+                  triggerAriaLabel={`Assign ${p.title}`}
+                  triggerVariant="secondary"
+                />
+              )}
             </li>
           ))}
         </ul>

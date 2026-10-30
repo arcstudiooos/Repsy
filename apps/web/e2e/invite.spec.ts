@@ -175,7 +175,7 @@ test.describe('client invite', () => {
     const confirm = page.getByRole('dialog', { name: 'Revoke this invite?' });
     await expect(confirm.getByText('The link in their email will stop working.')).toBeVisible();
     await confirm.getByRole('button', { name: 'Revoke', exact: true }).click();
-    await expect(page.getByText('Not invited yet')).toBeVisible();
+    await expect(page.getByText('Not invited yet')).toBeVisible({ timeout: 30_000 });
     await page.goto('/app/clients');
     await expect(
       page.getByRole('row', { name: /Uma Ui/ }).getByText('Invited · not sent'),

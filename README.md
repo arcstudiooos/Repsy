@@ -28,6 +28,15 @@ Open http://localhost:3000 and sign in as `coach@example.test` (or `admin@exampl
 - `pnpm dev`, `pnpm db:migrate`, `pnpm db:seed`, `pilot-code:create` and `pgboss:migrate` read the root `.env` (Node's built-in env-file loader; variables already set in the shell win). `pnpm test` does not.
 - `pnpm db:down` stops the container (data persists in a named volume).
 
+## What works locally (Sprint 1)
+
+- Sign up with a pilot code, verify email, create your coaching organization.
+- Exercise library, and a program builder with explicit save (weeks, training days, exercises, sets).
+- Clients: add, invite by email (send, resend, revoke), the client accepts and lands in the portal.
+- Assign a saved program to an active client from the client's Program tab or the Programs list: pick a start date (default today in the client's time zone), the training days, and confirm readiness on a first assignment. Workouts are scheduled in the client's time zone.
+- Replacing an active program asks for confirmation and applies only to upcoming workouts.
+- The Program tab shows the current program, start date, training days, session count and the next session.
+
 ## Tests
 
 `pnpm test` starts a throwaway embedded Postgres when `DATABASE_URL` is unset in the shell. To use the Docker database instead: `DATABASE_URL=postgresql://kinetic:kinetic@localhost:54320/kinetic pnpm test`.
