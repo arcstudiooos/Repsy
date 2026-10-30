@@ -221,4 +221,21 @@ describe('getSessionDetail previous performance', () => {
     expect(detail.logs).toEqual([]);
     expect(detail.workout.locked).toBe(false);
   });
+
+  it("never shows another client's sessions", async () => {
+    const org = await newOrg(prisma);
+    const me = await newClientWorld(prisma, org);
+    const sibling = await newClientWorld(prisma, org);
+    // The sibling completes bench; my detail must not show it.
+    const theirs = await started(sibling, 0);
+    await runAs(prisma, sibling.client, (tx) =>
+      upsertSetLogs(tx, sibling.client, theirs.id, [item(theirs.bench, 0, { reps: 3 })]),
+    );
+    await runAs(prisma, sibling.client, (tx) =>
+      completeSession(tx, sibling.client, theirs.id, { idempotencyKey: randomUUID() }),
+    );
+    const mine = (await sessionsOf(prisma, me.assignmentId))[1]!.id;
+    const detail = await runAs(prisma, me.client, (tx) => getSessionDetail(tx, me.client, mine));
+    expect(detail.previous).toEqual({});
+  });
 });

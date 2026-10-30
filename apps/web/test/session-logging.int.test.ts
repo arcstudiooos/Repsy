@@ -153,11 +153,28 @@ describe('session logging API', () => {
     const theirs = sibling.sessionIds[0]!;
     expect((await call(sessionGetRoute, asClientA(), theirs, '')).status).toBe(404);
     expect((await call(sessionStartRoute, asClientA(), theirs, '/start', {})).status).toBe(404);
+    const fin = { idempotencyKey: randomUUID() };
+    expect((await call(sessionCompleteRoute, asClientA(), theirs, '/complete', fin)).status).toBe(
+      404,
+    );
+    expect((await call(sessionSkipRoute, asClientA(), theirs, '/skip', fin)).status).toBe(404);
+    // Even once the sibling has started, their session takes no logs from another client.
+    expect(
+      (await call(sessionStartRoute, headersFor(siblingUser, t.orgA.id), theirs, '/start', {}))
+        .status,
+    ).toBe(200);
+    const items = [logItem(sibling.exerciseIds.bench, 0)];
+    expect((await call(sessionLogsRoute, asClientA(), theirs, '/logs', { items })).status).toBe(
+      404,
+    );
+    expect(
+      await withSystem((tx) => tx.setLog.count({ where: { sessionId: theirs } }), prisma),
+    ).toBe(0);
     const state = await withSystem(
       (tx) => tx.workoutSession.findUniqueOrThrow({ where: { id: theirs } }),
       prisma,
     );
-    expect(state.state).toBe('scheduled');
+    expect(state.state).toBe('in_progress');
   });
 
   it('rpe 11 → 422 with fieldErrors; a missing Origin on a mutation → 403', async () => {

@@ -108,7 +108,9 @@ export async function startSession(
   if (session.state === 'in_progress') return getSessionDetail(tx, actor, session.id, { now });
   if (session.state !== 'scheduled') throw finished();
 
-  const workoutVersionId = await resolveSlotWorkoutVersionId(tx, session);
+  // A version already locked is never replaced (D-002 #6; the database refuses it too, migration 000019).
+  const workoutVersionId =
+    session.workoutVersionId ?? (await resolveSlotWorkoutVersionId(tx, session));
   await tx.workoutSession.updateMany({
     where: { id: session.id, state: 'scheduled' },
     data: { state: 'in_progress', workoutVersionId, startedAt: now },

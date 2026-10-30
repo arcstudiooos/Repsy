@@ -56,50 +56,40 @@ export async function getSessionDetail(
     orderBy: [{ workoutVersionExerciseId: 'asc' }, { setIndex: 'asc' }],
   });
 
+  // Per exercise, the client's most recent other completed session that logged it, then that session's sets.
+  // One small lookup per distinct exercise (at most 30 per workout), so a rarely trained exercise is never crowded
+  // out by frequent ones.
   const exerciseIds = [...new Set(workout.exercises.map((e) => e.exerciseId))];
-  const earlier = exerciseIds.length
-    ? await tx.setLog.findMany({
-        where: {
-          sessionId: { not: row.id },
-          session: { is: { clientId: row.clientId, state: 'completed' } },
-          workoutVersionExercise: { is: { exerciseId: { in: exerciseIds } } },
-        },
-        orderBy: [{ session: { completedAt: 'desc' } }, { setIndex: 'asc' }],
-        take: 500,
-        select: {
-          sessionId: true,
-          setIndex: true,
-          reps: true,
-          weightKg: true,
-          rpe: true,
-          durationSeconds: true,
-          distanceM: true,
-          clientUpdatedAt: true,
-          session: { select: { scheduledLocalDate: true } },
-          workoutVersionExercise: { select: { exerciseId: true } },
-        },
-      })
-    : [];
   const previous: Record<string, PreviousPerformance> = {};
-  const fromSession: Record<string, string> = {};
-  for (const log of earlier) {
-    const exerciseId = log.workoutVersionExercise.exerciseId;
-    // Rows come newest session first: the first session seen for an exercise is the one shown.
-    fromSession[exerciseId] ??= log.sessionId;
-    if (fromSession[exerciseId] !== log.sessionId) continue;
-    const entry = (previous[exerciseId] ??= {
-      localDate: fromDbDate(log.session.scheduledLocalDate),
-      sets: [],
+  for (const exerciseId of exerciseIds) {
+    const latest = await tx.setLog.findFirst({
+      where: {
+        sessionId: { not: row.id },
+        session: { is: { clientId: row.clientId, state: 'completed' } },
+        workoutVersionExercise: { is: { exerciseId } },
+      },
+      orderBy: [{ session: { completedAt: 'desc' } }, { sessionId: 'desc' }],
+      select: { sessionId: true, session: { select: { scheduledLocalDate: true } } },
     });
-    const v = toSetLogValue(log);
-    entry.sets.push({
-      setIndex: log.setIndex,
-      reps: v.reps,
-      weightKg: v.weightKg,
-      rpe: v.rpe,
-      durationSeconds: v.durationSeconds,
-      distanceM: v.distanceM,
+    if (!latest) continue;
+    const sets = await tx.setLog.findMany({
+      where: { sessionId: latest.sessionId, workoutVersionExercise: { is: { exerciseId } } },
+      orderBy: [{ setIndex: 'asc' }],
     });
+    previous[exerciseId] = {
+      localDate: fromDbDate(latest.session.scheduledLocalDate),
+      sets: sets.map((log) => {
+        const v = toSetLogValue(log);
+        return {
+          setIndex: log.setIndex,
+          reps: v.reps,
+          weightKg: v.weightKg,
+          rpe: v.rpe,
+          durationSeconds: v.durationSeconds,
+          distanceM: v.distanceM,
+        };
+      }),
+    };
   }
 
   return {

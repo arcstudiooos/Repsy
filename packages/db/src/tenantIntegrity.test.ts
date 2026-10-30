@@ -425,3 +425,42 @@ describe('set_logs constraints', () => {
     ).toMatch(/P2002/);
   });
 });
+
+describe('session version lock (D-002 #6)', () => {
+  it('a locked workout version can not be replaced or cleared, even from system scope', async () => {
+    const other = await withSystem(
+      (tx) =>
+        tx.workoutVersion.create({
+          data: { organizationId: b.orgId, title: 'Other', contentHash: 'other' },
+        }),
+      prisma,
+    );
+    const set = (workoutVersionId: string | null) =>
+      outcome(
+        withSystem(
+          (tx) =>
+            tx.workoutSession.updateMany({
+              where: { id: b.sessionId },
+              data: { workoutVersionId },
+            }),
+          prisma,
+        ),
+      );
+    expect(await set(other.id)).toMatch(/locked/);
+    expect(await set(null)).toMatch(/locked/);
+    // Rewriting the same value and touching other columns stay allowed.
+    expect(await set(b.workoutVersionId)).toBe('ok');
+    expect(
+      await outcome(
+        withSystem(
+          (tx) =>
+            tx.workoutSession.updateMany({
+              where: { id: b.sessionId },
+              data: { state: 'completed' },
+            }),
+          prisma,
+        ),
+      ),
+    ).toBe('ok');
+  });
+});
