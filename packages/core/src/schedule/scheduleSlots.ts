@@ -43,6 +43,33 @@ function pad(n: number, w = 2): string {
   return String(n).padStart(w, '0');
 }
 
+/** UTC offset (ms) of `timeZone` at the given instant. */
+function offsetMs(instantMs: number, timeZone: string): number {
+  return -new TZDate(instantMs, timeZone).getTimezoneOffset() * 60_000;
+}
+
+/** Wall-clock fields of the instant in `timeZone`, expressed as a UTC-epoch ms. */
+function wallMs(instantMs: number, timeZone: string): number {
+  const t = new TZDate(instantMs, timeZone);
+  return Date.UTC(
+    t.getFullYear(),
+    t.getMonth(),
+    t.getDate(),
+    t.getHours(),
+    t.getMinutes(),
+    t.getSeconds(),
+    t.getMilliseconds(),
+  );
+}
+
+/**
+ * Resolve local wall time y-m-d h:min in `timeZone` to a UTC instant, deterministically:
+ * - normal time: the single matching instant;
+ * - ambiguous (DST fold, wall time occurs twice): the FIRST (earlier) occurrence;
+ * - non-existent (DST gap): the transition instant, i.e. the next valid local time.
+ * Candidates are wall - offset for each offset in effect within a day either side; a
+ * candidate is valid when it maps back to the same wall time.
+ */
 function localInstant(
   y: number,
   m: number,
@@ -51,8 +78,13 @@ function localInstant(
   min: number,
   timeZone: string,
 ): Date {
-  const t = new TZDate(y, m - 1, d, h, min, 0, 0, timeZone);
-  const date = new Date(t.getTime());
+  const wall = Date.UTC(y, m - 1, d, h, min, 0, 0);
+  const offsets = new Set<number>();
+  for (const k of [-1, 0, 1]) offsets.add(offsetMs(wall + k * DAY_MS, timeZone));
+  const candidates = [...offsets].map((o) => wall - o).sort((a, b) => a - b);
+  const valid = candidates.filter((c) => wallMs(c, timeZone) === wall);
+  const picked = valid.length > 0 ? valid[0]! : candidates[candidates.length - 1]!;
+  const date = new Date(picked);
   if (Number.isNaN(date.getTime())) throw new ScheduleInputError(`Invalid time zone: ${timeZone}`);
   return date;
 }
@@ -73,6 +105,21 @@ export function scheduleSlots(input: ScheduleSlotsInput): ScheduledSlot[] {
     throw new ScheduleInputError('weekdays must be ISO weekdays 1-7');
   }
 
+  const seen = new Set<string>();
+  for (const { weekIndex, dayIndex } of slots) {
+    if (
+      !Number.isInteger(weekIndex) ||
+      weekIndex < 0 ||
+      !Number.isInteger(dayIndex) ||
+      dayIndex < 0
+    ) {
+      throw new ScheduleInputError('slot indices must be non-negative integers');
+    }
+    const key = `${weekIndex}:${dayIndex}`;
+    if (seen.has(key)) throw new ScheduleInputError('duplicate slot key');
+    seen.add(key);
+  }
+
   const perWeek = new Map<number, number>();
   for (const s of slots) perWeek.set(s.weekIndex, (perWeek.get(s.weekIndex) ?? 0) + 1);
   for (const count of perWeek.values()) {
@@ -81,9 +128,6 @@ export function scheduleSlots(input: ScheduleSlotsInput): ScheduledSlot[] {
         'weekday count must equal the number of training days in every week',
       );
     }
-  }
-  if (slots.length > 0 && weekdays.length === 0) {
-    throw new ScheduleInputError('weekdays required');
   }
 
   const sortedSlots = [...slots].sort(

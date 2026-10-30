@@ -142,4 +142,61 @@ describe('scheduleSlots', () => {
       scheduleSlots({ slots: [], weekdays: [], startLocalDate: '2026-11-04', timeZone: 'UTC' }),
     ).toEqual([]);
   });
+
+  it('DST gap: skipped midnight resolves to the transition instant (America/Santiago)', () => {
+    const out = scheduleSlots({
+      slots: days(1, 1),
+      weekdays: [7],
+      startLocalDate: '2026-09-06',
+      timeZone: 'America/Santiago',
+    });
+    expect(out[0]!.localDate).toBe('2026-09-06');
+    expect(out[0]!.scheduledAtUtc.toISOString()).toBe('2026-09-06T04:00:00.000Z');
+    expect(out[0]!.dueAtUtc.toISOString()).toBe('2026-09-07T02:59:00.000Z');
+  });
+
+  it('DST fold: repeated midnight resolves to the first occurrence (America/Havana)', () => {
+    const out = scheduleSlots({
+      slots: days(1, 1),
+      weekdays: [7],
+      startLocalDate: '2026-11-01',
+      timeZone: 'America/Havana',
+    });
+    expect(out[0]!.scheduledAtUtc.toISOString()).toBe('2026-11-01T04:00:00.000Z');
+    expect(out[0]!.dueAtUtc.toISOString()).toBe('2026-11-02T04:59:00.000Z');
+  });
+
+  it('DST start in America/New_York', () => {
+    const out = scheduleSlots({
+      slots: days(1, 1),
+      weekdays: [7],
+      startLocalDate: '2027-03-14',
+      timeZone: 'America/New_York',
+    });
+    expect(out[0]!.scheduledAtUtc.toISOString()).toBe('2027-03-14T05:00:00.000Z');
+    expect(out[0]!.dueAtUtc.toISOString()).toBe('2027-03-15T03:59:00.000Z');
+  });
+
+  it.each([
+    ['negative week', [{ weekIndex: -1, dayIndex: 0 }]],
+    ['negative day', [{ weekIndex: 0, dayIndex: -1 }]],
+    ['fractional week', [{ weekIndex: 0.5, dayIndex: 0 }]],
+    ['fractional day', [{ weekIndex: 0, dayIndex: 1.5 }]],
+    [
+      'duplicate key',
+      [
+        { weekIndex: 0, dayIndex: 0 },
+        { weekIndex: 0, dayIndex: 0 },
+      ],
+    ],
+  ])('bad slot keys (%s) -> ScheduleInputError', (_n, slots) => {
+    expect(() =>
+      scheduleSlots({
+        slots,
+        weekdays: slots.map((_, i) => i + 1) as IsoWeekday[],
+        startLocalDate: '2026-11-04',
+        timeZone: 'UTC',
+      }),
+    ).toThrow(ScheduleInputError);
+  });
 });
