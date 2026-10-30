@@ -61,7 +61,10 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
           </Suspense>
         </div>
       </header>
-      <PortalNav />
+      {/* usePathname() is runtime data: keep it out of the prerendered shell for dynamic routes. */}
+      <Suspense fallback={null}>
+        <PortalNav />
+      </Suspense>
       <main
         id="main"
         className="mx-auto w-full max-w-3xl flex-1 px-4 pt-6 pb-24 md:px-8 md:pt-8 md:pb-8"

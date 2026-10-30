@@ -53,7 +53,8 @@ export async function onboardClient(
   await dialog.getByLabel('Email', { exact: true }).fill(email);
   await expect(dialog.getByLabel('Send invite email now')).toBeChecked();
   await dialog.getByRole('button', { name: 'Add client' }).click();
-  await expect(dialog).toBeHidden();
+  // The first create of a run may wait on a cold compile of the clients and invite routes.
+  await expect(dialog).toBeHidden({ timeout: 30_000 });
 
   const mail = await waitForEmail(request, email, 'client_invite');
   const link = /https?:\/\/\S+\/invite\/\S+/.exec(mail.text)?.[0] as string;
