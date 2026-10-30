@@ -89,11 +89,22 @@ const submitSchema = z.object({
 export const checkinSubmitRoute: RouteDef<typeof submitSchema, true> = {
   can: 'checkin:submit',
   input: submitSchema,
-  handler: ({ actor, input, params, requestId, tenant }) =>
-    tenant((tx) =>
+  handler: async ({ actor, input, params, requestId, tenant, track, clientHash }) => {
+    const t0 = Date.now();
+    const checkin = await tenant((tx) =>
       submitCheckin(tx, actor, params.id ?? '', input, {
         requestId,
         onSubmitted: onCheckinSubmitted,
       }),
-    ),
+    );
+    // A replayed submission returns the stored one: only a new submission is an event.
+    if (checkin.submittedAt && Date.parse(checkin.submittedAt) >= t0) {
+      track('checkin_submitted', {
+        client_id_hash: clientHash(checkin.clientId),
+        answered_count: Object.keys(checkin.answers ?? {}).length,
+      });
+      track('review_flag_opened', { rule_key: 'checkin_new' });
+    }
+    return checkin;
+  },
 };

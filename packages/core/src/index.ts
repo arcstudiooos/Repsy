@@ -1,6 +1,17 @@
 export const CORE_VERSION = '0.0.0';
 export type { EmailMessage, EmailPort } from './ports/email';
 export {
+  EVENT_PROPERTIES,
+  assertAllowedEvent,
+  hashId,
+  noopAnalytics,
+  AnalyticsPropertyError,
+  type AnalyticsEvent,
+  type AnalyticsPort,
+  type EventName,
+  type EventValue,
+} from './ports/analytics';
+export {
   enqueueEmail,
   enqueuePlatformEmail,
   type EnqueueEmailInput,

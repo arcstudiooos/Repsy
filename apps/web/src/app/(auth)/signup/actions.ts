@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@kinetic/db';
 import { auth } from '@/lib/auth';
 import { registerCoach } from '@/lib/register-coach';
+import { analyticsHashSecret, defaultAnalytics, eventFor } from '@/server/analytics';
 
 export interface SignupState {
   fieldErrors?: Record<string, string>;
@@ -26,5 +27,10 @@ export async function signUpCoachAction(_prev: SignupState, data: FormData): Pro
     },
   );
   if (!result.ok) return { fieldErrors: result.fieldErrors };
+  if (result.userId) {
+    defaultAnalytics().capture(
+      eventFor(analyticsHashSecret(), { userId: result.userId }, 'coach_signed_up'),
+    );
+  }
   redirect('/verify-email');
 }

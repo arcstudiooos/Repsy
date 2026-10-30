@@ -8,6 +8,9 @@ import {
   type ActorContext,
   type ErrorCode,
   type MembershipRef,
+  type AnalyticsPort,
+  type EventName,
+  type EventValue,
 } from '@kinetic/core';
 import { prisma as defaultPrisma, withTenant, type PrismaClient, type TenantTx } from '@kinetic/db';
 import { auth as defaultAuth, getSessionUser, type Auth, type SessionUser } from '@/lib/auth';
@@ -16,6 +19,7 @@ import { orgCookieSecret, serializeOrgCookie } from './orgCookie';
 import { defaultLimiter, InMemoryRateLimiter, type RateLimiter } from './rateLimit';
 import { clientIp } from './clientIp';
 import { getRequestId } from './requestId';
+import { analyticsHashSecret, clientHash, defaultAnalytics, eventFor } from './analytics';
 
 export interface ApiDeps {
   auth?: Pick<Auth, 'api'>;
@@ -25,6 +29,8 @@ export interface ApiDeps {
   /** Trusted origin for CSRF checks; defaults to APP_BASE_URL. */
   appBaseUrl?: string;
   limiter?: RateLimiter;
+  /** Product analytics (S5-4); the PostHog adapter (no-op without POSTHOG_KEY) by default. */
+  analytics?: AnalyticsPort;
 }
 
 type InputOf<S> = S extends z.ZodType ? z.output<S> : undefined;
@@ -53,6 +59,10 @@ export interface RouteCtx<I, R extends boolean> {
   tenant<T>(fn: (tx: TenantTx) => Promise<T>): Promise<T>;
   /** `Set-Cookie` value that makes `orgId` this user's active organization (signed, user-bound). */
   orgCookie(orgId: string): string;
+  /** Sends a §13 product event for the acting user (hashed ids, allowlisted properties only). */
+  track(name: EventName, properties?: Record<string, EventValue>): void;
+  /** `client_id_hash` for an event about a client. */
+  clientHash(clientId: string): string;
 }
 
 /** Return from a handler to set `meta` or a non-200 status. A bare return value becomes `data`. */
@@ -230,6 +240,16 @@ export function createApiHandler(deps: ApiDeps = {}) {
             return runTenant(actor.orgId, fn);
           },
           orgCookie: (orgId) => serializeOrgCookie(user.id, orgId, secret, isSecure(request, deps)),
+          track: (name, properties) =>
+            (deps.analytics ?? defaultAnalytics()).capture(
+              eventFor(
+                analyticsHashSecret(),
+                { userId: user.id, orgId: actor?.orgId },
+                name,
+                properties,
+              ),
+            ),
+          clientHash: (clientId) => clientHash(analyticsHashSecret(), clientId),
         } as RouteCtx<InputOf<S>, R>);
 
         const { data, options } =
@@ -265,6 +285,17 @@ export function createApiHandler(deps: ApiDeps = {}) {
           },
           'unhandled API error',
         );
+        // §13 error_visible: the code and the route pattern only.
+        try {
+          (deps.analytics ?? defaultAnalytics()).capture(
+            eventFor(analyticsHashSecret(), { userId: 'anonymous' }, 'error_visible', {
+              code: 'INTERNAL',
+              route: new URL(request.url).pathname.replace(/[0-9a-f]{8}-[0-9a-f-]{27}/gi, ':id'),
+            }),
+          );
+        } catch {
+          // Analytics never turns an error response into another error.
+        }
         return fail('INTERNAL', 'Something went wrong.', requestId);
       }
     };

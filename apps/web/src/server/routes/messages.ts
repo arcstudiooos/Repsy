@@ -53,10 +53,15 @@ export const messagesPostRoute: RouteDef<typeof sendSchema, true> = {
   can: 'message:send',
   input: sendSchema,
   rateLimit: { capacity: 30, refillPerSecond: 0.5 },
-  handler: async ({ actor, input, params, requestId, tenant }) => {
+  handler: async ({ actor, input, params, requestId, tenant, track }) => {
+    const t0 = Date.now();
     const message = await tenant((tx) =>
       sendMessage(tx, actor, params.id ?? '', input, { requestId, onSent: onMessageSent }),
     );
+    // Coach messages only (§13), and not a retried send.
+    if (actor.role !== 'client' && Date.parse(message.createdAt) >= t0) {
+      track('coach_message_sent');
+    }
     return new ApiResult(message, { status: 201 });
   },
 };

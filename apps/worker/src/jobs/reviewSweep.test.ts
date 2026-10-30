@@ -110,3 +110,23 @@ describe('sweepReview', () => {
     }
   });
 });
+
+describe('sweepReview analytics', () => {
+  it('emits review_flag_opened per new flag, with hashed ids only', async () => {
+    const { clientId } = await seed();
+    const seen: { name: string; distinctId: string; properties: Record<string, unknown> }[] = [];
+    await sweepReview(
+      prisma,
+      new Date('2026-11-08T12:00:00Z'),
+      { capture: (e) => void seen.push(e) },
+      {},
+    );
+    expect(seen.length).toBeGreaterThanOrEqual(1);
+    expect(
+      seen.every(
+        (e) => e.name === 'review_flag_opened' && e.properties.rule_key === 'missed_workouts',
+      ),
+    ).toBe(true);
+    expect(JSON.stringify(seen)).not.toContain(clientId);
+  });
+});

@@ -35,8 +35,9 @@ const createSchema = z.object({ title: z.string().trim().min(1).max(120) });
 export const programsPostRoute: RouteDef<typeof createSchema, true> = {
   can: 'program:write',
   input: createSchema,
-  handler: async ({ actor, input, requestId, tenant }) => {
+  handler: async ({ actor, input, requestId, tenant, track }) => {
     const created = await tenant((tx) => createProgram(tx, actor, input, { requestId }));
+    track('program_created');
     return new ApiResult(created, { status: 201 });
   },
 };

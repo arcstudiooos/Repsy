@@ -1,5 +1,5 @@
 import type { PgBoss, Queue } from 'pg-boss';
-import type { EmailPort, Logger } from '@kinetic/core';
+import type { AnalyticsPort, EmailPort, Logger } from '@kinetic/core';
 import type { PrismaClient } from '@kinetic/db';
 
 /** Error reporter (Sentry.captureException in the worker; a no-op without SENTRY_DSN). */
@@ -10,6 +10,8 @@ export interface JobDeps {
   port: EmailPort;
   logger: Logger;
   captureException?: CaptureException;
+  /** Product analytics (S5-4); a no-op without POSTHOG_KEY. */
+  analytics?: AnalyticsPort;
 }
 
 export interface JobDefinition<T extends object> {

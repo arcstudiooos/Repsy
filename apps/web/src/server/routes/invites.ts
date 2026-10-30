@@ -7,10 +7,11 @@ const ISSUE_LIMIT = { capacity: 10, refillPerSecond: 10 / 3600 };
 export const invitePostRoute: RouteDef<undefined, true> = {
   can: 'client:update',
   rateLimit: ISSUE_LIMIT,
-  handler: async ({ actor, params, requestId, tenant }) => {
+  handler: async ({ actor, params, requestId, tenant, track }) => {
     const result = await tenant((tx) =>
       issueInvite(tx, actor, params.id ?? '', new Date(), requestId),
     );
+    track('client_invited');
     return new ApiResult(
       { inviteId: result.inviteId, expiresAt: result.expiresAt.toISOString() },
       { status: 201 },

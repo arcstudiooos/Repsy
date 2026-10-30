@@ -121,12 +121,15 @@ describe('pilot-code gate', () => {
 
   it('server-side registration still works and creates org + owner membership', async () => {
     await seedCode('reg-ok');
-    expect(
-      await registerCoach({ ...deps, headers: ip(1) }, input('reg-ok@example.test', 'reg-ok')),
-    ).toEqual({ ok: true });
+    const registered = await registerCoach(
+      { ...deps, headers: ip(1) },
+      input('reg-ok@example.test', 'reg-ok'),
+    );
     const user = await authPrisma.user.findUniqueOrThrow({
       where: { email: 'reg-ok@example.test' },
     });
+    // The new account's id, for the coach_signed_up event (S5-4).
+    expect(registered).toEqual({ ok: true, userId: user.id });
     const memberships = await withSystem(
       (tx) => tx.membership.findMany({ where: { userId: user.id } }),
       prisma,
@@ -190,7 +193,7 @@ describe('failed registration', () => {
       { ...deps, headers: ip(4) },
       input('comp@example.test', 'comp-code'),
     );
-    expect(retry).toEqual({ ok: true });
+    expect(retry).toMatchObject({ ok: true, userId: expect.any(String) });
     expect(await count('comp@example.test')).toBe(1);
   });
 

@@ -24,7 +24,9 @@ export interface RegisterInput {
   pilotCode: string;
 }
 
-export type RegisterResult = { ok: true } | { ok: false; fieldErrors: Record<string, string> };
+/** `userId` is set only when a new account and organization were created (for the sign-up event). */
+export type RegisterResult =
+  { ok: true; userId?: string } | { ok: false; fieldErrors: Record<string, string> };
 
 type Redeem = (
   tx: Parameters<typeof signupCoach>[0],
@@ -136,7 +138,7 @@ export async function registerCoach(
       return { ok: false, fieldErrors: { pilotCode: CODE_INVALID } };
     throw error;
   }
-  return { ok: true };
+  return { ok: true, userId };
 }
 
 /**

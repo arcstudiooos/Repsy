@@ -269,7 +269,7 @@ export async function evaluateRules(
   tx: TenantTx,
   orgId: string,
   now: Date,
-): Promise<{ opened: number; resolved: number; reopened: number }> {
+): Promise<{ opened: number; resolved: number; reopened: number; openedRules: RuleKey[] }> {
   await deriveSessionStates(tx, now);
 
   const { count: reopened } = await tx.reviewFlag.updateMany({
@@ -297,13 +297,13 @@ export async function evaluateRules(
     if (read > 0) resolved += await autoResolve(tx, { id: f.id }, now);
   }
 
-  let opened = 0;
+  const openedRules: RuleKey[] = [];
   for (const rule of SWEEP_RULES) {
     for (const f of await rule.evaluate(tx, orgId, now)) {
-      if (await raiseFlag(tx, f)) opened += 1;
+      if (await raiseFlag(tx, f)) openedRules.push(f.ruleKey);
     }
   }
-  return { opened, resolved, reopened };
+  return { opened: openedRules.length, resolved, reopened, openedRules };
 }
 
 /**

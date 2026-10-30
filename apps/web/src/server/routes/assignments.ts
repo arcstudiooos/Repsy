@@ -15,7 +15,7 @@ const assignSchema = z.object({
 export const assignPostRoute: RouteDef<typeof assignSchema, true> = {
   can: 'assignment:write',
   input: assignSchema,
-  handler: async ({ actor, input, params, requestId, tenant }) => {
+  handler: async ({ actor, input, params, requestId, tenant, track, clientHash }) => {
     const result = await tenant((tx) =>
       assignProgram(
         tx,
@@ -31,6 +31,10 @@ export const assignPostRoute: RouteDef<typeof assignSchema, true> = {
         { requestId },
       ),
     );
+    track('program_assigned', {
+      client_id_hash: clientHash(input.clientId),
+      weekday_count: input.weekdays.length,
+    });
     return new ApiResult(result, { status: 201 });
   },
 };

@@ -31,8 +31,15 @@ const patchSchema = z.discriminatedUnion('action', [
 export const reviewFlagPatchRoute: RouteDef<typeof patchSchema, true> = {
   can: 'review:update',
   input: patchSchema,
-  handler: ({ actor, input, params, requestId, tenant }) =>
-    tenant((tx) => updateFlag(tx, actor, params.id ?? '', input as FlagAction, { requestId })),
+  handler: async ({ actor, input, params, requestId, tenant, track }) => {
+    const flag = await tenant((tx) =>
+      updateFlag(tx, actor, params.id ?? '', input as FlagAction, { requestId }),
+    );
+    if (input.action === 'resolve' || input.action === 'dismiss') {
+      track('review_flag_resolved', { rule_key: flag.ruleKey, action: input.action });
+    }
+    return flag;
+  },
 };
 
 const followupSchema = z.object({
@@ -45,8 +52,9 @@ const followupSchema = z.object({
 export const reviewFlagPostRoute: RouteDef<typeof followupSchema, true> = {
   can: 'review:update',
   input: followupSchema,
-  handler: async ({ actor, input, requestId, tenant }) =>
-    new ApiResult(await tenant((tx) => createFollowup(tx, actor, input, { requestId })), {
-      status: 201,
-    }),
+  handler: async ({ actor, input, requestId, tenant, track }) => {
+    const flag = await tenant((tx) => createFollowup(tx, actor, input, { requestId }));
+    track('review_flag_opened', { rule_key: 'coach_followup' });
+    return new ApiResult(flag, { status: 201 });
+  },
 };
