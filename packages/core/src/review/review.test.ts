@@ -75,10 +75,10 @@ describe('review overview (S2-4)', () => {
     const seen = await runAs(prisma, w.coach, (tx) =>
       markReviewSeen(tx, w.coach, { through: at(-HOUR).toISOString() }, { now: NOW }),
     );
-    expect(seen.seenAt).toBe(at(-HOUR - 5_000).toISOString());
+    expect(seen.seenAt).toBe(at(-HOUR).toISOString());
     let view = await runAs(prisma, w.coach, (tx) => getReviewOverview(tx, w.coach, { now: NOW }));
     expect(view.newCompleted.count).toBe(0);
-    expect(view.seenAt).toBe(at(-HOUR - 5_000).toISOString());
+    expect(view.seenAt).toBe(at(-HOUR).toISOString());
     await runAs(prisma, w.client, (tx) =>
       completeSession(tx, w.client, b!.id, { idempotencyKey: randomUUID() }, { now: NOW }),
     );
@@ -152,7 +152,7 @@ describe('review overview (S2-4)', () => {
     expect(
       (await runAs(prisma, w.coach, (tx) => getReviewOverview(tx, w.coach, { now: at(2 * HOUR) })))
         .seenAt,
-    ).toBe(at(-5_000).toISOString());
+    ).toBe(NOW.toISOString());
     const counts = await runAs(prisma, w.coach, (tx) =>
       getReviewCounts(tx, w.coach, { now: at(2 * HOUR) }),
     );

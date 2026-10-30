@@ -7,8 +7,6 @@ import type { SessionState } from '../sessions/types';
 import { todayInZone } from '../timezone';
 
 export const REVIEW_LIST_MAX = 50;
-/** "Mark all as seen" marks through the list's read time minus this margin (in-flight completions stay new). */
-export const SEEN_MARGIN_MS = 5_000;
 /** Before a coach first marks the list seen, "new" means completed in the last 14 days. */
 export const REVIEW_FIRST_WINDOW_MS = 14 * 86_400_000;
 
@@ -148,10 +146,7 @@ export async function markReviewSeen(
   if (Number.isNaN(through.getTime())) {
     throw new DomainError('VALIDATION', 'Some fields are invalid.', { through: ['Invalid.'] });
   }
-  // A completion stamped just before the read may commit just after it: keep a small margin, so marking can only
-  // ever leave a completion the coach saw as new, never hide one they didn't.
-  const capped = through < now ? through : now;
-  const mark = new Date(capped.getTime() - SEEN_MARGIN_MS);
+  const mark = through < now ? through : now;
   const membership = await ownMembership(tx, actor);
   if (!membership) throw new DomainError('NOT_FOUND', 'Not found.');
   if (membership.reviewSeenAt && membership.reviewSeenAt >= mark) {

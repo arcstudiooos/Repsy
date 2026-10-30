@@ -36,7 +36,7 @@ Sprint 2 (First end-to-end loop) was completed on branch `sprint-2` (2026-10-30)
   - A late sync after the sweep moved a session to `missed`/`incomplete` gets `SESSION_FINISHED` (409), and the device's logs would be dropped, which conflicts with D-004 #5. Decide whether a late sync may still complete it.
 - **S4-3 (review queue).** The Sprint 2 review list is read queries plus `memberships.review_seen_at`. `ReviewFlag` replaces it. Until then:
   - "This week" compares stored client-local dates with the ISO week in the **organization's** time zone (documented approximation).
-  - "Mark all as seen" marks through the list's read time minus 5 seconds, so a completion still committing when the list was read stays new; one completed in the last 5 seconds before the read stays new too.
+  - "Mark all as seen" marks through the list's read time. A completion whose transaction stamped `completedAt` just before that read but committed just after it is marked seen without having been shown (a window of one transaction). `ReviewFlag` rows remove it.
   - Lists show at most 50 items; "Mark all as seen" marks everything up to the list's read time, including completions beyond the 50 shown.
 - **Coach Sessions tab.** Shows the first 25 upcoming and 25 past sessions, with no paging; the `?scope=past` the logger adds after finishing is ignored there.
 

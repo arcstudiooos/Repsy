@@ -98,7 +98,8 @@ export default async function ClientSessionsPage({ params }: { params: Promise<{
         items={upcoming.items}
         clientId={client.id}
         today={today}
-        action="Log workout"
+        // An archived client's sessions are read-only history (D-010 #4).
+        action={client.status === 'archived' ? 'View' : 'Log workout'}
         more={upcoming.nextCursor !== null}
       />
       <SessionList
