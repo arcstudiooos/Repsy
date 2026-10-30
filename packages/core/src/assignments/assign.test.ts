@@ -446,3 +446,25 @@ describe('getAssignmentSummary', () => {
     });
   });
 });
+
+describe('getAssignmentSummary nextSession', () => {
+  it('shows an overdue in-progress session before the next scheduled one', async () => {
+    const w = await world();
+    const { assignmentId } = await assign(w);
+    const [first] = await sessionsOf(assignmentId);
+    await withSystem(
+      (tx) =>
+        tx.workoutSession.update({
+          where: { id: first!.id },
+          data: { state: 'in_progress', startedAt: NOW },
+        }),
+      prisma,
+    );
+    // Two days after the first session's due time.
+    const later = new Date('2026-11-07T15:00:00Z');
+    const summary = await run(w.actor, (tx) =>
+      getAssignmentSummary(tx, w.actor, w.clientId, { now: later }),
+    );
+    expect(summary?.nextSession).toEqual({ localDate: '2026-11-04', title: 'W1D1' });
+  });
+});

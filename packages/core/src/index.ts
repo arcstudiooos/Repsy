@@ -103,3 +103,26 @@ export {
   type AssignProgramResult,
   type AssignmentSummary,
 } from './assignments/assign';
+export {
+  SESSION_STATES,
+  OPEN_STATES,
+  PAST_STATES,
+  type SessionState,
+  type SessionSummary,
+  type WorkoutVersionView,
+} from './sessions/types';
+export {
+  resolveSessionWorkout,
+  resolveSlotWorkoutVersionId,
+  loadWorkoutVersionView,
+} from './sessions/resolve';
+export {
+  listSessions,
+  getPortalHome,
+  isoWeekOf,
+  encodeSessionCursor,
+  decodeSessionCursor,
+  type SessionListScope,
+  type PortalHome,
+} from './sessions/read';
+export { readStoredTargets } from './programs/read';
