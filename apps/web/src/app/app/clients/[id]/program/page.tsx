@@ -105,7 +105,21 @@ export default async function ClientProgramPage({ params }: { params: Promise<{ 
             </dd>
           </div>
         </dl>
-        {templates.length > 0 && <div>{dialog('Change program', 'secondary', true)}</div>}
+        <div className="flex flex-wrap gap-3">
+          <Link
+            href={`/app/programs/${summary.programId}/edit`}
+            className={buttonVariants({ variant: 'default' })}
+          >
+            Edit program
+          </Link>
+          <Link
+            href={`/app/programs/${summary.programId}/history`}
+            className={buttonVariants({ variant: 'secondary' })}
+          >
+            Version history
+          </Link>
+          {templates.length > 0 && dialog('Change program', 'secondary', true)}
+        </div>
       </CardContent>
     </Card>
   );

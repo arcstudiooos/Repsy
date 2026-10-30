@@ -5,7 +5,7 @@ import type { ActorContext } from '../authz/actor';
 import { DomainError } from '../errors';
 import { commitProgramVersion, type WeekInput } from '../programs/commit';
 import { createProgram, getProgram } from '../programs/read';
-import { assignProgram, getAssignmentSummary } from './assign';
+import { assignProgram, getAssignmentSummary, getProgramAssignee } from './assign';
 
 let prisma: PrismaClient;
 let drop: () => Promise<void>;
@@ -438,12 +438,37 @@ describe('getAssignmentSummary', () => {
     );
     expect(s).toEqual({
       assignmentId: res.assignmentId,
+      programId: res.clientProgramId,
       programTitle: 'Template',
       startLocalDate: '2026-11-04',
       weekdays: [1, 3, 5],
       sessionCount: 6,
       nextSession: { localDate: '2026-11-06', title: 'W1D2' },
     });
+  });
+});
+
+describe('getProgramAssignee', () => {
+  it("the client of a copy's active assignment; null for templates and ended copies", async () => {
+    const w = await world();
+    const res = await assign(w);
+    const assignee = await run(w.actor, (tx) =>
+      getProgramAssignee(tx, w.actor, res.clientProgramId),
+    );
+    expect(assignee).toEqual({ clientId: w.clientId, clientName: expect.any(String) });
+    expect(await run(w.actor, (tx) => getProgramAssignee(tx, w.actor, w.templateId))).toBeNull();
+    await withSystem(
+      (tx) =>
+        tx.programAssignment.update({
+          where: { id: res.assignmentId },
+          data: { status: 'ended', endedAt: new Date() },
+        }),
+      prisma,
+    );
+    expect(
+      await run(w.actor, (tx) => getProgramAssignee(tx, w.actor, res.clientProgramId)),
+    ).toBeNull();
+    expect(await run(w.actor, (tx) => getProgramAssignee(tx, w.actor, 'nope'))).toBeNull();
   });
 });
 

@@ -25,4 +25,26 @@ describe('crumbsFromPath', () => {
     expect(crumbs?.at(-1)).toEqual({ label: '100%' });
     expect(() => crumbsFromPath('/app/%E0%A4%A/x')).not.toThrow();
   });
+  it('names program builder routes instead of showing the opaque id (S3-1)', () => {
+    const id = 'b13f5b66-4b02-4656-b796-1296fbc395e0';
+    const program = { label: 'Program', href: `/app/programs/${id}/edit` };
+    expect(crumbsFromPath(`/app/programs/${id}/edit`)).toEqual([
+      { label: 'Overview', href: '/app' },
+      { label: 'Programs', href: '/app/programs' },
+      { label: 'Edit program' },
+    ]);
+    expect(crumbsFromPath(`/app/programs/${id}/history`)).toEqual([
+      { label: 'Overview', href: '/app' },
+      { label: 'Programs', href: '/app/programs' },
+      program,
+      { label: 'Version history' },
+    ]);
+    expect(crumbsFromPath(`/app/programs/${id}/versions/2`)).toEqual([
+      { label: 'Overview', href: '/app' },
+      { label: 'Programs', href: '/app/programs' },
+      program,
+      { label: 'Version history', href: `/app/programs/${id}/history` },
+      { label: 'Version 2' },
+    ]);
+  });
 });

@@ -99,6 +99,7 @@ export type { SlotKey, IsoWeekday, ScheduledSlot, ScheduleSlotsInput } from './s
 export {
   assignProgram,
   getAssignmentSummary,
+  getProgramAssignee,
   type AssignProgramInput,
   type AssignProgramResult,
   type AssignmentSummary,

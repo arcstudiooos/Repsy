@@ -235,6 +235,8 @@ export async function assignProgram(
 
 export interface AssignmentSummary {
   assignmentId: string;
+  /** The client copy this assignment runs (the builder edits it, S3-1). */
+  programId: string;
   programTitle: string;
   startLocalDate: string;
   weekdays: IsoWeekday[];
@@ -306,10 +308,29 @@ export async function getAssignmentSummary(
   }
   return {
     assignmentId: assignment.id,
+    programId: assignment.programId,
     programTitle: assignment.program.title,
     startLocalDate: fromDbDate(assignment.startLocalDate),
     weekdays: assignment.weekdays as IsoWeekday[],
     sessionCount,
     nextSession,
   };
+}
+
+/**
+ * The client whose active assignment runs `programId` (a client copy), or null: templates, ended copies, unknown ids
+ * and other orgs' programs (hidden by the tenant scope) all read as null.
+ */
+export async function getProgramAssignee(
+  tx: TenantTx,
+  actor: ActorContext,
+  programId: string,
+): Promise<{ clientId: string; clientName: string } | null> {
+  assertCan(actor, 'assignment:read');
+  if (!isUuid(programId)) return null;
+  const assignment = await tx.programAssignment.findFirst({
+    where: { programId, status: 'active' },
+    select: { client: { select: { id: true, name: true } } },
+  });
+  return assignment ? { clientId: assignment.client.id, clientName: assignment.client.name } : null;
 }

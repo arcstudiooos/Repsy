@@ -14,29 +14,38 @@ import {
   type FieldError,
   type FieldErrors,
 } from 'react-hook-form';
-import type { ExerciseView, ProgramDetail } from '@kinetic/core';
+import type { ExerciseView, ProgramDetail, ProgramDraftView } from '@kinetic/core';
 import type { TrackingType } from '@kinetic/core/exercise-options';
 import type { Units } from '@kinetic/core/units';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { commitProgram, discardProgramDraft } from '@/lib/program-api';
+import { ConflictNotice } from './ConflictNotice';
 import { ExercisePicker } from './ExercisePicker';
 import {
   buildEditorSchema,
   defaultSet,
+  fromDraftPayload,
   MAX_DAYS,
   MAX_WEEK_COUNT,
   newDay,
+  toDraftPayload,
   toEditorValues,
   toWeekInputs,
   type EditorValues,
 } from './editorSchema';
-
-interface ApiError {
-  code: string;
-  message: string;
-  fieldErrors?: Record<string, string[]>;
-}
+import { PerformanceRail } from './PerformanceRail';
+import { SaveBar } from './SaveBar';
+import { clearLocalDraft, readLocalDraft, useDraftAutosave } from './useDraftAutosave';
 
 const numberField = (v: unknown) =>
   v === '' || v === null || v === undefined ? undefined : Number(v);
@@ -255,12 +264,45 @@ function ExerciseBlock({
   );
 }
 
-export function ProgramEditor({ program, units }: { program: ProgramDetail; units: Units }) {
+/** Comparable form content: what a commit would send (display units back to kg). */
+const contentKey = (v: Pick<EditorValues, 'title' | 'weeks'>, units: Units) =>
+  JSON.stringify({ title: v.title, weeks: toWeekInputs(v as EditorValues, units) });
+
+/** D-001, verbatim: confirmed before a client's own program is saved. */
+const D001 =
+  'This update will apply only to upcoming workouts. Completed and already-started workouts will remain unchanged.';
+
+export interface EditorClient {
+  id: string;
+  name: string;
+}
+
+export function ProgramEditor({
+  program,
+  units,
+  draft,
+  client,
+}: {
+  program: ProgramDetail;
+  units: Units;
+  /** The server draft, when one exists (S3-1). */
+  draft: ProgramDraftView | null;
+  /** Set for a client copy: whose active assignment runs this program. */
+  client: EditorClient | null;
+}) {
   const schema = useMemo(() => buildEditorSchema(units), [units]);
-  const initial = useMemo(() => toEditorValues(program, units), [program, units]);
+  const committed = useMemo(() => toEditorValues(program, units), [program, units]);
+  // A server draft that differs from the saved version replaces the initial values.
+  const [start] = useState(() => {
+    const values = draft ? fromDraftPayload(draft, program.title, units) : null;
+    if (!draft || !values || contentKey(values, units) === contentKey(committed, units)) {
+      return null;
+    }
+    return { values, baseVersionNo: draft.baseVersionNo };
+  });
   const form = useForm<EditorValues>({
     resolver: zodResolver(schema),
-    defaultValues: initial,
+    defaultValues: start?.values ?? committed,
     mode: 'onSubmit',
   });
   const {
@@ -275,22 +317,71 @@ export function ProgramEditor({ program, units }: { program: ProgramDetail; unit
   const weeks = useFieldArray({ control, name: 'weeks' });
   // RHF's own isDirty stays true after reset() once field arrays remount, so compare against the
   // last saved content instead.
-  const serialize = (v: Pick<EditorValues, 'title' | 'weeks'>) =>
-    JSON.stringify({ title: v.title, weeks: toWeekInputs(v as EditorValues, units) });
-  const [savedSnapshot, setSavedSnapshot] = useState(() => serialize(initial));
-  const watched = useWatch({ control }) as EditorValues;
-  const isDirty = watched.weeks ? serialize(watched) !== savedSnapshot : false;
+  const [savedSnapshot, setSavedSnapshot] = useState(() => contentKey(committed, units));
+  const [savedTitle, setSavedTitle] = useState(program.title);
+  /** The newest version this tab knows was committed. */
   const [versionNo, setVersionNo] = useState<number | null>(program.versionNo);
+  /** The version the draft is based on: the next commit's `expectedVersion`. */
+  const [baseVersionNo, setBaseVersionNo] = useState<number | null>(
+    start ? start.baseVersionNo : program.versionNo,
+  );
+  const [conflictVersion, setConflictVersion] = useState<number | null>(
+    start && program.versionNo !== null && start.baseVersionNo !== program.versionNo
+      ? program.versionNo
+      : null,
+  );
+  const [restored, setRestored] = useState(start !== null);
+  const watched = useWatch({ control }) as EditorValues;
+  const current = watched.weeks ? watched : committed;
+  const dirty = contentKey(current, units) !== savedSnapshot || baseVersionNo !== versionNo;
   const [activeWeek, setActiveWeek] = useState('0');
-  const [conflict, setConflict] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [savedAs, setSavedAs] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
+  const [confirmValues, setConfirmValues] = useState<EditorValues | null>(null);
   const skipGuard = useRef(false);
   const titleId = useId();
 
-  // Unsaved-changes guard: there is no autosave until Sprint 3.
+  const draftPayload = useMemo(() => toDraftPayload(current, units), [current, units]);
+  const autosave = useDraftAutosave(program.id, draftPayload, {
+    baseVersionNo,
+    enabled: dirty && !discarding,
+  });
+
+  // A device copy newer than the server draft (kept while offline) wins over it.
   useEffect(() => {
-    if (!isDirty) return;
+    const local = readLocalDraft(program.id);
+    if (!local) return;
+    const serverAt = draft ? Date.parse(draft.updatedAt) : Number.NEGATIVE_INFINITY;
+    const values =
+      Date.parse(local.savedAt) > serverAt
+        ? fromDraftPayload(local.values, program.title, units)
+        : null;
+    if (!values || contentKey(values, units) === contentKey(committed, units)) {
+      clearLocalDraft(program.id);
+      return;
+    }
+    reset(values);
+    // Intentional post-hydration sync: localStorage is unknown during SSR.
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setActiveWeek('0');
+    setBaseVersionNo(local.baseVersionNo);
+    setRestored(true);
+    setConflictVersion(
+      program.versionNo !== null && local.baseVersionNo !== program.versionNo
+        ? program.versionNo
+        : null,
+    );
+    /* eslint-enable react-hooks/set-state-in-effect */
+    // Runs once on mount: later renders must not restore over the coach's edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Leaving while a draft save is pending or failed would lose the edit.
+  const unsafe = dirty && (autosave.status === 'saving' || autosave.status === 'error');
+  useEffect(() => {
+    if (!unsafe) return;
     const guard = (e: BeforeUnloadEvent) => {
       if (skipGuard.current) return;
       e.preventDefault();
@@ -298,15 +389,26 @@ export function ProgramEditor({ program, units }: { program: ProgramDetail; unit
     };
     window.addEventListener('beforeunload', guard);
     return () => window.removeEventListener('beforeunload', guard);
-  }, [isDirty]);
+  }, [unsafe]);
 
   const daysPerWeek = weeks.fields[0] ? (getValues('weeks.0.days')?.length ?? 1) : 1;
+  const exercises = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const w of current.weeks ?? []) {
+      for (const d of w?.days ?? []) {
+        for (const e of d?.exercises ?? []) {
+          if (e?.exerciseId && !seen.has(e.exerciseId)) seen.set(e.exerciseId, e.exerciseName);
+        }
+      }
+    }
+    return [...seen].map(([id, name]) => ({ id, name }));
+  }, [current]);
 
   function setDays(next: number) {
     const clamped = Math.min(MAX_DAYS, Math.max(1, next));
-    const current = getValues('weeks');
+    const values = getValues('weeks');
     weeks.replace(
-      current.map((w) => {
+      values.map((w) => {
         const days = w.days.slice(0, clamped);
         while (days.length < clamped) days.push(newDay(days.length + 1));
         return { days };
@@ -315,181 +417,274 @@ export function ProgramEditor({ program, units }: { program: ProgramDetail; unit
   }
 
   function addWeek() {
-    const current = getValues('weeks');
-    const last = current[current.length - 1];
+    const values = getValues('weeks');
+    const last = values[values.length - 1];
     weeks.append(structuredClone(last) as EditorValues['weeks'][number]);
-    setActiveWeek(String(current.length));
+    setActiveWeek(String(values.length));
   }
 
   function onInvalid() {
     setFormError('Some fields need attention. Fix them and save again.');
   }
 
-  async function onSubmit(values: EditorValues) {
+  async function commit(values: EditorValues) {
     setFormError(null);
-    setConflict(false);
     setSavedAs(null);
-    const body: Record<string, unknown> = {
-      expectedVersion: versionNo,
-      title: values.title,
-      weeks: toWeekInputs(values, units),
-    };
+    setSaving(true);
     try {
-      const res = await fetch(`/api/v1/programs/${program.id}`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify(body),
+      // The draft on the server holds the latest edit before the commit (which deletes it on success).
+      await autosave.flush();
+      const res = await commitProgram(program.id, {
+        expectedVersion: baseVersionNo,
+        ...(values.title !== savedTitle ? { title: values.title } : {}),
+        weeks: toWeekInputs(values, units),
       });
       if (res.ok) {
-        const saved = ((await res.json()) as { data: ProgramDetail }).data;
-        const next = toEditorValues(saved, units);
+        const next = toEditorValues(res.data, units);
         reset(next);
-        setSavedSnapshot(serialize(next));
-        setVersionNo(saved.versionNo);
-        setSavedAs(saved.versionNo);
+        setSavedSnapshot(contentKey(next, units));
+        setSavedTitle(res.data.title);
+        setVersionNo(res.data.versionNo);
+        setBaseVersionNo(res.data.versionNo);
+        setSavedAs(res.data.versionNo);
+        setConflictVersion(null);
+        setRestored(false);
+        clearLocalDraft(program.id);
         return;
       }
-      const payload = (await res.json().catch(() => null)) as { error?: ApiError } | null;
-      const error = payload?.error;
-      if (res.status === 409) {
-        setConflict(true);
+      const newer = res.details?.currentVersionNo;
+      if (res.status === 409 && typeof newer === 'number') {
+        // Nothing is overwritten: the edit stays in the form and its draft is saved again (the other tab's
+        // commit deleted the shared draft).
+        setConflictVersion(newer);
+        await autosave.flush({ force: true });
         return;
       }
-      if (error?.fieldErrors?.title) {
-        setError('title', { message: error.fieldErrors.title[0] });
-      }
-      const other = error?.fieldErrors?.weeks ?? error?.fieldErrors?._form;
-      setFormError(other?.join(' ') ?? error?.message ?? 'Could not save. Try again.');
-    } catch {
-      setFormError('Could not reach the server. Check your connection and try again.');
+      if (res.fieldErrors?.title) setError('title', { message: res.fieldErrors.title[0] });
+      const other = res.fieldErrors?.weeks ?? res.fieldErrors?._form;
+      setFormError(other?.join(' ') ?? res.message);
+    } finally {
+      setSaving(false);
     }
   }
 
+  async function onSubmit(values: EditorValues) {
+    if (client) {
+      setConfirmValues(values);
+      return;
+    }
+    await commit(values);
+  }
+
+  async function reloadLatest() {
+    setDiscarding(true);
+    await autosave.flush();
+    const res = await discardProgramDraft(program.id);
+    if (!res.ok) {
+      setDiscarding(false);
+      setFormError(
+        res.status === 0 ? res.message : "Couldn't discard the draft. Try again in a moment.",
+      );
+      return;
+    }
+    clearLocalDraft(program.id);
+    skipGuard.current = true;
+    window.location.reload();
+  }
+
+  function keepDraft() {
+    // Rebased on the newer version; saving it is still an explicit "Save changes".
+    setBaseVersionNo(conflictVersion);
+    setConflictVersion(null);
+  }
+
   const titleError = errors.title?.message;
+  const locked = isSubmitting || saving || discarding;
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={handleSubmit(onSubmit, onInvalid)} noValidate>
-        {/* Locked while saving: an edit typed mid-save would be overwritten by the server response. */}
-        <fieldset disabled={isSubmitting} className="m-0 flex min-w-0 flex-col gap-6 border-0 p-0">
-          <div>
-            <Link href="/app/programs" className="text-sm font-medium text-accent underline">
-              Back to programs
-            </Link>
-            <h1 className="mt-2 text-2xl font-semibold md:text-3xl">Edit program</h1>
-          </div>
+      <div className="flex min-w-0 flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+        <form onSubmit={handleSubmit(onSubmit, onInvalid)} noValidate className="min-w-0">
+          {/* Locked while saving: an edit typed mid-save would be overwritten by the server response. */}
+          <fieldset disabled={locked} className="m-0 flex min-w-0 flex-col gap-6 border-0 p-0">
+            <div className="flex flex-col gap-2">
+              <Link
+                href={client ? `/app/clients/${client.id}/program` : '/app/programs'}
+                className="text-sm font-medium text-accent underline"
+              >
+                {client ? `Back to ${client.name}` : 'Back to programs'}
+              </Link>
+              <h1 className="text-2xl font-semibold md:text-3xl">
+                {client ? `Edit ${client.name}'s program` : 'Edit program'}
+              </h1>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-secondary">
+                <span>{versionNo !== null ? `Version ${versionNo}` : 'Not saved yet'}</span>
+                {versionNo !== null && (
+                  <Link
+                    href={`/app/programs/${program.id}/history`}
+                    className="font-medium text-accent underline"
+                  >
+                    Version history
+                  </Link>
+                )}
+              </div>
+            </div>
 
-          <div className="flex flex-col gap-4 rounded-card bg-surface p-4 shadow-card md:flex-row md:items-end">
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <label htmlFor={titleId} className="text-sm font-medium">
-                Program title
-              </label>
-              <Input
-                id={titleId}
-                maxLength={120}
-                aria-invalid={titleError ? true : undefined}
-                aria-describedby={titleError ? `${titleId}-error` : undefined}
-                {...register('title')}
+            {restored && (
+              <div className="flex flex-wrap items-center gap-3 rounded-card bg-surface p-4 shadow-card">
+                <p className="min-w-0 flex-1 text-sm">Restored your unsaved draft.</p>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setRestored(false)}>
+                  Dismiss
+                </Button>
+              </div>
+            )}
+
+            {conflictVersion !== null && (
+              <ConflictNotice
+                versionNo={conflictVersion}
+                onReloadLatest={reloadLatest}
+                onKeepDraft={keepDraft}
               />
-              {titleError && (
-                <p id={`${titleId}-error`} className="text-sm text-danger">
-                  {titleError}
-                </p>
+            )}
+
+            <div className="flex flex-col gap-4 rounded-card bg-surface p-4 shadow-card md:flex-row md:items-end">
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <label htmlFor={titleId} className="text-sm font-medium">
+                  Program title
+                </label>
+                <Input
+                  id={titleId}
+                  maxLength={120}
+                  aria-invalid={titleError ? true : undefined}
+                  aria-describedby={titleError ? `${titleId}-error` : undefined}
+                  {...register('title')}
+                />
+                {titleError && (
+                  <p id={`${titleId}-error`} className="text-sm text-danger">
+                    {titleError}
+                  </p>
+                )}
+              </div>
+              {client ? (
+                // Ruling 2: a client copy keeps one training day per scheduled weekday.
+                <div className="flex flex-col gap-0.5">
+                  <p className="text-base font-medium">
+                    {daysPerWeek} {daysPerWeek === 1 ? 'day' : 'days'} per week
+                  </p>
+                  <p className="text-sm text-secondary">Matches the client&apos;s training days.</p>
+                </div>
+              ) : (
+                <div role="group" aria-label="Days per week" className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="icon"
+                    aria-label="Fewer days"
+                    disabled={daysPerWeek <= 1}
+                    onClick={() => setDays(daysPerWeek - 1)}
+                  >
+                    <Minus aria-hidden className="size-5" />
+                  </Button>
+                  <output className="min-w-28 text-center text-base font-medium">
+                    {daysPerWeek} {daysPerWeek === 1 ? 'day' : 'days'} per week
+                  </output>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="icon"
+                    aria-label="More days"
+                    disabled={daysPerWeek >= MAX_DAYS}
+                    onClick={() => setDays(daysPerWeek + 1)}
+                  >
+                    <Plus aria-hidden className="size-5" />
+                  </Button>
+                </div>
               )}
             </div>
-            <div role="group" aria-label="Days per week" className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                size="icon"
-                aria-label="Fewer days"
-                disabled={daysPerWeek <= 1}
-                onClick={() => setDays(daysPerWeek - 1)}
-              >
-                <Minus aria-hidden className="size-5" />
-              </Button>
-              <output className="min-w-28 text-center text-base font-medium">
-                {daysPerWeek} {daysPerWeek === 1 ? 'day' : 'days'} per week
-              </output>
-              <Button
-                type="button"
-                variant="secondary"
-                size="icon"
-                aria-label="More days"
-                disabled={daysPerWeek >= MAX_DAYS}
-                onClick={() => setDays(daysPerWeek + 1)}
-              >
-                <Plus aria-hidden className="size-5" />
-              </Button>
-            </div>
-          </div>
 
-          <Tabs value={activeWeek} onValueChange={setActiveWeek}>
-            <div className="flex items-center gap-2">
-              <TabsList className="min-w-0 flex-1">
-                {weeks.fields.map((f, w) => (
-                  <TabsTrigger key={f.id} value={String(w)}>
-                    Week {w + 1}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                disabled={weeks.fields.length >= MAX_WEEK_COUNT}
-                onClick={addWeek}
-              >
-                Add week
-              </Button>
-            </div>
-            {weeks.fields.map((f, w) => (
-              <TabsContent key={f.id} value={String(w)} className="flex flex-col gap-4">
-                {Array.from({ length: daysPerWeek }, (_, d) => (
-                  <DayCard key={d} week={w} day={d} units={units} />
-                ))}
-              </TabsContent>
-            ))}
-          </Tabs>
+            <Tabs value={activeWeek} onValueChange={setActiveWeek}>
+              <div className="flex items-center gap-2">
+                <TabsList className="min-w-0 flex-1">
+                  {weeks.fields.map((f, w) => (
+                    <TabsTrigger key={f.id} value={String(w)}>
+                      Week {w + 1}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={weeks.fields.length >= MAX_WEEK_COUNT}
+                  onClick={addWeek}
+                >
+                  Add week
+                </Button>
+              </div>
+              {weeks.fields.map((f, w) => (
+                <TabsContent key={f.id} value={String(w)} className="flex flex-col gap-4">
+                  {Array.from({ length: daysPerWeek }, (_, d) => (
+                    <DayCard key={d} week={w} day={d} units={units} />
+                  ))}
+                </TabsContent>
+              ))}
+            </Tabs>
 
-          {conflict && (
-            <div
-              role="alert"
-              className="flex flex-wrap items-center gap-3 rounded-card border border-danger bg-surface p-4"
-            >
-              <p className="min-w-0 flex-1 text-sm">
-                This program changed in another tab. Reload to see the latest version.
+            {formError && (
+              <p role="alert" className="text-sm text-danger">
+                {formError}
               </p>
+            )}
+
+            <SaveBar status={autosave.status} dirty={dirty} saving={locked} savedAs={savedAs} />
+          </fieldset>
+        </form>
+
+        {client && (
+          <PerformanceRail
+            clientId={client.id}
+            clientName={client.name}
+            exercises={exercises}
+            units={units}
+          />
+        )}
+      </div>
+
+      {client && (
+        <Dialog
+          open={confirmValues !== null}
+          onOpenChange={(open) => {
+            if (!open && !saving) setConfirmValues(null);
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Save changes to {client.name}&apos;s program?</DialogTitle>
+              <DialogDescription>{D001}</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
               <Button
                 type="button"
                 variant="secondary"
-                onClick={() => {
-                  skipGuard.current = true;
-                  window.location.reload();
+                disabled={saving}
+                onClick={() => setConfirmValues(null)}
+              >
+                Keep editing
+              </Button>
+              <Button
+                type="button"
+                disabled={saving}
+                onClick={async () => {
+                  if (confirmValues) await commit(confirmValues);
+                  setConfirmValues(null);
                 }}
               >
-                Reload
+                {saving ? 'Saving...' : 'Save changes'}
               </Button>
-            </div>
-          )}
-          {formError && (
-            <p role="alert" className="text-sm text-danger">
-              {formError}
-            </p>
-          )}
-
-          <div className="sticky bottom-16 flex flex-wrap items-center gap-3 rounded-card bg-surface p-4 shadow-card md:bottom-0">
-            <Button type="submit" disabled={isSubmitting || !isDirty}>
-              {isSubmitting ? 'Saving...' : 'Save'}
-            </Button>
-            <p className="text-sm text-secondary">Save to keep changes</p>
-            <p role="status" className="text-sm font-medium">
-              {isDirty ? 'Unsaved changes' : savedAs !== null ? `Saved as version ${savedAs}` : ''}
-            </p>
-          </div>
-        </fieldset>
-      </form>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </FormProvider>
   );
 }

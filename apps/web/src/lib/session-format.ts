@@ -1,4 +1,5 @@
-import type { SessionState } from '@kinetic/core';
+import type { PreviousPerformance, SessionState } from '@kinetic/core';
+import { toDisplay, type Units } from '@kinetic/core/units';
 
 const DAY_MS = 86_400_000;
 const utcDate = (localDate: string) => new Date(`${localDate}T00:00:00Z`);
@@ -44,3 +45,17 @@ export const plural = (n: number, one: string, many: string) => `${n} ${n === 1 
 /** D-007 #5, verbatim: shown on the portal home until the client's first workout starts. */
 export const SAFETY_REMINDER =
   'Tell your coach about anything that affects safe training before you begin.';
+
+/** A logged set as "5 × 60 kg", "8 reps", "45 s" or "1000 m" (loads in `units`); null for a cleared set. */
+export function formatLoggedSet(
+  s: PreviousPerformance['sets'][number],
+  units: Units,
+): string | null {
+  const load = s.weightKg !== null ? `${toDisplay(s.weightKg, units)} ${units}` : null;
+  if (s.reps !== null && load) return `${s.reps} × ${load}`;
+  if (s.reps !== null) return `${s.reps} reps`;
+  if (load) return load;
+  if (s.durationSeconds !== null) return `${s.durationSeconds} s`;
+  if (s.distanceM !== null) return `${s.distanceM} m`;
+  return null;
+}

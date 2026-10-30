@@ -158,3 +158,130 @@ export function toWeekInputs(values: EditorValues, units: Units): WeekInput[] {
     })),
   }));
 }
+
+/** A stored load in kg as typed: the exact stored kg while the display value is untouched. */
+function editedKg(s: EditorSet, units: Units): number | undefined {
+  if (s.loadKg === undefined || !Number.isFinite(s.loadKg)) return undefined;
+  const untouched = s.exactKg !== undefined && toDisplay(s.exactKg, units) === s.loadKg;
+  return untouched ? s.exactKg : fromDisplay(s.loadKg, units);
+}
+
+const finite = (v: number | undefined) => (v !== undefined && Number.isFinite(v) ? v : undefined);
+
+/**
+ * The autosaved draft body (S3-1): raw editor state, possibly invalid, with loads converted to kg so a draft never
+ * depends on the coach's display units. Exercise names and tracking types ride along so a restored draft renders
+ * without another lookup.
+ */
+export function toDraftPayload(
+  values: EditorValues,
+  units: Units,
+): { title: string; weeks: unknown[] } {
+  return {
+    title: values.title,
+    weeks: values.weeks.map((w) => ({
+      days: w.days.map((d) => ({
+        title: d.title,
+        notes: d.notes,
+        exercises: d.exercises.map((e) => ({
+          exerciseId: e.exerciseId,
+          exerciseName: e.exerciseName,
+          trackingType: e.trackingType,
+          note: e.note,
+          sets: e.sets.map((s) => {
+            const out: Record<string, number | string> = {};
+            for (const k of ['reps', 'rpe', 'restSec', 'durationSec', 'distanceM'] as const) {
+              const v = finite(s[k]);
+              if (v !== undefined) out[k] = v;
+            }
+            const kg = editedKg(s, units);
+            if (kg !== undefined) out.loadKg = kg;
+            if (s.tempo) out.tempo = s.tempo;
+            return out;
+          }),
+        })),
+      })),
+    })),
+  };
+}
+
+const draftNumber = z
+  .number()
+  .nullish()
+  .transform((v) => (v === null || v === undefined || !Number.isFinite(v) ? undefined : v));
+
+const draftShape = z.object({
+  title: z.string().nullish(),
+  weeks: z
+    .array(
+      z.object({
+        days: z
+          .array(
+            z.object({
+              title: z.string().catch(''),
+              notes: z.string().catch(''),
+              exercises: z.array(
+                z.object({
+                  exerciseId: z.string(),
+                  exerciseName: z.string(),
+                  trackingType: z.enum(TRACKING_TYPES),
+                  note: z.string().nullish(),
+                  sets: z.array(
+                    z.object({
+                      reps: draftNumber,
+                      loadKg: draftNumber,
+                      rpe: draftNumber,
+                      restSec: draftNumber,
+                      tempo: z.string().nullish(),
+                      durationSec: draftNumber,
+                      distanceM: draftNumber,
+                    }),
+                  ),
+                }),
+              ),
+            }),
+          )
+          .min(1)
+          .max(MAX_DAYS),
+      }),
+    )
+    .min(1)
+    .max(MAX_WEEKS),
+});
+
+/** Editor values from a stored draft (server or device copy), or null when its shape is unusable. */
+export function fromDraftPayload(
+  draft: { title?: string | null; weeks: unknown[] },
+  fallbackTitle: string,
+  units: Units,
+): EditorValues | null {
+  const parsed = draftShape.safeParse(draft);
+  if (!parsed.success) return null;
+  return {
+    title: parsed.data.title ?? fallbackTitle,
+    weeks: parsed.data.weeks.map((w) => ({
+      days: w.days.map((d) => ({
+        title: d.title,
+        notes: d.notes,
+        exercises: d.exercises.map((e) => ({
+          exerciseId: e.exerciseId,
+          exerciseName: e.exerciseName,
+          trackingType: e.trackingType,
+          note: e.note ?? '',
+          sets: e.sets.map((s) => {
+            const out: EditorSet = {};
+            for (const k of ['reps', 'rpe', 'restSec', 'durationSec', 'distanceM'] as const) {
+              if (s[k] !== undefined) out[k] = s[k];
+            }
+            if (s.tempo) out.tempo = s.tempo;
+            if (s.loadKg !== undefined) {
+              out.loadKg = toDisplay(s.loadKg, units);
+              out.exactKg = s.loadKg;
+            }
+            return out;
+          }),
+        })),
+      })),
+    })),
+  };
+}

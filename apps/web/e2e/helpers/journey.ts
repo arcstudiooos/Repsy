@@ -11,6 +11,7 @@ import {
   type BrowserContext,
   type Page,
 } from '@playwright/test';
+import { resetRateLimits } from '../support/db';
 import { E2E_PASSWORD, waitForEmail } from './users';
 
 export async function expectNoAxeViolations(page: Page): Promise<void> {
@@ -66,8 +67,15 @@ export async function onboardClient(
   await page.getByLabel('Choose a password').fill(E2E_PASSWORD);
   if (opts.units === 'lb') await page.getByLabel('Units').selectOption('lb');
   await page.getByLabel('I agree to share my training data with').check();
-  await page.getByRole('button', { name: 'Accept invite' }).click();
-  await expect(page).toHaveURL(/\/portal$/, { timeout: 30_000 });
+  // Invite acceptance is rate limited per IP (5 per 15 minutes) and parallel workers share one IP, so a busy run
+  // can hit the limit: clear the counters and retry, as sign-up does.
+  await expect(async () => {
+    await resetRateLimits();
+    if (!/\/portal$/.test(page.url())) {
+      await page.getByRole('button', { name: 'Accept invite' }).click();
+    }
+    await expect(page).toHaveURL(/\/portal$/, { timeout: 30_000 });
+  }).toPass({ timeout: 120_000 });
   return { name, email, context, page };
 }
 
@@ -100,7 +108,7 @@ export async function buildProgram(
       await expect(picker).toBeHidden();
     }
   }
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect(page.getByText('Saved as version 1')).toBeVisible({ timeout: 30_000 });
 }
 

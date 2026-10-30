@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatSessionDate, sessionStateLabel } from './session-format';
+import { formatLoggedSet, formatSessionDate, sessionStateLabel } from './session-format';
 
 describe('formatSessionDate', () => {
   it('names nearby days and formats the rest without a time zone shift', () => {
@@ -30,5 +30,26 @@ describe('sessionStateLabel', () => {
     expect(sessionStateLabel('in_progress', true)).toBe('Overdue');
     expect(sessionStateLabel('completed', true)).toBe('Completed');
     expect(sessionStateLabel('in_progress', false)).toBe('In progress');
+  });
+});
+
+describe('formatLoggedSet (builder performance rail)', () => {
+  const set = (over: Partial<Parameters<typeof formatLoggedSet>[0]>) => ({
+    setIndex: 0,
+    reps: null,
+    weightKg: null,
+    rpe: null,
+    durationSeconds: null,
+    distanceM: null,
+    ...over,
+  });
+  it('reps × load in the coach units; partial and other tracking types; a cleared set is null', () => {
+    expect(formatLoggedSet(set({ reps: 5, weightKg: 60 }), 'kg')).toBe('5 × 60 kg');
+    expect(formatLoggedSet(set({ reps: 5, weightKg: 100 }), 'lb')).toBe('5 × 220.5 lb');
+    expect(formatLoggedSet(set({ reps: 8 }), 'kg')).toBe('8 reps');
+    expect(formatLoggedSet(set({ weightKg: 20 }), 'kg')).toBe('20 kg');
+    expect(formatLoggedSet(set({ durationSeconds: 45 }), 'kg')).toBe('45 s');
+    expect(formatLoggedSet(set({ distanceM: 1000 }), 'kg')).toBe('1000 m');
+    expect(formatLoggedSet(set({}), 'kg')).toBeNull();
   });
 });

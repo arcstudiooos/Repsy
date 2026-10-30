@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ProgramDetail } from '@kinetic/core';
 import type { Units } from '@kinetic/core/units';
-import { toEditorValues, toWeekInputs } from './editorSchema';
+import { fromDraftPayload, toDraftPayload, toEditorValues, toWeekInputs } from './editorSchema';
 
 const program = (loadKg: number): ProgramDetail => ({
   id: 'p',
@@ -97,5 +97,42 @@ describe('load round trip through the editor', () => {
     expect(saved(v, 'kg')).toBe(62.5);
     load(v).loadKg = 61.2;
     expect(saved(v, 'kg')).toBe(61.235);
+  });
+});
+
+describe('draft payload (autosave, S3-1)', () => {
+  it('stores loads in kg and restores them in display units; an untouched load keeps its exact kg', () => {
+    const values = toEditorValues(program(100), 'lb');
+    const payload = toDraftPayload(values, 'lb');
+    const set = (payload.weeks[0] as { days: { exercises: { sets: unknown[] }[] }[] }).days[0]!
+      .exercises[0]!.sets[0];
+    expect(set).toEqual({ reps: 5, loadKg: 100 });
+    const restored = fromDraftPayload(JSON.parse(JSON.stringify(payload)), 'P', 'lb');
+    expect(restored).not.toBeNull();
+    expect(load(restored!)).toEqual({ reps: 5, loadKg: 220.5, exactKg: 100 });
+    expect(saved(restored!, 'lb')).toBe(100);
+    // The same values restored in kg show the stored kg.
+    expect(load(fromDraftPayload(payload, 'P', 'kg')!).loadKg).toBe(100);
+  });
+
+  it('keeps invalid in-progress state (an empty field, a day without exercises)', () => {
+    const values = toEditorValues(program(60), 'kg');
+    values.weeks[0]!.days[0]!.exercises[0]!.sets[0] = { reps: undefined, loadKg: Number.NaN };
+    values.weeks[0]!.days.push({ title: '', notes: '', exercises: [] });
+    const restored = fromDraftPayload(
+      JSON.parse(JSON.stringify(toDraftPayload(values, 'kg'))),
+      'P',
+      'kg',
+    );
+    expect(restored?.weeks[0]!.days).toHaveLength(2);
+    expect(load(restored!)).toEqual({});
+    expect(restored?.weeks[0]!.days[1]).toEqual({ title: '', notes: '', exercises: [] });
+  });
+
+  it('a draft without a title uses the fallback; a malformed draft is ignored', () => {
+    const payload = toDraftPayload(toEditorValues(program(60), 'kg'), 'kg');
+    expect(fromDraftPayload({ weeks: payload.weeks }, 'Fallback', 'kg')?.title).toBe('Fallback');
+    expect(fromDraftPayload({ title: 'X', weeks: [{ days: 'nope' }] }, 'P', 'kg')).toBeNull();
+    expect(fromDraftPayload({ title: 'X', weeks: [] }, 'P', 'kg')).toBeNull();
   });
 });

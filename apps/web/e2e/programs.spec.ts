@@ -33,7 +33,7 @@ async function expectNoAxeViolations(page: Page): Promise<void> {
   ).toEqual([]);
 }
 
-const save = (page: Page) => page.getByRole('button', { name: 'Save', exact: true });
+const save = (page: Page) => page.getByRole('button', { name: 'Save changes', exact: true });
 
 test.describe('program builder', () => {
   test('coach creates a 1-week x 2-day program with 3 exercises and saves; reload shows identical content', async ({
@@ -42,7 +42,7 @@ test.describe('program builder', () => {
   }) => {
     await signUpVerifiedCoach(page, request);
     await createProgram(page, 'Strength block');
-    await expect(page.getByText('Save to keep changes')).toBeVisible();
+    await expect(page.getByText('Not saved yet')).toBeVisible();
 
     await page.getByRole('button', { name: 'More days' }).click();
     await expect(page.getByText('2 days per week')).toBeVisible();
@@ -80,7 +80,7 @@ test.describe('program builder', () => {
     );
   });
 
-  test('second tab save after first -> conflict notice, nothing overwritten', async ({
+  test('second tab save after first -> conflict notice, draft kept, reload latest', async ({
     page,
     request,
   }) => {
@@ -103,12 +103,81 @@ test.describe('program builder', () => {
     await day.getByLabel('Day title').fill('First tab loses');
     await save(page).click();
     await expect(
-      page.getByText('This program changed in another tab. Reload to see the latest version.'),
+      page.getByText('A newer version (version 2) was saved. Your draft is kept.'),
     ).toBeVisible();
     await expect(day.getByLabel('Day title')).toHaveValue('First tab loses');
 
-    await page.getByRole('button', { name: 'Reload' }).click();
+    await page.getByRole('button', { name: 'Reload latest' }).click();
+    const confirm = page.getByRole('dialog', { name: 'Reload the latest version?' });
+    await expect(confirm.getByText('Reloading discards your draft.')).toBeVisible();
+    await confirm.getByRole('button', { name: 'Reload latest' }).click();
+    await expect(page.getByText('Version 2', { exact: true })).toBeVisible({ timeout: 30_000 });
     await expect(day.getByLabel('Day title')).toHaveValue('Second tab wins');
+  });
+
+  test('conflict -> "Keep my draft" rebases; the next explicit save commits it', async ({
+    page,
+    request,
+  }) => {
+    await signUpVerifiedCoach(page, request);
+    await createProgram(page, 'Keep mine');
+    const day = page.getByRole('group', { name: 'Day 1', exact: true });
+    await addExercise(day, page, 'bench', 'Barbell Bench Press');
+    await save(page).click();
+    await expect(page.getByText('Saved as version 1')).toBeVisible({ timeout: 30_000 });
+
+    const second = await page.context().newPage();
+    await second.goto(page.url());
+    const day2 = second.getByRole('group', { name: 'Day 1', exact: true });
+    await expect(day2.getByLabel('Day title')).toHaveValue('Day 1');
+    await day2.getByLabel('Day title').fill('Other tab');
+    await save(second).click();
+    await expect(second.getByText('Saved as version 2')).toBeVisible({ timeout: 30_000 });
+    await second.close();
+
+    await day.getByLabel('Day title').fill('Mine on top');
+    await save(page).click();
+    const notice = page.getByText('A newer version (version 2) was saved. Your draft is kept.');
+    await expect(notice).toBeVisible();
+    await page.getByRole('button', { name: 'Keep my draft' }).click();
+    await expect(notice).toBeHidden();
+    // Nothing was committed by keeping the draft.
+    await expect(page.getByText('Version 2', { exact: true })).toHaveCount(0);
+    await save(page).click();
+    await expect(page.getByText('Saved as version 3')).toBeVisible({ timeout: 30_000 });
+    await page.reload();
+    await expect(day.getByLabel('Day title')).toHaveValue('Mine on top');
+    await expect(page.getByText('Version 3', { exact: true })).toBeVisible();
+    await expect(page.getByText('Restored your unsaved draft.')).toHaveCount(0);
+  });
+
+  test('autosave: offline keeps the draft on the device, then syncs when back online', async ({
+    page,
+    request,
+  }) => {
+    await signUpVerifiedCoach(page, request);
+    await createProgram(page, 'Offline draft');
+    const day = page.getByRole('group', { name: 'Day 1', exact: true });
+    await day.getByLabel('Day title').fill('Typed online');
+    await expect(page.getByRole('status').filter({ hasText: 'Draft saved' })).toBeVisible({
+      timeout: 30_000,
+    });
+
+    await page.context().setOffline(true);
+    await day.getByLabel('Day title').fill('Typed offline');
+    await expect(page.getByText('Offline – draft kept on this device')).toBeVisible();
+    const local = await page.evaluate(() =>
+      Object.keys(localStorage).filter((k) => k.startsWith('kinetic:program-draft:')),
+    );
+    expect(local).toHaveLength(1);
+
+    await page.context().setOffline(false);
+    await expect(page.getByRole('status').filter({ hasText: 'Draft saved' })).toBeVisible({
+      timeout: 30_000,
+    });
+    await page.reload();
+    await expect(page.getByText('Restored your unsaved draft.')).toBeVisible();
+    await expect(day.getByLabel('Day title')).toHaveValue('Typed offline');
   });
 
   test('editor is locked while a save is in flight', async ({ page, request }) => {
