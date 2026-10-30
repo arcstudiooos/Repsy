@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
 /** True when `v` has at most `dp` decimal places (float-safe for the ranges used here). */
+/** Rounds to 3 decimals so float noise (0.30000000000000004) hashes the same as 0.3. */
+const round3 = (v: number): number => Math.round(v * 1000) / 1000;
+
 const maxDecimals = (v: number, dp: number): boolean => {
   const scaled = v * 10 ** dp;
   return Math.abs(scaled - Math.round(scaled)) < 1e-6;
@@ -14,6 +17,7 @@ export const setTargetSchema = z.strictObject({
     .min(0)
     .max(2000)
     .refine((v) => maxDecimals(v, 3), 'Use at most 3 decimal places.')
+    .transform(round3)
     .optional(),
   rpe: z
     .number()
@@ -32,6 +36,7 @@ export const setTargetSchema = z.strictObject({
     .min(0)
     .max(100000)
     .refine((v) => maxDecimals(v, 3), 'Use at most 3 decimal places.')
+    .transform(round3)
     .optional(),
 });
 

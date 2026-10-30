@@ -91,3 +91,4 @@ export {
   type SetTarget,
   type WorkoutTargets,
 } from './programs/targets';
+export { toDisplay, fromDisplay, type Units } from './units';

@@ -80,7 +80,12 @@ function cleanMediaUrl(value: string | null | undefined): string | null {
   } catch {
     throw invalid('mediaUrl', 'Enter a valid https link.');
   }
-  if (url.protocol !== 'https:' || v.length > MEDIA_URL_MAX) {
+  if (
+    url.protocol !== 'https:' ||
+    url.username !== '' ||
+    url.password !== '' ||
+    v.length > MEDIA_URL_MAX
+  ) {
     throw invalid('mediaUrl', `Use an https link of at most ${MEDIA_URL_MAX} characters.`);
   }
   return v;

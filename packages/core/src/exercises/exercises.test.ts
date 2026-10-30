@@ -133,7 +133,13 @@ describe('createExercise', () => {
 
   it('rejects non-https media urls', async () => {
     const a = await newOrg();
-    for (const mediaUrl of ['javascript:alert(1)', 'http://example.test/a.png', 'not a url']) {
+    for (const mediaUrl of [
+      'javascript:alert(1)',
+      'http://example.test/a.png',
+      'not a url',
+      'https://user:pass@example.test/a.png',
+      'https://user@example.test/a.png',
+    ]) {
       expect(
         await code(run(a, (tx) => createExercise(tx, a, { ...base, mediaUrl }))),
         mediaUrl,

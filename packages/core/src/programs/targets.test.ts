@@ -48,3 +48,15 @@ describe('targetSchema', () => {
     expect(ok([{ reps: 5, organizationId: 'x' }])).toBe(false);
   });
 });
+
+describe('targetSchema normalization', () => {
+  it('rounds loadKg and distanceM to 3 decimals so float noise equals the clean value', () => {
+    const parsed = targetSchema.parse([
+      { reps: 5, loadKg: 0.30000000000000004, distanceM: 1.0000000000000002 },
+    ]);
+    expect(parsed).toEqual([{ reps: 5, loadKg: 0.3, distanceM: 1 }]);
+    expect(JSON.stringify(parsed)).toBe(
+      JSON.stringify(targetSchema.parse([{ reps: 5, loadKg: 0.3, distanceM: 1 }])),
+    );
+  });
+});

@@ -130,6 +130,29 @@ describe('commitProgramVersion', () => {
     });
   });
 
+  it('float noise in loadKg hashes equal to the clean value and reuses the workout version', async () => {
+    const actor = await newActor();
+    const { id } = await run(actor, (tx) => createProgram(tx, actor, { title: 'P' }));
+    const weeks = (loadKg: number): WeekInput[] => [
+      { days: [{ title: 'A', exercises: [{ exerciseId: BENCH, sets: [{ reps: 5, loadKg }] }] }] },
+    ];
+    await run(actor, (tx) =>
+      commitProgramVersion(tx, actor, {
+        programId: id,
+        expectedVersionNo: null,
+        weeks: weeks(0.3),
+      }),
+    );
+    await run(actor, (tx) =>
+      commitProgramVersion(tx, actor, {
+        programId: id,
+        expectedVersionNo: 1,
+        weeks: weeks(0.30000000000000004),
+      }),
+    );
+    expect(await run(actor, (tx) => tx.workoutVersion.count())).toBe(1);
+  });
+
   it('reuses a workout version from elsewhere in the lineage when content returns', async () => {
     const actor = await newActor();
     const { id } = await run(actor, (tx) => createProgram(tx, actor, { title: 'P' }));

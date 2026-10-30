@@ -21,6 +21,7 @@
   },
   "exports": {
     ".": "./src/index.ts",
-    "./exercise-options": "./src/exercises/options.ts"
+    "./exercise-options": "./src/exercises/options.ts",
+    "./units": "./src/units.ts"
   }
 }

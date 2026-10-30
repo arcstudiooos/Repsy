@@ -45,7 +45,7 @@ export const programGetRoute: RouteDef<undefined, true> = {
 // `weeks` is validated in depth by commitProgramVersion (one source of truth); its failures land on fieldErrors.weeks.
 const patchSchema = z.object({
   expectedVersion: z.number().int().min(1).nullable(),
-  title: z.string().min(1).max(200).optional(),
+  title: z.string().trim().min(1).max(120).optional(),
   weeks: z.array(z.unknown()).optional(),
 });
 
