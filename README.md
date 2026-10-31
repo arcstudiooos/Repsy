@@ -47,6 +47,16 @@ R2 builds the web-platform features in `docs/competitive/complete-platform-prd.m
 - **H17 message search:** the coach inbox searches message text across conversations (newest first, never marks anything read).
 - **F13/F14 check-ins reviewed and streak:** coaches mark a sent check-in reviewed (it also resolves its "New check-in" review item); clients see "Your coach reviewed this" and their on-time streak.
 - **I8 dashboard:** "Check-ins waiting for your review" lists sent, unreviewed check-ins, oldest first.
+- **G1-G3 habits:** coaches set daily or weekly habits per client; clients tick them off on the portal home; the coach sees a 4-week heat map and completion rates.
+- **B4 tags:** coloured client tags, edited on the client page, with a tag filter on the client list.
+- **B7 context card:** motivation, schedule, equipment and preferences plus pinned notes, shown on every client page.
+- **G6/G7 nutrition:** daily calorie and macro targets set by the coach, a daily log for the client, and on-target days (within 10%) for both (also in exports).
+- **H4/H16 messaging tools:** saved replies to insert into a message, and reply expectations (usual reply time, office hours) shown to clients.
+- **D11/D12 personal records while logging:** a "New personal record" badge on a set as it is saved, and a workout summary on finished workouts.
+- **C15 print:** a printable program view (save as PDF from the browser).
+- **D6/D21 logger:** a rest timer (+30 s, skip, vibrate) after each saved set, and "Same as set N" to copy the last set.
+- **B17 client import:** `/app/clients/import` reads a CSV (Name or First/Last name, Email, optional Goals, Time zone, Units), previews every row with its problems, and imports the valid rows without inviting anyone.
+- **A5 setup checklist:** the dashboard lists seven first-week steps that tick themselves from what exists; a coach can hide it and show it again.
 
 ## What works locally (Sprint 5)
 
