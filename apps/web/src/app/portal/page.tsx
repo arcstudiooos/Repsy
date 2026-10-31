@@ -126,6 +126,12 @@ export default async function PortalHome() {
         >
           See your progress and personal records
         </Link>
+        <Link
+          href="/portal/nutrition"
+          className={cn(buttonVariants({ variant: 'secondary' }), 'min-h-12 w-full')}
+        >
+          Log today&apos;s nutrition
+        </Link>
       </div>
     </>
   );

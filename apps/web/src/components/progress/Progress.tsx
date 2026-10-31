@@ -179,7 +179,12 @@ export function ExerciseProgress({
         <h2 id="sessions-heading" className="text-lg font-semibold">
           Workouts
         </h2>
-        <div className="overflow-x-auto rounded-card bg-surface shadow-card">
+        <div
+          role="region"
+          aria-labelledby="sessions-heading"
+          tabIndex={0}
+          className="overflow-x-auto rounded-card bg-surface shadow-card"
+        >
           <table className="w-full text-left text-base">
             <thead className="border-b border-divider text-sm text-secondary">
               <tr>

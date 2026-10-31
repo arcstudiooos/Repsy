@@ -286,6 +286,19 @@ export {
   type ClientContextInput,
 } from './clients/context';
 export {
+  getNutrition,
+  setNutritionTarget,
+  logNutrition,
+  isOnTarget,
+  MACROS,
+  NUTRITION_BACKFILL_DAYS,
+  NUTRITION_TOLERANCE,
+  type Macro,
+  type Macros,
+  type NutritionDay,
+  type NutritionView,
+} from './nutrition/nutrition';
+export {
   listHabits,
   createHabit,
   setHabitStatus,

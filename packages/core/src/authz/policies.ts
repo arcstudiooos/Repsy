@@ -31,6 +31,9 @@ export type Action =
   | 'habit:read'
   | 'habit:manage'
   | 'habit:log'
+  | 'nutrition:read'
+  | 'nutrition:manage'
+  | 'nutrition:log'
   | 'export:org'
   | 'export:self';
 
@@ -69,6 +72,10 @@ const POLICY: Record<Action, readonly Role[]> = {
   'habit:read': ['owner', 'coach', 'client'],
   'habit:manage': ['owner', 'coach'],
   'habit:log': ['owner', 'coach', 'client'],
+  // Nutrition (PRD G6/G7): coaches set targets; clients log their own totals (core scopes a client to their record).
+  'nutrition:read': ['owner', 'coach', 'client'],
+  'nutrition:manage': ['owner', 'coach'],
+  'nutrition:log': ['owner', 'coach', 'client'],
   // D-010 #4: the owner exports the organization; a client exports their own data.
   'export:org': ['owner'],
   'export:self': ['client'],

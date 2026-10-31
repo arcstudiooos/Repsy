@@ -10,6 +10,7 @@ const TABS = [
   { label: 'Sessions', segment: 'sessions' },
   { label: 'Progress', segment: 'progress' },
   { label: 'Habits', segment: 'habits' },
+  { label: 'Nutrition', segment: 'nutrition' },
   { label: 'Check-ins', segment: 'check-ins' },
   { label: 'Messages', segment: 'messages' },
   { label: 'Notes', segment: 'notes' },

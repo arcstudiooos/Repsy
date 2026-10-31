@@ -338,6 +338,31 @@ async function habitRows(tx: TenantTx, clientId?: string): Promise<Rows> {
   ]);
 }
 
+async function nutritionRows(tx: TenantTx, clientId?: string): Promise<Rows> {
+  const logs = await tx.nutritionLog.findMany({
+    where: clientId ? { clientId } : {},
+    orderBy: [{ clientId: 'asc' }, { localDate: 'asc' }],
+    select: {
+      clientId: true,
+      localDate: true,
+      calories: true,
+      proteinG: true,
+      carbsG: true,
+      fatG: true,
+    },
+  });
+  return logs.map((l) => [
+    l.clientId,
+    fromDbDate(l.localDate),
+    l.calories,
+    l.proteinG,
+    l.carbsG,
+    l.fatG,
+  ]);
+}
+
+const NUTRITION_HEADER = ['client_id', 'local_date', 'calories', 'protein_g', 'carbs_g', 'fat_g'];
+
 const HABIT_HEADER = ['client_id', 'habit', 'kind', 'local_date', 'value', 'target', 'unit'];
 
 const METRIC_HEADER = [
@@ -439,6 +464,7 @@ export async function buildExportFiles(
       file('checkins.csv', CHECKIN_HEADER, await checkinRows(tx)),
       file('metrics.csv', METRIC_HEADER, await metricRows(tx)),
       file('habits.csv', HABIT_HEADER, await habitRows(tx)),
+      file('nutrition.csv', NUTRITION_HEADER, await nutritionRows(tx)),
     ];
   }
   const clientId = job.clientId as string;
@@ -485,6 +511,7 @@ export async function buildExportFiles(
     file('checkins.csv', CHECKIN_HEADER, await checkinRows(tx, clientId)),
     file('metrics.csv', METRIC_HEADER, await metricRows(tx, clientId)),
     file('habits.csv', HABIT_HEADER, await habitRows(tx, clientId)),
+    file('nutrition.csv', NUTRITION_HEADER, await nutritionRows(tx, clientId)),
     file(
       'messages.csv',
       ['sent_at', 'from', 'body', 'read_at'],

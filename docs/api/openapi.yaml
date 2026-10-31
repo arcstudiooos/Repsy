@@ -431,6 +431,45 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+  /clients/{id}/nutrition:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Progress]
+      summary: "Today's targets, the last 28 days of totals and adherence within 10% (PRD G6/G7). A client reads only their own."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /clients/{id}/nutrition/target:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [Progress]
+      summary: "A coach sets daily calorie and macro targets from a date on."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /clients/{id}/nutrition/log:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [Progress]
+      summary: "Log a day's totals (today or up to 7 days back); saving again replaces that day."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
   /clients/{id}/timeline:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }

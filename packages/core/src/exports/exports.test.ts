@@ -90,6 +90,7 @@ describe('exports (S5-2)', () => {
       'clients.csv',
       'habits.csv',
       'metrics.csv',
+      'nutrition.csv',
       'sessions.csv',
       'set_logs.csv',
     ]);
@@ -124,6 +125,7 @@ describe('exports (S5-2)', () => {
       'habits.csv',
       'messages.csv',
       'metrics.csv',
+      'nutrition.csv',
       'profile.csv',
       'sessions.csv',
       'set_logs.csv',

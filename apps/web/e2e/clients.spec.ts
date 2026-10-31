@@ -184,6 +184,7 @@ test.describe('client directory', () => {
         'Sessions',
         'Progress',
         'Habits',
+        'Nutrition',
         'Check-ins',
         'Messages',
         'Notes',
