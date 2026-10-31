@@ -451,3 +451,10 @@ export {
   type ReviewItem,
   type ReviewSection,
 } from './review/review';
+export {
+  getSetupChecklist,
+  setSetupChecklistHidden,
+  type SetupChecklist,
+  type SetupStep,
+  type SetupStepId,
+} from './onboarding/setup';

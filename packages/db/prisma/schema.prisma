@@ -387,6 +387,8 @@ model CoachProfile {
   bio         String?
   specialties String[]
   units       Units    @default(kg)
+  /// When the coach hid the dashboard setup checklist (PRD A5); null = shown until every step is done.
+  setupDismissedAt DateTime? @map("setup_dismissed_at") @db.Timestamptz(3)
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 

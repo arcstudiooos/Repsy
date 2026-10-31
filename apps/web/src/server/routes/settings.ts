@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { appendAudit } from '@kinetic/db';
-import { getSettings, updateSettings, type SettingsView } from '@kinetic/core';
+import {
+  getSettings,
+  setSetupChecklistHidden,
+  updateSettings,
+  type SettingsView,
+} from '@kinetic/core';
 import type { RouteDef } from '../api';
 
 // Unknown keys (including any `organizationId`) are stripped by Zod and never read.
@@ -57,4 +62,14 @@ export const settingsPatchRoute: RouteDef<typeof patchSchema, true> = {
       }
       return getSettings(tx, actor);
     }),
+};
+
+const setupSchema = z.object({ hidden: z.boolean() });
+
+/** `PUT /api/v1/settings/setup-checklist`: hide or show the dashboard setup checklist for this coach (PRD A5). */
+export const setupChecklistPutRoute: RouteDef<typeof setupSchema, true> = {
+  can: 'org:read',
+  input: setupSchema,
+  handler: ({ actor, input, tenant }) =>
+    tenant((tx) => setSetupChecklistHidden(tx, actor, input.hidden)),
 };

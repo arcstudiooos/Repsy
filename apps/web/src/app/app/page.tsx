@@ -4,10 +4,12 @@ import {
   countOpenFlags,
   countRecentMissed,
   getReviewCounts,
+  getSetupChecklist,
   listCheckinsAwaitingReview,
   listFlags,
   unreadMessageCount,
 } from '@kinetic/core';
+import { SetupChecklist } from '@/components/onboarding/SetupChecklist';
 import { EmptyState } from '@/components/states/EmptyState';
 import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,7 +24,7 @@ const cardClass =
 
 // Access is enforced by src/proxy.ts and the membership gate in layout.tsx.
 export default async function AppHome() {
-  const { clientCount, review, flags, attention, unread, missed, toReview } =
+  const { clientCount, review, flags, attention, unread, missed, toReview, setup } =
     await withServerTenant(async (tx, actor) => ({
       clientCount: await tx.client.count(),
       review: await getReviewCounts(tx, actor),
@@ -31,12 +33,14 @@ export default async function AppHome() {
       unread: await unreadMessageCount(tx, actor),
       missed: await countRecentMissed(tx, actor),
       toReview: await listCheckinsAwaitingReview(tx, actor, { limit: ATTENTION_SHOWN }),
+      setup: await getSetupChecklist(tx, actor),
     }));
 
   if (clientCount === 0) {
     return (
       <>
         <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Coach dashboard</h1>
+        <SetupChecklist checklist={setup} />
         <EmptyState
           title="Nothing to review yet"
           body="Clients, check-ins and workouts will show up here as you add them."
@@ -74,6 +78,7 @@ export default async function AppHome() {
   return (
     <>
       <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Coach dashboard</h1>
+      {!setup.dismissed && <SetupChecklist checklist={setup} />}
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>Needs attention ({flags.total})</CardTitle>
@@ -156,6 +161,7 @@ export default async function AppHome() {
           Open the activity lists
         </Link>
       </p>
+      {setup.dismissed && <SetupChecklist checklist={setup} />}
     </>
   );
 }

@@ -87,6 +87,17 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+  /settings/setup-checklist:
+    put:
+      tags: [Settings]
+      summary: "Hide or show the dashboard setup checklist for the calling coach (PRD A5). Body: {hidden: boolean}."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
   /sessions/revoke-all:
     post:
       tags: [Account]
