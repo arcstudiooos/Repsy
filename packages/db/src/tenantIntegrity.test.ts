@@ -694,6 +694,74 @@ describe('set_log_revisions (S3-4)', () => {
   });
 });
 
+describe('messages are immutable (S4-3, PR #2 review I3)', () => {
+  const newMessage = (t: Tenant) =>
+    withSystem(
+      (tx) =>
+        tx.message.create({
+          data: {
+            organizationId: t.orgId,
+            threadId: t.threadId,
+            senderUserId: t.userId,
+            body: 'Keep me',
+          },
+        }),
+      prisma,
+    );
+  const exists = (id: string) =>
+    withSystem((tx) => tx.message.count({ where: { id } }), prisma).then((n) => n === 1);
+
+  it('DELETE fails from tenant and system scope; TRUNCATE fails always', async () => {
+    const row = await newMessage(b);
+    await expect(
+      withTenant(b.orgId, (tx) => tx.message.deleteMany({ where: { id: row.id } }), prisma),
+    ).rejects.toThrow(/messages are immutable/);
+    await expect(
+      withSystem((tx) => tx.message.deleteMany({ where: { id: row.id } }), prisma),
+    ).rejects.toThrow(/messages are immutable/);
+    await expect(
+      withSystem(
+        (tx) => tx.$executeRawUnsafe(`DELETE FROM "${schema}"."messages" WHERE id = '${row.id}'`),
+        prisma,
+      ),
+    ).rejects.toThrow(/messages are immutable/);
+    await expect(
+      prisma.$executeRawUnsafe(`TRUNCATE "${schema}"."messages" CASCADE`),
+    ).rejects.toThrow(/messages are immutable/);
+    await expect(
+      withSystem(async (tx) => {
+        await tx.$executeRaw`SELECT pg_catalog.set_config('app.lawful_erasure', 'on', true)`;
+        await tx.$executeRawUnsafe(`TRUNCATE "${schema}"."messages" CASCADE`);
+      }, prisma),
+    ).rejects.toThrow(/messages are immutable/);
+    expect(await exists(row.id)).toBe(true);
+  });
+
+  it('marking a message read still works', async () => {
+    const row = await newMessage(b);
+    const n = await withTenant(
+      b.orgId,
+      (tx) => tx.message.updateMany({ where: { id: row.id }, data: { readAt: new Date() } }),
+      prisma,
+    );
+    expect(n.count).toBe(1);
+  });
+
+  it('lawful erasure (transaction-local app.lawful_erasure) may delete a row', async () => {
+    const row = await newMessage(b);
+    await withSystem(async (tx) => {
+      await tx.$executeRaw`SELECT pg_catalog.set_config('app.lawful_erasure', 'on', true)`;
+      await tx.message.deleteMany({ where: { id: row.id } });
+    }, prisma);
+    expect(await exists(row.id)).toBe(false);
+    // The flag is transaction-local: the next transaction is guarded again.
+    const next = await newMessage(b);
+    await expect(
+      withSystem((tx) => tx.message.deleteMany({ where: { id: next.id } }), prisma),
+    ).rejects.toThrow(/messages are immutable/);
+  });
+});
+
 describe('session version lock (D-002 #6)', () => {
   it('a locked workout version can not be replaced or cleared, even from system scope', async () => {
     const other = await withSystem(

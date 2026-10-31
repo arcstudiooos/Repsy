@@ -835,8 +835,9 @@ model ConversationThread {
   @@map("conversation_threads")
 }
 
-/// A text message (D-008 #1): immutable except `readAt` (trigger, migration 000025). The body never reaches logs,
-/// analytics or audit. `clientMessageId` makes a retried send idempotent.
+/// A text message (D-008 #1): immutable except `readAt` (trigger, migration 000025); DELETE only under lawful
+/// erasure and never TRUNCATE (migration 000030). The body never reaches logs, analytics or audit.
+/// `clientMessageId` makes a retried send idempotent.
 model Message {
   id              String    @id @default(uuid()) @db.Uuid
   organizationId  String    @map("organization_id") @db.Uuid
@@ -1000,7 +1001,8 @@ enum DeletionStatus {
 
 /// A request to erase a client's data in one organization (S5-3, D-008 #16, D-010 #4): by the client or the
 /// organization's owner, verified by a platform admin, then run by the worker (`deletions.run`). `legalHold` blocks
-/// the run. One open request per client (partial unique index, migration).
+/// the run. One open request per client (partial unique index, migration). A tenant transaction may only read rows
+/// and file one in its initial `requested` state; every other write is system scope (RLS, migration 000030).
 model DeletionRequest {
   id              String         @id @default(uuid()) @db.Uuid
   organizationId  String         @map("organization_id") @db.Uuid
@@ -1029,7 +1031,8 @@ model DeletionRequest {
 }
 
 /// Explicit, audited platform-admin access to one client's data (S5-3, D-006 roles, D-008 #19): a reason and a
-/// 24-hour expiry. Without an unexpired, unrevoked grant an admin can't read client data.
+/// 24-hour expiry. Without an unexpired, unrevoked grant an admin can't read client data. The organization may read
+/// its grants; only system scope writes them (RLS, migration 000030).
 model SupportAccessGrant {
   id             String    @id @default(uuid()) @db.Uuid
   organizationId String    @map("organization_id") @db.Uuid
