@@ -482,3 +482,16 @@ export {
   MATCH_NAMES_MAX,
   type ExerciseMatch,
 } from './programs/import';
+export {
+  listAlternatives,
+  setAlternatives,
+  MAX_ALTERNATIVES,
+  type AlternativeView,
+} from './exercises/alternatives';
+export {
+  swapExercise,
+  undoSwap,
+  SWAP_REASONS,
+  type SwapReason,
+  type SwapView,
+} from './sessions/swaps';

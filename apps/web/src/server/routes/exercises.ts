@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { createExercise, searchExercises, TRACKING_TYPES } from '@kinetic/core';
+import {
+  createExercise,
+  listAlternatives,
+  searchExercises,
+  setAlternatives,
+  TRACKING_TYPES,
+} from '@kinetic/core';
 import { ApiResult, type RouteDef } from '../api';
 
 // Unknown keys (including any `organizationId`) are stripped by Zod and never read.
@@ -37,4 +43,23 @@ export const exercisesPostRoute: RouteDef<typeof createSchema, true> = {
     const created = await tenant((tx) => createExercise(tx, actor, input, { requestId }));
     return new ApiResult(created, { status: 201 });
   },
+};
+
+/** `GET /api/v1/exercises/:id/alternatives` (PRD C4). */
+export const exerciseAlternativesGetRoute: RouteDef<undefined, true> = {
+  can: 'exercise:read',
+  handler: ({ actor, params, tenant }) =>
+    tenant((tx) => listAlternatives(tx, actor, params.id ?? '')),
+};
+
+const alternativesSchema = z.object({ alternativeIds: z.array(z.string().max(64)).max(10) });
+
+/** `PUT /api/v1/exercises/:id/alternatives`: replace the list (up to 5, same tracking type). */
+export const exerciseAlternativesPutRoute: RouteDef<typeof alternativesSchema, true> = {
+  can: 'exercise:create',
+  input: alternativesSchema,
+  handler: ({ actor, input, params, requestId, tenant }) =>
+    tenant((tx) =>
+      setAlternatives(tx, actor, params.id ?? '', input.alternativeIds, { requestId }),
+    ),
 };

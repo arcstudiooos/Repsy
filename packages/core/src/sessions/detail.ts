@@ -6,10 +6,12 @@ import { EDIT_WINDOW_MS } from '../logging/schema';
 import { toSetLogValue, type RevisionValues, type SetLogValue } from '../logging/values';
 import type { Units } from '../units';
 import { isUuid } from '../uuid';
+import { alternativesFor, type AlternativeView } from '../exercises/alternatives';
 import { exerciseBestsBefore, type ExerciseBest } from '../progress/records';
 import { getExercisePerformance, type PreviousPerformance } from './history';
 import { sessionScope, summarize, SUMMARY_SELECT } from './read';
 import { resolveSessionWorkout } from './resolve';
+import { swapsForSession, type SwapView } from './swaps';
 import type { SessionSummary, WorkoutVersionView } from './types';
 
 export type { PreviousPerformance };
@@ -40,6 +42,10 @@ export interface SessionDetail {
   previous: Record<string, PreviousPerformance>;
   /** Per exerciseId: the client's bests from other completed sessions, for PR badges (PRD D11). */
   bests?: Record<string, ExerciseBest>;
+  /** Per workout-version exercise id: the alternative done instead (PRD D8). */
+  swaps?: Record<string, SwapView>;
+  /** Per planned exerciseId: the coach's alternatives (PRD C4), for the swap menu. */
+  alternatives?: Record<string, AlternativeView[]>;
   client: { id: string; name: string; preferredUnits: Units; timezone: string };
   revisions: SetLogRevisionView[];
   /** Client actors on a completed or skipped session: when their edit window closes (`submittedAt` + 24h). */
@@ -129,18 +135,15 @@ export async function getSessionDetail(
       ? new Date(row.submittedAt.getTime() + EDIT_WINDOW_MS).toISOString()
       : null;
 
-  const previous = await getExercisePerformance(
-    tx,
-    row.clientId,
-    workout.exercises.map((e) => e.exerciseId),
-    { excludeSessionId: row.id },
-  );
-  const bests = await exerciseBestsBefore(
-    tx,
-    row.clientId,
-    workout.exercises.map((e) => e.exerciseId),
-    row.id,
-  );
+  const swaps = await swapsForSession(tx, row.id);
+  const plannedIds = workout.exercises.map((e) => e.exerciseId);
+  // "Last time" and PR bests also for the alternatives done instead.
+  const performedIds = [...plannedIds, ...Object.values(swaps).map((x) => x.exerciseId)];
+  const previous = await getExercisePerformance(tx, row.clientId, performedIds, {
+    excludeSessionId: row.id,
+  });
+  const bests = await exerciseBestsBefore(tx, row.clientId, performedIds, row.id);
+  const alternatives = await alternativesFor(tx, plannedIds);
 
   return {
     session: { ...summary, comment: row.comment, workoutVersionId: row.workoutVersionId },
@@ -152,6 +155,8 @@ export async function getSessionDetail(
     })),
     previous,
     bests,
+    swaps,
+    alternatives,
     client,
     revisions,
     editableUntil,

@@ -75,6 +75,13 @@ function Section({
                     <span>{formatSessionDate(item.scheduledLocalDate, today)}</span>
                     <SessionStateBadge state={item.state} overdue={false} />
                     {item.loggedByCoach && <LoggedByCoachBadge />}
+                    {item.swapCount > 0 && (
+                      <span className="rounded-full bg-canvas px-2 py-0.5 text-sm text-secondary">
+                        {item.swapCount === 1
+                          ? '1 exercise swapped'
+                          : `${item.swapCount} exercises swapped`}
+                      </span>
+                    )}
                   </div>
                 </li>
               ))}

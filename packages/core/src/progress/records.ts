@@ -2,6 +2,7 @@ import type { TenantTx } from '@kinetic/db';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';
+import { loadClientSwaps } from '../sessions/swaps';
 import { fromDbDate } from '../sessions/read';
 import { isUuid } from '../uuid';
 import { E1RM_MAX_REPS, estimateOneRepMax, type ExerciseBest } from './pr';
@@ -102,13 +103,16 @@ async function loadLogs(
   rows: LogRow[];
   exercises: Map<string, Pick<ExerciseRecords, 'name' | 'trackingType'>>;
 }> {
+  // Sets count for the exercise actually done: a swap (PRD D8) credits the alternative.
+  const swaps = await loadClientSwaps(tx, clientId);
   const logs = await tx.setLog.findMany({
     where: {
       session: { is: { clientId, state: 'completed' } },
-      ...(exerciseId ? { workoutVersionExercise: { is: { exerciseId } } } : {}),
+      ...(exerciseId ? swaps.where([exerciseId]) : {}),
     },
     select: {
       sessionId: true,
+      workoutVersionExerciseId: true,
       reps: true,
       weightKg: true,
       durationSeconds: true,
@@ -120,20 +124,36 @@ async function loadLogs(
     },
   });
   const exercises = new Map<string, Pick<ExerciseRecords, 'name' | 'trackingType'>>();
+  const performedIds = new Set<string>();
   const rows = logs.map((l) => {
-    const ex = l.workoutVersionExercise.exercise;
-    exercises.set(ex.id, { name: ex.name, trackingType: ex.trackingType });
+    const planned = l.workoutVersionExercise.exercise;
+    exercises.set(planned.id, { name: planned.name, trackingType: planned.trackingType });
+    const id = swaps.performed(l.sessionId, l.workoutVersionExerciseId, planned.id);
+    performedIds.add(id);
     return {
       sessionId: l.sessionId,
       localDate: fromDbDate(l.session.scheduledLocalDate),
-      exerciseId: ex.id,
+      exerciseId: id,
       reps: l.reps,
       weightKg: num(l.weightKg),
       durationSeconds: l.durationSeconds,
       distanceM: num(l.distanceM),
     };
   });
-  return { rows, exercises };
+  const missing = [...performedIds].filter((id) => !exercises.has(id));
+  if (missing.length) {
+    for (const e of await tx.exercise.findMany({
+      where: { id: { in: missing } },
+      select: { id: true, name: true, trackingType: true },
+    })) {
+      exercises.set(e.id, { name: e.name, trackingType: e.trackingType });
+    }
+  }
+  // Planned exercises whose every set was swapped away have no rows; drop their names too.
+  for (const id of [...exercises.keys()]) if (!performedIds.has(id)) exercises.delete(id);
+  // A history for one exercise keeps only the sets performed as it.
+  const kept = exerciseId ? rows.filter((r) => r.exerciseId === exerciseId) : rows;
+  return { rows: kept, exercises };
 }
 
 /** Earlier date wins a tie, so a record is credited to the session that first set it. */
@@ -320,27 +340,36 @@ export async function exerciseBestsBefore(
 ): Promise<Record<string, ExerciseBest>> {
   const ids = [...new Set(exerciseIds)];
   if (ids.length === 0) return {};
-  const rows = await tx.setLog.groupBy({
-    by: ['workoutVersionExerciseId'],
+  const swaps = await loadClientSwaps(tx, clientId);
+  const performedWhere = swaps.where(ids);
+  const sets = await tx.setLog.findMany({
     where: {
       sessionId: { not: excludeSessionId },
       session: { is: { clientId, state: 'completed' } },
-      workoutVersionExercise: { is: { exerciseId: { in: ids } } },
+      ...performedWhere,
     },
-    _max: { weightKg: true, reps: true, durationSeconds: true, distanceM: true },
+    select: {
+      sessionId: true,
+      workoutVersionExerciseId: true,
+      weightKg: true,
+      reps: true,
+      durationSeconds: true,
+      distanceM: true,
+      workoutVersionExercise: { select: { exerciseId: true } },
+    },
   });
-  // groupBy is per workout-version exercise: map each to its exercise and fold the maxima.
-  const wves = await tx.workoutVersionExercise.findMany({
-    where: { id: { in: rows.map((r) => r.workoutVersionExerciseId) } },
-    select: { id: true, exerciseId: true },
-  });
-  const exerciseOf = new Map(wves.map((w) => [w.id, w.exerciseId]));
+  const wanted = new Set(ids);
   const out: Record<string, ExerciseBest> = {};
   const max = (a: number | null, b: number | null) =>
     a === null ? b : b === null ? a : Math.max(a, b);
-  for (const r of rows) {
-    const ex = exerciseOf.get(r.workoutVersionExerciseId);
-    if (!ex) continue;
+  for (const s of sets) {
+    // Credited to the exercise actually done (a swap credits the alternative, PRD D8).
+    const ex = swaps.performed(
+      s.sessionId,
+      s.workoutVersionExerciseId,
+      s.workoutVersionExercise.exerciseId,
+    );
+    if (!wanted.has(ex)) continue;
     const prev = out[ex] ?? {
       heaviestKg: null,
       estimatedOneRepMaxKg: null,
@@ -348,34 +377,18 @@ export async function exerciseBestsBefore(
       longestSeconds: null,
       longestMeters: null,
     };
+    const weight = num(s.weightKg);
+    const est =
+      weight !== null && weight > 0 && s.reps !== null && s.reps >= 1 && s.reps <= E1RM_MAX_REPS
+        ? estimateOneRepMax(weight, s.reps)
+        : null;
     out[ex] = {
-      ...prev,
-      heaviestKg: max(prev.heaviestKg, num(r._max.weightKg)),
-      mostReps: max(prev.mostReps, r._max.reps),
-      longestSeconds: max(prev.longestSeconds, r._max.durationSeconds),
-      longestMeters: max(prev.longestMeters, num(r._max.distanceM)),
+      heaviestKg: max(prev.heaviestKg, weight),
+      estimatedOneRepMaxKg: max(prev.estimatedOneRepMaxKg, est),
+      mostReps: max(prev.mostReps, s.reps),
+      longestSeconds: max(prev.longestSeconds, s.durationSeconds),
+      longestMeters: max(prev.longestMeters, num(s.distanceM)),
     };
-  }
-  // The estimated 1RM needs weight and reps from the same set.
-  const sets = await tx.setLog.findMany({
-    where: {
-      sessionId: { not: excludeSessionId },
-      session: { is: { clientId, state: 'completed' } },
-      workoutVersionExercise: { is: { exerciseId: { in: ids } } },
-      weightKg: { gt: 0 },
-      reps: { gte: 1, lte: E1RM_MAX_REPS },
-    },
-    select: {
-      weightKg: true,
-      reps: true,
-      workoutVersionExercise: { select: { exerciseId: true } },
-    },
-  });
-  for (const s of sets) {
-    const ex = s.workoutVersionExercise.exerciseId;
-    const est = estimateOneRepMax(num(s.weightKg), s.reps);
-    if (est === null || !out[ex]) continue;
-    out[ex].estimatedOneRepMaxKg = max(out[ex].estimatedOneRepMaxKg, est);
   }
   return out;
 }

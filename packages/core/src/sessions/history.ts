@@ -5,6 +5,7 @@ import { DomainError } from '../errors';
 import { toSetLogValue, type SetLogValue } from '../logging/values';
 import { isUuid } from '../uuid';
 import { fromDbDate } from './read';
+import { loadClientSwaps } from './swaps';
 
 /** The most exercise ids one history request may ask for (one workout holds at most 30 exercises). */
 export const MAX_HISTORY_EXERCISES = 30;
@@ -27,12 +28,14 @@ export async function getExercisePerformance(
   opts: { excludeSessionId?: string } = {},
 ): Promise<Record<string, PreviousPerformance>> {
   const previous: Record<string, PreviousPerformance> = {};
+  // "Last time" follows the exercise actually done: a swap (PRD D8) counts for the alternative.
+  const swaps = await loadClientSwaps(tx, clientId);
   for (const exerciseId of new Set(exerciseIds)) {
     const latest = await tx.setLog.findFirst({
       where: {
         ...(opts.excludeSessionId ? { sessionId: { not: opts.excludeSessionId } } : {}),
         session: { is: { clientId, state: 'completed' } },
-        workoutVersionExercise: { is: { exerciseId } },
+        ...swaps.where([exerciseId]),
       },
       orderBy: [{ session: { completedAt: 'desc' } }, { sessionId: 'desc' }],
       select: {

@@ -9,6 +9,8 @@ import {
   reviseSetLogs,
   skipSession,
   startSession,
+  swapExercise,
+  undoSwap,
   upsertSetLogs,
 } from '@kinetic/core';
 import { ApiResult, type RouteDef } from '../api';
@@ -146,4 +148,27 @@ export const sessionRescheduleRoute: RouteDef<typeof rescheduleSchema, true> = {
   input: rescheduleSchema,
   handler: ({ actor, input, params, requestId, tenant }) =>
     tenant((tx) => rescheduleSession(tx, actor, params.id ?? '', input, { requestId })),
+};
+
+const swapSchema = z.object({
+  workoutVersionExerciseId: z.string().max(64),
+  exerciseId: z.string().max(64),
+  reason: z.string().max(40),
+});
+
+/** `POST /api/v1/sessions/:id/swaps` (PRD D8): do one of the coach's alternatives instead of a planned exercise. */
+export const sessionSwapRoute: RouteDef<typeof swapSchema, true> = {
+  can: 'session:log',
+  input: swapSchema,
+  handler: ({ actor, input, params, requestId, tenant }) =>
+    tenant((tx) => swapExercise(tx, actor, params.id ?? '', input, { requestId })),
+};
+
+/** `DELETE /api/v1/sessions/:id/swaps/:wveId`: back to the planned exercise. */
+export const sessionSwapDeleteRoute: RouteDef<undefined, true> = {
+  can: 'session:log',
+  handler: async ({ actor, params, requestId, tenant }) => {
+    await tenant((tx) => undoSwap(tx, actor, params.id ?? '', params.wveId ?? '', { requestId }));
+    return new ApiResult(null, { status: 204 });
+  },
 };

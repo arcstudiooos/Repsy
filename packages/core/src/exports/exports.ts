@@ -363,6 +363,38 @@ async function nutritionRows(tx: TenantTx, clientId?: string): Promise<Rows> {
 
 const NUTRITION_HEADER = ['client_id', 'local_date', 'calories', 'protein_g', 'carbs_g', 'fat_g'];
 
+async function swapRows(tx: TenantTx, clientId?: string): Promise<Rows> {
+  const rows = await tx.sessionExerciseSwap.findMany({
+    where: clientId ? { session: { is: { clientId } } } : {},
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    select: {
+      sessionId: true,
+      reason: true,
+      createdAt: true,
+      session: { select: { clientId: true } },
+      exercise: { select: { name: true } },
+      workoutVersionExercise: { select: { exercise: { select: { name: true } } } },
+    },
+  });
+  return rows.map((r) => [
+    r.session.clientId,
+    r.sessionId,
+    r.workoutVersionExercise.exercise.name,
+    r.exercise.name,
+    r.reason,
+    r.createdAt.toISOString(),
+  ]);
+}
+
+const SWAP_HEADER = [
+  'client_id',
+  'session_id',
+  'planned_exercise',
+  'done_instead',
+  'reason',
+  'created_at',
+];
+
 const HABIT_HEADER = ['client_id', 'habit', 'kind', 'local_date', 'value', 'target', 'unit'];
 
 const METRIC_HEADER = [
@@ -465,6 +497,7 @@ export async function buildExportFiles(
       file('metrics.csv', METRIC_HEADER, await metricRows(tx)),
       file('habits.csv', HABIT_HEADER, await habitRows(tx)),
       file('nutrition.csv', NUTRITION_HEADER, await nutritionRows(tx)),
+      file('exercise_swaps.csv', SWAP_HEADER, await swapRows(tx)),
     ];
   }
   const clientId = job.clientId as string;
@@ -512,6 +545,7 @@ export async function buildExportFiles(
     file('metrics.csv', METRIC_HEADER, await metricRows(tx, clientId)),
     file('habits.csv', HABIT_HEADER, await habitRows(tx, clientId)),
     file('nutrition.csv', NUTRITION_HEADER, await nutritionRows(tx, clientId)),
+    file('exercise_swaps.csv', SWAP_HEADER, await swapRows(tx, clientId)),
     file(
       'messages.csv',
       ['sent_at', 'from', 'body', 'read_at'],

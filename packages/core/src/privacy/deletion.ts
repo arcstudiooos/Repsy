@@ -179,6 +179,7 @@ export async function eraseClientData(
   await tx.$executeRaw`SELECT pg_catalog.set_config('app.lawful_erasure', 'on', true)`;
   await tx.setLogRevision.deleteMany({ where: ofSessions });
   await tx.setLog.deleteMany({ where: ofSessions });
+  await tx.sessionExerciseSwap.deleteMany({ where: ofSessions });
   await tx.reviewFlag.deleteMany({ where: inClient });
   const messageIds = (
     await tx.message.findMany({

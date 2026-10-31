@@ -47,6 +47,7 @@ import {
 import { FinishDialog, type FinishBody } from './FinishDialog';
 import { RestTimer } from './RestTimer';
 import { SetRow, type RowStatus } from './SetRow';
+import { SwapButton, SwapNote } from './SwapControls';
 
 type Exercise = SessionDetail['workout']['exercises'][number];
 /** Rest when the program sets none (PRD D6). */
@@ -176,7 +177,27 @@ export function WorkoutLogger({
     isLogging(initial.session.state) &&
     !isLogging(detail.session.state) &&
     Boolean(sync?.rejected.some((r) => r.kind !== 'logs'));
-  const { workout } = detail;
+  // A swapped exercise (PRD D8) shows, and counts "last time" and PRs, as the alternative done instead.
+  const swaps = detail.swaps ?? {};
+  const workout = {
+    ...detail.workout,
+    exercises: detail.workout.exercises.map((e) => {
+      const s = swaps[e.id];
+      return s
+        ? {
+            ...e,
+            plannedExerciseId: e.exerciseId,
+            exerciseId: s.exerciseId,
+            name: s.name,
+            instructions: s.instructions,
+          }
+        : { ...e, plannedExerciseId: e.exerciseId };
+    }),
+  };
+  /** Any set of this exercise logged or typed: a swap is only offered before that. */
+  const hasSets = (wveId: string) =>
+    detail.logs.some((l) => l.workoutVersionExerciseId === wveId && !isBlank(l)) ||
+    Object.entries(drafts).some(([k, d]) => k.startsWith(`${wveId}:`) && !isBlankDraft(d));
   const session = finishRefused
     ? { ...detail.session, state: 'in_progress' as const, comment: initial.session.comment }
     : detail.session;
@@ -659,6 +680,14 @@ export function WorkoutLogger({
                 <Card>
                   <CardHeader className="mb-2">
                     <CardTitle as={titleLevel}>{e.name}</CardTitle>
+                    {swaps[e.id] && (
+                      <SwapNote
+                        swap={swaps[e.id]!}
+                        sessionId={session.id}
+                        workoutVersionExerciseId={e.id}
+                        canUndo={false}
+                      />
+                    )}
                   </CardHeader>
                   <CardContent>
                     {sets.length === 0 ? (
@@ -702,6 +731,27 @@ export function WorkoutLogger({
                 <Card>
                   <CardHeader className="mb-3">
                     <CardTitle as={titleLevel}>{e.name}</CardTitle>
+                    {swaps[e.id] ? (
+                      <SwapNote
+                        swap={swaps[e.id]!}
+                        sessionId={session.id}
+                        workoutVersionExerciseId={e.id}
+                        canUndo={!hasSets(e.id) && online}
+                        onUndone={setDetail}
+                      />
+                    ) : (
+                      (detail.alternatives?.[e.plannedExerciseId]?.length ?? 0) > 0 &&
+                      !hasSets(e.id) && (
+                        <SwapButton
+                          sessionId={session.id}
+                          workoutVersionExerciseId={e.id}
+                          plannedName={e.name}
+                          alternatives={detail.alternatives![e.plannedExerciseId]!}
+                          disabled={!online}
+                          onSwapped={setDetail}
+                        />
+                      )
+                    )}
                     <CardDescription>Target: {describeTarget(e, units)}</CardDescription>
                     {prev && (
                       <CardDescription>

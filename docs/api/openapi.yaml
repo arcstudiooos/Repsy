@@ -637,6 +637,28 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+  /exercises/{id}/alternatives:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Exercises]
+      summary: "The coach's alternatives for an exercise, in order (PRD C4)."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    put:
+      tags: [Exercises]
+      summary: "Replace the alternatives. Body: {alternativeIds: string[]}: at most 5, each a different exercise tracked the same way."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
   /programs:
     get:
       tags: [Programs]
@@ -881,6 +903,34 @@ paths:
         '200': { $ref: '#/components/responses/Ok' }
         '409': { $ref: '#/components/responses/Error' }
         '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /sessions/{id}/swaps:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Sessions]
+      summary: "Do one of the coach's alternatives instead of a planned exercise in a started workout (PRD D8). Body: {workoutVersionExerciseId, exerciseId, reason: no_equipment|equipment_busy|preference|other}. 409 once a set of it is logged."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /sessions/{id}/swaps/{wveId}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+      - { name: wveId, in: path, required: true, schema: { type: string } }
+    delete:
+      tags: [Sessions]
+      summary: "Undo a swap, back to the planned exercise (only before any set of it is logged)."
+      responses:
+        '204': { description: Undone }
+        '409': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }

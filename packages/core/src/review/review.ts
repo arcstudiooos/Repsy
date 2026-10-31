@@ -19,6 +19,8 @@ export interface ReviewItem {
   state: SessionState;
   completedAt: string | null;
   loggedByCoach: boolean;
+  /** Exercises swapped for an alternative in this session (PRD D8). */
+  swapCount: number;
 }
 
 export interface ReviewSection {
@@ -96,6 +98,14 @@ export async function getReviewOverview(
         })
       : [];
     const names = new Map(clients.map((c) => [c.id, c.name]));
+    const swapRows = rows.length
+      ? await tx.sessionExerciseSwap.groupBy({
+          by: ['sessionId'],
+          where: { sessionId: { in: rows.map((r) => r.id) } },
+          _count: { _all: true },
+        })
+      : [];
+    const swapCount = new Map(swapRows.map((r) => [r.sessionId, r._count._all]));
     return {
       count,
       items: summaries.map((s) => ({
@@ -107,6 +117,7 @@ export async function getReviewOverview(
         state: s.state,
         completedAt: s.completedAt,
         loggedByCoach: s.loggedByCoach,
+        swapCount: swapCount.get(s.id) ?? 0,
       })),
     };
   };

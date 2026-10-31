@@ -61,6 +61,7 @@ R2 builds the web-platform features in `docs/competitive/complete-platform-prd.m
 - **E2 trends:** body metrics and exercises get trend charts with 4/12/26/52-week ranges, a crosshair tooltip (pointer or arrow keys) and a table view; body weight shows a 7-day average.
 - **I3 review rules:** owners can turn on extra review rules in Settings: habit slipping, program ending within 7 days, reply time missed and weight change beyond a set band.
 - **C14 program import:** `/app/programs/import` reads a pasted plan or spreadsheet rows, matches exercises to the library for the coach to check, and saves a new template.
+- **C4/D8 alternatives and swaps:** coaches list up to 5 alternatives per exercise in the library; in a started workout a client (or coach) swaps a planned exercise for one before logging it, with a reason. The coach sees the swap on the session and in the review list, and records, "last time" and PR badges credit the exercise actually done (also in exports).
 
 ## What works locally (Sprint 5)
 

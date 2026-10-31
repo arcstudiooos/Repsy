@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/states/EmptyState';
 import { buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { AlternativesEditor } from './AlternativesEditor';
 import { SELECT_CLASS, TRACKING_LABEL } from './labels';
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -174,6 +175,7 @@ export function ExerciseLibrary({
                   <p className="text-sm whitespace-pre-line">{e.instructions}</p>
                 </details>
               )}
+              <AlternativesEditor exercise={e} />
             </li>
           ))}
         </ul>
