@@ -116,14 +116,12 @@ export default async function PortalHome() {
           </Card>
         )}
 
-        {home.hasAssignment && (
-          <Link
-            href="/portal/progress"
-            className={cn(buttonVariants({ variant: 'secondary' }), 'min-h-12 w-full')}
-          >
-            See your progress and personal records
-          </Link>
-        )}
+        <Link
+          href="/portal/progress"
+          className={cn(buttonVariants({ variant: 'secondary' }), 'min-h-12 w-full')}
+        >
+          See your progress and personal records
+        </Link>
       </div>
     </>
   );

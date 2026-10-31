@@ -374,6 +374,21 @@ const CASES: [string, Insert][] = [
       }),
   ],
   [
+    'metric_entries -> clients',
+    (tx, own, parent) =>
+      tx.metricEntry.create({
+        data: {
+          organizationId: own.orgId,
+          clientId: parent.clientId,
+          metric: 'weight',
+          measuredOn: new Date('2026-11-01T00:00:00Z'),
+          value: 70,
+          source: 'client',
+          recordedByUserId: own.userId,
+        },
+      }),
+  ],
+  [
     'review_flags -> clients',
     (tx, own, parent) =>
       tx.reviewFlag.create({

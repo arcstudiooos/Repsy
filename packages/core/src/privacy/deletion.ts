@@ -174,8 +174,8 @@ export async function eraseClientData(
       })
     : 0;
 
-  // Lawful erasure only (migrations 000029-000031): set_log_revisions, messages and committed program history are
-  // otherwise immutable.
+  // Lawful erasure only (migrations 000029-000031, 000033): set_log_revisions, metric_entry_revisions, messages and
+  // committed program history are otherwise immutable.
   await tx.$executeRaw`SELECT pg_catalog.set_config('app.lawful_erasure', 'on', true)`;
   await tx.setLogRevision.deleteMany({ where: ofSessions });
   await tx.setLog.deleteMany({ where: ofSessions });
@@ -190,6 +190,8 @@ export async function eraseClientData(
   await tx.conversationThread.deleteMany({ where: inClient });
   await tx.checkin.deleteMany({ where: inClient });
   await tx.internalNote.deleteMany({ where: inClient });
+  await tx.metricEntryRevision.deleteMany({ where: inClient });
+  await tx.metricEntry.deleteMany({ where: inClient });
   await tx.clientPause.deleteMany({ where: inClient });
   const inviteIds = (await tx.clientInvite.findMany({ where: inClient, select: { id: true } })).map(
     (i) => i.id,

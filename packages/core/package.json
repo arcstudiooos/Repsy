@@ -25,6 +25,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./exercise-options": "./src/exercises/options.ts",
-    "./units": "./src/units.ts"
+    "./units": "./src/units.ts",
+    "./metric-catalog": "./src/progress/metric-catalog.ts"
   }
 }

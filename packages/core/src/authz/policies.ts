@@ -26,6 +26,8 @@ export type Action =
   | 'note:read'
   | 'note:write'
   | 'analytics:read'
+  | 'metric:read'
+  | 'metric:write'
   | 'export:org'
   | 'export:self';
 
@@ -57,6 +59,9 @@ const POLICY: Record<Action, readonly Role[]> = {
   'note:read': ['owner', 'coach'],
   'note:write': ['owner', 'coach'],
   'analytics:read': ['owner', 'coach'],
+  // Body metrics (PRD E1): clients too, scoped by core to their own record.
+  'metric:read': ['owner', 'coach', 'client'],
+  'metric:write': ['owner', 'coach', 'client'],
   // D-010 #4: the owner exports the organization; a client exports their own data.
   'export:org': ['owner'],
   'export:self': ['client'],

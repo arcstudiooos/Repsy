@@ -21,6 +21,7 @@ tags:
   - name: Notes
   - name: Organization
   - name: Programs
+  - name: Progress
   - name: Review
   - name: Settings
   - name: Workouts
@@ -279,6 +280,37 @@ paths:
         content: { application/json: { schema: { type: object } } }
       responses:
         '201': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /clients/{id}/metrics:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Progress]
+      summary: "Body metrics per metric, newest first (PRD E1). A client reads only their own."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Progress]
+      summary: "Record or change one day's value in the client's units; a coach changing a value gives a reason."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [metric, measuredOn, value]
+              properties:
+                metric: { type: string, enum: [weight, body_fat, waist, hips, chest, arm, thigh, resting_hr, steps] }
+                measuredOn: { type: string, format: date }
+                value: { type: number }
+                reason: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
         '422': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }

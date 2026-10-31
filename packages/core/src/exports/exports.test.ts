@@ -88,6 +88,7 @@ describe('exports (S5-2)', () => {
     expect(Object.keys(csv).sort()).toEqual([
       'checkins.csv',
       'clients.csv',
+      'metrics.csv',
       'sessions.csv',
       'set_logs.csv',
     ]);
@@ -120,6 +121,7 @@ describe('exports (S5-2)', () => {
     expect(Object.keys(csv).sort()).toEqual([
       'checkins.csv',
       'messages.csv',
+      'metrics.csv',
       'profile.csv',
       'sessions.csv',
       'set_logs.csv',

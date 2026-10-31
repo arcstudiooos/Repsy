@@ -87,6 +87,8 @@ model User {
   resolvedFlags            ReviewFlag[]            @relation("FlagResolver")
   createdFlags             ReviewFlag[]            @relation("FlagCreator")
   internalNotes            InternalNote[]          @relation("NoteAuthor")
+  recordedMetrics          MetricEntry[]           @relation("MetricRecorder")
+  metricRevisions          MetricEntryRevision[]   @relation("MetricReviser")
   exportJobs               ExportJob[]             @relation("ExportRequester")
   deletionSubjects         DeletionRequest[]       @relation("DeletionSubject")
   deletionRequested        DeletionRequest[]       @relation("DeletionRequester")
@@ -197,6 +199,8 @@ model Organization {
   exportJobs              ExportJob[]
   deletionRequests        DeletionRequest[]
   supportAccessGrants     SupportAccessGrant[]
+  metricEntries           MetricEntry[]
+  metricEntryRevisions    MetricEntryRevision[]
 
   @@map("organizations")
 }
@@ -318,6 +322,8 @@ model Client {
   exportJobs      ExportJob[]
   deletionRequests DeletionRequest[]
   supportGrants   SupportAccessGrant[]
+  metricEntries   MetricEntry[]
+  metricEntryRevisions MetricEntryRevision[]
 
   @@unique([organizationId, email])
   @@unique([organizationId, userId])
@@ -933,6 +939,81 @@ model InternalNote {
   @@index([clientId, createdAt])
   @@index([organizationId])
   @@map("internal_notes")
+}
+
+enum BodyMetric {
+  weight
+  body_fat
+  waist
+  hips
+  chest
+  arm
+  thigh
+  resting_hr
+  steps
+
+  @@map("body_metric")
+}
+
+enum MetricSource {
+  client
+  coach
+
+  @@map("metric_source")
+}
+
+/// One body metric value for a client on a client-local date (PRD E1): at most one per metric and day. Values are
+/// canonical (kg, cm, %, bpm, steps) and shown in the viewer's units. A change to an existing value adds an
+/// append-only MetricEntryRevision. The value range CHECK lives in the migration; per-metric ranges are in core.
+model MetricEntry {
+  id               String       @id @default(uuid()) @db.Uuid
+  organizationId   String       @map("organization_id") @db.Uuid
+  clientId         String       @map("client_id") @db.Uuid
+  metric           BodyMetric
+  /// The client-local calendar date the value was measured on.
+  measuredOn       DateTime     @map("measured_on") @db.Date
+  value            Decimal      @db.Decimal(10, 3)
+  /// Who recorded the current value.
+  source           MetricSource
+  recordedByUserId String       @map("recorded_by_user_id") @db.Uuid
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization          @relation(fields: [organizationId], references: [id])
+  client       Client                @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  recordedBy   User                  @relation("MetricRecorder", fields: [recordedByUserId], references: [id])
+  revisions    MetricEntryRevision[]
+
+  @@unique([clientId, metric, measuredOn])
+  /// Target of metric_entry_revisions' composite tenant FK.
+  @@unique([id, organizationId])
+  @@index([organizationId])
+  @@map("metric_entries")
+}
+
+/// One change to an existing metric value (PRD E1), append-only like set_log_revisions: the database rejects UPDATE,
+/// DELETE and TRUNCATE except lawful erasure. A coach changing a value needs a reason, shown to coaches only.
+model MetricEntryRevision {
+  id              String       @id @default(uuid()) @db.Uuid
+  organizationId  String       @map("organization_id") @db.Uuid
+  clientId        String       @map("client_id") @db.Uuid
+  entryId         String       @map("entry_id") @db.Uuid
+  beforeValue     Decimal      @map("before_value") @db.Decimal(10, 3)
+  afterValue      Decimal      @map("after_value") @db.Decimal(10, 3)
+  role            MetricSource
+  reason          String?
+  revisedByUserId String       @map("revised_by_user_id") @db.Uuid
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  entry        MetricEntry  @relation(fields: [entryId, organizationId], references: [id, organizationId])
+  revisedBy    User         @relation("MetricReviser", fields: [revisedByUserId], references: [id])
+
+  @@index([entryId, createdAt])
+  @@index([organizationId])
+  @@index([clientId])
+  @@map("metric_entry_revisions")
 }
 
 enum ExportScope {
