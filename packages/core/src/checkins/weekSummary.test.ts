@@ -77,8 +77,12 @@ describe('check-in week summary (PRD F8)', () => {
           setByUserId: w.coach.userId,
         },
       });
-      await tx.nutritionLog.create({ data: { ...base, localDate: d('2026-11-05'), calories: 2100 } });
-      await tx.nutritionLog.create({ data: { ...base, localDate: d('2026-11-06'), calories: 2600 } });
+      await tx.nutritionLog.create({
+        data: { ...base, localDate: d('2026-11-05'), calories: 2100 },
+      });
+      await tx.nutritionLog.create({
+        data: { ...base, localDate: d('2026-11-06'), calories: 2600 },
+      });
     }, prisma);
 
     const summary = await runAs(prisma, w.client, (tx) =>
