@@ -63,6 +63,7 @@ R2 builds the web-platform features in `docs/competitive/complete-platform-prd.m
 - **C14 program import:** `/app/programs/import` reads a pasted plan or spreadsheet rows, matches exercises to the library for the coach to check, and saves a new template.
 - **C4/D8 alternatives and swaps:** coaches list up to 5 alternatives per exercise in the library; in a started workout a client (or coach) swaps a planned exercise for one before logging it, with a reason. The coach sees the swap on the session and in the review list, and records, "last time" and PR badges credit the exercise actually done (also in exports).
 - **B18/E9 goals:** coaches set goals on a body measurement, a lift (estimated 1RM or heaviest) or a habit's completion, with a target date; progress comes from recorded data with an achieved, on track or behind label, shown on the client Overview and the portal Progress page (also in exports).
+- **F8 week summary:** every check-in shows the week before as facts already logged (workouts done of planned, personal records, measurement changes, habit days, nutrition on-target days), to the coach beside the answers and to the client above the form.
 
 ## What works locally (Sprint 5)
 

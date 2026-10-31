@@ -510,3 +510,4 @@ export {
   type ExerciseMeasure,
   type CreateGoalInput,
 } from './goals/goals';
+export { checkinWeekSummary, type CheckinWeekSummary } from './checkins/weekSummary';

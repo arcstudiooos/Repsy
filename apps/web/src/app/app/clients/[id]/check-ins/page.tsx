@@ -1,14 +1,14 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { checkinStreak, listCheckins, weekActivityBefore } from '@kinetic/core';
+import { checkinStreak, checkinWeekSummary, getSettings, listCheckins } from '@kinetic/core';
 import { CheckinAnswersList } from '@/components/checkins/CheckinAnswersList';
 import { EmptyState } from '@/components/states/EmptyState';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { plural } from '@/lib/session-format';
 import { withServerTenant } from '@/server/serverActor';
 import { formatDate } from '../../StatusBadge';
 import { loadClient } from '../data';
 import { CheckinSchedule } from './CheckinSchedule';
+import { WeekSummary } from '@/components/checkins/WeekSummary';
 import { MarkReviewedButton } from './MarkReviewedButton';
 
 export const metadata: Metadata = { title: 'Check-ins | Kinetic' };
@@ -23,7 +23,7 @@ const WITH_ACTIVITY = 12;
 
 export default async function ClientCheckinsPage({ params }: { params: Promise<{ id: string }> }) {
   const client = await loadClient((await params).id);
-  const { items, streak } = await withServerTenant(async (tx, actor) => {
+  const { items, streak, units } = await withServerTenant(async (tx, actor) => {
     const checkins = await listCheckins(tx, actor, { clientId: client.id });
     const out = [];
     for (const [i, c] of checkins.entries()) {
@@ -31,11 +31,15 @@ export default async function ClientCheckinsPage({ params }: { params: Promise<{
         checkin: c,
         activity:
           i < WITH_ACTIVITY
-            ? await weekActivityBefore(tx, actor, client.id, c.periodLocalDate)
+            ? await checkinWeekSummary(tx, actor, client.id, c.periodLocalDate)
             : null,
       });
     }
-    return { items: out, streak: await checkinStreak(tx, actor, { clientId: client.id }) };
+    return {
+      items: out,
+      streak: await checkinStreak(tx, actor, { clientId: client.id }),
+      units: (await getSettings(tx, actor)).profile?.units ?? client.preferredUnits,
+    };
   });
   return (
     <div className="flex flex-col gap-6">
@@ -92,24 +96,7 @@ export default async function ClientCheckinsPage({ params }: { params: Promise<{
                     <p className="text-secondary">No answers yet.</p>
                   )}
                   {activity && (
-                    <section aria-label="Week before" className="text-sm">
-                      <h4 className="mb-1 font-semibold">Week before</h4>
-                      <p className="text-secondary">
-                        {formatDate(activity.fromLocalDate)} to {formatDate(activity.toLocalDate)}
-                      </p>
-                      {activity.total === 0 ? (
-                        <p>No workouts scheduled.</p>
-                      ) : (
-                        <ul>
-                          <li>
-                            {activity.completed} of {plural(activity.total, 'workout', 'workouts')}{' '}
-                            completed
-                          </li>
-                          <li>{activity.skipped} skipped</li>
-                          <li>{activity.missed} missed</li>
-                        </ul>
-                      )}
-                    </section>
+                    <WeekSummary summary={activity} units={units} heading="Week before" />
                   )}
                 </CardContent>
               </Card>
