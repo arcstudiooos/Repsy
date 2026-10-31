@@ -205,6 +205,8 @@ model Organization {
   metricEntryRevisions    MetricEntryRevision[]
   habits                  Habit[]
   habitLogs               HabitLog[]
+  clientTags              ClientTag[]
+  clientTagLinks          ClientTagLink[]
 
   @@map("organizations")
 }
@@ -330,6 +332,7 @@ model Client {
   metricEntryRevisions MetricEntryRevision[]
   habits          Habit[]
   habitLogs       HabitLog[]
+  tagLinks        ClientTagLink[]
 
   @@unique([organizationId, email])
   @@unique([organizationId, userId])
@@ -1088,6 +1091,52 @@ model HabitLog {
   @@index([clientId, localDate])
   @@index([organizationId])
   @@map("habit_logs")
+}
+
+enum TagColor {
+  teal
+  blue
+  purple
+  orange
+  red
+  gray
+
+  @@map("tag_color")
+}
+
+/// A workspace tag for grouping clients (PRD B4), e.g. "Online" or "Fat loss". Names are unique per organization,
+/// case-insensitively (index in the migration).
+model ClientTag {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  name           String
+  color          TagColor @default(teal)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  links        ClientTagLink[]
+
+  /// Target of client_tag_links' composite tenant FK.
+  @@unique([id, organizationId])
+  @@index([organizationId])
+  @@map("client_tags")
+}
+
+/// A tag on a client (PRD B4). Removing the tag or the client's tag removes the link.
+model ClientTagLink {
+  organizationId String   @map("organization_id") @db.Uuid
+  clientId       String   @map("client_id") @db.Uuid
+  tagId          String   @map("tag_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  tag          ClientTag    @relation(fields: [tagId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@id([clientId, tagId])
+  @@index([tagId])
+  @@index([organizationId])
+  @@map("client_tag_links")
 }
 
 enum ExportScope {

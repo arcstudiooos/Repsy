@@ -204,11 +204,15 @@ export async function createClient(
 export async function listClients(
   tx: TenantTx,
   actor: ActorContext,
-  query: { q?: string; status?: ClientStatus; cursor?: string },
+  query: { q?: string; status?: ClientStatus; cursor?: string; tagId?: string },
 ): Promise<{ items: ClientView[]; nextCursor: string | null }> {
   assertCan(actor, 'client:read');
   const and: Record<string, unknown>[] = [];
   if (query.status) and.push({ status: query.status });
+  if (query.tagId !== undefined) {
+    if (!isUuid(query.tagId)) throw invalid('tagId', 'Use a tag id.');
+    and.push({ tagLinks: { some: { tagId: query.tagId } } });
+  }
   if (query.q !== undefined) {
     const q = query.q.trim();
     if (q.length < 1 || q.length > QUERY_MAX) {

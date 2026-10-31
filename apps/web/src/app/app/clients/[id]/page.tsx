@@ -1,5 +1,11 @@
 import type { Metadata } from 'next';
-import { clientCompliance, COMPLIANCE_WINDOWS, deletionStatusFor } from '@kinetic/core';
+import {
+  clientCompliance,
+  COMPLIANCE_WINDOWS,
+  deletionStatusFor,
+  listTags,
+  tagsForClients,
+} from '@kinetic/core';
 import { CompliancePercent, WINDOW_LABEL } from '@/components/analytics/Compliance';
 import { DeletionRequestButton } from '@/components/settings/DeletionRequestButton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,16 +13,21 @@ import { withServerTenant } from '@/server/serverActor';
 import { formatDate } from '../StatusBadge';
 import { loadClient } from './data';
 import { InviteControls } from './InviteControls';
+import { TagEditor } from './TagEditor';
 
 export const metadata: Metadata = { title: 'Client | Kinetic' };
 
 export default async function ClientOverviewPage({ params }: { params: Promise<{ id: string }> }) {
   const client = await loadClient((await params).id);
-  const { isOwner, deletion, compliance } = await withServerTenant(async (tx, actor) => ({
-    isOwner: actor.role === 'owner',
-    deletion: await deletionStatusFor(tx, actor, client.id),
-    compliance: (await clientCompliance(tx, actor, [client.id])).get(client.id) ?? null,
-  }));
+  const { isOwner, deletion, compliance, allTags, clientTags } = await withServerTenant(
+    async (tx, actor) => ({
+      isOwner: actor.role === 'owner',
+      deletion: await deletionStatusFor(tx, actor, client.id),
+      compliance: (await clientCompliance(tx, actor, [client.id])).get(client.id) ?? null,
+      allTags: await listTags(tx, actor),
+      clientTags: (await tagsForClients(tx, actor, [client.id])).get(client.id) ?? [],
+    }),
+  );
   const joined = client.joinedAt ? client.joinedAt.slice(0, 10) : null;
   const rows: [string, string][] = [
     ['Email', client.email],
@@ -58,6 +69,21 @@ export default async function ClientOverviewPage({ params }: { params: Promise<{
               <dd className="whitespace-pre-wrap">{client.goals ?? 'No goals added yet.'}</dd>
             </div>
           </dl>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle as="h2">Tags</CardTitle>
+          <CardDescription>
+            Group clients to filter the client list. Clients never see tags.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <TagEditor
+            clientId={client.id}
+            all={allTags.map(({ id, name, color }) => ({ id, name, color }))}
+            selected={clientTags.map((t) => t.id)}
+          />
         </CardContent>
       </Card>
       {compliance && (

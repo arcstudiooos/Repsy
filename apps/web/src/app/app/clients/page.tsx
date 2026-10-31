@@ -3,7 +3,10 @@ import {
   clientCompliance,
   DomainError,
   listClients,
+  listTags,
+  tagsForClients,
   type ClientCompliance,
+  type TagView,
   type ClientStatus,
 } from '@kinetic/core';
 import { EmptyState } from '@/components/states/EmptyState';
@@ -29,18 +32,31 @@ export default async function ClientsPage({
   const statusParam = first(sp.status);
   const status = STATUSES.find((s) => s === statusParam);
   const cursor = first(sp.cursor);
+  const tagParam = first(sp.tag);
 
   let result: Awaited<ReturnType<typeof listClients>>;
   let compliance: Record<string, ClientCompliance>;
+  let tags: TagView[];
+  let clientTags: Record<string, TagView[]>;
+  let tagId: string | undefined;
   try {
-    ({ result, compliance } = await withServerTenant(async (tx, actor) => {
-      const list = await listClients(tx, actor, { q, status, cursor });
+    ({ result, compliance, tags, clientTags, tagId } = await withServerTenant(async (tx, actor) => {
+      const all = await listTags(tx, actor);
+      const tagId = all.find((t) => t.id === tagParam)?.id;
+      const list = await listClients(tx, actor, { q, status, cursor, tagId });
       const byClient = await clientCompliance(
         tx,
         actor,
         list.items.map((c) => c.id),
       );
-      return { result: list, compliance: Object.fromEntries(byClient) };
+      const ids = list.items.map((c) => c.id);
+      return {
+        result: list,
+        compliance: Object.fromEntries(byClient),
+        tags: all.map(({ id, name, color }) => ({ id, name, color })),
+        clientTags: Object.fromEntries(await tagsForClients(tx, actor, ids)),
+        tagId,
+      };
     }));
   } catch (error) {
     // A malformed cursor in the URL is the only user-reachable validation failure.
@@ -55,7 +71,7 @@ export default async function ClientsPage({
     throw error;
   }
 
-  const filtered = q !== undefined || status !== undefined;
+  const filtered = q !== undefined || status !== undefined || tagId !== undefined;
   const isEmptyRoster = result.items.length === 0 && !filtered && cursor === undefined;
 
   return (
@@ -74,6 +90,9 @@ export default async function ClientsPage({
         <ClientsTable
           items={result.items}
           compliance={compliance}
+          tags={tags}
+          clientTags={clientTags}
+          tag={tagId ?? ''}
           nextCursor={result.nextCursor}
           q={q ?? ''}
           status={status ?? ''}

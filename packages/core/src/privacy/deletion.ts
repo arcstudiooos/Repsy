@@ -194,6 +194,7 @@ export async function eraseClientData(
   await tx.metricEntry.deleteMany({ where: inClient });
   await tx.habitLog.deleteMany({ where: inClient });
   await tx.habit.deleteMany({ where: inClient });
+  await tx.clientTagLink.deleteMany({ where: inClient });
   await tx.clientPause.deleteMany({ where: inClient });
   const inviteIds = (await tx.clientInvite.findMany({ where: inClient, select: { id: true } })).map(
     (i) => i.id,

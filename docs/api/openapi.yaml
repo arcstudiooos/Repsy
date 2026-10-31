@@ -366,6 +366,49 @@ paths:
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
+  /clients/{id}/tags:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [Clients]
+      summary: "Replace a client's tags (PRD B4)."
+      requestBody:
+        content: { application/json: { schema: { type: object, required: [tagIds], properties: { tagIds: { type: array, items: { type: string } } } } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /tags:
+    get:
+      tags: [Clients]
+      summary: "The organization's client tags with how many clients carry each (PRD B4)."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Clients]
+      summary: "Create a tag; names are unique per organization, ignoring case."
+      requestBody:
+        content: { application/json: { schema: { type: object, required: [name], properties: { name: { type: string }, color: { type: string, enum: [teal, blue, purple, orange, red, gray] } } } } }
+      responses:
+        '201': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+  /tags/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    delete:
+      tags: [Clients]
+      summary: "Delete a tag and remove it from every client."
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
   /clients/{id}/timeline:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }

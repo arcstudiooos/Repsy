@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
-import type { ClientCompliance, ClientView } from '@kinetic/core';
+import type { ClientCompliance, ClientView, TagView } from '@kinetic/core';
+import { TagBadge } from '@/components/tags/TagBadge';
 import { CompliancePercent } from '@/components/analytics/Compliance';
 import { EmptyState } from '@/components/states/EmptyState';
 import { buttonVariants } from '@/components/ui/button';
@@ -15,11 +16,12 @@ const SEARCH_DEBOUNCE_MS = 300;
 
 function hrefFor(
   pathname: string,
-  params: { q?: string; status?: string; cursor?: string | null },
+  params: { q?: string; status?: string; tag?: string; cursor?: string | null },
 ): string {
   const sp = new URLSearchParams();
   if (params.q) sp.set('q', params.q);
   if (params.status) sp.set('status', params.status);
+  if (params.tag) sp.set('tag', params.tag);
   if (params.cursor) sp.set('cursor', params.cursor);
   const qs = sp.toString();
   return qs ? `${pathname}?${qs}` : pathname;
@@ -28,6 +30,9 @@ function hrefFor(
 export function ClientsTable({
   items,
   compliance,
+  tags,
+  clientTags,
+  tag,
   nextCursor,
   q,
   status,
@@ -36,6 +41,12 @@ export function ClientsTable({
   items: ClientView[];
   /** Rolling adherence per client id (PRD I5); a client with no entry shows no figures. */
   compliance: Record<string, ClientCompliance>;
+  /** The workspace's tags, for the filter (PRD B4). */
+  tags: TagView[];
+  /** Tags per client id. */
+  clientTags: Record<string, TagView[]>;
+  /** The selected tag filter ('' = all). */
+  tag: string;
   nextCursor: string | null;
   q: string;
   status: string;
@@ -60,10 +71,10 @@ export function ClientsTable({
     if (search.trim() === lastPushed.current) return;
     const timer = setTimeout(() => {
       lastPushed.current = search.trim();
-      startTransition(() => router.replace(hrefFor(pathname, { q: search.trim(), status })));
+      startTransition(() => router.replace(hrefFor(pathname, { q: search.trim(), status, tag })));
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [search, status, pathname, router]);
+  }, [search, status, tag, pathname, router]);
 
   return (
     <div className={cn('flex flex-col gap-4', pending && 'opacity-70')}>
@@ -80,7 +91,9 @@ export function ClientsTable({
           aria-label="Filter by status"
           value={status}
           onChange={(e) =>
-            startTransition(() => router.replace(hrefFor(pathname, { q, status: e.target.value })))
+            startTransition(() =>
+              router.replace(hrefFor(pathname, { q, status: e.target.value, tag })),
+            )
           }
           className="min-h-11 rounded-control border border-input-border bg-surface px-3 text-base text-ink"
         >
@@ -90,6 +103,25 @@ export function ClientsTable({
           <option value="paused">Paused</option>
           <option value="archived">Archived</option>
         </select>
+        {tags.length > 0 && (
+          <select
+            aria-label="Filter by tag"
+            value={tag}
+            onChange={(e) =>
+              startTransition(() =>
+                router.replace(hrefFor(pathname, { q, status, tag: e.target.value })),
+              )
+            }
+            className="min-h-11 rounded-control border border-input-border bg-surface px-3 text-base text-ink"
+          >
+            <option value="">All tags</option>
+            {tags.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       {items.length === 0 ? (
@@ -147,6 +179,13 @@ export function ClientsTable({
                       >
                         {c.name}
                       </Link>
+                      {clientTags[c.id] && (
+                        <span className="mt-1 flex flex-wrap gap-1">
+                          {clientTags[c.id]!.map((t) => (
+                            <TagBadge key={t.id} tag={t} />
+                          ))}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-2 [overflow-wrap:anywhere]">{c.email}</td>
                     <td className="px-4 py-2">
@@ -180,6 +219,13 @@ export function ClientsTable({
                   <StatusBadge status={c.status} inviteStatus={c.inviteStatus} />
                 </div>
                 <p className="text-sm break-all text-secondary">{c.email}</p>
+                {clientTags[c.id] && (
+                  <p className="mt-1 flex flex-wrap gap-1">
+                    {clientTags[c.id]!.map((t) => (
+                      <TagBadge key={t.id} tag={t} />
+                    ))}
+                  </p>
+                )}
                 <p className="mt-1 text-sm text-secondary">Start date: {formatDate(c.startDate)}</p>
                 {compliance[c.id] && (
                   <p className="mt-1 text-sm">
@@ -201,7 +247,7 @@ export function ClientsTable({
         <nav aria-label="Pagination" className="flex items-center justify-between gap-3">
           {hasCursor ? (
             <Link
-              href={hrefFor(pathname, { q, status })}
+              href={hrefFor(pathname, { q, status, tag })}
               className={buttonVariants({ variant: 'secondary' })}
             >
               First page
@@ -211,7 +257,7 @@ export function ClientsTable({
           )}
           {nextCursor && (
             <Link
-              href={hrefFor(pathname, { q, status, cursor: nextCursor })}
+              href={hrefFor(pathname, { q, status, tag, cursor: nextCursor })}
               className={buttonVariants({ variant: 'secondary' })}
             >
               Next page

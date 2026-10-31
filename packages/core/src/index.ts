@@ -264,6 +264,19 @@ export {
 } from './progress/metrics';
 export { duplicateTemplate, setTemplateArchived, copyTitle } from './programs/library';
 export {
+  listTags,
+  createTag,
+  deleteTag,
+  setClientTags,
+  tagsForClients,
+  TAG_COLORS,
+  TAG_NAME_MAX,
+  TAGS_PER_CLIENT_MAX,
+  type TagColor,
+  type TagView,
+  type TagWithCount,
+} from './clients/tags';
+export {
   listHabits,
   createHabit,
   setHabitStatus,

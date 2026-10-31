@@ -233,6 +233,36 @@ test.describe('client directory', () => {
     await expectNoAxeViolations(page);
   });
 
+  test('tags: create one on a client, see it in the list, filter by it (PRD B4)', async ({
+    page,
+    request,
+    baseURL,
+  }) => {
+    await signUpVerifiedCoach(page, request);
+    const vip = await apiCreateClient(page.request, baseURL as string, {
+      name: 'Tara Tagged',
+      email: `tara-${Date.now()}@example.test`,
+    });
+    await apiCreateClient(page.request, baseURL as string, {
+      name: 'Uma Untagged',
+      email: `uma-${Date.now()}@example.test`,
+    });
+    await page.goto(`/app/clients/${vip.id}`);
+    const form = page.getByRole('form', { name: 'New tag' });
+    await form.getByLabel('New tag').fill('VIP');
+    await form.getByRole('button', { name: 'Add tag' }).click();
+    await expect(page.getByRole('checkbox', { name: 'VIP' })).toBeChecked({ timeout: 15_000 });
+    await expectNoAxeViolations(page);
+
+    await page.goto('/app/clients');
+    await expect(page.getByRole('row', { name: /Tara Tagged/ }).getByText('VIP')).toBeVisible();
+    await page.getByLabel('Filter by tag').selectOption({ label: 'VIP' });
+    await expect(page).toHaveURL(/tag=/);
+    await expect(page.getByRole('row', { name: /Tara Tagged/ })).toBeVisible();
+    await expect(page.getByRole('row', { name: /Uma Untagged/ })).toHaveCount(0);
+    await expectNoAxeViolations(page);
+  });
+
   test('unknown client id is a 404 page', async ({ page, request }) => {
     await signUpVerifiedCoach(page, request);
     await page.goto('/app/clients/00000000-0000-4000-8000-000000000000');
