@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   commitProgramVersion,
   createProgram,
+  duplicateTemplate,
   discardDraft,
   DomainError,
   getDraft,
@@ -10,6 +11,7 @@ import {
   listPrograms,
   renameProgram,
   saveDraft,
+  setTemplateArchived,
   type WeekInput,
 } from '@kinetic/core';
 import { ApiResult, type RouteDef } from '../api';
@@ -17,6 +19,8 @@ import { ApiResult, type RouteDef } from '../api';
 // Unknown keys (including any `organizationId`) are stripped by Zod and never read.
 const listSchema = z.object({
   cursor: z.string().min(1).max(500).optional(),
+  q: z.string().max(200).optional(),
+  status: z.enum(['active', 'archived']).optional(),
 });
 
 export const programsListRoute: RouteDef<typeof listSchema, true> = {
@@ -24,7 +28,12 @@ export const programsListRoute: RouteDef<typeof listSchema, true> = {
   input: listSchema,
   handler: async ({ actor, input, tenant }) => {
     const { items, nextCursor } = await tenant((tx) =>
-      listPrograms(tx, actor, { kind: 'template', cursor: input.cursor }),
+      listPrograms(tx, actor, {
+        kind: 'template',
+        cursor: input.cursor,
+        q: input.q,
+        status: input.status,
+      }),
     );
     return new ApiResult(items, { meta: { nextCursor } });
   },
@@ -142,4 +151,24 @@ export const programVersionGetRoute: RouteDef<undefined, true> = {
     const versionNo = /^[1-9]\d{0,8}$/.test(params.no ?? '') ? Number(params.no) : 0;
     return tenant((tx) => getProgram(tx, actor, params.id ?? '', { versionNo }));
   },
+};
+
+/** `POST /api/v1/programs/:id/duplicate`: a new template from the current version (PRD C13). */
+export const programDuplicateRoute: RouteDef<undefined, true> = {
+  can: 'program:write',
+  handler: async ({ actor, params, requestId, tenant }) =>
+    new ApiResult(
+      await tenant((tx) => duplicateTemplate(tx, actor, params.id ?? '', { requestId })),
+      { status: 201 },
+    ),
+};
+
+const archiveSchema = z.object({ archived: z.boolean() });
+
+/** `PUT /api/v1/programs/:id/archive`: archive or restore a template (PRD C13). */
+export const programArchiveRoute: RouteDef<typeof archiveSchema, true> = {
+  can: 'program:write',
+  input: archiveSchema,
+  handler: ({ actor, input, params, requestId, tenant }) =>
+    tenant((tx) => setTemplateArchived(tx, actor, params.id ?? '', input.archived, { requestId })),
 };

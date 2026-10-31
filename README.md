@@ -38,6 +38,8 @@ R2 builds the web-platform features in `docs/competitive/complete-platform-prd.m
 
 - **E1 body metrics:** clients (portal Progress) and coaches (client Progress tab) record body weight, body fat, waist, hips, chest, arm, thigh, resting heart rate and steps, one value per metric and day, in the client's units (pounds and inches for lb users). Each metric shows its latest value, change and history. A coach changing a value gives a reason (coaches only); every change keeps an append-only revision. Included in exports and erased by deletion.
 
+- **C13 template library:** `/app/programs` has a title search and Active/Archived views; each template can be duplicated ("Copy of …", from its current version) or archived and restored. An archived template can't be assigned; clients already on it keep their own copy.
+
 ## What works locally (Sprint 5)
 
 - `/app/analytics`: adherence (completed of eligible workouts, with skipped, not finished and missed shown separately; paused and cancelled excluded), assigned vs finished, check-in response rate, due check-ins and median time to follow-up, each with its numerator, denominator and period.
