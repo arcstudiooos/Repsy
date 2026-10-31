@@ -187,6 +187,42 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+  /clients/{id}/goals:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Clients]
+      summary: "The client's goals with progress and an achieved / on track / behind / no data label (PRD B18, E9). Coaches and the client."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Clients]
+      summary: "Coaches set a goal. Body: {kind: metric|exercise|habit, metric? | exerciseId + exerciseMeasure (e1rm|heaviest)? | habitId?, targetValue (canonical units), startValue?, targetDate, title?}."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '201': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /goals/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [Clients]
+      summary: "Archive or restore a goal. Body: {status: active|archived}."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
   /clients/{id}/invite:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }

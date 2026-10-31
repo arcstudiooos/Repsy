@@ -193,6 +193,7 @@ export async function eraseClientData(
   await tx.internalNote.deleteMany({ where: inClient });
   await tx.metricEntryRevision.deleteMany({ where: inClient });
   await tx.metricEntry.deleteMany({ where: inClient });
+  await tx.goal.deleteMany({ where: inClient });
   await tx.habitLog.deleteMany({ where: inClient });
   await tx.habit.deleteMany({ where: inClient });
   await tx.clientTagLink.deleteMany({ where: inClient });

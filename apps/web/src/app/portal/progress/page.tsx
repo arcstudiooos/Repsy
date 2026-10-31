@@ -5,9 +5,11 @@ import {
   getExerciseHistory,
   getPersonalRecords,
   isUuid,
+  listGoals,
   listMetrics,
   todayInZone,
 } from '@kinetic/core';
+import { GoalsPanel } from '@/components/goals/GoalsPanel';
 import { MetricsPanel } from '@/components/progress/MetricsPanel';
 import { ExerciseProgress, RecordsList } from '@/components/progress/Progress';
 import { withPortalTenant } from '@/server/serverActor';
@@ -37,6 +39,7 @@ export default async function PortalProgressPage({
         units: me?.preferredUnits ?? 'kg',
         today: todayInZone(me?.timezone ?? 'UTC'),
         metrics: exerciseId === undefined ? await listMetrics(tx, actor, clientId) : null,
+        goals: exerciseId === undefined ? await listGoals(tx, actor, clientId) : [],
         records: await getPersonalRecords(tx, actor, clientId),
         history:
           exerciseId !== undefined
@@ -48,7 +51,7 @@ export default async function PortalProgressPage({
     if (error instanceof DomainError && error.code === 'NOT_FOUND') notFound();
     throw error;
   }
-  const { clientId, units, today, metrics, records, history } = data;
+  const { clientId, units, today, metrics, goals, records, history } = data;
 
   return (
     <>
@@ -65,6 +68,9 @@ export default async function PortalProgressPage({
         />
       ) : (
         <div className="flex flex-col gap-8">
+          {goals.length > 0 && (
+            <GoalsPanel clientId={clientId} goals={goals} units={units} canEdit={false} />
+          )}
           {metrics && <MetricsPanel clientId={clientId} view={metrics} isCoach={false} />}
           <section aria-labelledby="records-heading" className="flex flex-col gap-4">
             <h2 id="records-heading" className="text-lg font-semibold">

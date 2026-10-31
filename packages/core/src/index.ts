@@ -495,3 +495,18 @@ export {
   type SwapReason,
   type SwapView,
 } from './sessions/swaps';
+export {
+  listGoals,
+  createGoal,
+  setGoalStatus,
+  goalStatus,
+  GOAL_KINDS,
+  EXERCISE_MEASURES,
+  ACTIVE_GOALS_MAX,
+  HABIT_WINDOW_DAYS,
+  type GoalKind,
+  type GoalLabel,
+  type GoalView,
+  type ExerciseMeasure,
+  type CreateGoalInput,
+} from './goals/goals';
