@@ -470,6 +470,53 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+  /org/reply-expectations:
+    get:
+      tags: [Messages]
+      summary: "Usual reply time and office hours shown to clients (PRD H16)."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+    put:
+      tags: [Messages]
+      summary: "Set them (owner only): replyTargetHours one of 4, 12, 24, 48, 72 or null; officeHours text."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+  /saved-replies:
+    get:
+      tags: [Messages]
+      summary: "The workspace's saved replies (PRD H4). Coaches only."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Messages]
+      summary: "Add a saved reply; {first_name} is filled when inserted."
+      requestBody:
+        content: { application/json: { schema: { type: object, required: [title, body] } } }
+      responses:
+        '201': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+  /saved-replies/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    delete:
+      tags: [Messages]
+      summary: "Delete a saved reply."
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
   /clients/{id}/timeline:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }

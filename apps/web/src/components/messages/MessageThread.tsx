@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import type { MessageView } from '@kinetic/core';
+import type { MessageView, SavedReplyView } from '@kinetic/core';
 import { Button } from '@/components/ui/button';
 import { fetchMessages, postMessage } from '@/lib/message-api';
 import { cn } from '@/lib/utils';
@@ -31,6 +31,7 @@ export function MessageThread({
   otherName,
   initial,
   initialCursor,
+  savedReplies,
 }: {
   threadId: string;
   canPost: boolean;
@@ -38,6 +39,8 @@ export function MessageThread({
   otherName: string;
   initial: MessageView[];
   initialCursor: string | null;
+  /** Coach side only (PRD H4): snippets to insert, `{first_name}` filled with the client's first name. */
+  savedReplies?: SavedReplyView[];
 }) {
   const id = useId();
   const [messages, setMessages] = useState(() => merge([], initial));
@@ -153,9 +156,32 @@ export function MessageThread({
             void send();
           }}
         >
-          <label htmlFor={id} className="text-sm font-medium">
-            Message
-          </label>
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <label htmlFor={id} className="text-sm font-medium">
+              Message
+            </label>
+            {savedReplies && savedReplies.length > 0 && (
+              <select
+                aria-label="Insert a saved reply"
+                value=""
+                onChange={(e) => {
+                  const r = savedReplies.find((x) => x.id === e.target.value);
+                  if (!r) return;
+                  const first = otherName.trim().split(/\s+/)[0] || otherName;
+                  const text = r.body.replace(/\{first_name\}/g, first);
+                  setBody((b) => (b.trim() ? `${b}\n${text}` : text).slice(0, MAX));
+                }}
+                className="min-h-11 rounded-control border border-input-border bg-surface px-3 text-sm text-ink"
+              >
+                <option value="">Insert a saved reply…</option>
+                {savedReplies.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.title}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
           <textarea
             id={id}
             rows={3}

@@ -5,6 +5,7 @@ import {
   getThread,
   isUuid,
   listMessages,
+  listSavedReplies,
   listThreads,
   searchMessages,
   type MessageSearchHit,
@@ -30,31 +31,35 @@ export default async function MessagesPage({
   const sp = await searchParams;
   const selected = first(sp.thread);
   const q = first(sp.q)?.trim().slice(0, 100) || undefined;
-  const { threads, open, hits, searchError } = await withServerTenant(async (tx, actor) => {
-    let hits: MessageSearchHit[] | null = null;
-    let searchError: string | null = null;
-    if (q !== undefined) {
-      try {
-        hits = await searchMessages(tx, actor, { q });
-      } catch (error) {
-        if (!(error instanceof DomainError) || error.code !== 'VALIDATION') throw error;
-        searchError = 'Search with at least 2 characters.';
+  const { threads, open, hits, searchError, replies } = await withServerTenant(
+    async (tx, actor) => {
+      const replies = await listSavedReplies(tx, actor);
+      let hits: MessageSearchHit[] | null = null;
+      let searchError: string | null = null;
+      if (q !== undefined) {
+        try {
+          hits = await searchMessages(tx, actor, { q });
+        } catch (error) {
+          if (!(error instanceof DomainError) || error.code !== 'VALIDATION') throw error;
+          searchError = 'Search with at least 2 characters.';
+        }
       }
-    }
-    const list = await listThreads(tx, actor);
-    const pick =
-      selected && isUuid(selected) && list.some((t) => t.id === selected) ? selected : null;
-    if (!pick) return { threads: list, open: null, hits, searchError };
-    const thread = await getThread(tx, actor, pick);
-    const page = await listMessages(tx, actor, pick);
-    // Opening the thread marked it read.
-    return {
-      threads: list.map((t) => (t.id === pick ? { ...t, unread: 0 } : t)),
-      open: { thread, page },
-      hits,
-      searchError,
-    };
-  });
+      const list = await listThreads(tx, actor);
+      const pick =
+        selected && isUuid(selected) && list.some((t) => t.id === selected) ? selected : null;
+      if (!pick) return { threads: list, open: null, hits, searchError, replies };
+      const thread = await getThread(tx, actor, pick);
+      const page = await listMessages(tx, actor, pick);
+      // Opening the thread marked it read.
+      return {
+        threads: list.map((t) => (t.id === pick ? { ...t, unread: 0 } : t)),
+        open: { thread, page },
+        hits,
+        searchError,
+        replies,
+      };
+    },
+  );
 
   return (
     <>
@@ -175,6 +180,7 @@ export default async function MessagesPage({
                   otherName={open.thread.clientName}
                   initial={open.page.items}
                   initialCursor={open.page.nextCursor}
+                  savedReplies={replies}
                 />
               </>
             ) : (

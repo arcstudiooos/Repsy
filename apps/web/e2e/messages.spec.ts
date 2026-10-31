@@ -109,4 +109,44 @@ test.describe('messaging (S4-4)', () => {
       await client.context.close();
     }
   });
+
+  test('saved replies fill the first name; clients see the usual reply time (PRD H4, H16)', async ({
+    page,
+    request,
+    browser,
+  }) => {
+    await signUpVerifiedCoach(page, request);
+    const client = await onboardClient(page, request, browser, 'Rae Reply');
+    try {
+      await page.goto('/settings');
+      const exp = page.getByRole('form', { name: 'Reply expectations' });
+      await exp.getByLabel('Usual reply time').selectOption({ label: 'Within 24 hours' });
+      await exp.getByLabel('Office hours').fill('Mon-Fri 8:00-18:00');
+      await exp.getByRole('button', { name: 'Save reply expectations' }).click();
+      await expect(page.getByText('Reply expectations saved.')).toBeVisible({ timeout: 15_000 });
+      const add = page.getByRole('form', { name: 'New saved reply' });
+      await add.getByLabel('Title').fill('Great week');
+      await add.getByLabel('Reply').fill('Great week {first_name}! Keep it up.');
+      await add.getByRole('button', { name: 'Add saved reply' }).click();
+      await expect(page.getByText('Great week {first_name}! Keep it up.')).toBeVisible({
+        timeout: 15_000,
+      });
+      await expectNoAxeViolations(page);
+
+      await openClientTab(page, 'Rae Reply', 'Messages');
+      await page.getByLabel('Insert a saved reply').selectOption({ label: 'Great week' });
+      await expect(page.getByLabel('Message', { exact: true })).toHaveValue(
+        'Great week Rae! Keep it up.',
+      );
+
+      await client.page.goto('/portal/messages');
+      await expect(
+        client.page.getByText(
+          'Your coach usually replies within 24 hours. Office hours: Mon-Fri 8:00-18:00.',
+        ),
+      ).toBeVisible({ timeout: 30_000 });
+    } finally {
+      await client.context.close();
+    }
+  });
 });

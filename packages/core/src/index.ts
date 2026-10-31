@@ -299,6 +299,17 @@ export {
   type NutritionView,
 } from './nutrition/nutrition';
 export {
+  getReplyExpectations,
+  updateReplyExpectations,
+  listSavedReplies,
+  createSavedReply,
+  deleteSavedReply,
+  fillSavedReply,
+  REPLY_TARGETS,
+  type ReplyExpectations,
+  type SavedReplyView,
+} from './messages/tools';
+export {
   listHabits,
   createHabit,
   setHabitStatus,

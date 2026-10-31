@@ -92,6 +92,7 @@ model User {
   reviewedCheckins         Checkin[]               @relation("CheckinReviewer")
   createdHabits            Habit[]                 @relation("HabitCreator")
   nutritionTargetsSet      NutritionTarget[]       @relation("NutritionTargetSetter")
+  savedReplies             SavedReply[]            @relation("SavedReplyAuthor")
   exportJobs               ExportJob[]             @relation("ExportRequester")
   deletionSubjects         DeletionRequest[]       @relation("DeletionSubject")
   deletionRequested        DeletionRequest[]       @relation("DeletionRequester")
@@ -172,6 +173,9 @@ model Organization {
   ownerUserId       String   @map("owner_user_id") @db.Uuid
   graceHours        Int      @default(24) @map("grace_hours")
   activeClientLimit Int      @default(30) @map("active_client_limit")
+  /// Reply expectations shown to clients (PRD H16): usual reply time in hours and office hours, both optional.
+  replyTargetHours  Int?     @map("reply_target_hours")
+  officeHours       String?  @map("office_hours")
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -210,6 +214,7 @@ model Organization {
   clientTagLinks          ClientTagLink[]
   nutritionTargets        NutritionTarget[]
   nutritionLogs           NutritionLog[]
+  savedReplies            SavedReply[]
 
   @@map("organizations")
 }
@@ -1194,6 +1199,23 @@ model NutritionLog {
   @@unique([clientId, localDate])
   @@index([organizationId])
   @@map("nutrition_logs")
+}
+
+/// A reply snippet shared by the workspace's coaches (PRD H4). `{first_name}` is filled with the client's first name
+/// when inserted; it never sends on its own. Lengths are CHECKs in the migration.
+model SavedReply {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  title           String
+  body            String
+  createdByUserId String   @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  createdBy    User         @relation("SavedReplyAuthor", fields: [createdByUserId], references: [id])
+
+  @@index([organizationId])
+  @@map("saved_replies")
 }
 
 enum ExportScope {
