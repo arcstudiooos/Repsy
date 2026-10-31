@@ -196,6 +196,20 @@ export async function sessionFacts(sessionId: string): Promise<{
   }
 }
 
+/** Ends every sign-in session of the user with `email` (admin connection), as expiry or a password reset would. */
+export async function endSessionsOf(email: string): Promise<void> {
+  const client = new pg.Client({ connectionString: readState().adminUrl });
+  await client.connect();
+  try {
+    await client.query(
+      'DELETE FROM sessions WHERE user_id = (SELECT id FROM users WHERE email = $1)',
+      [email],
+    );
+  } finally {
+    await client.end();
+  }
+}
+
 /**
  * Marks sessions past due as the review sweep would (admin connection; the sweep runs every 10 minutes and waits for
  * due + grace): the started `sessionId` becomes `incomplete` and its assignment's unstarted sessions `missed`.

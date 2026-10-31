@@ -107,6 +107,7 @@ Status key: **Locked** = agreed with the founder. **Proposed** = recommended def
 - *Reopening while offline* needs the app shell and the in-progress workout route to load with no connection. R1 therefore ships a **minimal service worker** that caches only the portal shell, static assets and the active session route. This is not a general offline cache.
 - *Simple multi-device rule (builder call):* the server keeps the most recent write per set by client-recorded `updated_at`. No merge UI in R1.
 - Check-in drafts use the same local-draft mechanism, but submission requires connectivity.
+- *Shared devices (PR #2 review, 2026-10-31):* the device's offline data (cached pages, started workouts, queued writes) belongs to the signed-in user. Sign-out sends what it can, asks before deleting anything unsynced, and deletes it all; if it can't, the user stays signed in and is told. A portal load by a different user deletes the previous user's data first. **Accepted residual:** a session that ends without this device signing out (expiry, a password reset, "sign out all other devices") leaves its pages and data on the device until the device is next online: the service worker can't check a session offline. The next online portal visit that the server redirects or refuses deletes the stored pages, and the next sign-in deletes the data. A lock screen or an encrypted store would close the gap; both are R2.
 
 ---
 

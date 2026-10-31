@@ -10,7 +10,10 @@
  * app instead: a cached page is only ever served when the network fails (online, every navigation goes to the
  * server, which redirects a signed-out visitor); sign-out deletes the kinetic-pages-* caches with the IndexedDB
  * store (SignOutButton, wipeDevice); and every portal load binds the store to the signed-in user, deleting both when
- * another user's data is found (bindOwner). Build assets hold no user data and are kept.
+ * another user's data is found (bindOwner). Build assets hold no user data and are kept. A session that ended without
+ * this device signing out (expiry, a password reset, "sign out all other devices") is caught the next time the
+ * device is online: a portal navigation that the server redirects or refuses deletes the stored pages (PR #2
+ * re-review residual 1).
  */
 const VERSION = 'v1';
 const PAGES = `kinetic-pages-${VERSION}`;
@@ -112,17 +115,28 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       (async () => {
         const path = url.pathname;
+        let res;
         try {
-          const res = await fetch(req);
-          if (res.ok && !res.redirected && (await wanted(path))) {
-            await (await caches.open(PAGES)).put(path, res.clone());
-          }
-          return res;
+          res = await fetch(req);
         } catch (error) {
           const hit = await (await caches.open(PAGES)).match(path);
           if (hit) return hit;
           throw error;
         }
+        // Online from here: the server's answer is always served, never a cached page (PR #2 re-review M1).
+        try {
+          if (res.type === 'opaqueredirect' || res.redirected || res.status === 401) {
+            // Signed out elsewhere, or the session ended: the pages kept for it go.
+            for (const key of await caches.keys()) {
+              if (key.startsWith('kinetic-pages-')) await caches.delete(key);
+            }
+          } else if (res.ok && (await wanted(path))) {
+            await (await caches.open(PAGES)).put(path, res.clone());
+          }
+        } catch {
+          // Storage failed (quota): the fresh page is still served.
+        }
+        return res;
       })(),
     );
   }

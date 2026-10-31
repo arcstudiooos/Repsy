@@ -7,11 +7,12 @@
 import { currentOwner, hasDeviceStore, unsyncedCount } from './db';
 import { flush } from './outbox';
 
-export { wipeDevice } from './db';
+export { deletePageCaches, DeviceWipeError, wipeDevice } from './db';
 
 /**
  * Tries to send what is queued (bounded by `timeoutMs`, so a hanging network can't stall sign-out), then returns how
- * many writes on this device the server still hasn't accepted (queued or refused).
+ * many writes on this device the server still hasn't accepted (queued or refused). Rejects when the count can't be
+ * read: the caller then asks before deleting, never assumes nothing is unsynced (PR #2 re-review N1).
  */
 export async function unsyncedBeforeSignOut(timeoutMs = 5000): Promise<number> {
   if (!hasDeviceStore()) return 0;

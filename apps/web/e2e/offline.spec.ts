@@ -7,6 +7,7 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import {
   countAudits,
+  endSessionsOf,
   resetRateLimits,
   seedCoachWithClient,
   sessionFacts,
@@ -30,7 +31,7 @@ async function coachAndClient(page: Page, browser: Browser, clientName: string) 
   const context = await browser.newContext();
   const portal = await context.newPage();
   await signIn(portal, seeded.clientEmail, /\/portal/);
-  return { context, page: portal };
+  return { context, page: portal, email: seeded.clientEmail };
 }
 
 const EXERCISES = [
@@ -272,6 +273,41 @@ test.describe('offline continuity (S3-3)', () => {
         await expect(portal.getByText('Shared block')).toHaveCount(0);
       }
       expect((await sessionFacts(sessionId)).rows).toBe(0);
+    } finally {
+      await client.context.close();
+    }
+  });
+
+  test('a session ended elsewhere: the next online portal visit deletes the stored pages (PR #2 re-review)', async ({
+    page,
+    browser,
+  }) => {
+    const client = await coachAndClient(page, browser, 'Erin Expired');
+    try {
+      await buildProgram(page, 'Expired block', [[EXERCISES[0]]]);
+      await assignFromClientTab(page, 'Erin Expired', 'Expired block');
+      const portal = client.page;
+      const sessionId = await startToday(portal);
+      const url = portal.url();
+
+      // The session ends without this device signing out (expiry, a password reset elsewhere).
+      await endSessionsOf(client.email);
+      await portal.goto('/portal');
+      await expect(portal).toHaveURL(/\/login/, { timeout: 30_000 });
+      const stored = await portal.evaluate(async (path) => {
+        const pages: string[] = [];
+        for (const name of await caches.keys()) {
+          const cache = await caches.open(name);
+          if ((await cache.match(path)) || (await cache.match('/portal'))) pages.push(name);
+        }
+        return pages;
+      }, `/portal/workouts/${sessionId}`);
+      expect(stored).toEqual([]);
+
+      // Offline, the workout page is no longer served from the device.
+      await client.context.setOffline(true);
+      await portal.goto(url).catch(() => undefined);
+      await expect(portal.getByText('Barbell Bench Press')).toHaveCount(0);
     } finally {
       await client.context.close();
     }

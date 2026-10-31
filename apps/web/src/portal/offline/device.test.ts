@@ -1,5 +1,15 @@
+import { IDBDatabase } from 'fake-indexeddb';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { bindOwner, DB_NAME, getAll, put, unsyncedCount, wipeDevice } from './db';
+import {
+  bindOwner,
+  currentOwner,
+  DB_NAME,
+  DeviceWipeError,
+  getAll,
+  put,
+  unsyncedCount,
+  wipeDevice,
+} from './db';
 import { enqueue, flush, type Mutation } from './outbox';
 import { unsyncedBeforeSignOut } from './signOut';
 import {
@@ -27,12 +37,17 @@ const logs = (id: string) =>
     body: { items: [item(0, 8, new Date().toISOString())] },
   });
 
-/** Whether `p` settles within a few event-loop turns. */
-const settles = (p: Promise<unknown>) =>
-  Promise.race([p.then(() => true), new Promise((r) => setTimeout(() => r(false), 50))]);
-
 beforeEach(() => freshDeviceStore());
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
+
+/** The open connection breaks (iOS "Connection to Indexed Database server lost"): every transaction throws. */
+const breakConnection = () =>
+  vi.spyOn(IDBDatabase.prototype, 'transaction').mockImplementation(() => {
+    throw new DOMException('Connection to Indexed Database server lost', 'UnknownError');
+  });
 
 describe('device store owner (PR #2 review C1)', () => {
   it("a different user's sign-in wipes the previous user's workouts, queue and pages before use", async () => {
@@ -89,10 +104,67 @@ describe('device store owner (PR #2 review C1)', () => {
     await wipeDevice();
     expect((await indexedDB.databases()).map((d) => d.name)).not.toContain(DB_NAME);
     expect([...caches]).toEqual([ASSETS]);
-    expect(await settles(getAll<Mutation>('outbox'))).toBe(false);
+    // A helper still waiting (a flush in flight) fails instead of hanging on the outbox lock (re-review M3).
+    await expect(getAll<Mutation>('outbox')).rejects.toThrow('Signed out');
     // No user bound: a flush (the sync loop's timer firing during sign-out) sends nothing and opens nothing.
     expect(await flush()).toEqual({ sent: 0, pending: 0, blocked: 0, rejected: 0 });
     expect((await indexedDB.databases()).map((d) => d.name)).not.toContain(DB_NAME);
+  });
+});
+
+describe('sign-out fails closed (PR #2 re-review N1)', () => {
+  it('a dead database connection still deletes the database and the page caches', async () => {
+    const caches = stubCaches([PAGES, ASSETS]);
+    stubServer(() => 'offline');
+    await cacheWorkout(detail());
+    breakConnection();
+    await wipeDevice();
+    expect((await indexedDB.databases()).map((d) => d.name)).not.toContain(DB_NAME);
+    expect([...caches]).toEqual([ASSETS]);
+  });
+
+  it('throws when the page caches could not be deleted, so the button does not sign out silently', async () => {
+    vi.stubGlobal('caches', {
+      keys: async () => {
+        throw new Error('storage error');
+      },
+      delete: async () => false,
+    });
+    await expect(wipeDevice()).rejects.toBeInstanceOf(DeviceWipeError);
+  });
+
+  it('throws when neither clearing nor deleting the database worked', async () => {
+    stubCaches([PAGES]);
+    breakConnection();
+    vi.spyOn(globalThis.indexedDB, 'deleteDatabase').mockImplementation(() => {
+      const req = {} as IDBOpenDBRequest;
+      setTimeout(() => req.onerror?.(new Event('error')), 0);
+      return req;
+    });
+    await expect(wipeDevice()).rejects.toBeInstanceOf(DeviceWipeError);
+  });
+
+  it("another tab's sign-out (the database deleted) unbinds this tab (re-review M2)", async () => {
+    stubServer(() => 'offline');
+    await logs('a-1');
+    expect(currentOwner()).toEqual(OWNER);
+    await new Promise<void>((resolve) => {
+      const req = indexedDB.deleteDatabase(DB_NAME);
+      req.onsuccess = () => resolve();
+    });
+    expect(currentOwner()).toBeNull();
+    // Nothing is queued under the old user until a user binds again.
+    await expect(logs('a-2')).rejects.toThrow();
+    await bindOwner(OTHER_USER);
+    expect(await getAll('outbox')).toHaveLength(0);
+  });
+
+  it('a count that cannot be read rejects instead of reporting 0 unsynced', async () => {
+    await freshDeviceStore(null);
+    vi.spyOn(globalThis.indexedDB, 'open').mockImplementation(() => {
+      throw new DOMException('lost', 'UnknownError');
+    });
+    await expect(unsyncedBeforeSignOut()).rejects.toThrow('lost');
   });
 });
 
