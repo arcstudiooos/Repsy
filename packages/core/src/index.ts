@@ -475,3 +475,10 @@ export {
   type OptInRule,
   type ReviewRuleSettings,
 } from './review/optInRules';
+export {
+  matchExercises,
+  createProgramFromImport,
+  nameScore,
+  MATCH_NAMES_MAX,
+  type ExerciseMatch,
+} from './programs/import';

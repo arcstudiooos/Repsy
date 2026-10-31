@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   commitProgramVersion,
   createProgram,
+  createProgramFromImport,
   duplicateTemplate,
   discardDraft,
   DomainError,
@@ -9,6 +10,7 @@ import {
   getProgram,
   listProgramVersions,
   listPrograms,
+  matchExercises,
   renameProgram,
   saveDraft,
   setTemplateArchived,
@@ -171,4 +173,33 @@ export const programArchiveRoute: RouteDef<typeof archiveSchema, true> = {
   input: archiveSchema,
   handler: ({ actor, input, params, requestId, tenant }) =>
     tenant((tx) => setTemplateArchived(tx, actor, params.id ?? '', input.archived, { requestId })),
+};
+
+const matchSchema = z.object({ names: z.array(z.string().max(200)).max(300) });
+
+/** `POST /api/v1/programs/import/match` (PRD C14): library matches for written exercise names. Saves nothing. */
+export const programImportMatchRoute: RouteDef<typeof matchSchema, true> = {
+  can: 'exercise:read',
+  input: matchSchema,
+  handler: ({ actor, input, tenant }) => tenant((tx) => matchExercises(tx, actor, input.names)),
+};
+
+const importSchema = z.object({ title: z.string().max(500), weeks: z.array(z.unknown()) });
+
+/** `POST /api/v1/programs/import`: a new template from the reviewed import, saved as version 1. */
+export const programImportRoute: RouteDef<typeof importSchema, true> = {
+  can: 'program:write',
+  input: importSchema,
+  handler: async ({ actor, input, requestId, tenant }) =>
+    new ApiResult(
+      await tenant((tx) =>
+        createProgramFromImport(
+          tx,
+          actor,
+          { title: input.title, weeks: input.weeks as WeekInput[] },
+          { requestId },
+        ),
+      ),
+      { status: 201 },
+    ),
 };

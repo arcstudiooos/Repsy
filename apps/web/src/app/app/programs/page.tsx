@@ -71,7 +71,17 @@ export default async function ProgramsPage({
           <Link href="/app/exercises" className={buttonVariants({ variant: 'secondary' })}>
             Exercise library
           </Link>
-          {!isEmpty && <NewProgramDialog />}
+          {!isEmpty && (
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href="/app/programs/import"
+                className={buttonVariants({ variant: 'secondary' })}
+              >
+                Import from text
+              </Link>
+              <NewProgramDialog />
+            </div>
+          )}
         </div>
       </div>
       {!isEmpty && (
@@ -125,7 +135,17 @@ export default async function ProgramsPage({
         <EmptyState
           title="Create your first program"
           body="Build a reusable template with weeks, training days and exercises, then assign it to clients."
-          action={<NewProgramDialog />}
+          action={
+            <div className="flex flex-wrap justify-center gap-3">
+              <NewProgramDialog />
+              <Link
+                href="/app/programs/import"
+                className={buttonVariants({ variant: 'secondary' })}
+              >
+                Import from text
+              </Link>
+            </div>
+          }
         />
       ) : (
         <ul className="flex flex-col gap-3" aria-label="Programs">

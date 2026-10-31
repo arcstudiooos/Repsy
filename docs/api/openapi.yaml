@@ -684,6 +684,28 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+  /programs/import/match:
+    post:
+      tags: [Programs]
+      summary: "Library matches for written exercise names (PRD C14). Body: {names: string[]} (at most 300). Each result has the best match (or null) and up to 5 candidates. Saves nothing."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+  /programs/import:
+    post:
+      tags: [Programs]
+      summary: "Create a template from a reviewed import (PRD C14). Body: {title, weeks} in the same shape as saving a version; saved as version 1."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '201': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
   /programs/{id}:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }
