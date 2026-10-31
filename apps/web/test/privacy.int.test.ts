@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { withSystem, type PrismaClient } from '@kinetic/db';
 import { createTestDb } from '@kinetic/db/testing';
 import { createAuth, type Auth } from '@/lib/auth';
@@ -8,7 +8,10 @@ import {
   adminAccountLookupRoute,
   adminDeletionPatchRoute,
   adminDeletionsListRoute,
+  adminGrantDeleteRoute,
   adminGrantPostRoute,
+  adminGrantsListRoute,
+  adminPilotCodesListRoute,
   adminPilotCodesPostRoute,
   adminSupportClientRoute,
   deletionRequestPostRoute,
@@ -53,7 +56,7 @@ const call = (
   route: AnyRoute,
   headers: Headers,
   path: string,
-  method: 'GET' | 'POST' | 'PATCH',
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
   body?: unknown,
   id = '',
 ) => {
@@ -178,6 +181,51 @@ describe('deletion requests and the admin API (S5-3)', () => {
     });
     expect(code.status).toBe(201);
     expect((await code.json()).data.code).toBeTruthy();
+  });
+
+  it('a non-admin is refused (404) before any database transaction, even with an invalid body', async () => {
+    // PR #2 review I1: the platform-admin check runs before system scope (app.bypass_rls) is ever opened, and
+    // before input validation, so a non-admin can neither reach the bypass nor probe the routes.
+    const someId = crypto.randomUUID();
+    const routes = [
+      [adminPilotCodesListRoute, '/admin/pilot-codes', 'GET'],
+      [adminPilotCodesPostRoute, '/admin/pilot-codes', 'POST', { days: 'many' }],
+      [adminAccountLookupRoute, '/admin/accounts', 'GET'],
+      [adminDeletionsListRoute, '/admin/deletions', 'GET'],
+      [adminDeletionPatchRoute, `/admin/deletions/${someId}`, 'PATCH', { action: 'verify' }],
+      [adminDeletionPatchRoute, `/admin/deletions/${someId}`, 'PATCH', {}],
+      [adminGrantsListRoute, '/admin/support-grants', 'GET'],
+      [adminGrantPostRoute, '/admin/support-grants', 'POST', {}],
+      [adminGrantDeleteRoute, `/admin/support-grants/${someId}`, 'DELETE'],
+      [adminSupportClientRoute, `/admin/support/clients/${clientA}`, 'GET'],
+    ] as const;
+    for (const who of [headersFor(t.coachA, t.orgA.id), headersFor(t.clientA, t.orgA.id)]) {
+      const transactions = vi.spyOn(prisma, '$transaction');
+      try {
+        for (const [route, path, method, body] of routes) {
+          const res = await call(route, who, path, method, body, someId);
+          expect(res.status, `${method} ${path}`).toBe(404);
+          expect((await res.json()).error.code).toBe('NOT_FOUND');
+        }
+        expect(transactions).not.toHaveBeenCalled();
+      } finally {
+        transactions.mockRestore();
+      }
+    }
+    // Control: the spy does see the admin's system-scope transaction.
+    const transactions = vi.spyOn(prisma, '$transaction');
+    try {
+      const res = await call(
+        adminPilotCodesListRoute,
+        headersFor(admin),
+        '/admin/pilot-codes',
+        'GET',
+      );
+      expect(res.status).toBe(200);
+      expect(transactions).toHaveBeenCalled();
+    } finally {
+      transactions.mockRestore();
+    }
   });
 
   it('only a client or an owner can request deletion', async () => {

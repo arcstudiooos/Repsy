@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { DomainError, readClientForSupport } from '@kinetic/core';
-import { withSystem } from '@kinetic/db';
 import { EmptyState } from '@/components/states/EmptyState';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { withPlatformAdmin } from '@/server/platformAdmin';
 import { getServerSession } from '@/server/serverActor';
 
 export const metadata: Metadata = { title: 'Support | Kinetic' };
@@ -16,10 +17,11 @@ export default async function SupportClientPage({
 }) {
   const { clientId } = await params;
   const { user } = await getServerSession();
-  const admin = { userId: user?.id ?? '', isPlatformAdmin: user?.isPlatformAdmin === true };
+  // Authorize before system scope opens (the layout's gate renders in parallel, so it is not relied on here).
+  if (!user?.isPlatformAdmin) notFound();
   let view;
   try {
-    view = await withSystem((tx) => readClientForSupport(tx, admin, clientId));
+    view = await withPlatformAdmin(user, (tx, admin) => readClientForSupport(tx, admin, clientId));
   } catch (error) {
     if (error instanceof DomainError && error.code === 'FORBIDDEN') {
       return (

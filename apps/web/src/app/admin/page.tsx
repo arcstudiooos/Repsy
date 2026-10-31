@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import {
   listDeletionRequests,
   listMyGrants,
@@ -7,10 +8,10 @@ import {
   lookupAccount,
   DomainError,
 } from '@kinetic/core';
-import { withSystem } from '@kinetic/db';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { withPlatformAdmin } from '@/server/platformAdmin';
 import { getServerSession } from '@/server/serverActor';
 import { DeletionActions, GrantForm, PilotCodeCreator, RevokeGrant } from './AdminActions';
 
@@ -27,8 +28,9 @@ export default async function AdminPage({
 }) {
   const email = first((await searchParams).email);
   const { user } = await getServerSession();
-  const admin = { userId: user?.id ?? '', isPlatformAdmin: user?.isPlatformAdmin === true };
-  const data = await withSystem(async (tx) => {
+  // Authorize before system scope opens (the layout's gate renders in parallel, so it is not relied on here).
+  if (!user?.isPlatformAdmin) notFound();
+  const data = await withPlatformAdmin(user, async (tx, admin) => {
     let account = null;
     let lookupError: string | null = null;
     if (email) {

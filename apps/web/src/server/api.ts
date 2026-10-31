@@ -15,6 +15,7 @@ import {
 import { prisma as defaultPrisma, withTenant, type PrismaClient, type TenantTx } from '@kinetic/db';
 import { auth as defaultAuth, getSessionUser, type Auth, type SessionUser } from '@/lib/auth';
 import { loadMemberships, resolveActor } from './actor';
+import { platformAdminOf } from './platformAdmin';
 import { orgCookieSecret, serializeOrgCookie } from './orgCookie';
 import { defaultLimiter, InMemoryRateLimiter, type RateLimiter } from './rateLimit';
 import { clientIp } from './clientIp';
@@ -84,6 +85,11 @@ export interface RouteDef<S extends z.ZodType | undefined, R extends boolean> {
   requireOrg?: R;
   /** Authorization policy checked against the resolved actor. Requires an active org. */
   can?: Action;
+  /**
+   * Platform-admin console route (S5-3): anyone else gets 404 NOT_FOUND straight after authentication, before any
+   * database access (memberships, system scope) or input validation. Requires `requireOrg: false`.
+   */
+  requirePlatformAdmin?: boolean;
   /**
    * Per-route token bucket (per user, or per IP when anonymous). Replaces the
    * global bucket for this route; omit to use the global per-user default.
@@ -170,6 +176,9 @@ export function createApiHandler(deps: ApiDeps = {}) {
         'apiHandler: `can` needs an active org; it cannot be used with requireOrg: false',
       );
     }
+    if (def.requirePlatformAdmin && def.requireOrg !== false) {
+      throw new Error('apiHandler: requirePlatformAdmin routes must set requireOrg: false');
+    }
     const routeLimiter = def.rateLimit ? new InMemoryRateLimiter(def.rateLimit) : undefined;
     return async (request, context) => {
       const requestId = getRequestId(request);
@@ -192,6 +201,7 @@ export function createApiHandler(deps: ApiDeps = {}) {
           });
         }
         if (!user) return fail('UNAUTHENTICATED', 'Sign in to continue.', requestId);
+        if (def.requirePlatformAdmin) platformAdminOf(user);
 
         const memberships = await loadMemberships(user.id, deps.prisma);
 

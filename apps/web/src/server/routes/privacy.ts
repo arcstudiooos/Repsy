@@ -11,8 +11,8 @@ import {
   requestDeletion,
   revokeSupportAccess,
 } from '@kinetic/core';
-import { withSystem } from '@kinetic/db';
 import { ApiResult, type RouteCtx, type RouteDef } from '../api';
+import { withPlatformAdmin } from '../platformAdmin';
 
 const requestSchema = z.object({ clientId: z.string().max(64).optional() });
 
@@ -25,16 +25,19 @@ export const deletionRequestPostRoute: RouteDef<typeof requestSchema, true> = {
     }),
 };
 
-// --- platform admin (S5-3): no organization; non-admins get 404 from core ----------------------------------
+// --- platform admin (S5-3) ----------------------------------------------------------------------------------
+// No organization. `requirePlatformAdmin` answers 404 to everyone else right after authentication, before any
+// database access or input validation; `withPlatformAdmin` checks again before it opens system scope (RLS bypass,
+// cross-organization by design), and every core admin function asserts once more inside.
 
-const adminOf = (ctx: Pick<RouteCtx<unknown, false>, 'user'>) => ({
-  userId: ctx.user.id,
-  isPlatformAdmin: ctx.user.isPlatformAdmin === true,
-});
+type AdminCtx = Pick<RouteCtx<unknown, false>, 'user' | 'prisma'>;
+const asAdmin = <T>(ctx: AdminCtx, fn: Parameters<typeof withPlatformAdmin<T>>[1]): Promise<T> =>
+  withPlatformAdmin(ctx.user, fn, ctx.prisma);
 
 export const adminPilotCodesListRoute: RouteDef<undefined, false> = {
   requireOrg: false,
-  handler: (ctx) => withSystem((tx) => listPilotCodes(tx, adminOf(ctx)), ctx.prisma),
+  requirePlatformAdmin: true,
+  handler: (ctx) => asAdmin(ctx, (tx, admin) => listPilotCodes(tx, admin)),
 };
 
 const pilotSchema = z.object({ days: z.number().int().optional() });
@@ -42,26 +45,28 @@ const pilotSchema = z.object({ days: z.number().int().optional() });
 /** Returns the plaintext code once. */
 export const adminPilotCodesPostRoute: RouteDef<typeof pilotSchema, false> = {
   requireOrg: false,
+  requirePlatformAdmin: true,
   input: pilotSchema,
   handler: async (ctx) =>
-    new ApiResult(
-      await withSystem((tx) => createPilotCode(tx, adminOf(ctx), ctx.input), ctx.prisma),
-      { status: 201, headers: { 'cache-control': 'no-store' } },
-    ),
+    new ApiResult(await asAdmin(ctx, (tx, admin) => createPilotCode(tx, admin, ctx.input)), {
+      status: 201,
+      headers: { 'cache-control': 'no-store' },
+    }),
 };
 
 const lookupSchema = z.object({ email: z.string().max(254) });
 
 export const adminAccountLookupRoute: RouteDef<typeof lookupSchema, false> = {
   requireOrg: false,
+  requirePlatformAdmin: true,
   input: lookupSchema,
-  handler: (ctx) =>
-    withSystem((tx) => lookupAccount(tx, adminOf(ctx), ctx.input.email), ctx.prisma),
+  handler: (ctx) => asAdmin(ctx, (tx, admin) => lookupAccount(tx, admin, ctx.input.email)),
 };
 
 export const adminDeletionsListRoute: RouteDef<undefined, false> = {
   requireOrg: false,
-  handler: (ctx) => withSystem((tx) => listDeletionRequests(tx, adminOf(ctx)), ctx.prisma),
+  requirePlatformAdmin: true,
+  handler: (ctx) => asAdmin(ctx, (tx, admin) => listDeletionRequests(tx, admin)),
 };
 
 const decideSchema = z.discriminatedUnion('action', [
@@ -72,40 +77,37 @@ const decideSchema = z.discriminatedUnion('action', [
 
 export const adminDeletionPatchRoute: RouteDef<typeof decideSchema, false> = {
   requireOrg: false,
+  requirePlatformAdmin: true,
   input: decideSchema,
   handler: async (ctx) => {
-    await withSystem(
-      (tx) => decideDeletion(tx, adminOf(ctx), ctx.params.id ?? '', ctx.input),
-      ctx.prisma,
-    );
+    await asAdmin(ctx, (tx, admin) => decideDeletion(tx, admin, ctx.params.id ?? '', ctx.input));
     return new ApiResult(null, { status: 204 });
   },
 };
 
 export const adminGrantsListRoute: RouteDef<undefined, false> = {
   requireOrg: false,
-  handler: (ctx) => withSystem((tx) => listMyGrants(tx, adminOf(ctx)), ctx.prisma),
+  requirePlatformAdmin: true,
+  handler: (ctx) => asAdmin(ctx, (tx, admin) => listMyGrants(tx, admin)),
 };
 
 const grantSchema = z.object({ clientId: z.string().max(64), reason: z.string().max(1000) });
 
 export const adminGrantPostRoute: RouteDef<typeof grantSchema, false> = {
   requireOrg: false,
+  requirePlatformAdmin: true,
   input: grantSchema,
   handler: async (ctx) =>
-    new ApiResult(
-      await withSystem((tx) => grantSupportAccess(tx, adminOf(ctx), ctx.input), ctx.prisma),
-      { status: 201 },
-    ),
+    new ApiResult(await asAdmin(ctx, (tx, admin) => grantSupportAccess(tx, admin, ctx.input)), {
+      status: 201,
+    }),
 };
 
 export const adminGrantDeleteRoute: RouteDef<undefined, false> = {
   requireOrg: false,
+  requirePlatformAdmin: true,
   handler: async (ctx) => {
-    await withSystem(
-      (tx) => revokeSupportAccess(tx, adminOf(ctx), ctx.params.id ?? ''),
-      ctx.prisma,
-    );
+    await asAdmin(ctx, (tx, admin) => revokeSupportAccess(tx, admin, ctx.params.id ?? ''));
     return new ApiResult(null, { status: 204 });
   },
 };
@@ -113,6 +115,7 @@ export const adminGrantDeleteRoute: RouteDef<undefined, false> = {
 /** `GET /api/v1/admin/support/clients/:id`: only with an active grant (else 403). */
 export const adminSupportClientRoute: RouteDef<undefined, false> = {
   requireOrg: false,
+  requirePlatformAdmin: true,
   handler: (ctx) =>
-    withSystem((tx) => readClientForSupport(tx, adminOf(ctx), ctx.params.id ?? ''), ctx.prisma),
+    asAdmin(ctx, (tx, admin) => readClientForSupport(tx, admin, ctx.params.id ?? '')),
 };
