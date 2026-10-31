@@ -34,7 +34,7 @@ test.describe('client portal', () => {
       await portal.goto('/portal');
       await expect(portal.getByText(SAFETY)).toBeVisible();
       await expect(portal.getByText('Next workout')).toBeVisible();
-      await expect(portal.getByText('Today')).toBeVisible();
+      await expect(portal.getByText('Today', { exact: true })).toBeVisible();
       await expect(portal.getByRole('link', { name: 'Start workout' })).toBeVisible();
       await expect(portal.getByText('0 of 1 workout done')).toBeVisible();
       await expect(
