@@ -225,6 +225,12 @@ export {
   type Ratio,
 } from './analytics/adherence';
 export {
+  clientCompliance,
+  COMPLIANCE_WINDOWS,
+  type ClientCompliance,
+  type ComplianceWindow,
+} from './analytics/compliance';
+export {
   listNotes,
   createNote,
   updateNote,

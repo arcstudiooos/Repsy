@@ -205,6 +205,32 @@ test.describe('client directory', () => {
     });
   }
 
+  test('roster and overview show rolling adherence (PRD I5)', async ({
+    page,
+    request,
+    baseURL,
+  }) => {
+    await signUpVerifiedCoach(page, request);
+    const client = await apiCreateClient(page.request, baseURL as string, {
+      name: 'Grace Hopper',
+      email: `grace-${Date.now()}@example.test`,
+    });
+    await page.goto('/app/clients');
+    for (const name of ['7d', '30d', '90d']) {
+      await expect(page.getByRole('columnheader', { name })).toBeVisible();
+    }
+    // Nothing is due yet: every window reads "No sessions due yet", never 0%.
+    const row = page.getByRole('row', { name: /Grace Hopper/ });
+    await expect(row.getByText('No sessions due yet')).toHaveCount(3);
+    await expectNoAxeViolations(page);
+
+    await page.goto(`/app/clients/${client.id}`);
+    const card = page.getByRole('heading', { name: 'Adherence', level: 2 });
+    await expect(card).toBeVisible();
+    await expect(page.getByText('Last 90 days')).toBeVisible();
+    await expectNoAxeViolations(page);
+  });
+
   test('unknown client id is a 404 page', async ({ page, request }) => {
     await signUpVerifiedCoach(page, request);
     await page.goto('/app/clients/00000000-0000-4000-8000-000000000000');
