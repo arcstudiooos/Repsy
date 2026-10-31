@@ -175,6 +175,18 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+  /clients/{id}/calendar:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Clients]
+      summary: "A month (?month=YYYY-MM, default this month) of the client's workouts and check-ins over whole weeks, in the client's time zone (PRD C16)."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
   /clients/{id}/invite:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }
@@ -813,6 +825,21 @@ paths:
         content: { application/json: { schema: { type: object } } }
       responses:
         '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /sessions/{id}/reschedule:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Sessions]
+      summary: "Move an unstarted workout to another day (PRD C16). Body: {toLocalDate: YYYY-MM-DD, shiftLater?: boolean} (shiftLater moves every later unstarted workout of the program by the same number of days). 409 when started, past or paused."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '409': { $ref: '#/components/responses/Error' }
         '422': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }

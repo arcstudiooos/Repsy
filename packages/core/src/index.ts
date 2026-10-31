@@ -458,3 +458,11 @@ export {
   type SetupStep,
   type SetupStepId,
 } from './onboarding/setup';
+export {
+  getClientCalendar,
+  rescheduleSession,
+  RESCHEDULE_MAX_DAYS_AHEAD,
+  type CalendarCheckin,
+  type CalendarWorkout,
+  type ClientCalendar,
+} from './sessions/calendar';

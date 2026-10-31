@@ -2,8 +2,10 @@ import { z } from 'zod';
 import {
   completeSession,
   finishBodySchema,
+  getClientCalendar,
   getSessionDetail,
   listSessions,
+  rescheduleSession,
   reviseSetLogs,
   skipSession,
   startSession,
@@ -121,4 +123,27 @@ export const sessionSkipRoute: RouteDef<typeof finishBodySchema, true> = {
   input: finishBodySchema,
   handler: ({ actor, input, params, requestId, tenant }) =>
     tenant((tx) => skipSession(tx, actor, params.id ?? '', input, { requestId })),
+};
+
+const calendarSchema = z.object({ month: z.string().max(7).optional() });
+
+/** `GET /api/v1/clients/:id/calendar?month=YYYY-MM`: a month of the client's workouts and check-ins (PRD C16). */
+export const clientCalendarRoute: RouteDef<typeof calendarSchema, true> = {
+  can: 'session:read',
+  input: calendarSchema,
+  handler: ({ actor, input, params, tenant }) =>
+    tenant((tx) => getClientCalendar(tx, actor, { clientId: params.id, month: input.month })),
+};
+
+const rescheduleSchema = z.object({
+  toLocalDate: z.string().max(10),
+  shiftLater: z.boolean().optional(),
+});
+
+/** `POST /api/v1/sessions/:id/reschedule`: move an unstarted workout (and optionally every later one). */
+export const sessionRescheduleRoute: RouteDef<typeof rescheduleSchema, true> = {
+  can: 'assignment:write',
+  input: rescheduleSchema,
+  handler: ({ actor, input, params, requestId, tenant }) =>
+    tenant((tx) => rescheduleSession(tx, actor, params.id ?? '', input, { requestId })),
 };

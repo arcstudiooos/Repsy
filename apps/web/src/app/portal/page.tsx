@@ -121,6 +121,12 @@ export default async function PortalHome() {
         )}
 
         <Link
+          href="/portal/calendar"
+          className={cn(buttonVariants({ variant: 'secondary' }), 'min-h-12 w-full')}
+        >
+          See your month on a calendar
+        </Link>
+        <Link
           href="/portal/progress"
           className={cn(buttonVariants({ variant: 'secondary' }), 'min-h-12 w-full')}
         >

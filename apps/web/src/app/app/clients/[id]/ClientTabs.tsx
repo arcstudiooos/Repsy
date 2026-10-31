@@ -8,6 +8,7 @@ const TABS = [
   { label: 'Overview', segment: '' },
   { label: 'Program', segment: 'program' },
   { label: 'Sessions', segment: 'sessions' },
+  { label: 'Calendar', segment: 'calendar' },
   { label: 'Progress', segment: 'progress' },
   { label: 'Habits', segment: 'habits' },
   { label: 'Nutrition', segment: 'nutrition' },
