@@ -88,6 +88,11 @@ describe('render.yaml blueprint', () => {
       'RESEND_API_KEY',
       'SENTRY_DSN',
       'ANALYTICS_HASH_SECRET',
+      'S3_BUCKET',
+      'S3_ACCESS_KEY_ID',
+      'S3_SECRET_ACCESS_KEY',
+      'EXPORT_LINK_SECRET',
+      'POSTHOG_KEY',
     ]) {
       expect(groupKeys()).toContain(key);
     }
@@ -100,6 +105,8 @@ describe('render.yaml blueprint', () => {
       'RESEND_API_KEY',
       'ANALYTICS_HASH_SECRET',
       'SENTRY_DSN',
+      'S3_SECRET_ACCESS_KEY',
+      'EXPORT_LINK_SECRET',
     ]) {
       expect(vars.get(secret)?.sync).toBe(false);
       expect(vars.get(secret)?.value).toBeUndefined();

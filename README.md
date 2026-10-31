@@ -28,6 +28,14 @@ Open http://localhost:3000 and sign in as `coach@example.test` (or `admin@exampl
 - `pnpm dev`, `pnpm db:migrate`, `pnpm db:seed`, `pilot-code:create` and `pgboss:migrate` read the root `.env` (Node's built-in env-file loader; variables already set in the shell win). `pnpm test` does not.
 - `pnpm db:down` stops the container (data persists in a named volume).
 
+## What works locally (Sprint 5)
+
+- `/app/analytics`: adherence (completed of eligible workouts, with skipped, not finished and missed shown separately; paused and cancelled excluded), assigned vs finished, check-in response rate, due check-ins and median time to follow-up, each with its numerator, denominator and period.
+- Exports: an owner exports the organization (Settings) and a client their own data (portal Profile) as CSV files. The worker (`exports.build`) prepares them in private storage (`.dev-exports/` locally, S3 in production); each download link works for 15 minutes and only for the person who asked.
+- Deletion: a client (Profile) or an owner (client Overview) requests deletion; a platform admin verifies it on `/admin`, and the worker (`deletions.run`) erases the client's data in that workspace. `/admin` also has pilot codes, account lookup and audited, time-limited support access. Non-admins get a 404.
+- Product events (§13) go to PostHog when `POSTHOG_KEY` is set, with hashed ids and allowlisted properties only.
+- Pilot readiness: `pnpm perf:dashboard`, `docs/api/openapi.yaml`, `docs/qa-matrix.md`, `docs/accessibility-checklist.md`, `docs/runbook.md` (jobs, exports, deletion, support access, restore drill), `docs/legal/` drafts for counsel, `docs/screenshots/`, and the pilot operations kit in `docs/pilot/` (Sprint 6).
+
 ## What works locally (Sprint 4)
 
 - Weekly check-ins: the coach edits one set of questions (1-5 scale, short text, yes/no; all optional) at `/app/check-ins` and picks each client's check-in day on their Check-ins tab. The worker (`checkins.issue`, every 10 minutes) sends it at 06:00 in the client's time zone with a "check-in ready" email; it is due 23:59 that day and never sent while the program is paused. The client fills it in from the portal (the draft autosaves and survives a reload); the coach reads the answers beside the week before.
@@ -73,7 +81,8 @@ Open http://localhost:3000 and sign in as `coach@example.test` (or `admin@exampl
 - `pnpm typecheck` - TypeScript in every workspace
 - `pnpm dev` - web + worker for local development
 - `pnpm test` - Vitest unit and integration tests
-- `pnpm test:e2e` - Playwright end-to-end tests (web app)
+- `pnpm test:e2e` - Playwright end-to-end tests (web app; the offline spec runs against a production build)
+- `pnpm perf:dashboard` - dashboard data-load timing for 50 clients (needs `DATABASE_URL`)
 - `pnpm db:up` / `pnpm db:down` - start or stop local Postgres
 - `pnpm db:migrate` / `pnpm db:seed` - apply migrations / seed demo data (read the root `.env`)
 - `pnpm format` - Prettier (writes; prefer formatting only files you changed)

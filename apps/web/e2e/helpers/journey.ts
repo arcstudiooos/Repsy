@@ -115,12 +115,17 @@ export async function buildProgram(
 export async function openClientTab(page: Page, clientName: string, tab: string): Promise<void> {
   await page.goto('/app/clients');
   await page.getByRole('link', { name: clientName }).first().click();
-  // Scoped: "Messages" is also a primary-nav link.
-  await page
-    .getByRole('navigation', { name: 'Client sections' })
-    .getByRole('link', { name: tab, exact: true })
-    .click();
-  await expect(page).toHaveURL(new RegExp(`/${tab.toLowerCase()}$`));
+  await expect(page).toHaveURL(/\/app\/clients\/[0-9a-f-]{36}$/, { timeout: 30_000 });
+  // Scoped: "Messages" is also a primary-nav link. A click while the page is still hydrating can be lost, so retry
+  // until the URL follows.
+  const target = new RegExp(`/${tab.toLowerCase()}$`);
+  await expect(async () => {
+    await page
+      .getByRole('navigation', { name: 'Client sections' })
+      .getByRole('link', { name: tab, exact: true })
+      .click();
+    await expect(page).toHaveURL(target, { timeout: 5_000 });
+  }).toPass({ timeout: 45_000 });
 }
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];

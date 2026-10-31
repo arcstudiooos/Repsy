@@ -1,0 +1,884 @@
+openapi: 3.1.0
+info:
+  title: Kinetic API
+  version: v1
+  description: |
+    The Kinetic web API (`/api/v1`). Every response uses the envelope `{ data, meta? }` or `{ error }`; errors are
+    `{ code, message, fieldErrors?, requestId }` with statuses 400/401/403/404/409/422/429/500. Mutations require a
+    same-origin `Origin` header (CSRF). Every read and write is scoped to the active organization (signed
+    `kinetic_org` cookie); another organization's ids are 404. Generated from `apps/web/src/app/api/v1` (S5-5).
+servers:
+  - url: /api/v1
+security:
+  - session: []
+tags:
+  - name: Account
+  - name: Admin
+  - name: Check-ins
+  - name: Clients
+  - name: Data
+  - name: Messages
+  - name: Notes
+  - name: Organization
+  - name: Programs
+  - name: Review
+  - name: Settings
+  - name: Workouts
+paths:
+  /me:
+    get:
+      tags: [Account]
+      summary: "The signed-in user, their memberships and the active organization."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /org:
+    get:
+      tags: [Organization]
+      summary: "The active organization."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    patch:
+      tags: [Organization]
+      summary: "Update the organization (owner)."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /org/switch:
+    post:
+      tags: [Organization]
+      summary: "Make another membership\"s organization active (sets the signed org cookie)."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /settings:
+    get:
+      tags: [Settings]
+      summary: "Profile, organization, notifications and pilot access for the acting user."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    patch:
+      tags: [Settings]
+      summary: "Update settings sections."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /sessions/revoke-all:
+    post:
+      tags: [Account]
+      summary: "Sign out every other session of this user."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /auth/invite/accept:
+    post:
+      tags: [Clients]
+      summary: "Accept a client invite (token, consent) and create or link the account."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /clients:
+    get:
+      tags: [Clients]
+      summary: "List clients (search, status filter, cursor)."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Clients]
+      summary: "Create a client (within the active-client limit)."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '201': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /clients/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Clients]
+      summary: "One client, with invite status, pause and check-in day."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    patch:
+      tags: [Clients]
+      summary: "Update name, goals, start date or status (pausing goes through /pause)."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /clients/{id}/invite:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Clients]
+      summary: "Send or resend the invite (7-day, single-use link)."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '201': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [Clients]
+      summary: "Revoke the pending invite."
+      responses:
+        '204': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /clients/{id}/assignment:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Programs]
+      summary: "The client\"s active assignment, or null."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /clients/{id}/history:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Programs]
+      summary: "Last logged sets per exercise (builder performance rail)."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /clients/{id}/pause:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Clients]
+      summary: "Pause the program (D-003); replaying the same dates is a no-op."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    patch:
+      tags: [Clients]
+      summary: "Change the expected resume date."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /clients/{id}/pause/resume:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Clients]
+      summary: "Resume now."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /clients/{id}/checkin-schedule:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [Check-ins]
+      summary: "Set or clear the weekly check-in day."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /clients/{id}/thread:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Messages]
+      summary: "The client\"s conversation (created on first open)."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /clients/{id}/notes:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Notes]
+      summary: "Private notes about the client (coach/owner only)."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Notes]
+      summary: "Add a private note."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '201': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /clients/{id}/timeline:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Notes]
+      summary: "The client\"s history timeline, including private notes."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /notes/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [Notes]
+      summary: "Edit your note (author only)."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [Notes]
+      summary: "Delete your note (author only)."
+      responses:
+        '204': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /exercises:
+    get:
+      tags: [Programs]
+      summary: "Search the exercise library (global + organization)."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Programs]
+      summary: "Create an organization exercise."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '201': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /programs:
+    get:
+      tags: [Programs]
+      summary: "List program templates with usage counts."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Programs]
+      summary: "Create a program template."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '201': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /programs/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Programs]
+      summary: "A program and its current version."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    patch:
+      tags: [Programs]
+      summary: "Rename, or commit a new version (expectedVersion; 409 on conflict)."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /programs/{id}/draft:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Programs]
+      summary: "The autosaved draft, if any."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    put:
+      tags: [Programs]
+      summary: "Autosave the draft (last write wins)."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [Programs]
+      summary: "Discard the draft."
+      responses:
+        '204': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /programs/{id}/versions:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Programs]
+      summary: "Version history."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /programs/{id}/versions/{no}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+      - { name: no, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Programs]
+      summary: "One version\"s content."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /programs/{id}/assign:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Programs]
+      summary: "Assign a template to a client (copy-on-assign, sessions scheduled)."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /sessions:
+    get:
+      tags: [Workouts]
+      summary: "Upcoming or past sessions (the acting client\"s, or one client\"s for a coach)."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /sessions/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Workouts]
+      summary: "The logging screen\"s data (workout, logs, revisions, edit window)."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /sessions/{id}/start:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Workouts]
+      summary: "Start (locks the workout version). Idempotent."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /sessions/{id}/logs:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Workouts]
+      summary: "Upsert set logs (idempotent per set; stale writes return the stored value)."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    patch:
+      tags: [Workouts]
+      summary: "Edit a finished workout\"s sets (client within 24h; coach with a reason)."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /sessions/{id}/complete:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Workouts]
+      summary: "Complete (idempotency key)."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /sessions/{id}/skip:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Workouts]
+      summary: "Skip (idempotency key)."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /checkin-template:
+    get:
+      tags: [Check-ins]
+      summary: "The organization\"s check-in questions (seeded on first read)."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    patch:
+      tags: [Check-ins]
+      summary: "Edit the questions (issued check-ins keep theirs)."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /checkins:
+    get:
+      tags: [Check-ins]
+      summary: "The acting client\"s check-ins, or one client\"s for a coach."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /checkins/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Check-ins]
+      summary: "One check-in (coaches also get the week before in meta.activity)."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /checkins/{id}/draft:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [Check-ins]
+      summary: "Autosave the client\"s draft answers."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /checkins/{id}/submit:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Check-ins]
+      summary: "Submit (idempotency key; another key after submission is 409)."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /threads:
+    get:
+      tags: [Messages]
+      summary: "The coach inbox with unread counts."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /threads/me:
+    get:
+      tags: [Messages]
+      summary: "The acting client\"s conversation."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /threads/{id}/messages:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Messages]
+      summary: "Messages, newest first, 30 per page; the first page marks the thread read."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Messages]
+      summary: "Send a message (1-4,000 characters; idempotent on clientMessageId)."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '201': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /review:
+    get:
+      tags: [Review]
+      summary: "Sprint 2 activity lists (new completed, due, skipped this week)."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /review/seen:
+    post:
+      tags: [Review]
+      summary: "Mark the activity list seen."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /review-flags:
+    get:
+      tags: [Review]
+      summary: "The review queue (filter, rule)."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Review]
+      summary: "Create a follow-up for a client."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '201': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /review-flags/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [Review]
+      summary: "Resolve or dismiss (reason required), snooze, or reopen."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /exports:
+    get:
+      tags: [Data]
+      summary: "The acting user\"s exports."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Data]
+      summary: "Request an export: organization (owner) or own data (client). Idempotent per key."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /exports/{id}/links:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Data]
+      summary: "Download links for a finished export, valid 15 minutes, for the requester only."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /exports/{id}/files/{name}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+      - { name: name, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Data]
+      summary: "Download one CSV (token re-checked against the signed-in requester)."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /deletion-requests:
+    post:
+      tags: [Data]
+      summary: "Request erasure of a client\"s data (the client, or the owner for a client)."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /admin/pilot-codes:
+    get:
+      tags: [Admin]
+      summary: "Pilot codes (platform admin; 404 otherwise)."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Admin]
+      summary: "Create a pilot code (plaintext shown once)."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '201': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /admin/accounts:
+    get:
+      tags: [Admin]
+      summary: "Account lookup by email."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /admin/deletions:
+    get:
+      tags: [Admin]
+      summary: "The deletion queue."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /admin/deletions/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [Admin]
+      summary: "Verify, reject (reason) or set/clear a legal hold."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /admin/support-grants:
+    get:
+      tags: [Admin]
+      summary: "Your support access grants."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Admin]
+      summary: "Grant 24-hour support access to a client (reason required)."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '201': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /admin/support-grants/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    delete:
+      tags: [Admin]
+      summary: "Revoke a grant."
+      responses:
+        '204': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /admin/support/clients/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Admin]
+      summary: "A client\"s data for support (needs an active grant; audited)."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: better-auth.session_token
+      description: Better Auth session cookie (database sessions).
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, requestId]
+          properties:
+            code: { type: string, enum: [BAD_REQUEST, UNAUTHENTICATED, FORBIDDEN, EDIT_WINDOW_CLOSED, NOT_FOUND, CONFLICT, ORG_SELECTION_REQUIRED, ALREADY_ONBOARDED, CLIENT_LIMIT_REACHED, ACTIVE_ASSIGNMENT_EXISTS, EMAIL_TAKEN, SESSION_NOT_STARTED, SESSION_FINISHED, VALIDATION, PILOT_CODE_INVALID, INVITE_INVALID, INVITE_EXPIRED, INVITE_USED, INVITE_REVOKED, RATE_LIMITED, INTERNAL] }
+            message: { type: string }
+            fieldErrors: { type: object, additionalProperties: { type: array, items: { type: string } } }
+            requestId: { type: string }
+    Envelope:
+      type: object
+      properties:
+        data: {}
+        meta: { type: object }
+  responses:
+    Ok:
+      description: Success
+      content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } }
+    Error:
+      description: Error
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }

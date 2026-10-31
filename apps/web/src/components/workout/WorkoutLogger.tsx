@@ -372,8 +372,11 @@ export function WorkoutLogger({
     router.refresh();
   }
 
+  // Nothing to report before the first write: "Synced" on an empty workout would mean nothing.
   const syncPanel =
-    deviceFirst && sync ? (
+    deviceFirst &&
+    sync &&
+    (sync.status !== 'synced' || detail.logs.length > 0 || sync.rejected.length > 0) ? (
       <div className="mb-4 flex flex-col gap-2">
         <p role="status" className={sync.status === 'synced' ? 'text-accent' : 'text-secondary'}>
           {SYNC_LABEL[sync.status]}
