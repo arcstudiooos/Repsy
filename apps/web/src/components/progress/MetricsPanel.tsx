@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/toast';
 import { recordMetricValue } from '@/lib/metric-api';
+import { TrendChart } from './TrendChart';
 
 const formatDay = (date: string) =>
   new Intl.DateTimeFormat('en-GB', {
@@ -263,6 +264,33 @@ export function MetricsPanel({
             );
           })}
         </ul>
+      )}
+      {view.series.some((x) => x.entries.length > 1) && (
+        <Card>
+          <CardHeader>
+            <CardTitle as="h3">Trends</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-8">
+            {view.series
+              .filter((x) => x.entries.length > 1)
+              .map(({ metric, entries }) => {
+                const def = metricDef(metric);
+                return (
+                  <TrendChart
+                    key={metric}
+                    title={def.label}
+                    unit={metricUnit(def.kind, view.units)}
+                    today={view.todayLocalDate}
+                    sevenDayAverage={metric === 'weight'}
+                    points={entries.map((e) => ({
+                      date: e.measuredOn,
+                      value: metricFromCanonical(def.kind, e.value, view.units),
+                    }))}
+                  />
+                );
+              })}
+          </CardContent>
+        </Card>
       )}
       <Card>
         <CardHeader>

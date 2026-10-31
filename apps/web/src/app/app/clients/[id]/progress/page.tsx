@@ -6,6 +6,7 @@ import {
   getPersonalRecords,
   isUuid,
   listMetrics,
+  todayInZone,
 } from '@kinetic/core';
 import { MetricsPanel } from '@/components/progress/MetricsPanel';
 import { ExerciseProgress, RecordsList } from '@/components/progress/Progress';
@@ -55,6 +56,7 @@ export default async function ClientProgressPage({
           entries={history.entries}
           units={units}
           backHref={base}
+          today={todayInZone(client.timezone)}
         />
       </>
     );

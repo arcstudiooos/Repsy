@@ -4,6 +4,8 @@ import { toDisplay, type Units } from '@kinetic/core/units';
 import { EmptyState } from '@/components/states/EmptyState';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDate } from '@/app/app/clients/StatusBadge';
+import type { TrendPoint } from '@/lib/trend';
+import { TrendChart } from './TrendChart';
 
 const load = (kg: number, units: Units) => `${toDisplay(kg, units)} ${units}`;
 
@@ -35,6 +37,37 @@ function headline(r: ExerciseRecords, units: Units): { value: string; detail: st
 
 const heaviestText = (r: ExerciseRecords, units: Units) =>
   r.heaviest ? `${load(r.heaviest.weightKg, units)} × ${r.heaviest.reps}` : '–';
+
+/** The best value per day for the exercise's trend (PRD E2): estimated 1RM, else time, distance or reps. */
+function exerciseTrend(
+  type: ExerciseRecords['trackingType'],
+  entries: ExerciseHistoryEntry[],
+  units: Units,
+): { title: string; unit: string; points: TrendPoint[] } {
+  const pick = (e: ExerciseHistoryEntry): number | null => {
+    if (type === 'duration') return e.longestSeconds;
+    if (type === 'distance') return e.longestMeters;
+    if (e.estimatedOneRepMaxKg !== null) return toDisplay(e.estimatedOneRepMaxKg, units);
+    return e.totalReps > 0 ? e.totalReps : null;
+  };
+  const anyLoad = entries.some((e) => e.estimatedOneRepMaxKg !== null);
+  const [title, unit] =
+    type === 'duration'
+      ? ['Longest set', 's']
+      : type === 'distance'
+        ? ['Longest distance', 'm']
+        : anyLoad
+          ? ['Estimated 1RM', units]
+          : ['Total reps', 'reps'];
+  const best = new Map<string, number>();
+  for (const e of entries) {
+    const v = pick(e);
+    if (v === null || (type === 'reps_load' && anyLoad && e.estimatedOneRepMaxKg === null))
+      continue;
+    best.set(e.localDate, Math.max(v, best.get(e.localDate) ?? -Infinity));
+  }
+  return { title, unit, points: [...best].map(([date, value]) => ({ date, value })) };
+}
 
 /** Personal records per exercise (PRD E6): a table on wide screens, cards on phones. */
 export function RecordsList({
@@ -140,12 +173,16 @@ export function ExerciseProgress({
   entries,
   units,
   backHref,
+  today,
 }: {
   records: ExerciseRecords | null;
   entries: ExerciseHistoryEntry[];
   units: Units;
   backHref: string;
+  /** The client's today (YYYY-MM-DD), where the trend's range ends. */
+  today: string;
 }) {
+  const trend = exerciseTrend(records?.trackingType ?? 'reps_load', entries, units);
   const repMaxes = records?.repMaxes
     .map((r, i) => (r ? { reps: i + 1, r } : null))
     .filter((x): x is NonNullable<typeof x> => x !== null);
@@ -154,6 +191,13 @@ export function ExerciseProgress({
       <Link href={backHref} className="inline-flex min-h-11 items-center text-accent underline">
         All exercises
       </Link>
+      {trend.points.length > 1 && (
+        <Card>
+          <CardContent>
+            <TrendChart title={trend.title} unit={trend.unit} points={trend.points} today={today} />
+          </CardContent>
+        </Card>
+      )}
       {repMaxes && repMaxes.length > 0 && (
         <Card>
           <CardHeader>

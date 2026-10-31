@@ -6,6 +6,7 @@ import {
   getPersonalRecords,
   isUuid,
   listMetrics,
+  todayInZone,
 } from '@kinetic/core';
 import { MetricsPanel } from '@/components/progress/MetricsPanel';
 import { ExerciseProgress, RecordsList } from '@/components/progress/Progress';
@@ -29,11 +30,12 @@ export default async function PortalProgressPage({
       const clientId = actor.clientId as string;
       const me = await tx.client.findFirst({
         where: { id: clientId },
-        select: { preferredUnits: true },
+        select: { preferredUnits: true, timezone: true },
       });
       return {
         clientId,
         units: me?.preferredUnits ?? 'kg',
+        today: todayInZone(me?.timezone ?? 'UTC'),
         metrics: exerciseId === undefined ? await listMetrics(tx, actor, clientId) : null,
         records: await getPersonalRecords(tx, actor, clientId),
         history:
@@ -46,7 +48,7 @@ export default async function PortalProgressPage({
     if (error instanceof DomainError && error.code === 'NOT_FOUND') notFound();
     throw error;
   }
-  const { clientId, units, metrics, records, history } = data;
+  const { clientId, units, today, metrics, records, history } = data;
 
   return (
     <>
@@ -59,6 +61,7 @@ export default async function PortalProgressPage({
           entries={history.entries}
           units={units}
           backHref="/portal/progress"
+          today={today}
         />
       ) : (
         <div className="flex flex-col gap-8">
