@@ -1,6 +1,13 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { DomainError, getExerciseHistory, getPersonalRecords, isUuid } from '@kinetic/core';
+import {
+  DomainError,
+  getExerciseHistory,
+  getPersonalRecords,
+  isUuid,
+  listMetrics,
+} from '@kinetic/core';
+import { MetricsPanel } from '@/components/progress/MetricsPanel';
 import { ExerciseProgress, RecordsList } from '@/components/progress/Progress';
 import { withPortalTenant } from '@/server/serverActor';
 
@@ -8,7 +15,7 @@ export const metadata: Metadata = { title: 'Progress | Kinetic' };
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) || undefined;
 
-/** The client's own personal records (PRD E6) and, with ?exercise=, one exercise's workouts (E7). */
+/** The client's own body metrics (PRD E1) and personal records (PRD E6) and, with ?exercise=, one exercise's workouts (E7). */
 export default async function PortalProgressPage({
   searchParams,
 }: {
@@ -25,7 +32,9 @@ export default async function PortalProgressPage({
         select: { preferredUnits: true },
       });
       return {
+        clientId,
         units: me?.preferredUnits ?? 'kg',
+        metrics: exerciseId === undefined ? await listMetrics(tx, actor, clientId) : null,
         records: await getPersonalRecords(tx, actor, clientId),
         history:
           exerciseId !== undefined
@@ -37,7 +46,7 @@ export default async function PortalProgressPage({
     if (error instanceof DomainError && error.code === 'NOT_FOUND') notFound();
     throw error;
   }
-  const { units, records, history } = data;
+  const { clientId, units, metrics, records, history } = data;
 
   return (
     <>
@@ -52,12 +61,20 @@ export default async function PortalProgressPage({
           backHref="/portal/progress"
         />
       ) : (
-        <RecordsList
-          records={records}
-          units={units}
-          hrefFor={(id) => `/portal/progress?exercise=${id}`}
-          emptyBody="Your records appear once you complete a logged workout."
-        />
+        <div className="flex flex-col gap-8">
+          {metrics && <MetricsPanel clientId={clientId} view={metrics} isCoach={false} />}
+          <section aria-labelledby="records-heading" className="flex flex-col gap-4">
+            <h2 id="records-heading" className="text-lg font-semibold">
+              Personal records
+            </h2>
+            <RecordsList
+              records={records}
+              units={units}
+              hrefFor={(id) => `/portal/progress?exercise=${id}`}
+              emptyBody="Your records appear once you complete a logged workout."
+            />
+          </section>
+        </div>
       )}
     </>
   );

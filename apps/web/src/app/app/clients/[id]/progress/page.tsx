@@ -1,6 +1,13 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { DomainError, getExerciseHistory, getPersonalRecords, isUuid } from '@kinetic/core';
+import {
+  DomainError,
+  getExerciseHistory,
+  getPersonalRecords,
+  isUuid,
+  listMetrics,
+} from '@kinetic/core';
+import { MetricsPanel } from '@/components/progress/MetricsPanel';
 import { ExerciseProgress, RecordsList } from '@/components/progress/Progress';
 import { withServerTenant } from '@/server/serverActor';
 import { loadClient } from '../data';
@@ -9,7 +16,7 @@ export const metadata: Metadata = { title: 'Progress | Kinetic' };
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) || undefined;
 
-/** The client's personal records (PRD E6) and, with ?exercise=, one exercise's workouts (E7). Loads in the client's units. */
+/** The client's body metrics (PRD E1) and personal records (PRD E6) and, with ?exercise=, one exercise's workouts (E7). Loads in the client's units. */
 export default async function ClientProgressPage({
   params,
   searchParams,
@@ -26,6 +33,7 @@ export default async function ClientProgressPage({
   let data;
   try {
     data = await withServerTenant(async (tx, actor) => ({
+      metrics: exerciseId === undefined ? await listMetrics(tx, actor, client.id) : null,
       records: await getPersonalRecords(tx, actor, client.id),
       history:
         exerciseId !== undefined
@@ -36,7 +44,7 @@ export default async function ClientProgressPage({
     if (error instanceof DomainError && error.code === 'NOT_FOUND') notFound();
     throw error;
   }
-  const { records, history } = data;
+  const { metrics, records, history } = data;
 
   if (history) {
     return (
@@ -53,11 +61,19 @@ export default async function ClientProgressPage({
   }
 
   return (
-    <RecordsList
-      records={records}
-      units={units}
-      hrefFor={(id) => `${base}?exercise=${id}`}
-      emptyBody="Records appear once the client completes a logged workout."
-    />
+    <div className="flex flex-col gap-8">
+      {metrics && <MetricsPanel clientId={client.id} view={metrics} isCoach />}
+      <section aria-labelledby="records-heading" className="flex flex-col gap-4">
+        <h2 id="records-heading" className="text-lg font-semibold">
+          Personal records
+        </h2>
+        <RecordsList
+          records={records}
+          units={units}
+          hrefFor={(id) => `${base}?exercise=${id}`}
+          emptyBody="Records appear once the client completes a logged workout."
+        />
+      </section>
+    </div>
   );
 }

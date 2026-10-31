@@ -27,6 +27,8 @@ import {
   type ClientWorld,
 } from '../sessions/fixtures.test-helpers';
 import { eraseClientData, requestDeletion } from './deletion';
+import { recordMetric } from '../progress/metrics';
+import { todayInZone } from '../timezone';
 
 let prisma: PrismaClient;
 let drop: () => Promise<void>;
@@ -85,6 +87,12 @@ async function busyClient(): Promise<ClientWorld> {
   const thread = await runAs(prisma, w.client, (tx) => getMyThread(tx, w.client));
   await runAs(prisma, w.client, (tx) => sendMessage(tx, w.client, thread.id, { body: 'Hello' }));
   await runAs(prisma, w.coach, (tx) => createNote(tx, w.coach, w.clientId, { body: 'Note' }));
+  const measuredOn = todayInZone('America/New_York', NOW);
+  for (const value of [70, 71]) {
+    await runAs(prisma, w.client, (tx) =>
+      recordMetric(tx, w.client, w.clientId, { metric: 'weight', measuredOn, value }, { now: NOW }),
+    );
+  }
   return w;
 }
 
@@ -97,6 +105,8 @@ const counts = (w: ClientWorld) =>
     }),
     messages: await tx.message.count({ where: { thread: { is: { clientId: w.clientId } } } }),
     notes: await tx.internalNote.count({ where: { clientId: w.clientId } }),
+    metrics: await tx.metricEntry.count({ where: { clientId: w.clientId } }),
+    metricRevisions: await tx.metricEntryRevision.count({ where: { clientId: w.clientId } }),
     assignments: await tx.programAssignment.count({ where: { clientId: w.clientId } }),
   }));
 
@@ -115,6 +125,8 @@ describe('deletion (S5-3)', () => {
       revisions: 1,
       messages: 1,
       notes: 1,
+      metrics: 1,
+      metricRevisions: 1,
     });
     const id = await verifiedRequest(w);
     const first = await sys((tx) => eraseClientData(tx, id, NOW));
@@ -125,6 +137,8 @@ describe('deletion (S5-3)', () => {
       revisions: 0,
       messages: 0,
       notes: 0,
+      metrics: 0,
+      metricRevisions: 0,
       assignments: 0,
     });
     const after = await sys(async (tx) => ({

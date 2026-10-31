@@ -6,6 +6,7 @@ import { DomainError } from '../errors';
 import { fromDbDate } from '../sessions/read';
 import { isUuid } from '../uuid';
 import { toCsv, type CsvValue } from './csv';
+import { canonicalUnit, metricDef } from '../progress/metric-catalog';
 
 const DAY_MS = 86_400_000;
 /** Downloads are offered for this long after an export is built. */
@@ -291,6 +292,40 @@ async function checkinRows(tx: TenantTx, clientId?: string): Promise<Rows> {
   });
 }
 
+async function metricRows(tx: TenantTx, clientId?: string): Promise<Rows> {
+  const entries = await tx.metricEntry.findMany({
+    where: clientId ? { clientId } : {},
+    orderBy: [{ clientId: 'asc' }, { metric: 'asc' }, { measuredOn: 'asc' }],
+    select: {
+      clientId: true,
+      metric: true,
+      measuredOn: true,
+      value: true,
+      source: true,
+      updatedAt: true,
+    },
+  });
+  return entries.map((e) => [
+    e.clientId,
+    e.metric,
+    fromDbDate(e.measuredOn),
+    Number(e.value.toString()),
+    canonicalUnit(metricDef(e.metric).kind),
+    e.source,
+    e.updatedAt.toISOString(),
+  ]);
+}
+
+const METRIC_HEADER = [
+  'client_id',
+  'metric',
+  'measured_on',
+  'value',
+  'unit',
+  'recorded_by',
+  'updated_at',
+];
+
 const SESSION_HEADER = [
   'session_id',
   'client_id',
@@ -324,8 +359,8 @@ const CHECKIN_HEADER = [
 ];
 
 /**
- * The CSVs of one export (Ruling 3). Organization: clients, sessions, set logs, check-ins. Client: their profile,
- * sessions, set logs, check-ins and their own conversation. Internal notes are never exported to a client.
+ * The CSVs of one export (Ruling 3). Organization: clients, sessions, set logs, check-ins, body metrics. Client: their
+ * profile, sessions, set logs, check-ins, body metrics and their own conversation. Internal notes are never exported to a client.
  */
 export async function buildExportFiles(
   tx: TenantTx,
@@ -378,6 +413,7 @@ export async function buildExportFiles(
       file('sessions.csv', SESSION_HEADER, sessions),
       file('set_logs.csv', SET_HEADER, sets),
       file('checkins.csv', CHECKIN_HEADER, await checkinRows(tx)),
+      file('metrics.csv', METRIC_HEADER, await metricRows(tx)),
     ];
   }
   const clientId = job.clientId as string;
@@ -422,6 +458,7 @@ export async function buildExportFiles(
     file('sessions.csv', SESSION_HEADER, sessions),
     file('set_logs.csv', SET_HEADER, sets),
     file('checkins.csv', CHECKIN_HEADER, await checkinRows(tx, clientId)),
+    file('metrics.csv', METRIC_HEADER, await metricRows(tx, clientId)),
     file(
       'messages.csv',
       ['sent_at', 'from', 'body', 'read_at'],

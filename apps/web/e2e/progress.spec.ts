@@ -9,7 +9,7 @@ import {
 } from './helpers/journey';
 import { signUpVerifiedCoach } from './helpers/users';
 
-test.describe('personal records and exercise history (PRD E6, E7)', () => {
+test.describe('progress: body metrics, personal records, exercise history (PRD E1, E6, E7)', () => {
   // A full journey (sign-up, invite, build, assign, log) on a cold dev server.
   test.describe.configure({ timeout: 180_000 });
 
@@ -73,6 +73,48 @@ test.describe('personal records and exercise history (PRD E6, E7)', () => {
       await expect(client.page.getByRole('heading', { name: 'Workouts' })).toBeVisible();
       await expectNoAxeViolations(client.page);
       await expectNoHorizontalOverflow(client.page);
+    } finally {
+      await client.context.close();
+    }
+  });
+
+  test('body metrics: the client records weight, the coach sees it and changes it with a reason (PRD E1)', async ({
+    page,
+    request,
+    browser,
+  }) => {
+    await signUpVerifiedCoach(page, request);
+    const client = await onboardClient(page, request, browser, 'Mo Metrics');
+    try {
+      await client.page.goto('/portal/progress');
+      await expect(client.page.getByRole('heading', { name: 'Body metrics' })).toBeVisible({
+        timeout: 30_000,
+      });
+      const form = client.page.getByRole('form', { name: 'Record a measurement' });
+      await form.getByLabel('Measurement').selectOption('weight');
+      await form.getByLabel('Value (kg)').fill('72.4');
+      await form.getByRole('button', { name: 'Save measurement' }).click();
+      const latest = client.page.getByRole('list', { name: 'Latest measurements' });
+      await expect(latest.getByText('72.4').first()).toBeVisible({ timeout: 15_000 });
+      for (const width of [375, 1440]) {
+        await client.page.setViewportSize({ width, height: 900 });
+        await expectNoAxeViolations(client.page);
+        await expectNoHorizontalOverflow(client.page);
+      }
+
+      // The coach sees it; changing that day's value asks for a reason.
+      await openClientTab(page, 'Mo Metrics', 'Progress');
+      const coachLatest = page.getByRole('list', { name: 'Latest measurements' });
+      await expect(coachLatest.getByText('72.4').first()).toBeVisible();
+      const coachForm = page.getByRole('form', { name: 'Record a measurement' });
+      await coachForm.getByLabel('Value (kg)').fill('72.9');
+      await coachForm.getByRole('button', { name: 'Save measurement' }).click();
+      await expect(coachForm.getByRole('alert')).toContainText('Give a reason');
+      await coachForm.getByLabel('Reason for the change (coaches only)').fill('Scale was off');
+      await coachForm.getByRole('button', { name: 'Save measurement' }).click();
+      await expect(coachLatest.getByText('72.9').first()).toBeVisible({ timeout: 15_000 });
+      await expect(coachLatest.getByText('Edited')).toBeVisible();
+      await expectNoAxeViolations(page);
     } finally {
       await client.context.close();
     }

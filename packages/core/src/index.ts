@@ -242,6 +242,23 @@ export {
   type SetRecord,
 } from './progress/records';
 export {
+  listMetrics,
+  recordMetric,
+  metricDef,
+  metricUnit,
+  metricToCanonical,
+  metricFromCanonical,
+  isBodyMetric,
+  BODY_METRICS,
+  METRIC_REASON_MAX,
+  type BodyMetric,
+  type MetricDef,
+  type MetricKind,
+  type MetricEntryView,
+  type MetricsView,
+  type RecordMetricInput,
+} from './progress/metrics';
+export {
   listNotes,
   createNote,
   updateNote,

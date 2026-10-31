@@ -36,6 +36,8 @@ R2 builds the web-platform features in `docs/competitive/complete-platform-prd.m
 
 - **E6, E7 personal records and exercise history:** a Progress tab on each client (coach) and `/portal/progress` (client, linked from Home) show per-exercise records from completed workouts: estimated 1RM (Epley, labelled estimated), heaviest set, rep maxes for 1-10 reps, best session volume, most reps in a set, longest duration and distance. Each exercise opens every workout it was done in. Coach corrections update the records; skipped and unfinished workouts never count.
 
+- **E1 body metrics:** clients (portal Progress) and coaches (client Progress tab) record body weight, body fat, waist, hips, chest, arm, thigh, resting heart rate and steps, one value per metric and day, in the client's units (pounds and inches for lb users). Each metric shows its latest value, change and history. A coach changing a value gives a reason (coaches only); every change keeps an append-only revision. Included in exports and erased by deletion.
+
 ## What works locally (Sprint 5)
 
 - `/app/analytics`: adherence (completed of eligible workouts, with skipped, not finished and missed shown separately; paused and cancelled excluded), assigned vs finished, check-in response rate, due check-ins and median time to follow-up, each with its numerator, denominator and period.
