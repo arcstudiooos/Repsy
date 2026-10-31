@@ -87,7 +87,7 @@ Notable ones:
 - **Pauses (B-I2).** Not the upstream fix: `applyPause` still sets `paused` straight away (the coach UI and portal banner rely on it). `clientsInPauseNow` (an open pause whose `[start, resume)` covers today in the client's zone) decides instead, for check-in issuing and Rules 1 and 2.
 - **Late start and finish (B-I3).** `OPEN_STATES` is unchanged, so an `incomplete` session stays in the past list rather than in "upcoming" forever. The portal home continues an `incomplete` workout started in the last 24 hours; older ones are finished from the workouts list.
 
-Checks after `04ffe04` (cloud session, Linux, Node 24, Postgres 16): lint (0 errors, the 2 old warnings), typecheck, `format:check`, `pnpm test` (813 tests), `db:diff` clean. Browser tests: see the next-steps list.
+Checks after `04ffe04` (cloud session, Linux, Node 24, Postgres 16): lint (0 errors, the 2 old warnings), typecheck, `format:check`, `pnpm test` (813 tests), `db:diff` clean. Browser tests: `pnpm test:e2e` 75 passed and 4 skipped (the 2 earlier failures and the new late-start/late-finish spec included), and the offline config 5 of 5 passed against a production build. They ran in this container with the preinstalled Chromium through a local Playwright config that is not committed.
 
 ## Uncommitted work
 
