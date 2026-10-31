@@ -45,9 +45,14 @@ import {
   type LocalView,
 } from '@/portal/offline/workoutCache';
 import { FinishDialog, type FinishBody } from './FinishDialog';
+import { RestTimer } from './RestTimer';
 import { SetRow, type RowStatus } from './SetRow';
 
 type Exercise = SessionDetail['workout']['exercises'][number];
+/** Rest when the program sets none (PRD D6). */
+const DEFAULT_REST_SEC = 90;
+/** Read only from event handlers (a set was saved), never during render. */
+const clockNow = () => Date.now();
 const MAX_SETS = 20;
 const rowKey = (wve: string, i: number) => `${wve}:${i}`;
 
@@ -230,6 +235,7 @@ export function WorkoutLogger({
         body: { items: [payload] },
       });
       setStatus((s) => ({ ...s, [key]: { kind: 'saved' } }));
+      if (!isBlank(parsed.values)) startRest(e, setIndex);
       return;
     }
     inflight.current.add(key);
@@ -251,9 +257,21 @@ export function WorkoutLogger({
       }
     } else {
       synced.current[key] = snapshot;
+      if (!isBlank(parsed.values)) startRest(e, setIndex);
     }
     // Re-check the latest draft: Synced if unchanged, otherwise save the newer value.
     await save(e, setIndex);
+  }
+
+  /** PRD D6: rest after a newly saved set, from the target's rest or 90 s. */
+  const [rest, setRest] = useState<{ endsAt: number; label: string } | null>(null);
+  function startRest(e: Exercise, setIndex: number) {
+    const seconds = e.sets[setIndex]?.restSec ?? DEFAULT_REST_SEC;
+    if (seconds <= 0) return;
+    setRest({
+      endsAt: clockNow() + seconds * 1000,
+      label: `Rest after ${e.name}, set ${setIndex + 1}`,
+    });
   }
 
   const onDraftChange = (key: string, d: SetDraft) => {
@@ -730,6 +748,23 @@ export function WorkoutLogger({
                               <PrBadge />
                             ) : null;
                           })()}
+                          {i > 0 &&
+                            isBlankDraft(drafts[key]) &&
+                            !isBlankDraft(drafts[rowKey(e.id, i - 1)]) && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="self-start"
+                                onClick={() => {
+                                  const prev = drafts[rowKey(e.id, i - 1)] ?? EMPTY_DRAFT;
+                                  onDraftChange(key, prev);
+                                  void save(e, i);
+                                }}
+                              >
+                                Same as set {i}
+                              </Button>
+                            )}
                         </div>
                       );
                     })}
@@ -749,6 +784,14 @@ export function WorkoutLogger({
           );
         })}
       </ol>
+      {rest && (
+        <RestTimer
+          endsAt={rest.endsAt}
+          label={rest.label}
+          onExtend={(sec) => setRest((r) => (r ? { ...r, endsAt: r.endsAt + sec * 1000 } : r))}
+          onDone={() => setRest(null)}
+        />
+      )}
       {unsynced && (
         <p role="status" className="mt-4 text-warning">
           Some sets aren&apos;t synced yet. Fix or retry them before you finish.
@@ -782,3 +825,6 @@ function PrBadge() {
     </span>
   );
 }
+
+const isBlankDraft = (d: SetDraft | undefined) =>
+  !d || Object.values(d).every((v) => v === '' || v === undefined || v === null);

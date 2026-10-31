@@ -157,6 +157,16 @@ test.describe('progress: body metrics, personal records, exercise history (PRD E
 
       const first = await logDay('Day 1', '50');
       await expect(first.getByText('New personal record')).toHaveCount(0);
+      // PRD D6: a saved set starts a rest timer; PRD D21: "Same as set 1" fills the next row.
+      const timer = page.getByRole('region', { name: 'Rest timer' });
+      await expect(timer).toBeVisible();
+      await expectNoAxeViolations(page);
+      await timer.getByRole('button', { name: 'Skip rest' }).click();
+      await expect(timer).toHaveCount(0);
+      await first.getByRole('button', { name: 'Add set' }).click();
+      await first.getByRole('button', { name: 'Same as set 1' }).click();
+      await expect(first.getByLabel('Set 2 reps', { exact: true })).toHaveValue('10');
+      await expect(first.getByLabel('Set 2 weight (kg)', { exact: true })).toHaveValue('50');
       await complete();
       const second = await logDay('Day 2', '60');
       await expect(second.getByText('New personal record')).toBeVisible();
