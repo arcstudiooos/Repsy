@@ -14,6 +14,7 @@ import {
   checkinStreak,
   getCheckin,
   getCheckinTemplate,
+  listCheckinsAwaitingReview,
   markCheckinReviewed,
   issueDueCheckins,
   listCheckins,
@@ -373,5 +374,33 @@ describe('reviewed and streak (PRD F13, F14)', () => {
     expect(await streak(NOW, 'client')).toBe(2);
     // Once the open one is past due + grace without a submission, the streak is 0.
     expect(await streak(new Date(NOW.getTime() + 4 * DAY))).toBe(0);
+  });
+});
+
+describe('listCheckinsAwaitingReview (PRD I8)', () => {
+  it('lists sent, unreviewed check-ins oldest first; reviewing removes one', async () => {
+    const w = await world();
+    await issue(w);
+    const [row] = await checkinsOf(w);
+    const before = await runAs(prisma, w.coach, (tx) => listCheckinsAwaitingReview(tx, w.coach));
+    expect(before.total).toBe(0);
+    await runAs(prisma, w.client, (tx) =>
+      submitCheckin(
+        tx,
+        w.client,
+        row!.id,
+        { answers: { energy: 3 }, idempotencyKey: 'key-await-001' },
+        { now: NOW },
+      ),
+    );
+    const waiting = await runAs(prisma, w.coach, (tx) => listCheckinsAwaitingReview(tx, w.coach));
+    expect(waiting).toMatchObject({ total: 1, items: [{ id: row!.id, clientName: 'Client' }] });
+    await runAs(prisma, w.coach, (tx) => markCheckinReviewed(tx, w.coach, row!.id, { now: NOW }));
+    expect(
+      (await runAs(prisma, w.coach, (tx) => listCheckinsAwaitingReview(tx, w.coach))).total,
+    ).toBe(0);
+    expect(
+      await codeOf(runAs(prisma, w.client, (tx) => listCheckinsAwaitingReview(tx, w.client))),
+    ).toBe('FORBIDDEN');
   });
 });

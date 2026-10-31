@@ -138,6 +138,8 @@ export {
   type CheckinSubmittedHook,
   markCheckinReviewed,
   checkinStreak,
+  listCheckinsAwaitingReview,
+  type CheckinAwaitingReview,
 } from './checkins/checkins';
 export {
   evaluateRules,

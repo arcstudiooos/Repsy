@@ -553,3 +553,53 @@ export async function checkinStreak(
   }
   return streak;
 }
+
+export interface CheckinAwaitingReview {
+  id: string;
+  clientId: string;
+  clientName: string;
+  periodLocalDate: string;
+  submittedAt: string;
+}
+
+/**
+ * Sent check-ins no coach has marked reviewed yet (PRD I8), oldest sent first, across the organization. Archived
+ * clients are left out. `total` counts them all; `items` holds at most `limit`.
+ */
+export async function listCheckinsAwaitingReview(
+  tx: TenantTx,
+  actor: ActorContext,
+  opts: { limit?: number } = {},
+): Promise<{ total: number; items: CheckinAwaitingReview[] }> {
+  assertCan(actor, 'review:read');
+  const where = {
+    submittedAt: { not: null },
+    reviewedAt: null,
+    client: { is: { status: { not: 'archived' as const } } },
+  };
+  const [total, rows] = await Promise.all([
+    tx.checkin.count({ where }),
+    tx.checkin.findMany({
+      where,
+      orderBy: [{ submittedAt: 'asc' }, { id: 'asc' }],
+      take: Math.min(Math.max(opts.limit ?? 10, 1), 50),
+      select: {
+        id: true,
+        clientId: true,
+        periodLocalDate: true,
+        submittedAt: true,
+        client: { select: { name: true } },
+      },
+    }),
+  ]);
+  return {
+    total,
+    items: rows.map((r) => ({
+      id: r.id,
+      clientId: r.clientId,
+      clientName: r.client.name,
+      periodLocalDate: fromDbDate(r.periodLocalDate),
+      submittedAt: (r.submittedAt as Date).toISOString(),
+    })),
+  };
+}
