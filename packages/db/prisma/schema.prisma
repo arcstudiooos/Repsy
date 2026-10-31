@@ -300,6 +300,11 @@ model Client {
   status         ClientStatus @default(invited)
   startDate      DateTime?    @map("start_date") @db.Date
   goals          String?
+  /// Client context card (PRD B7), coaches only: why they came, schedule limits, equipment, preferences.
+  motivation     String?
+  scheduleNotes  String?      @map("schedule_notes")
+  equipmentNotes String?      @map("equipment_notes")
+  preferences    String?
   /// IANA zone; defaults to the organization timezone at creation.
   timezone       String
   preferredUnits Units        @default(kg) @map("preferred_units")
@@ -942,6 +947,8 @@ model InternalNote {
   clientId       String   @map("client_id") @db.Uuid
   authorUserId   String   @map("author_user_id") @db.Uuid
   body           String
+  /// Pinned to the client context card (PRD B7); at most 3 per client, enforced in core.
+  pinnedAt       DateTime? @map("pinned_at") @db.Timestamptz(3)
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 

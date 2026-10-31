@@ -2,11 +2,11 @@
 
 import { useRouter } from 'next/navigation';
 import { useId, useState } from 'react';
-import { Lock } from 'lucide-react';
+import { Lock, Pin } from 'lucide-react';
 import type { NoteView } from '@kinetic/core';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/toast';
-import { addNote, editNote, removeNote } from '@/lib/note-api';
+import { addNote, editNote, pinNote, removeNote } from '@/lib/note-api';
 
 const MAX = 4000;
 const when = (iso: string) =>
@@ -129,36 +129,58 @@ export function NotesPanel({ clientId, notes }: { clientId: string; notes: NoteV
                     {n.authorName} · <time dateTime={n.createdAt}>{when(n.createdAt)}</time>
                     {n.updatedAt !== n.createdAt && ' · edited'}
                   </p>
-                  {n.mine && (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        className="min-h-11"
-                        aria-label={`Edit note from ${when(n.createdAt)}`}
-                        onClick={() => setEditing(n.id)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="min-h-11"
-                        aria-label={`Delete note from ${when(n.createdAt)}`}
-                        onClick={async () => {
-                          const res = await removeNote(n.id);
-                          if (res.ok) {
-                            toast.success('Note deleted');
-                            router.refresh();
-                          } else {
-                            toast.error(res.message);
-                          }
-                        }}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  )}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="min-h-11"
+                      aria-label={`${n.pinned ? 'Unpin' : 'Pin to context'} note from ${when(n.createdAt)}`}
+                      onClick={async () => {
+                        const res = await pinNote(n.id, !n.pinned);
+                        if (res.ok) {
+                          toast.success(
+                            n.pinned ? 'Note unpinned' : 'Pinned to the client context',
+                          );
+                          router.refresh();
+                        } else {
+                          toast.error(res.message);
+                        }
+                      }}
+                    >
+                      <Pin aria-hidden className="size-4" />
+                      {n.pinned ? 'Unpin' : 'Pin to context'}
+                    </Button>
+                    {n.mine && (
+                      <>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="min-h-11"
+                          aria-label={`Edit note from ${when(n.createdAt)}`}
+                          onClick={() => setEditing(n.id)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="min-h-11"
+                          aria-label={`Delete note from ${when(n.createdAt)}`}
+                          onClick={async () => {
+                            const res = await removeNote(n.id);
+                            if (res.ok) {
+                              toast.success('Note deleted');
+                              router.refresh();
+                            } else {
+                              toast.error(res.message);
+                            }
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </>
               )}
             </li>

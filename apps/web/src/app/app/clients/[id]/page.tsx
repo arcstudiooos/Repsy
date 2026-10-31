@@ -64,10 +64,6 @@ export default async function ClientOverviewPage({ params }: { params: Promise<{
                 <dd className="break-all">{value}</dd>
               </div>
             ))}
-            <div className="sm:col-span-2">
-              <dt className="text-sm text-secondary">Goals</dt>
-              <dd className="whitespace-pre-wrap">{client.goals ?? 'No goals added yet.'}</dd>
-            </div>
           </dl>
         </CardContent>
       </Card>

@@ -18,6 +18,8 @@ export interface NoteView {
   /** The acting coach wrote it (only the author edits or deletes, Ruling 7). */
   mine: boolean;
   body: string;
+  /** Pinned to the client context card (PRD B7). */
+  pinned: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -27,6 +29,7 @@ const SELECT = {
   clientId: true,
   authorUserId: true,
   body: true,
+  pinnedAt: true,
   createdAt: true,
   updatedAt: true,
   author: { select: { name: true } },
@@ -37,6 +40,7 @@ type Row = {
   clientId: string;
   authorUserId: string;
   body: string;
+  pinnedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   author: { name: string } | null;
@@ -49,6 +53,7 @@ const toView = (r: Row, actor: ActorContext): NoteView => ({
   authorName: r.author?.name ?? 'Coach',
   mine: r.authorUserId === actor.userId,
   body: r.body,
+  pinned: r.pinnedAt !== null,
   createdAt: r.createdAt.toISOString(),
   updatedAt: r.updatedAt.toISOString(),
 });

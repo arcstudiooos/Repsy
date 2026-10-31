@@ -263,6 +263,42 @@ test.describe('client directory', () => {
     await expectNoAxeViolations(page);
   });
 
+  test('context card: edit it and pin a note; it shows on every client tab (PRD B7)', async ({
+    page,
+    request,
+    baseURL,
+  }) => {
+    await signUpVerifiedCoach(page, request);
+    const c = await apiCreateClient(page.request, baseURL as string, {
+      name: 'Cora Context',
+      email: `cora-${Date.now()}@example.test`,
+    });
+    await page.goto(`/app/clients/${c.id}`);
+    const card = page.getByRole('region', { name: 'Client context' });
+    await expect(card.getByText(/Add what matters to this client/)).toBeVisible();
+    await card.getByRole('button', { name: 'Edit context' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Client context' });
+    await dialog.getByLabel('Why they came').fill('Wants to keep up with their kids');
+    await dialog.getByLabel('Equipment').fill('Dumbbells to 20 kg');
+    await expectNoAxeViolations(page);
+    await dialog.getByRole('button', { name: 'Save context' }).click();
+    await expect(card.getByText('Wants to keep up with their kids')).toBeVisible({
+      timeout: 15_000,
+    });
+
+    await page.goto(`/app/clients/${c.id}/notes`);
+    await page.getByLabel('New note').fill('Bad left knee: no deep lunges');
+    await page.getByRole('button', { name: 'Add note' }).click();
+    await page.getByRole('button', { name: /^Pin to context note from / }).click();
+    await expect(card.getByText('Bad left knee: no deep lunges')).toBeVisible({ timeout: 15_000 });
+
+    // The card follows the coach to other tabs.
+    await page.goto(`/app/clients/${c.id}/check-ins`);
+    await expect(card.getByText('Dumbbells to 20 kg')).toBeVisible();
+    await expect(card.getByText('Bad left knee: no deep lunges')).toBeVisible();
+    await expectNoAxeViolations(page);
+  });
+
   test('unknown client id is a 404 page', async ({ page, request }) => {
     await signUpVerifiedCoach(page, request);
     await page.goto('/app/clients/00000000-0000-4000-8000-000000000000');

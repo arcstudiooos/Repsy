@@ -1,5 +1,5 @@
 /** Browser-side calls to the notes API (same-origin, so the CSRF Origin check passes). */
-import type { NoteView } from '@kinetic/core';
+import type { ClientContext, NoteView } from '@kinetic/core';
 import { call } from './checkin-api';
 import type { ApiCall } from './workout-api';
 
@@ -28,3 +28,11 @@ export async function removeNote(noteId: string): Promise<ApiCall<null>> {
     return { ok: false, status: 0, message: 'Could not reach the server. Check your connection.' };
   }
 }
+
+/** Pins a note to the client context card, or unpins it (PRD B7). */
+export const pinNote = (noteId: string, pinned: boolean) =>
+  call<ClientContext>('PUT', `/api/v1/notes/${enc(noteId)}/pin`, { pinned });
+
+/** Updates the client context card fields given (PRD B7). */
+export const updateContext = (clientId: string, body: Record<string, string>) =>
+  call<ClientContext>('PATCH', `/api/v1/clients/${enc(clientId)}/context`, body);

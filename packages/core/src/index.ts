@@ -277,6 +277,15 @@ export {
   type TagWithCount,
 } from './clients/tags';
 export {
+  getClientContext,
+  updateClientContext,
+  setNotePinned,
+  CONTEXT_FIELD_MAX,
+  PINNED_NOTES_MAX,
+  type ClientContext,
+  type ClientContextInput,
+} from './clients/context';
+export {
   listHabits,
   createHabit,
   setHabitStatus,

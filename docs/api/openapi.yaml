@@ -409,6 +409,28 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+  /clients/{id}/context:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Notes]
+      summary: "The client context card: goals, why they came, schedule, equipment, preferences, pinned notes (PRD B7). Coaches only."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    patch:
+      tags: [Notes]
+      summary: "Update the context fields given; an empty string clears one."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
   /clients/{id}/timeline:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }
@@ -420,6 +442,20 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+  /notes/{id}/pin:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [Notes]
+      summary: "Pin a private note to the client context card (at most 3), or unpin it."
+      requestBody:
+        content: { application/json: { schema: { type: object, required: [pinned], properties: { pinned: { type: boolean } } } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
   /notes/{id}:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }
