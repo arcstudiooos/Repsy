@@ -88,6 +88,10 @@ const SYNC_LABEL = {
 const OFFLINE_START = "You're offline. Open this workout while online to start it.";
 const CLOCK_BLOCKED = 'Your device clock is ahead. Fix the date and time, then tap Retry.';
 
+/** Started and not finished: logging stays open after the sweep marks it incomplete (S4-2 Ruling 4, PR #2 B-I3). */
+const isLogging = (state: SessionDetail['session']['state']) =>
+  state === 'in_progress' || state === 'incomplete';
+
 const toLogged = (p: SetLogPayload): LoggedSet => ({
   workoutVersionExerciseId: p.workoutVersionExerciseId,
   setIndex: p.setIndex,
@@ -162,8 +166,8 @@ export function WorkoutLogger({
   // The server refused this device's completion (or skip): the workout isn't finished, so it reopens for logging.
   const finishRefused =
     deviceFirst &&
-    initial.session.state === 'in_progress' &&
-    detail.session.state !== 'in_progress' &&
+    isLogging(initial.session.state) &&
+    !isLogging(detail.session.state) &&
     Boolean(sync?.rejected.some((r) => r.kind !== 'logs'));
   const { workout } = detail;
   const session = finishRefused
@@ -266,7 +270,7 @@ export function WorkoutLogger({
    */
   function applyDeviceView(view: LocalView): void {
     const logs = newest(initial.logs, view.logs);
-    const finishedHere = view.finished && initial.session.state === 'in_progress';
+    const finishedHere = view.finished && isLogging(initial.session.state);
     setDetail((d) => ({
       ...d,
       logs: newest(d.logs, logs),
@@ -489,7 +493,8 @@ export function WorkoutLogger({
     </div>
   );
 
-  if (session.state === 'scheduled') {
+  // A missed workout can still be started late (S4-2 Ruling 4).
+  if (session.state === 'scheduled' || session.state === 'missed') {
     return (
       <>
         {header}
@@ -535,7 +540,7 @@ export function WorkoutLogger({
     );
   }
 
-  if (session.state !== 'in_progress') {
+  if (!isLogging(session.state)) {
     // S3-4 markers: a coach correction wins over the client's own edit (Ruling 5: never the coach's reason here).
     const marks = new Map<string, 'client' | 'coach'>();
     for (const r of detail.revisions) {

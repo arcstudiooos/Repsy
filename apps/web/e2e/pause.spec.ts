@@ -55,7 +55,10 @@ test.describe('pause and resume (S3-5)', () => {
       const resume = await dialog.getByLabel('Expected resume date').inputValue();
       await dialog.getByLabel('Expected resume date').fill(start);
       await dialog.getByRole('button', { name: 'Pause program' }).click();
-      await expect(dialog.getByText('Pick a date after the pause starts.')).toBeVisible();
+      // The first request to the pause API: a cold dev server compiles the route first (PR #2 review).
+      await expect(dialog.getByText('Pick a date after the pause starts.')).toBeVisible({
+        timeout: 15_000,
+      });
       await dialog.getByLabel('Expected resume date').fill(resume);
       await dialog.getByRole('button', { name: 'Pause program' }).click();
       await expect(dialog).toBeHidden({ timeout: 15_000 });

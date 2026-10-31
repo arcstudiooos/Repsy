@@ -100,6 +100,19 @@ describe('issueDueCheckins', () => {
     expect((await issue(w)).issued).toBe(0);
   });
 
+  it('a pause booked for later stops nothing before it starts (PR #2 review B-I2)', async () => {
+    const w = await world();
+    await runAs(prisma, w.coach, (tx) =>
+      applyPause(
+        tx,
+        w.coach,
+        { clientId: w.clientId, startLocalDate: '2026-11-20', resumeLocalDate: '2026-11-27' },
+        { now: new Date('2026-11-03T10:00:00Z') },
+      ),
+    );
+    expect((await issue(w)).issued).toBe(1);
+  });
+
   it('weekday change applies next period only', async () => {
     const w = await world();
     await issue(w); // Wednesday 11-04

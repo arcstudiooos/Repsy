@@ -105,7 +105,9 @@ describe('purgeExpiredExports (PR #2 review D-I4)', () => {
     };
     const errors: unknown[] = [];
     expect(
-      await purgeExpiredExports(prisma, broken, later, { error: (o) => void errors.push(o) }),
+      await purgeExpiredExports(prisma, broken, later, {
+        error: (o: unknown) => void errors.push(o),
+      }),
     ).toEqual({ purged: 0, failed: 1 });
     expect(errors).toEqual([{ exportJobId: jobId, errName: 'Error' }]);
 

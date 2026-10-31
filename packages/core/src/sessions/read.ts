@@ -250,6 +250,17 @@ export async function getPortalHome(
       orderBy: order,
       select: SUMMARY_SELECT,
     })) ??
+    // Started in the last day and swept to incomplete (training across midnight, low grace): still continued here
+    // (PR #2 review B-I3). Older ones are history, finished from the workouts list.
+    (await tx.workoutSession.findFirst({
+      where: {
+        clientId: client.id,
+        state: 'incomplete',
+        startedAt: { gte: new Date(now.getTime() - 24 * 3_600_000) },
+      },
+      orderBy: order,
+      select: SUMMARY_SELECT,
+    })) ??
     (await tx.workoutSession.findFirst({
       where: { clientId: client.id, state: 'scheduled', dueAt: { gte: now } },
       orderBy: order,

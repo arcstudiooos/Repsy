@@ -1,27 +1,46 @@
-import { evaluateRules, noopAnalytics, type AnalyticsPort } from '@kinetic/core';
+import { evaluateRules, noopAnalytics, type AnalyticsPort, type Logger } from '@kinetic/core';
 import { withSystem, withTenant, type PrismaClient } from '@kinetic/db';
 import { orgHash, systemDistinctId } from '../adapters/analytics';
-import { defineJob } from './registry';
+import { defineJob, type CaptureException } from './registry';
 
 export const REVIEW_SWEEP = 'review.sweep';
 /** pg-boss cron: every 10 minutes (D-005 review-queue timing). */
 export const REVIEW_SWEEP_CRON = '*/10 * * * *';
 
 /**
+ * An organization's sweep transaction may run this long (Prisma's default is 5 s): the first sweep after a deploy
+ * derives every past-due session at once (PR #2 review B-I4).
+ */
+export const SWEEP_TIMEOUT_MS = 120_000;
+
+/**
  * Runs the review rules in every organization (S4-2): missed/incomplete derivation, snooze expiry, auto-resolve
  * and the time-based rules. Each organization runs in its own tenant transaction; the rules are idempotent, so an
- * overlapping or repeated run changes nothing.
+ * overlapping or repeated run changes nothing. An organization that fails is logged (its id and the error class) and
+ * reported, and the sweep goes on with the next one (B-I4).
  */
 export async function sweepReview(
   prisma: PrismaClient,
   now: Date,
   analytics: AnalyticsPort = noopAnalytics,
   env: Record<string, string | undefined> = process.env,
-): Promise<{ orgs: number; opened: number; resolved: number; reopened: number }> {
+  report: { logger?: Pick<Logger, 'error'>; captureException?: CaptureException } = {},
+): Promise<{ orgs: number; opened: number; resolved: number; reopened: number; failed: number }> {
   const orgs = await withSystem((tx) => tx.organization.findMany({ select: { id: true } }), prisma);
-  const total = { orgs: orgs.length, opened: 0, resolved: 0, reopened: 0 };
+  const total = { orgs: orgs.length, opened: 0, resolved: 0, reopened: 0, failed: 0 };
   for (const { id } of orgs) {
-    const r = await withTenant(id, (tx) => evaluateRules(tx, id, now), prisma);
+    let r;
+    try {
+      r = await withTenant(id, (tx) => evaluateRules(tx, id, now), prisma, {
+        timeout: SWEEP_TIMEOUT_MS,
+      });
+    } catch (error) {
+      total.failed += 1;
+      const errName = error instanceof Error ? error.name : 'unknown';
+      report.logger?.error({ orgId: id, errName }, 'review sweep failed');
+      report.captureException?.(new Error(`review sweep failed: ${errName}`), { orgId: id });
+      continue;
+    }
     for (const rule of r.openedRules) {
       analytics.capture({
         name: 'review_flag_opened',
@@ -44,6 +63,8 @@ export const reviewSweepJob = defineJob<object>({
       deps.prisma,
       new Date(),
       deps.analytics,
+      process.env,
+      deps,
     );
     if (opened + resolved + reopened > 0) {
       deps.logger.info({ opened, resolved, reopened }, 'review sweep');

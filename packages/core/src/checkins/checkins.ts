@@ -1,6 +1,7 @@
 import { appendAudit, Prisma, type TenantTx } from '@kinetic/db';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
+import { clientsInPauseNow } from '../clients/pause';
 import { DomainError } from '../errors';
 import { enqueueEmail } from '../outbox';
 import { localDayBounds, localTimeOn } from '../schedule/scheduleSlots';
@@ -397,13 +398,20 @@ export async function weekActivityBefore(
 }
 
 /**
- * Issues today's check-ins in this organization (worker, Ruling 2): active clients with a check-in weekday equal to
+ * Issues today's check-ins in this organization (worker, Ruling 2): clients not in a pause today, with a check-in weekday equal to
  * today's weekday in their zone, at or after 06:00 local, and no check-in in the previous 6 days. Idempotent on
  * `(clientId, periodLocalDate)`; each new check-in enqueues its "check-in ready" email in the same transaction.
  */
 export async function issueDueCheckins(tx: TenantTx, now: Date): Promise<{ issued: number }> {
+  // None while a pause covers the day (D-010 #3); a pause booked for later doesn't stop them early (B-I2).
+  const inPause = await clientsInPauseNow(tx, now);
   const clients = await tx.client.findMany({
-    where: { status: 'active', checkinWeekday: { not: null }, userId: { not: null } },
+    where: {
+      status: { in: ['active', 'paused'] },
+      checkinWeekday: { not: null },
+      userId: { not: null },
+      ...(inPause.size > 0 ? { id: { notIn: [...inPause] } } : {}),
+    },
     select: {
       id: true,
       userId: true,

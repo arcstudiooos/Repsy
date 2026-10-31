@@ -65,6 +65,31 @@ export async function openPauseOf(tx: TenantTx, clientId: string): Promise<Pause
 }
 
 /**
+ * The clients whose open pause covers today in their own zone (D-003, D-010 #3). A pause booked for a later date sets
+ * the client `paused` at once (Ruling 6), so check-ins and the review rules test the dates, not the status (PR #2
+ * review B-I2).
+ */
+export async function clientsInPauseNow(tx: TenantTx, now: Date): Promise<Set<string>> {
+  const open = await tx.clientPause.findMany({
+    where: { endedAt: null },
+    select: {
+      clientId: true,
+      startLocalDate: true,
+      resumeLocalDate: true,
+      client: { select: { timezone: true } },
+    },
+  });
+  const inPause = new Set<string>();
+  for (const p of open) {
+    const today = todayInZone(p.client.timezone, now);
+    if (fromDbDate(p.startLocalDate) <= today && today < fromDbDate(p.resumeLocalDate)) {
+      inPause.add(p.clientId);
+    }
+  }
+  return inPause;
+}
+
+/**
  * Locks the client row (no-op update) and returns it with its open pause. Every pause operation takes this lock
  * first, then writes the pause row, so two calls for one client never interleave.
  */

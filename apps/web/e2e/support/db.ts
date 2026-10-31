@@ -197,6 +197,32 @@ export async function sessionFacts(sessionId: string): Promise<{
 }
 
 /**
+ * Marks sessions past due as the review sweep would (admin connection; the sweep runs every 10 minutes and waits for
+ * due + grace): the started `sessionId` becomes `incomplete` and its assignment's unstarted sessions `missed`.
+ * Returns the missed session ids, by date.
+ */
+export async function sweepAsDue(sessionId: string): Promise<string[]> {
+  const client = new pg.Client({ connectionString: readState().adminUrl });
+  await client.connect();
+  try {
+    await client.query(
+      `UPDATE workout_sessions SET state = 'incomplete' WHERE id = $1 AND state = 'in_progress'`,
+      [sessionId],
+    );
+    const { rows } = await client.query<{ id: string }>(
+      `UPDATE workout_sessions SET state = 'missed'
+        WHERE state = 'scheduled'
+          AND assignment_id = (SELECT assignment_id FROM workout_sessions WHERE id = $1)
+       RETURNING id, scheduled_local_date`,
+      [sessionId],
+    );
+    return rows.map((r) => r.id);
+  } finally {
+    await client.end();
+  }
+}
+
+/**
  * A verified coach owning an organization, and a verified, linked, active client of it, written directly (admin
  * connection) with real credential hashes, so a spec can sign both in without the sign-up flow. Used by the offline
  * spec, whose production-mode server keeps the breached-password check on (and that check needs the network).
@@ -261,21 +287,30 @@ export async function seedCoachWithClient(opts: {
 
 /**
  * Issues today's check-in for the client with `clientName` now, as the `checkins.issue` job would (admin
- * connection; the job runs every 10 minutes, too slow for a spec). Uses the organization's template questions.
+ * connection; the job runs every 10 minutes, too slow for a spec). Uses the organization's template questions. The
+ * stack's worker may issue the same check-in at the same moment (one per client and day): then its row is returned.
  */
 export async function issueCheckinNow(clientName: string): Promise<string> {
   const client = new pg.Client({ connectionString: readState().adminUrl });
   await client.connect();
   try {
     const { rows } = await client.query<{ id: string }>(
-      `INSERT INTO checkins (id, organization_id, client_id, template_id, period_local_date, questions_json,
-                             issued_at, due_at, updated_at)
-       SELECT gen_random_uuid(), c.organization_id, c.id, t.id,
-              (now() AT TIME ZONE c.timezone)::date, t.questions_json,
-              now(), now() + interval '12 hours', now()
-         FROM clients c JOIN checkin_templates t ON t.organization_id = c.organization_id
-        WHERE c.name = $1
-       RETURNING id`,
+      `WITH issued AS (
+         INSERT INTO checkins (id, organization_id, client_id, template_id, period_local_date, questions_json,
+                               issued_at, due_at, updated_at)
+         SELECT gen_random_uuid(), c.organization_id, c.id, t.id,
+                (now() AT TIME ZONE c.timezone)::date, t.questions_json,
+                now(), now() + interval '12 hours', now()
+           FROM clients c JOIN checkin_templates t ON t.organization_id = c.organization_id
+          WHERE c.name = $1
+         ON CONFLICT (client_id, period_local_date) DO NOTHING
+         RETURNING id
+       )
+       SELECT id FROM issued
+       UNION ALL
+       SELECT k.id FROM checkins k JOIN clients c ON c.id = k.client_id
+        WHERE c.name = $1 AND k.period_local_date = (now() AT TIME ZONE c.timezone)::date
+       LIMIT 1`,
       [clientName],
     );
     const id = rows[0]?.id;

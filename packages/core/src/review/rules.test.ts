@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { withSystem, type PrismaClient } from '@kinetic/db';
 import { createTestDb } from '@kinetic/db/testing';
 import { submitCheckin } from '../checkins/checkins';
+import { applyPause } from '../clients/pause';
 import { getMyThread, listMessages, sendMessage } from '../messages/messages';
 import { completeSession, startSession } from '../sessions/lifecycle';
 import {
@@ -13,6 +14,7 @@ import {
   sessionsOf,
   type ClientWorld,
 } from '../sessions/fixtures.test-helpers';
+import { updateFlag } from './flags';
 import { evaluateRules, onCheckinSubmittedRules } from './rules';
 
 let prisma: PrismaClient;
@@ -116,14 +118,59 @@ describe('Rule 1: missed workouts', () => {
     expect(await flagsOf(w)).toHaveLength(0);
   });
 
-  it('paused client → no flag', async () => {
-    const p = await freshWorld();
-    await withSystem(
-      (tx) => tx.client.update({ where: { id: p.clientId }, data: { status: 'paused' } }),
-      prisma,
+  /** Books a pause through the real path (status `paused` at once, Ruling 6). */
+  const pause = (w: ClientWorld, startLocalDate: string, resumeLocalDate: string) =>
+    runAs(prisma, w.coach, (tx) =>
+      applyPause(
+        tx,
+        w.coach,
+        { clientId: w.clientId, startLocalDate, resumeLocalDate },
+        { now: NOW },
+      ),
     );
+
+  it('a client inside a pause → no flag', async () => {
+    const p = await freshWorld();
+    await pause(p, '2026-11-09', '2026-11-20');
     await sweep(p, AFTER);
     expect(await flagsOf(p)).toHaveLength(0);
+  });
+
+  it('a pause booked for later stops nothing before it starts (PR #2 review B-I2)', async () => {
+    const p = await freshWorld();
+    await pause(p, '2026-11-20', '2026-11-27');
+    expect(
+      (await withSystem((tx) => tx.client.findUniqueOrThrow({ where: { id: p.clientId } }), prisma))
+        .status,
+    ).toBe('paused');
+    await sweep(p, AFTER);
+    expect((await flagsOf(p)).map((f) => f.ruleKey)).toEqual(['missed_workouts']);
+  });
+
+  it('after the coach resolves a flag, two new misses raise a new one citing them (PR #2 review B-I1)', async () => {
+    const w = await freshWorld({ weeks: grid(2, 3) });
+    const rows = await sessionsOf(prisma, w.assignmentId);
+    await sweep(w, AFTER);
+    const [first] = await flagsOf(w);
+    await runAs(prisma, w.coach, (tx) =>
+      updateFlag(
+        tx,
+        w.coach,
+        first!.id,
+        { action: 'resolve', reason: 'Talked to them' },
+        { now: AFTER },
+      ),
+    );
+    // One more miss (11-09) with an already handled one in the window: nothing.
+    const later = new Date('2026-11-11T12:00:00Z');
+    await sweep(w, later);
+    expect(await flagsOf(w)).toHaveLength(1);
+    // A second new miss (11-11): a new flag citing only the new ones.
+    const evenLater = new Date('2026-11-13T12:00:00Z');
+    await sweep(w, evenLater);
+    const flags = await flagsOf(w);
+    expect(flags.map((f) => f.state)).toEqual(['resolved', 'open']);
+    expect(flags[1]?.evidenceJson).toMatchObject({ sessionIds: [rows[2]!.id, rows[3]!.id] });
   });
 
   it('late offline completion of a missed session → the flag auto-resolves', async () => {
@@ -237,6 +284,45 @@ describe('Rule 4: unread client messages', () => {
     expect(
       (await flagsOf(w)).filter((f) => f.ruleKey === 'message_unread').map((f) => f.state),
     ).toEqual(['resolved']);
+  });
+});
+
+describe('Rule 4 after a resolve', () => {
+  it('a later unread message raises a new flag when the coach resolved without reading (PR #2 review B-I1)', async () => {
+    const w = await freshWorld();
+    await withSystem(
+      (tx) =>
+        tx.notificationPreference.create({
+          data: { userId: w.coach.userId, messageEmailOptIn: true },
+        }),
+      prisma,
+    );
+    const thread = await runAs(prisma, w.client, (tx) => getMyThread(tx, w.client));
+    const say = (body: string, at: Date) =>
+      runAs(prisma, w.client, (tx) => sendMessage(tx, w.client, thread.id, { body }, { now: at }));
+    await say('First', NOW);
+    const day1 = new Date(NOW.getTime() + 25 * 3_600_000);
+    await sweep(w, day1);
+    const [flag] = (await flagsOf(w)).filter((f) => f.ruleKey === 'message_unread');
+    await runAs(prisma, w.coach, (tx) =>
+      updateFlag(
+        tx,
+        w.coach,
+        flag!.id,
+        { action: 'dismiss', reason: 'Answered by phone' },
+        { now: day1 },
+      ),
+    );
+    await sweep(w, day1);
+    expect((await flagsOf(w)).filter((f) => f.ruleKey === 'message_unread')).toHaveLength(1);
+
+    const second = await say('Second', new Date(day1.getTime() + 60_000));
+    await sweep(w, new Date(day1.getTime() + 25 * 3_600_000));
+    const flags = (await flagsOf(w)).filter((f) => f.ruleKey === 'message_unread');
+    expect(flags.map((f) => [f.state, f.sourceId])).toEqual([
+      ['dismissed', flag!.sourceId],
+      ['open', second.id],
+    ]);
   });
 });
 

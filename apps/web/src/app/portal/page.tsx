@@ -77,7 +77,9 @@ export default async function PortalHome() {
                 href={`/portal/workouts/${next.id}`}
                 className={cn(buttonVariants(), 'min-h-14 w-full text-lg')}
               >
-                {next.state === 'in_progress' ? 'Continue workout' : 'Start workout'}
+                {next.state === 'in_progress' || next.state === 'incomplete'
+                  ? 'Continue workout'
+                  : 'Start workout'}
               </Link>
             </CardContent>
           </Card>

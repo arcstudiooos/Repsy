@@ -1,4 +1,5 @@
 import { wantsMessageEmail, type Prisma, type TenantTx } from '@kinetic/db';
+import { clientsInPauseNow } from '../clients/pause';
 import { resolveSlotWorkoutVersionId } from '../sessions/resolve';
 
 const HOUR_MS = 3_600_000;
@@ -125,31 +126,60 @@ export async function deriveSessionStates(
   return { missed, incomplete };
 }
 
-/** Rule 1: two or more `missed` sessions due in the rolling 7 days (D-008 #4: only missed counts). */
+/**
+ * Rule 1: two or more `missed` sessions due in the rolling 7 days (D-008 #4: only missed counts). Sessions a coach
+ * already handled (cited by a flag they resolved or dismissed) no longer count, so new misses after a resolve raise a
+ * new flag citing them (PR #2 review B-I1). A flag resolved automatically (a late completion) hands nothing back.
+ */
 export const missedWorkoutsRule: Rule = {
   key: 'missed_workouts',
   async evaluate(tx, _orgId, now) {
+    const since = new Date(now.getTime() - 7 * DAY_MS);
+    // A client inside a pause raises nothing (D-003: the paused period never counts against them). A pause booked
+    // for later doesn't stop the rule before it starts (B-I2).
+    const inPause = await clientsInPauseNow(tx, now);
     const rows = await tx.workoutSession.findMany({
       where: {
         state: 'missed',
-        dueAt: { gt: new Date(now.getTime() - 7 * DAY_MS), lte: now },
-        // A paused client raises nothing (D-003: the paused period never counts against them).
-        client: { is: { status: 'active' } },
+        dueAt: { gt: since, lte: now },
+        client: { is: { status: { in: ['active', 'paused'] } } },
       },
       orderBy: [{ dueAt: 'asc' }, { id: 'asc' }],
       select: { id: true, clientId: true, dueAt: true, scheduledLocalDate: true },
     });
     const byClient = new Map<string, typeof rows>();
-    for (const r of rows) byClient.set(r.clientId, [...(byClient.get(r.clientId) ?? []), r]);
+    for (const r of rows) {
+      if (inPause.has(r.clientId)) continue;
+      byClient.set(r.clientId, [...(byClient.get(r.clientId) ?? []), r]);
+    }
     const out: FlagUpsert[] = [];
-    for (const [clientId, sessions] of byClient) {
-      if (sessions.length < 2) continue;
+    for (const [clientId, all] of byClient) {
+      if (all.length < 2) continue;
       // One open episode per client: while a flag is open or snoozed, no second one.
       const open = await tx.reviewFlag.findFirst({
         where: { clientId, ruleKey: 'missed_workouts', state: { in: OPEN } },
         select: { id: true },
       });
       if (open) continue;
+      const handled = new Set(
+        (
+          await tx.reviewFlag.findMany({
+            where: {
+              clientId,
+              ruleKey: 'missed_workouts',
+              state: { in: ['resolved', 'dismissed'] },
+              resolvedBy: { not: null },
+              // A flag closed before the window cites only sessions due before it.
+              resolvedAt: { gt: since },
+            },
+            select: { evidenceJson: true },
+          })
+        ).flatMap(
+          (f) => ((f.evidenceJson as { sessionIds?: unknown }).sessionIds ?? []) as string[],
+        ),
+      );
+      const sessions = all.filter((s) => !handled.has(s.id));
+      if (sessions.length < 2) continue;
       const [a, b] = sessions as [(typeof rows)[number], (typeof rows)[number]];
       out.push({
         clientId,
@@ -173,6 +203,8 @@ export const checkinOverdueRule: Rule = {
   key: 'checkin_overdue',
   async evaluate(tx, _orgId, now) {
     const cutoff = new Date(now.getTime() - (await graceMs(tx)));
+    // No overdue flag while the client is inside a pause (D-010 #3).
+    const inPause = await clientsInPauseNow(tx, now);
     const rows = await tx.checkin.findMany({
       where: {
         submittedAt: null,
@@ -181,21 +213,27 @@ export const checkinOverdueRule: Rule = {
       },
       select: { id: true, clientId: true, dueAt: true, periodLocalDate: true },
     });
-    return rows.map((c) => ({
-      clientId: c.clientId,
-      ruleKey: 'checkin_overdue' as const,
-      sourceType: 'checkin' as const,
-      sourceId: c.id,
-      dedupeKey: `checkin_overdue:${c.id}`,
-      evidence: { checkinId: c.id, periodLocalDate: c.periodLocalDate.toISOString().slice(0, 10) },
-      sourceDueAt: c.dueAt,
-    }));
+    return rows
+      .filter((c) => !inPause.has(c.clientId))
+      .map((c) => ({
+        clientId: c.clientId,
+        ruleKey: 'checkin_overdue' as const,
+        sourceType: 'checkin' as const,
+        sourceId: c.id,
+        dedupeKey: `checkin_overdue:${c.id}`,
+        evidence: {
+          checkinId: c.id,
+          periodLocalDate: c.periodLocalDate.toISOString().slice(0, 10),
+        },
+        sourceDueAt: c.dueAt,
+      }));
   },
 };
 
 /**
  * Rule 4: the oldest client message the coach hasn't read after 24 hours, only for a coach who opted in to message
- * notifications (Ruling 5).
+ * notifications (Ruling 5). Only messages newer than the one a closed flag cited count, so a flag resolved without
+ * opening the thread doesn't silence later messages (PR #2 review B-I1).
  */
 export const messageUnreadRule: Rule = {
   key: 'message_unread',
@@ -210,12 +248,26 @@ export const messageUnreadRule: Rule = {
       if (!optIn.has(t.coachUserId))
         optIn.set(t.coachUserId, await wantsMessageEmail(tx, t.coachUserId));
       if (!optIn.get(t.coachUserId)) continue;
+      const lastClosed = await tx.reviewFlag.findFirst({
+        where: {
+          clientId: t.clientId,
+          ruleKey: 'message_unread',
+          state: { notIn: OPEN },
+          evidenceJson: { path: ['threadId'], equals: t.id },
+        },
+        orderBy: { sourceDueAt: 'desc' },
+        select: { sourceDueAt: true },
+      });
+      // A flag's sourceDueAt is its message's createdAt + 24 h.
+      const after = lastClosed?.sourceDueAt
+        ? new Date(lastClosed.sourceDueAt.getTime() - DAY_MS)
+        : undefined;
       const oldest = await tx.message.findFirst({
         where: {
           threadId: t.id,
           readAt: null,
           senderUserId: { not: t.coachUserId },
-          createdAt: { lt: new Date(now.getTime() - DAY_MS) },
+          createdAt: { lt: new Date(now.getTime() - DAY_MS), ...(after ? { gt: after } : {}) },
         },
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
         select: { id: true, createdAt: true },
