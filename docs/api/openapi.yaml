@@ -504,6 +504,24 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+  /org/review-rules:
+    get:
+      tags: [Organization]
+      summary: "Opt-in review rules (PRD I3): enabled rules (habit_low, program_ending, reply_overdue, weight_change), the weight band and the reply time reply_overdue uses."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+    put:
+      tags: [Organization]
+      summary: "Owner only. Body: {enabled: string[], weightChangeBandPct?: 1-20 | null}; weight_change needs a band."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
   /org/reply-expectations:
     get:
       tags: [Messages]

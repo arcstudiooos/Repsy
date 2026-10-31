@@ -3,8 +3,10 @@ import {
   createSavedReply,
   deleteSavedReply,
   getReplyExpectations,
+  getReviewRuleSettings,
   listSavedReplies,
   updateReplyExpectations,
+  updateReviewRuleSettings,
 } from '@kinetic/core';
 import { ApiResult, type RouteDef } from '../api';
 
@@ -48,4 +50,22 @@ export const savedReplyDeleteRoute: RouteDef<undefined, true> = {
     await tenant((tx) => deleteSavedReply(tx, actor, params.id ?? ''));
     return new ApiResult(null, { status: 204 });
   },
+};
+
+/** `GET /api/v1/org/review-rules` (PRD I3): which opt-in review rules are on. */
+export const reviewRulesGetRoute: RouteDef<undefined, true> = {
+  can: 'org:read',
+  handler: ({ actor, tenant }) => tenant((tx) => getReviewRuleSettings(tx, actor)),
+};
+
+const reviewRulesSchema = z.object({
+  enabled: z.array(z.string().max(40)).max(10),
+  weightChangeBandPct: z.number().nullable().optional(),
+});
+
+/** `PUT /api/v1/org/review-rules`: owner only. */
+export const reviewRulesPutRoute: RouteDef<typeof reviewRulesSchema, true> = {
+  can: 'settings:org:update',
+  input: reviewRulesSchema,
+  handler: ({ actor, input, tenant }) => tenant((tx) => updateReviewRuleSettings(tx, actor, input)),
 };

@@ -1,6 +1,12 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { getReplyExpectations, getSettings, listMyExports, listSavedReplies } from '@kinetic/core';
+import {
+  getReplyExpectations,
+  getReviewRuleSettings,
+  getSettings,
+  listMyExports,
+  listSavedReplies,
+} from '@kinetic/core';
 import { DataExportSection } from '@/components/settings/DataExportSection';
 import {
   OrganizationSection,
@@ -9,6 +15,7 @@ import {
 } from '@/components/settings/CoachSections';
 import { MessagingSection } from '@/components/settings/MessagingSection';
 import { NotificationsSection } from '@/components/settings/NotificationsSection';
+import { ReviewRulesSection } from '@/components/settings/ReviewRulesSection';
 import { PilotAccessCard } from '@/components/settings/PilotAccessCard';
 import { SecuritySection } from '@/components/settings/SecuritySection';
 import { withServerTenant } from '@/server/serverActor';
@@ -17,13 +24,14 @@ export const metadata: Metadata = { title: 'Settings | Kinetic' };
 
 // Access is enforced by src/proxy.ts and the coach shell in the settings layout.
 export default async function SettingsPage() {
-  const { actor, settings, exports, expectations, replies } = await withServerTenant(
+  const { actor, settings, exports, expectations, replies, reviewRules } = await withServerTenant(
     async (tx, a) => ({
       actor: a,
       settings: a.role === 'client' ? null : await getSettings(tx, a),
       exports: a.role === 'owner' ? await listMyExports(tx, a) : [],
       expectations: await getReplyExpectations(tx, a),
       replies: a.role === 'client' ? [] : await listSavedReplies(tx, a),
+      reviewRules: a.role === 'client' ? null : await getReviewRuleSettings(tx, a),
     }),
   );
   // A client who lands here belongs in their portal.
@@ -39,6 +47,7 @@ export default async function SettingsPage() {
         <TrainingDefaultsSection graceHours={settings.org.graceHours} canEdit={isOwner} />
         <NotificationsSection notifications={settings.notifications} />
         <MessagingSection expectations={expectations} replies={replies} canEdit={isOwner} />
+        {reviewRules && <ReviewRulesSection settings={reviewRules} canEdit={isOwner} />}
         <PilotAccessCard
           count={settings.org.activeClientCount}
           limit={settings.org.activeClientLimit}

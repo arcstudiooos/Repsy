@@ -62,7 +62,14 @@ function hrefOf(row: FlagRow): string {
     case 'checkin_overdue':
     case 'checkin_new':
       return `${base}/check-ins`;
+    case 'habit_low':
+      return `${base}/habits`;
+    case 'program_ending':
+      return `${base}/program`;
+    case 'weight_change':
+      return `${base}/progress`;
     case 'message_unread':
+    case 'reply_overdue':
       return typeof ev.threadId === 'string'
         ? `/app/messages?thread=${ev.threadId}`
         : `${base}/messages`;

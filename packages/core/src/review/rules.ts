@@ -2,12 +2,21 @@ import { wantsMessageEmail, type Prisma, type TenantTx } from '@kinetic/db';
 import { clientsInPauseNow } from '../clients/pause';
 import { DomainError } from '../errors';
 import { resolveSlotWorkoutVersionId } from '../sessions/resolve';
+import { evaluateOptInRules, staleOptInFlags } from './optInRules';
 
 const HOUR_MS = 3_600_000;
 const DAY_MS = 24 * HOUR_MS;
 
 export type RuleKey =
-  'missed_workouts' | 'checkin_overdue' | 'checkin_new' | 'message_unread' | 'coach_followup';
+  | 'missed_workouts'
+  | 'checkin_overdue'
+  | 'checkin_new'
+  | 'message_unread'
+  | 'coach_followup'
+  | 'habit_low'
+  | 'program_ending'
+  | 'reply_overdue'
+  | 'weight_change';
 
 /** The rule text shown with every flag (F10, §10). Copy is "Needs review", never "At risk". */
 export const RULE_TEXT: Record<RuleKey, string> = {
@@ -16,6 +25,10 @@ export const RULE_TEXT: Record<RuleKey, string> = {
   checkin_new: 'New check-in sent',
   message_unread: 'Client message unread for more than 24 hours',
   coach_followup: 'Follow-up you created',
+  habit_low: 'Habit done on under half its days for 2 weeks',
+  program_ending: 'Program ends within 7 days with nothing planned after',
+  reply_overdue: 'Client message unread past your usual reply time',
+  weight_change: 'Body weight changed more than your set band in about 2 weeks',
 };
 
 export const AUTO_RESOLVED = 'Resolved automatically';
@@ -23,7 +36,7 @@ export const AUTO_RESOLVED = 'Resolved automatically';
 export interface FlagUpsert {
   clientId: string;
   ruleKey: RuleKey;
-  sourceType: 'session' | 'checkin' | 'message' | 'followup';
+  sourceType: 'session' | 'checkin' | 'message' | 'followup' | 'habit' | 'assignment' | 'metric';
   sourceId: string | null;
   dedupeKey: string;
   /** Rule text, dates and source ids only: never names, answers or message bodies. */
@@ -357,11 +370,17 @@ export async function evaluateRules(
     if (read > 0) resolved += await autoResolve(tx, { id: f.id }, now);
   }
 
+  for (const id of await staleOptInFlags(tx, now)) resolved += await autoResolve(tx, { id }, now);
+
   const openedRules: RuleKey[] = [];
   for (const rule of SWEEP_RULES) {
     for (const f of await rule.evaluate(tx, orgId, now)) {
       if (await raiseFlag(tx, f)) openedRules.push(f.ruleKey);
     }
+  }
+  // PRD I3: the rules the organization opted in to.
+  for (const f of await evaluateOptInRules(tx, now)) {
+    if (await raiseFlag(tx, f)) openedRules.push(f.ruleKey);
   }
   return { opened: openedRules.length, resolved, reopened, openedRules };
 }

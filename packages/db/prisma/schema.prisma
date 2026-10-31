@@ -176,6 +176,10 @@ model Organization {
   /// Reply expectations shown to clients (PRD H16): usual reply time in hours and office hours, both optional.
   replyTargetHours  Int?     @map("reply_target_hours")
   officeHours       String?  @map("office_hours")
+  /// Opt-in review rules (PRD I3): any of habit_low, program_ending, reply_overdue, weight_change. Off by default.
+  reviewRules       String[] @default([]) @map("review_rules")
+  /// weight_change: flag a body-weight change of more than this percent over about two weeks (1-20).
+  weightChangeBandPct Int?   @map("weight_change_band_pct")
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -900,6 +904,10 @@ enum ReviewRule {
   checkin_new
   message_unread
   coach_followup
+  habit_low
+  program_ending
+  reply_overdue
+  weight_change
 
   @@map("review_rule")
 }

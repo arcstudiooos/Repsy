@@ -466,3 +466,12 @@ export {
   type CalendarWorkout,
   type ClientCalendar,
 } from './sessions/calendar';
+export {
+  getReviewRuleSettings,
+  updateReviewRuleSettings,
+  OPT_IN_RULES,
+  PROGRAM_ENDING_DAYS,
+  WEIGHT_BAND,
+  type OptInRule,
+  type ReviewRuleSettings,
+} from './review/optInRules';
