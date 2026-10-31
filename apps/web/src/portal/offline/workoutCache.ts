@@ -3,7 +3,7 @@
  * closed and reopened page (online or not) shows the device's latest sets, never an older server payload.
  */
 import type { LoggedSet, SessionDetail, SetLogAck } from '@kinetic/core';
-import { countOutbox, del, get, put } from './db';
+import { countOutbox, del, get, getBySession, put } from './db';
 
 export type FinishKind = 'completed' | 'skipped';
 
@@ -60,11 +60,23 @@ export async function cacheWorkout(detail: SessionDetail): Promise<void> {
 
 export const getCachedWorkout = (sessionId: string) => get<CachedWorkout>('workouts', sessionId);
 
-/** Records values typed on this device. No-op for a workout that was never cached (not started here). */
+/**
+ * Records values typed on this device. No-op for a workout that was never cached (not started here). What the client
+ * just typed is this device's latest value for the set, whatever its clock says (a skewed clock must not keep an
+ * older value on top, PR #2 review I2).
+ */
 export async function applyLocal(sessionId: string, logs: LoggedSet[]): Promise<void> {
+  await replaceLocal(sessionId, logs);
+}
+
+/** Replaces the device's value of each given set (typed values, or the same values re-stamped by a clock retry). */
+export async function replaceLocal(sessionId: string, logs: LoggedSet[]): Promise<void> {
+  if (logs.length === 0) return;
   const cached = await getCachedWorkout(sessionId);
   if (!cached) return;
-  await put<CachedWorkout>('workouts', { ...cached, local: newest(cached.local, logs) });
+  const given = new Set(logs.map(keyOf));
+  const kept = cached.local.filter((l) => !given.has(keyOf(l)));
+  await put<CachedWorkout>('workouts', { ...cached, local: newest(kept, logs) });
 }
 
 /** Server acknowledgements: the stored values join the payload, and a newer server value replaces an older local one. */
@@ -88,6 +100,14 @@ export async function markFinished(sessionId: string, kind: FinishKind): Promise
   if (cached) await put<CachedWorkout>('workouts', { ...cached, finished: kind });
 }
 
+/** The device's finish was refused or taken back: the workout reads as it did before (PR #2 review I1). */
+export async function unmarkFinished(sessionId: string): Promise<void> {
+  const cached = await getCachedWorkout(sessionId);
+  if (cached?.finished) {
+    await put<CachedWorkout>('workouts', { ...cached, finished: undefined });
+  }
+}
+
 /** The workout as this device knows it: the cached payload with the device's newest value per set. */
 export async function localView(sessionId: string): Promise<LocalView | null> {
   const cached = await getCachedWorkout(sessionId);
@@ -99,12 +119,16 @@ export async function localView(sessionId: string): Promise<LocalView | null> {
   };
 }
 
-/** Drops a finished workout once nothing for it waits in the outbox. Returns whether it was removed. */
+/**
+ * Drops a finished workout once nothing for it waits in the outbox and nothing of it was refused (the refused values
+ * stay readable). Returns whether it was removed.
+ */
 export async function evict(sessionId: string): Promise<boolean> {
   const cached = await getCachedWorkout(sessionId);
   if (!cached) return false;
   const finished = cached.finished ?? FINISHED.includes(cached.detail.session.state);
   if (!finished || (await countOutbox(sessionId)) > 0) return false;
+  if ((await getBySession('rejected', sessionId)).length > 0) return false;
   await del('workouts', sessionId);
   return true;
 }

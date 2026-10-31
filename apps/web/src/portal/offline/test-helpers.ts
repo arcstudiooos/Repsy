@@ -3,12 +3,28 @@ import { IDBFactory } from 'fake-indexeddb';
 import { vi } from 'vitest';
 import type { SessionDetail } from '@kinetic/core';
 import type { SetLogPayload } from '@/lib/workout-api';
-import { resetDbForTests } from './db';
+import { bindOwner, resetDbForTests, type DeviceOwner } from './db';
 
-/** A fresh, empty device store. */
-export function freshDeviceStore(): void {
+export const OWNER: DeviceOwner = {
+  userId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  orgId: 'oooooooo-oooo-4ooo-8ooo-oooooooooooo',
+};
+
+/** A fresh, empty device store, bound to `owner` (the portal layout's job in the app). */
+export async function freshDeviceStore(owner: DeviceOwner | null = OWNER): Promise<void> {
   globalThis.indexedDB = new IDBFactory();
   resetDbForTests();
+  if (owner) await bindOwner(owner);
+}
+
+/** A minimal Cache Storage (Node has none): just the cache names, for the sign-out and owner tests. */
+export function stubCaches(names: string[]) {
+  const live = new Set(names);
+  vi.stubGlobal('caches', {
+    keys: async () => [...live],
+    delete: async (name: string) => live.delete(name),
+  });
+  return live;
 }
 
 export const SESSION = '11111111-1111-4111-8111-111111111111';

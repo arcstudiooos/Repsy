@@ -4,6 +4,13 @@
  * - navigations under /portal are network-first; only /portal and the workout pages the app asked for
  *   ("cache-workout" on Start) are stored, and served from the cache when the network fails;
  * - RSC requests and /api/* always pass through and are never cached (writes go through the IndexedDB outbox).
+ *
+ * Whose pages (PR #2 review C1): stored pages are one signed-in user's, keyed by path. The worker can't check a
+ * session offline (the cookie is HttpOnly and the server is unreachable), so the pages are bound to the user by the
+ * app instead: a cached page is only ever served when the network fails (online, every navigation goes to the
+ * server, which redirects a signed-out visitor); sign-out deletes the kinetic-pages-* caches with the IndexedDB
+ * store (SignOutButton, wipeDevice); and every portal load binds the store to the signed-in user, deleting both when
+ * another user's data is found (bindOwner). Build assets hold no user data and are kept.
  */
 const VERSION = 'v1';
 const PAGES = `kinetic-pages-${VERSION}`;
@@ -22,6 +29,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+const SESSION_ID = /^[0-9a-f-]{36}$/i;
 const workoutPath = (id) => `/portal/workouts/${id}`;
 const isWorkoutPage = (path) => /^\/portal\/workouts\/[0-9a-f-]{36}$/i.test(path);
 const isStatic = (u) => new URL(u, self.location.origin).pathname.startsWith('/_next/static/');
@@ -58,7 +66,8 @@ async function storeAssetsOf(html) {
 
 self.addEventListener('message', (event) => {
   const msg = event.data || {};
-  if (msg.type === 'cache-workout' && typeof msg.sessionId === 'string') {
+  if (typeof msg.sessionId !== 'string' || !SESSION_ID.test(msg.sessionId)) return;
+  if (msg.type === 'cache-workout') {
     const assets = (Array.isArray(msg.assets) ? msg.assets : []).filter(
       (u) => typeof u === 'string' && isStatic(u),
     );
@@ -69,7 +78,7 @@ self.addEventListener('message', (event) => {
         ...assets.map((u) => caches.match(u).then((hit) => hit || store(ASSETS, u))),
       ]),
     );
-  } else if (msg.type === 'uncache-workout' && typeof msg.sessionId === 'string') {
+  } else if (msg.type === 'uncache-workout') {
     event.waitUntil(caches.open(PAGES).then((c) => c.delete(workoutPath(msg.sessionId))));
   }
 });

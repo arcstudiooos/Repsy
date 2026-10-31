@@ -22,7 +22,15 @@ import {
 } from '@/lib/set-entry';
 import { saveSets, startWorkout, type SetLogPayload } from '@/lib/workout-api';
 import { hasDeviceStore } from '@/portal/offline/db';
-import { enqueue, flush, retryBlocked, syncState } from '@/portal/offline/outbox';
+import {
+  cancelFinish,
+  dismissRejected,
+  enqueue,
+  flush,
+  releaseHeld,
+  retryBlocked,
+  syncState,
+} from '@/portal/offline/outbox';
 import { cacheWorkoutPage, uncacheWorkoutPage } from '@/portal/offline/registerSw';
 import { useOnline, useSyncStatus } from '@/portal/offline/useSyncStatus';
 import {
@@ -75,6 +83,7 @@ const SYNC_LABEL = {
   saved_on_device: 'Saved on device',
   syncing: 'Syncing',
   synced: 'Synced',
+  not_saved: 'Not saved',
 } as const;
 const OFFLINE_START = "You're offline. Open this workout while online to start it.";
 const CLOCK_BLOCKED = 'Your device clock is ahead. Fix the date and time, then tap Retry.';
@@ -150,7 +159,16 @@ export function WorkoutLogger({
   // Rows with a request in flight: at most one per row, so acks can't arrive out of order.
   const inflight = useRef<Set<string>>(new Set());
 
-  const { session, workout } = detail;
+  // The server refused this device's completion (or skip): the workout isn't finished, so it reopens for logging.
+  const finishRefused =
+    deviceFirst &&
+    initial.session.state === 'in_progress' &&
+    detail.session.state !== 'in_progress' &&
+    Boolean(sync?.rejected.some((r) => r.kind !== 'logs'));
+  const { workout } = detail;
+  const session = finishRefused
+    ? { ...detail.session, state: 'in_progress' as const, comment: initial.session.comment }
+    : detail.session;
   // Coach mode sits under the client page's h1 and a workout h2.
   const titleLevel = mode === 'coach' ? 'h3' : 'h2';
 
@@ -178,7 +196,9 @@ export function WorkoutLogger({
       setStatus((s) => ({ ...s, [key]: { kind: 'invalid', field, message } }));
       return;
     }
-    if (synced.current[key] === snapshot) {
+    // A set the server refused is sent again on Retry even though the draft is unchanged.
+    const refused = deviceFirst && sync?.rejectedRows[key] !== undefined;
+    if (synced.current[key] === snapshot && !refused) {
       setStatus((s) => ({ ...s, [key]: { kind: 'synced' } }));
       return;
     }
@@ -303,6 +323,15 @@ export function WorkoutLogger({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [syncStatus]);
 
+  /** "Keep editing" on a held completion: drop it and reopen the workout here. */
+  async function keepEditing() {
+    await cancelFinish(session.id);
+    setDetail((d) => ({
+      ...d,
+      session: { ...d.session, state: 'in_progress', comment: initial.session.comment },
+    }));
+  }
+
   async function onStart() {
     if (deviceFirst && !online) return;
     setStarting(true);
@@ -338,6 +367,9 @@ export function WorkoutLogger({
     if (sync?.pendingRows.includes(key)) {
       return { kind: sync.status === 'syncing' ? 'syncing' : 'saved' };
     }
+    // Refused by the server: never "Synced" (D-004 #6). The values stay on screen to fix or retry.
+    const refused = sync?.rejectedRows[key];
+    if (refused !== undefined) return { kind: 'error', message: refused };
     return sync ? { kind: 'synced' } : local;
   };
 
@@ -378,7 +410,16 @@ export function WorkoutLogger({
     sync &&
     (sync.status !== 'synced' || detail.logs.length > 0 || sync.rejected.length > 0) ? (
       <div className="mb-4 flex flex-col gap-2">
-        <p role="status" className={sync.status === 'synced' ? 'text-accent' : 'text-secondary'}>
+        <p
+          role="status"
+          className={
+            sync.status === 'synced'
+              ? 'text-accent'
+              : sync.status === 'not_saved'
+                ? 'text-danger'
+                : 'text-secondary'
+          }
+        >
           {SYNC_LABEL[sync.status]}
         </p>
         {sync.blockedReason && (
@@ -393,9 +434,34 @@ export function WorkoutLogger({
         )}
         {sync.rejected.map((r, i) => (
           <p key={i} role="alert" className="text-danger">
-            Some changes couldn&apos;t be saved: {r.message}
+            {r.kind === 'logs'
+              ? "Some sets couldn't be saved: "
+              : "Your workout couldn't be finished: "}
+            {r.message}
           </p>
         ))}
+        {sync.held && (
+          <div className="flex flex-wrap items-center gap-3">
+            <p role="alert" className="text-danger">
+              {sync.held}
+            </p>
+            <Button variant="secondary" onClick={() => void keepEditing()}>
+              Keep editing
+            </Button>
+            <Button variant="secondary" onClick={() => void releaseHeld(session.id)}>
+              Finish anyway
+            </Button>
+          </div>
+        )}
+        {sync.rejected.length > 0 && !sync.held && (
+          <Button
+            variant="secondary"
+            className="self-start"
+            onClick={() => void dismissRejected(session.id)}
+          >
+            Dismiss
+          </Button>
+        )}
       </div>
     ) : null;
 

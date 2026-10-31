@@ -5,7 +5,13 @@
  * server keeps the breached-password check on.
  */
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import { countAudits, seedCoachWithClient, sessionFacts, storedSetLogs } from './support/db';
+import {
+  countAudits,
+  resetRateLimits,
+  seedCoachWithClient,
+  sessionFacts,
+  storedSetLogs,
+} from './support/db';
 import { assignFromClientTab, buildProgram } from './helpers/journey';
 import { E2E_PASSWORD, signIn } from './helpers/users';
 
@@ -18,6 +24,8 @@ async function coachAndClient(page: Page, browser: Browser, clientName: string) 
     // The browser's zone (the runner's), so "today" matches on both sides.
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   });
+  // Back-to-back specs sign in more often than Better Auth's per-IP sign-in limit allows (3 per 10 s).
+  await resetRateLimits();
   await signIn(page, seeded.coachEmail, /\/app/);
   const context = await browser.newContext();
   const portal = await context.newPage();
@@ -168,6 +176,102 @@ test.describe('offline continuity (S3-3)', () => {
         rows: 1,
         onLocked: 1,
       });
+    } finally {
+      await client.context.close();
+    }
+  });
+
+  test('a workout finished offline syncs from the portal home, without reopening it (I3)', async ({
+    page,
+    browser,
+  }) => {
+    const client = await coachAndClient(page, browser, 'Hana Home');
+    try {
+      await buildProgram(page, 'Home block', [[EXERCISES[0]]]);
+      await assignFromClientTab(page, 'Hana Home', 'Home block');
+      const portal = client.page;
+      const sessionId = await startToday(portal);
+
+      await client.context.setOffline(true);
+      await fillAndBlur(portal, 'Barbell Bench Press', {
+        'Set 1 reps': '6',
+        'Set 1 weight (kg)': '50',
+      });
+      await portal.getByRole('button', { name: 'Complete workout' }).click();
+      await portal
+        .getByRole('dialog', { name: 'Complete workout?' })
+        .getByRole('button', { name: 'Complete', exact: true })
+        .click();
+      await expect(status(portal, 'Saved on device')).toBeVisible({ timeout: 15_000 });
+
+      // Home, still offline (from the worker's cache), then the connection returns: the portal sends it.
+      await portal.goto('/portal');
+      await client.context.setOffline(false);
+      await expect
+        .poll(async () => (await sessionFacts(sessionId)).state, { timeout: 45_000 })
+        .toBe('completed');
+      expect(await sessionFacts(sessionId)).toMatchObject({ rows: 1 });
+      expect(portal.url()).toMatch(/\/portal$/);
+    } finally {
+      await client.context.close();
+    }
+  });
+
+  test("sign-out deletes the device's workout data; offline, the next visitor sees none of it (C1)", async ({
+    page,
+    browser,
+  }) => {
+    const client = await coachAndClient(page, browser, 'Sami Shared');
+    try {
+      await buildProgram(page, 'Shared block', [[EXERCISES[0]]]);
+      await assignFromClientTab(page, 'Sami Shared', 'Shared block');
+      const portal = client.page;
+      const sessionId = await startToday(portal);
+      const url = portal.url();
+
+      await client.context.setOffline(true);
+      await fillAndBlur(portal, 'Barbell Bench Press', {
+        'Set 1 reps': '7',
+        'Set 1 weight (kg)': '55',
+      });
+      await expect(portal.getByText('Saved on device').first()).toBeVisible();
+
+      // Back online, but the set still can't reach the server: it stays unsynced on the device.
+      await client.context.route('**/api/v1/sessions/*/logs', (route) => route.abort());
+      await client.context.setOffline(false);
+      await portal.goto('/portal/profile');
+      await portal.getByRole('button', { name: 'Sign out', exact: true }).click();
+      const confirm = portal.getByRole('dialog', { name: 'Sign out anyway?' });
+      await expect(confirm).toContainText("You have workout changes that haven't synced yet.");
+      await confirm.getByRole('button', { name: 'Stay signed in' }).click();
+      await expect(confirm).toBeHidden();
+      await expect(portal).toHaveURL(/\/portal\/profile$/);
+
+      await portal.getByRole('button', { name: 'Sign out', exact: true }).click();
+      await confirm.getByRole('button', { name: 'Sign out anyway' }).click();
+      await expect(portal).toHaveURL(/\/login/, { timeout: 30_000 });
+
+      // Nothing of the workout is left on the device: no stored pages, no device store.
+      const left = await portal.evaluate(async (path) => {
+        const pages: string[] = [];
+        for (const name of await caches.keys()) {
+          const cache = await caches.open(name);
+          if ((await cache.match(path)) || (await cache.match('/portal'))) pages.push(name);
+        }
+        const dbs = (await indexedDB.databases()).map((d) => d.name);
+        return { pages, dbs };
+      }, `/portal/workouts/${sessionId}`);
+      expect(left.pages).toEqual([]);
+      expect(left.dbs).not.toContain('kinetic-offline');
+
+      // A signed-out visitor, offline, opening the workout (e.g. from history) gets nothing of it.
+      await client.context.setOffline(true);
+      for (const path of [url, '/portal']) {
+        await portal.goto(path).catch(() => undefined);
+        await expect(portal.getByText('Barbell Bench Press')).toHaveCount(0);
+        await expect(portal.getByText('Shared block')).toHaveCount(0);
+      }
+      expect((await sessionFacts(sessionId)).rows).toBe(0);
     } finally {
       await client.context.close();
     }
