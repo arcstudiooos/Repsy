@@ -3,6 +3,8 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import type { LoggedSet, SessionDetail, TrackingType, Units } from '@kinetic/core';
+import { isPersonalRecord } from '@kinetic/core/pr';
+import { toDisplay } from '@kinetic/core/units';
 import {
   LoggedByCoachBadge,
   RevisionMark,
@@ -469,6 +471,37 @@ export function WorkoutLogger({
       </div>
     ) : null;
 
+  const finishedSets = detail.logs.filter((l) => !isBlank(l));
+  const summary =
+    session.state === 'completed' && finishedSets.length > 0
+      ? {
+          sets: finishedSets.length,
+          volumeKg:
+            Math.round(
+              finishedSets.reduce((v, l) => v + (l.weightKg ?? 0) * (l.reps ?? 0), 0) * 10,
+            ) / 10,
+          minutes:
+            session.startedAt && session.completedAt
+              ? Math.max(
+                  1,
+                  Math.round(
+                    (Date.parse(session.completedAt) - Date.parse(session.startedAt)) / 60_000,
+                  ),
+                )
+              : null,
+          prs: workout.exercises.reduce(
+            (n, e) =>
+              n +
+              finishedSets.filter(
+                (l) =>
+                  l.workoutVersionExerciseId === e.id &&
+                  isPersonalRecord(l, detail.bests?.[e.exerciseId]),
+              ).length,
+            0,
+          ),
+        }
+      : null;
+
   const header = (
     <div className="mb-6 flex flex-col gap-2">
       <p className="text-sm text-secondary">
@@ -567,6 +600,37 @@ export function WorkoutLogger({
             <CardContent className="break-words whitespace-pre-line">{session.comment}</CardContent>
           </Card>
         )}
+        {summary && (
+          <Card className="mb-4">
+            <CardHeader className="mb-2">
+              <CardTitle as={titleLevel}>Workout summary</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div>
+                  <dt className="text-sm text-secondary">Sets</dt>
+                  <dd className="text-lg font-semibold">{summary.sets}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-secondary">Volume</dt>
+                  <dd className="text-lg font-semibold">
+                    {summary.volumeKg > 0 ? `${toDisplay(summary.volumeKg, units)} ${units}` : '–'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-secondary">Duration</dt>
+                  <dd className="text-lg font-semibold">
+                    {summary.minutes !== null ? `${summary.minutes} min` : '–'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-secondary">Personal records</dt>
+                  <dd className="text-lg font-semibold">{summary.prs}</dd>
+                </div>
+              </dl>
+            </CardContent>
+          </Card>
+        )}
         <ol className="flex flex-col gap-3">
           {workout.exercises.map((e) => {
             const sets = detail.logs.filter(
@@ -591,6 +655,7 @@ export function WorkoutLogger({
                                 Set {l.setIndex + 1}: {describeSet(e.trackingType, l, units)}
                               </span>
                               {mark && <RevisionMark label={markLabel(mark)} />}
+                              {isPersonalRecord(l, detail.bests?.[e.exerciseId]) && <PrBadge />}
                             </li>
                           );
                         })}
@@ -640,17 +705,32 @@ export function WorkoutLogger({
                     {Array.from({ length: rowCount(e) }, (_, i) => {
                       const key = rowKey(e.id, i);
                       return (
-                        <SetRow
-                          key={key}
-                          index={i}
-                          trackingType={e.trackingType}
-                          units={units}
-                          draft={drafts[key] ?? EMPTY_DRAFT}
-                          placeholder={draftFromTarget(e.sets[i], units)}
-                          status={shownStatus(key)}
-                          onChange={(d) => onDraftChange(key, d)}
-                          onCommit={() => void save(e, i)}
-                        />
+                        <div key={key} className="flex flex-col gap-1">
+                          <SetRow
+                            index={i}
+                            trackingType={e.trackingType}
+                            units={units}
+                            draft={drafts[key] ?? EMPTY_DRAFT}
+                            placeholder={draftFromTarget(e.sets[i], units)}
+                            status={shownStatus(key)}
+                            onChange={(d) => onDraftChange(key, d)}
+                            onCommit={() => void save(e, i)}
+                          />
+                          {(() => {
+                            // Only a stored value earns the badge: never a half-typed one.
+                            const st = shownStatus(key).kind;
+                            if (st !== 'synced' && st !== 'saved') return null;
+                            const parsed = valuesFromDraft(
+                              drafts[key] ?? EMPTY_DRAFT,
+                              e.trackingType,
+                              units,
+                            );
+                            return parsed.ok &&
+                              isPersonalRecord(parsed.values, detail.bests?.[e.exerciseId]) ? (
+                              <PrBadge />
+                            ) : null;
+                          })()}
+                        </div>
                       );
                     })}
                     {rowCount(e) < MAX_SETS && (
@@ -691,5 +771,14 @@ export function WorkoutLogger({
         />
       </div>
     </>
+  );
+}
+
+/** A set that beats the client's earlier bests (PRD D11). */
+function PrBadge() {
+  return (
+    <span className="inline-flex w-fit items-center rounded-full bg-accent px-2 py-0.5 text-sm font-medium text-white">
+      New personal record
+    </span>
   );
 }

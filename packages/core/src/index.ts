@@ -237,6 +237,8 @@ export {
 export {
   getPersonalRecords,
   getExerciseHistory,
+  exerciseBestsBefore,
+  isPersonalRecord,
   estimateOneRepMax,
   REP_MAX_COUNTS,
   E1RM_MAX_REPS,
@@ -244,6 +246,7 @@ export {
   type ExerciseRecords,
   type ExerciseHistoryEntry,
   type SetRecord,
+  type ExerciseBest,
 } from './progress/records';
 export {
   listMetrics,

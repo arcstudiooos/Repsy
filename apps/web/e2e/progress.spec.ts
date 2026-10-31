@@ -119,4 +119,58 @@ test.describe('progress: body metrics, personal records, exercise history (PRD E
       await client.context.close();
     }
   });
+
+  test('a heavier set shows a PR badge, and the finished workout has a summary (PRD D11, D12)', async ({
+    page,
+    request,
+    browser,
+  }) => {
+    await signUpVerifiedCoach(page, request);
+    const client = await onboardClient(page, request, browser, 'Pip Record');
+    try {
+      await buildProgram(page, 'PR block', [
+        [['bench', 'Barbell Bench Press']],
+        [['bench', 'Barbell Bench Press']],
+      ]);
+      await assignFromClientTab(page, 'Pip Record', 'PR block', 2);
+
+      const logDay = async (day: string, weight: string) => {
+        await openClientTab(page, 'Pip Record', 'Sessions');
+        await page.getByRole('link', { name: new RegExp(`^Log workout: ${day}`) }).click();
+        await expect(page).toHaveURL(/\/sessions\/[0-9a-f-]{36}$/, { timeout: 30_000 });
+        await page.getByRole('button', { name: 'Start workout' }).click();
+        const card = page.getByRole('region', { name: 'Barbell Bench Press' });
+        await card.getByLabel('Set 1 reps', { exact: true }).fill('10');
+        await card.getByLabel('Set 1 weight (kg)', { exact: true }).fill(weight);
+        await card.getByRole('heading', { name: 'Barbell Bench Press' }).click();
+        await expect(card.getByText('Synced')).toBeVisible({ timeout: 15_000 });
+        return card;
+      };
+      const complete = async () => {
+        await page.getByRole('button', { name: 'Complete workout' }).click();
+        await page
+          .getByRole('dialog', { name: 'Complete workout?' })
+          .getByRole('button', { name: 'Complete', exact: true })
+          .click();
+        await expect(page).toHaveURL(/\/sessions\?scope=past$/, { timeout: 15_000 });
+      };
+
+      const first = await logDay('Day 1', '50');
+      await expect(first.getByText('New personal record')).toHaveCount(0);
+      await complete();
+      const second = await logDay('Day 2', '60');
+      await expect(second.getByText('New personal record')).toBeVisible();
+      await expectNoAxeViolations(page);
+      await complete();
+
+      await page.getByRole('main').getByRole('link', { name: /Day 2/ }).first().click();
+      await expect(page.getByRole('heading', { name: 'Workout summary' })).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(page.getByText('New personal record')).toBeVisible();
+      await expectNoAxeViolations(page);
+    } finally {
+      await client.context.close();
+    }
+  });
 });

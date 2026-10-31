@@ -4,11 +4,12 @@ import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';
 import { fromDbDate } from '../sessions/read';
 import { isUuid } from '../uuid';
+import { E1RM_MAX_REPS, estimateOneRepMax, type ExerciseBest } from './pr';
+
+export { E1RM_MAX_REPS, estimateOneRepMax, isPersonalRecord, type ExerciseBest } from './pr';
 
 /** Rep counts with a tracked rep max (the heaviest load lifted for at least that many reps). */
 export const REP_MAX_COUNTS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
-/** Sets above this many reps are left out of the estimated 1RM: the formula is unreliable for long sets. */
-export const E1RM_MAX_REPS = 12;
 /** The most sessions one exercise history returns, newest first. */
 export const HISTORY_LIMIT = 104;
 
@@ -69,14 +70,6 @@ interface LogRow {
 type Decimalish = { toString(): string } | null;
 const num = (d: Decimalish): number | null => (d === null ? null : Number(d.toString()));
 const round1 = (n: number) => Math.round(n * 10) / 10;
-
-/** Epley; a single is its own weight. Null outside 1..E1RM_MAX_REPS reps or without a load. */
-export function estimateOneRepMax(weightKg: number | null, reps: number | null): number | null {
-  if (weightKg === null || weightKg <= 0 || reps === null || reps < 1 || reps > E1RM_MAX_REPS) {
-    return null;
-  }
-  return reps === 1 ? weightKg : round1(weightKg * (1 + reps / 30));
-}
 
 /**
  * The client whose progress the actor may read: a client reads only their own record; a coach reads any client in
@@ -316,4 +309,73 @@ export async function getExerciseHistory(
     )
     .slice(0, HISTORY_LIMIT);
   return { exercise: { exerciseId: rows[0].exerciseId, ...meta }, entries };
+}
+
+/** Bests per exercise id from the client's other completed sessions (never `excludeSessionId`). */
+export async function exerciseBestsBefore(
+  tx: TenantTx,
+  clientId: string,
+  exerciseIds: string[],
+  excludeSessionId: string,
+): Promise<Record<string, ExerciseBest>> {
+  const ids = [...new Set(exerciseIds)];
+  if (ids.length === 0) return {};
+  const rows = await tx.setLog.groupBy({
+    by: ['workoutVersionExerciseId'],
+    where: {
+      sessionId: { not: excludeSessionId },
+      session: { is: { clientId, state: 'completed' } },
+      workoutVersionExercise: { is: { exerciseId: { in: ids } } },
+    },
+    _max: { weightKg: true, reps: true, durationSeconds: true, distanceM: true },
+  });
+  // groupBy is per workout-version exercise: map each to its exercise and fold the maxima.
+  const wves = await tx.workoutVersionExercise.findMany({
+    where: { id: { in: rows.map((r) => r.workoutVersionExerciseId) } },
+    select: { id: true, exerciseId: true },
+  });
+  const exerciseOf = new Map(wves.map((w) => [w.id, w.exerciseId]));
+  const out: Record<string, ExerciseBest> = {};
+  const max = (a: number | null, b: number | null) =>
+    a === null ? b : b === null ? a : Math.max(a, b);
+  for (const r of rows) {
+    const ex = exerciseOf.get(r.workoutVersionExerciseId);
+    if (!ex) continue;
+    const prev = out[ex] ?? {
+      heaviestKg: null,
+      estimatedOneRepMaxKg: null,
+      mostReps: null,
+      longestSeconds: null,
+      longestMeters: null,
+    };
+    out[ex] = {
+      ...prev,
+      heaviestKg: max(prev.heaviestKg, num(r._max.weightKg)),
+      mostReps: max(prev.mostReps, r._max.reps),
+      longestSeconds: max(prev.longestSeconds, r._max.durationSeconds),
+      longestMeters: max(prev.longestMeters, num(r._max.distanceM)),
+    };
+  }
+  // The estimated 1RM needs weight and reps from the same set.
+  const sets = await tx.setLog.findMany({
+    where: {
+      sessionId: { not: excludeSessionId },
+      session: { is: { clientId, state: 'completed' } },
+      workoutVersionExercise: { is: { exerciseId: { in: ids } } },
+      weightKg: { gt: 0 },
+      reps: { gte: 1, lte: E1RM_MAX_REPS },
+    },
+    select: {
+      weightKg: true,
+      reps: true,
+      workoutVersionExercise: { select: { exerciseId: true } },
+    },
+  });
+  for (const s of sets) {
+    const ex = s.workoutVersionExercise.exerciseId;
+    const est = estimateOneRepMax(num(s.weightKg), s.reps);
+    if (est === null || !out[ex]) continue;
+    out[ex].estimatedOneRepMaxKg = max(out[ex].estimatedOneRepMaxKg, est);
+  }
+  return out;
 }

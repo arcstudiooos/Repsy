@@ -6,6 +6,7 @@ import { EDIT_WINDOW_MS } from '../logging/schema';
 import { toSetLogValue, type RevisionValues, type SetLogValue } from '../logging/values';
 import type { Units } from '../units';
 import { isUuid } from '../uuid';
+import { exerciseBestsBefore, type ExerciseBest } from '../progress/records';
 import { getExercisePerformance, type PreviousPerformance } from './history';
 import { sessionScope, summarize, SUMMARY_SELECT } from './read';
 import { resolveSessionWorkout } from './resolve';
@@ -37,6 +38,8 @@ export interface SessionDetail {
   logs: LoggedSet[];
   /** Per exerciseId: what the client logged for it in their most recent other completed session. */
   previous: Record<string, PreviousPerformance>;
+  /** Per exerciseId: the client's bests from other completed sessions, for PR badges (PRD D11). */
+  bests?: Record<string, ExerciseBest>;
   client: { id: string; name: string; preferredUnits: Units; timezone: string };
   revisions: SetLogRevisionView[];
   /** Client actors on a completed or skipped session: when their edit window closes (`submittedAt` + 24h). */
@@ -132,6 +135,12 @@ export async function getSessionDetail(
     workout.exercises.map((e) => e.exerciseId),
     { excludeSessionId: row.id },
   );
+  const bests = await exerciseBestsBefore(
+    tx,
+    row.clientId,
+    workout.exercises.map((e) => e.exerciseId),
+    row.id,
+  );
 
   return {
     session: { ...summary, comment: row.comment, workoutVersionId: row.workoutVersionId },
@@ -142,6 +151,7 @@ export async function getSessionDetail(
       ...toSetLogValue(l),
     })),
     previous,
+    bests,
     client,
     revisions,
     editableUntil,

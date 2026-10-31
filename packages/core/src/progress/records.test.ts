@@ -13,7 +13,13 @@ import {
   type ClientWorld,
 } from '../sessions/fixtures.test-helpers';
 import { completeSession, skipSession, startSession } from '../sessions/lifecycle';
-import { estimateOneRepMax, getExerciseHistory, getPersonalRecords } from './records';
+import {
+  estimateOneRepMax,
+  exerciseBestsBefore,
+  getExerciseHistory,
+  getPersonalRecords,
+  isPersonalRecord,
+} from './records';
 
 let prisma: PrismaClient;
 let drop: () => Promise<void>;
@@ -196,5 +202,30 @@ describe('getExerciseHistory', () => {
     await expect(
       runAs(prisma, w.coach, (tx) => getExerciseHistory(tx, w.coach, w.clientId, BENCH)),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+});
+
+describe('PR badges (PRD D11)', () => {
+  it('bests exclude the current session; a set beating them is a PR', async () => {
+    const w = await newClientWorld(prisma, await newOrg(prisma));
+    await logBench(w, 0, [
+      [60, 8],
+      [70, 3],
+    ]);
+    const current = await logBench(w, 1, [[72.5, 2]], 'none');
+    const bests = await runAs(prisma, w.coach, (tx) =>
+      exerciseBestsBefore(tx, w.clientId, [BENCH], current.id),
+    );
+    expect(bests[BENCH]).toMatchObject({ heaviestKg: 70, mostReps: 8, estimatedOneRepMaxKg: 77 });
+    const set = (weightKg: number | null, reps: number | null) => ({
+      weightKg,
+      reps,
+      durationSeconds: null,
+      distanceM: null,
+    });
+    expect(isPersonalRecord(set(72.5, 2), bests[BENCH])).toBe(true); // heavier
+    expect(isPersonalRecord(set(65, 6), bests[BENCH])).toBe(true); // e1RM 78 > 77
+    expect(isPersonalRecord(set(60, 5), bests[BENCH])).toBe(false);
+    expect(isPersonalRecord(set(60, 5), undefined)).toBe(false); // first time: no PR noise
   });
 });
