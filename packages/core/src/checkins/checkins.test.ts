@@ -11,8 +11,10 @@ import {
   type ClientWorld,
 } from '../sessions/fixtures.test-helpers';
 import {
+  checkinStreak,
   getCheckin,
   getCheckinTemplate,
+  markCheckinReviewed,
   issueDueCheckins,
   listCheckins,
   saveCheckinDraft,
@@ -21,6 +23,7 @@ import {
   updateCheckinTemplate,
   weekActivityBefore,
 } from './checkins';
+import { onCheckinSubmittedRules } from '../review/rules';
 import { SEEDED_QUESTIONS } from './questions';
 
 let prisma: PrismaClient;
@@ -282,5 +285,93 @@ describe('template and activity', () => {
       missed: 0,
       total: 3,
     });
+  });
+});
+
+describe('reviewed and streak (PRD F13, F14)', () => {
+  async function submitted() {
+    const w = await world();
+    await issue(w);
+    const [row] = await checkinsOf(w);
+    return { w, id: row!.id };
+  }
+
+  it('a coach marks a sent check-in reviewed: the client sees it and its flag resolves', async () => {
+    const { w, id } = await submitted();
+    expect(
+      await codeOf(
+        runAs(prisma, w.coach, (tx) => markCheckinReviewed(tx, w.coach, id, { now: NOW })),
+      ),
+    ).toBe('CONFLICT');
+    await runAs(prisma, w.client, (tx) =>
+      submitCheckin(
+        tx,
+        w.client,
+        id,
+        { answers: { energy: 4 }, idempotencyKey: 'key-review-01' },
+        { now: NOW, onSubmitted: onCheckinSubmittedRules },
+      ),
+    );
+    const later = new Date(NOW.getTime() + 3_600_000);
+    const view = await runAs(prisma, w.coach, (tx) =>
+      markCheckinReviewed(tx, w.coach, id, { now: later }),
+    );
+    expect(view.reviewedAt).toBe(later.toISOString());
+    const again = await runAs(prisma, w.coach, (tx) =>
+      markCheckinReviewed(tx, w.coach, id, { now: new Date(later.getTime() + 60_000) }),
+    );
+    expect(again.reviewedAt).toBe(later.toISOString());
+    const seen = await runAs(prisma, w.client, (tx) => getCheckin(tx, w.client, id));
+    expect(seen.reviewedAt).toBe(later.toISOString());
+    const flag = await withSystem(
+      (tx) => tx.reviewFlag.findFirst({ where: { ruleKey: 'checkin_new', sourceId: id } }),
+      prisma,
+    );
+    expect(flag).toMatchObject({ state: 'resolved', resolvedBy: w.coach.userId });
+    expect(
+      await codeOf(runAs(prisma, w.client, (tx) => markCheckinReviewed(tx, w.client, id))),
+    ).toBe('FORBIDDEN');
+  });
+
+  it('streak counts on-time check-ins back from the newest; an open one is skipped, a late one ends it', async () => {
+    const w = await world();
+    const template = await runAs(prisma, w.coach, (tx) => getCheckinTemplate(tx, w.coach));
+    const DAY = 86_400_000;
+    const due = (d: string) => new Date(`${d}T04:59:00Z`); // 23:59 the day before in New York
+    const rows: { period: string; submitted: Date | null }[] = [
+      { period: '2026-10-07', submitted: due('2026-10-08') }, // on time
+      { period: '2026-10-14', submitted: new Date(due('2026-10-15').getTime() + 3 * DAY) }, // late: ends it
+      { period: '2026-10-21', submitted: due('2026-10-22') },
+      { period: '2026-10-28', submitted: new Date(due('2026-10-29').getTime() + 12 * 3_600_000) }, // within grace
+      { period: '2026-11-04', submitted: null }, // still open at NOW
+    ];
+    await withSystem(
+      (tx) =>
+        tx.checkin.createMany({
+          data: rows.map((r) => ({
+            organizationId: w.orgId,
+            clientId: w.clientId,
+            templateId: template.id,
+            periodLocalDate: new Date(`${r.period}T00:00:00Z`),
+            questionsJson: [],
+            issuedAt: new Date(`${r.period}T11:00:00Z`),
+            dueAt: due(
+              new Date(Date.parse(`${r.period}T00:00:00Z`) + DAY).toISOString().slice(0, 10),
+            ),
+            submittedAt: r.submitted,
+            answersJson: r.submitted ? {} : undefined,
+            submitIdempotencyKey: r.submitted ? `key-${r.period}` : null,
+          })),
+        }),
+      prisma,
+    );
+    const streak = (now: Date, as: 'coach' | 'client' = 'coach') =>
+      runAs(prisma, as === 'coach' ? w.coach : w.client, (tx) =>
+        checkinStreak(tx, as === 'coach' ? w.coach : w.client, { clientId: w.clientId }, { now }),
+      );
+    expect(await streak(NOW)).toBe(2);
+    expect(await streak(NOW, 'client')).toBe(2);
+    // Once the open one is past due + grace without a submission, the streak is 0.
+    expect(await streak(new Date(NOW.getTime() + 4 * DAY))).toBe(0);
   });
 });

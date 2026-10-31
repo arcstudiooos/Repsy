@@ -136,6 +136,8 @@ export {
   type CheckinStatus,
   type WeekActivity,
   type CheckinSubmittedHook,
+  markCheckinReviewed,
+  checkinStreak,
 } from './checkins/checkins';
 export {
   evaluateRules,

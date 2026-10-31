@@ -3,6 +3,7 @@ import {
   getCheckin,
   getCheckinTemplate,
   listCheckins,
+  markCheckinReviewed,
   saveCheckinDraft,
   setCheckinWeekday,
   submitCheckin,
@@ -107,4 +108,11 @@ export const checkinSubmitRoute: RouteDef<typeof submitSchema, true> = {
     }
     return checkin;
   },
+};
+
+/** `POST /api/v1/checkins/:id/review`: a coach marks a sent check-in reviewed (PRD F14). */
+export const checkinReviewRoute: RouteDef<undefined, true> = {
+  can: 'review:update',
+  handler: ({ actor, params, requestId, tenant }) =>
+    tenant((tx) => markCheckinReviewed(tx, actor, params.id ?? '', { requestId })),
 };

@@ -60,3 +60,7 @@ export const setCheckinWeekday = (clientId: string, checkinWeekday: number | nul
 
 export const updateCheckinTemplate = (body: { title?: string; questions?: CheckinQuestion[] }) =>
   call<CheckinTemplateView>('PATCH', '/api/v1/checkin-template', body);
+
+/** A coach marks a sent check-in reviewed (PRD F14). */
+export const markReviewed = (id: string) =>
+  call<CheckinView>('POST', `/api/v1/checkins/${enc(id)}/review`, {});

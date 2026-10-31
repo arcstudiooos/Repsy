@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { listCheckins, weekActivityBefore } from '@kinetic/core';
+import { checkinStreak, listCheckins, weekActivityBefore } from '@kinetic/core';
 import { CheckinAnswersList } from '@/components/checkins/CheckinAnswersList';
 import { EmptyState } from '@/components/states/EmptyState';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { withServerTenant } from '@/server/serverActor';
 import { formatDate } from '../../StatusBadge';
 import { loadClient } from '../data';
 import { CheckinSchedule } from './CheckinSchedule';
+import { MarkReviewedButton } from './MarkReviewedButton';
 
 export const metadata: Metadata = { title: 'Check-ins | Kinetic' };
 
@@ -22,7 +23,7 @@ const WITH_ACTIVITY = 12;
 
 export default async function ClientCheckinsPage({ params }: { params: Promise<{ id: string }> }) {
   const client = await loadClient((await params).id);
-  const items = await withServerTenant(async (tx, actor) => {
+  const { items, streak } = await withServerTenant(async (tx, actor) => {
     const checkins = await listCheckins(tx, actor, { clientId: client.id });
     const out = [];
     for (const [i, c] of checkins.entries()) {
@@ -34,7 +35,7 @@ export default async function ClientCheckinsPage({ params }: { params: Promise<{
             : null,
       });
     }
-    return out;
+    return { items: out, streak: await checkinStreak(tx, actor, { clientId: client.id }) };
   });
   return (
     <div className="flex flex-col gap-6">
@@ -48,6 +49,14 @@ export default async function ClientCheckinsPage({ params }: { params: Promise<{
             weekday={client.checkinWeekday}
             disabled={client.status === 'archived'}
           />
+          {items.length > 0 && (
+            <p>
+              On-time streak:{' '}
+              <span className="font-semibold">
+                {streak} {streak === 1 ? 'check-in' : 'check-ins'}
+              </span>
+            </p>
+          )}
           <Link
             href="/app/check-ins"
             className="self-start text-accent underline underline-offset-4"
@@ -68,7 +77,13 @@ export default async function ClientCheckinsPage({ params }: { params: Promise<{
                   <CardTitle as="h3">Week of {formatDate(c.periodLocalDate)}</CardTitle>
                   <CardDescription>
                     {c.title} · {STATUS[c.status]}
+                    {c.reviewedAt && ` · Reviewed ${formatDate(c.reviewedAt.slice(0, 10))}`}
                   </CardDescription>
+                  {c.status === 'submitted' && !c.reviewedAt && (
+                    <div className="mt-2">
+                      <MarkReviewedButton id={c.id} label={formatDate(c.periodLocalDate)} />
+                    </div>
+                  )}
                 </CardHeader>
                 <CardContent className="grid gap-6 md:grid-cols-[2fr_1fr]">
                   {c.answers ? (

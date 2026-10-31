@@ -89,6 +89,7 @@ model User {
   internalNotes            InternalNote[]          @relation("NoteAuthor")
   recordedMetrics          MetricEntry[]           @relation("MetricRecorder")
   metricRevisions          MetricEntryRevision[]   @relation("MetricReviser")
+  reviewedCheckins         Checkin[]               @relation("CheckinReviewer")
   exportJobs               ExportJob[]             @relation("ExportRequester")
   deletionSubjects         DeletionRequest[]       @relation("DeletionSubject")
   deletionRequested        DeletionRequest[]       @relation("DeletionRequester")
@@ -806,12 +807,16 @@ model Checkin {
   draftJson            Json?     @map("draft_json")
   draftUpdatedAt       DateTime? @map("draft_updated_at") @db.Timestamptz(3)
   submitIdempotencyKey String?   @map("submit_idempotency_key")
+  /// When a coach marked the submitted check-in reviewed (PRD F14); the client sees it.
+  reviewedAt           DateTime? @map("reviewed_at") @db.Timestamptz(3)
+  reviewedByUserId     String?   @map("reviewed_by_user_id") @db.Uuid
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   organization Organization    @relation(fields: [organizationId], references: [id])
   client       Client          @relation(fields: [clientId, organizationId], references: [id, organizationId])
   template     CheckinTemplate @relation(fields: [templateId, organizationId], references: [id, organizationId])
+  reviewedBy   User?           @relation("CheckinReviewer", fields: [reviewedByUserId], references: [id])
 
   @@unique([clientId, periodLocalDate])
   @@unique([id, organizationId])
