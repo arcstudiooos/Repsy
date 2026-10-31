@@ -1,6 +1,6 @@
 'use client';
 
-import { Copy, Trash2 } from 'lucide-react';
+import { Copy, Percent, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useFieldArray, useFormContext } from 'react-hook-form';
 import type { Units } from '@kinetic/core/units';
@@ -16,7 +16,9 @@ import {
 } from '@/components/ui/dialog';
 import { useMoveFocus, type MoveDirection } from './EditorFields';
 import { DaySection, type Slot } from './DaySection';
-import { MAX_WEEK_COUNT, type EditorDay, type EditorValues } from './editorSchema';
+import { Input } from '@/components/ui/input';
+import { toast } from '@/components/ui/toast';
+import { MAX_WEEK_COUNT, scaleWeekLoads, type EditorDay, type EditorValues } from './editorSchema';
 
 /** One week tab: week actions (duplicate, remove) and its training days in order. */
 export function WeekSection({
@@ -40,7 +42,28 @@ export function WeekSection({
   const days = useFieldArray({ control, name: `weeks.${week}.days` });
   const focus = useMoveFocus();
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [adjustOpen, setAdjustOpen] = useState(false);
+  const [percent, setPercent] = useState('');
+  const [percentError, setPercentError] = useState<string | null>(null);
   const n = week + 1;
+
+  function applyAdjust() {
+    const p = Number(percent.replace(',', '.'));
+    if (percent.trim() === '' || !Number.isFinite(p) || p < -50 || p > 50 || p === 0) {
+      setPercentError('Enter a change from -50 to 50, not 0.');
+      return;
+    }
+    const res = scaleWeekLoads(getValues(`weeks.${week}.days`), p, units);
+    days.replace(res.days);
+    setAdjustOpen(false);
+    setPercent('');
+    setPercentError(null);
+    toast[res.changed > 0 ? 'success' : 'message'](
+      res.changed > 0
+        ? `Changed ${res.changed} ${res.changed === 1 ? 'load' : 'loads'} in week ${n}. Save to keep it.`
+        : `Week ${n} has no loads to change.`,
+    );
+  }
 
   function moveDay(d: number, key: string, dir: MoveDirection) {
     focus.moved(key, dir);
@@ -67,6 +90,67 @@ export function WeekSection({
           <Copy aria-hidden className="size-4" />
           Duplicate week
         </Button>
+        <Dialog
+          open={adjustOpen}
+          onOpenChange={(next) => {
+            setAdjustOpen(next);
+            if (!next) setPercentError(null);
+          }}
+        >
+          <DialogTrigger asChild>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              aria-label={`Adjust loads in week ${n}`}
+            >
+              <Percent aria-hidden className="size-4" />
+              Adjust loads
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Adjust loads in week {n}</DialogTitle>
+              <DialogDescription>
+                Changes every set load in this week by a percentage, rounded to{' '}
+                {units === 'lb' ? '1 lb' : '0.5 kg'}. Sets without a load stay as they are.
+              </DialogDescription>
+            </DialogHeader>
+            <form
+              noValidate
+              onSubmit={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                applyAdjust();
+              }}
+              className="flex flex-col gap-2"
+            >
+              <label htmlFor={`adjust-${week}`} className="text-sm font-medium">
+                Change (%)
+              </label>
+              <Input
+                id={`adjust-${week}`}
+                inputMode="decimal"
+                placeholder="e.g. 5 or -10"
+                value={percent}
+                onChange={(e) => setPercent(e.target.value)}
+                aria-invalid={percentError ? true : undefined}
+                aria-describedby={percentError ? `adjust-${week}-error` : undefined}
+              />
+              {percentError && (
+                <p id={`adjust-${week}-error`} role="alert" className="text-sm text-danger">
+                  {percentError}
+                </p>
+              )}
+              <DialogFooter>
+                <Button type="button" variant="secondary" onClick={() => setAdjustOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">Apply</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
         <Dialog open={confirmRemove} onOpenChange={setConfirmRemove}>
           <DialogTrigger asChild>
             <Button
