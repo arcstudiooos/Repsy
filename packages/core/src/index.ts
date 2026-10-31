@@ -287,6 +287,9 @@ export {
   type ThreadSummary,
   type ThreadView,
   type MessageSentHook,
+  searchMessages,
+  MESSAGE_SEARCH_LIMIT,
+  type MessageSearchHit,
 } from './messages/messages';
 export {
   SEEDED_QUESTIONS,

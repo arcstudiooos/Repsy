@@ -8,6 +8,7 @@ import {
   getMyThread,
   listMessages,
   listThreads,
+  searchMessages,
   sendMessage,
   unreadMessageCount,
 } from './messages';
@@ -194,5 +195,50 @@ describe('messages', () => {
     expect(await codeOf(runAs(prisma, w.client, (tx) => listThreads(tx, w.client)))).toBe(
       'FORBIDDEN',
     );
+  });
+});
+
+describe('searchMessages (PRD H17)', () => {
+  it('coach searches every thread; client only their own; nothing is marked read', async () => {
+    const w = await world();
+    const sibling = await newClientWorld(prisma, { orgId: w.orgId, coach: w.coach });
+    const mine = await myThread(w);
+    const theirs = await runAs(prisma, sibling.client, (tx) => getMyThread(tx, sibling.client));
+    await send(w, 'client', mine.id, 'My knee felt better on squats');
+    await send(sibling, 'client', theirs.id, 'Squats are hard this week');
+    await send(w, 'coach', mine.id, 'Great, keep the tempo');
+
+    const coachHits = await runAs(prisma, w.coach, (tx) =>
+      searchMessages(tx, w.coach, { q: 'SQUATS' }),
+    );
+    expect(coachHits.map((h) => h.body).sort()).toEqual([
+      'My knee felt better on squats',
+      'Squats are hard this week',
+    ]);
+    expect(coachHits.every((h) => !h.mine)).toBe(true);
+
+    const clientHits = await runAs(prisma, w.client, (tx) =>
+      searchMessages(tx, w.client, { q: 'squats' }),
+    );
+    expect(clientHits.map((h) => h.body)).toEqual(['My knee felt better on squats']);
+    expect(clientHits[0]).toMatchObject({ mine: true, clientName: 'Client' });
+
+    // Searching did not read anything.
+    expect(await runAs(prisma, w.coach, (tx) => unreadMessageCount(tx, w.coach))).toBe(2);
+  });
+
+  it('treats % and _ literally, never crosses organizations, and validates the query', async () => {
+    const w = await world();
+    const other = await world();
+    await send(w, 'client', (await myThread(w)).id, 'Hit 100% today');
+    await send(other, 'client', (await myThread(other)).id, 'Hit 100% too');
+    const hits = await runAs(prisma, w.coach, (tx) => searchMessages(tx, w.coach, { q: '0%' }));
+    expect(hits.map((h) => h.body)).toEqual(['Hit 100% today']);
+    expect(await runAs(prisma, w.coach, (tx) => searchMessages(tx, w.coach, { q: '__' }))).toEqual(
+      [],
+    );
+    expect(
+      await codeOf(runAs(prisma, w.coach, (tx) => searchMessages(tx, w.coach, { q: 'a' }))),
+    ).toBe('VALIDATION');
   });
 });
