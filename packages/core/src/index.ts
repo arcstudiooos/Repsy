@@ -280,6 +280,13 @@ export {
   type TagWithCount,
 } from './clients/tags';
 export {
+  importClients,
+  IMPORT_MAX_ROWS,
+  type ImportRowInput,
+  type ImportRowResult,
+  type ImportResult,
+} from './clients/import';
+export {
   getClientContext,
   updateClientContext,
   setNotePinned,

@@ -5,6 +5,8 @@ import {
   createClient,
   getClient,
   getClientHistory,
+  importClients,
+  IMPORT_MAX_ROWS,
   listClients,
   resumeNow,
   updateClient,
@@ -53,6 +55,48 @@ export const clientsPostRoute: RouteDef<typeof createSchema, true> = {
     });
     return new ApiResult(client satisfies ClientView, { status: 201 });
   },
+};
+
+const importCell = z.string().max(4000).nullable().optional();
+const importSchema = z.object({
+  rows: z
+    .array(
+      z.object({
+        name: z.string().max(4000),
+        email: z.string().max(4000),
+        goals: importCell,
+        timezone: importCell,
+        units: importCell,
+      }),
+    )
+    .max(IMPORT_MAX_ROWS),
+  dryRun: z.boolean().optional(),
+});
+
+/**
+ * `POST /api/v1/clients/import` (PRD B17): bulk-create clients from a roster. `dryRun: true` only validates.
+ * Row problems come back per row (200), never as a request error, so one bad row does not block the rest.
+ */
+export const clientsImportRoute: RouteDef<typeof importSchema, true> = {
+  can: 'client:create',
+  input: importSchema,
+  handler: ({ actor, input, requestId, tenant }) =>
+    tenant(async (tx) => {
+      const result = await importClients(tx, actor, input);
+      for (const r of result.rows) {
+        if (!r.clientId) continue;
+        await appendAudit(tx, {
+          orgId: actor.orgId,
+          actorId: actor.userId,
+          objectType: 'client',
+          objectId: r.clientId,
+          action: 'client.created',
+          metadata: { source: 'import' },
+          requestId,
+        });
+      }
+      return result;
+    }),
 };
 
 export const clientGetRoute: RouteDef<undefined, true> = {

@@ -48,13 +48,13 @@ export const NAME_MAX = 120;
 export const GOALS_MAX = 2000;
 export const QUERY_MAX = 100;
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 /**
  * Statuses that occupy a slot under `Organization.activeClientLimit`. A pause is temporary (at most 90 days) and ends
  * on its own without a limit check, so a paused client keeps their slot.
  */
-const COUNTED: ClientStatus[] = ['invited', 'active', 'paused'];
+export const COUNTED: ClientStatus[] = ['invited', 'active', 'paused'];
 
 const invalid = (field: string, message: string) =>
   new DomainError('VALIDATION', 'Some fields are invalid.', { [field]: [message] });
@@ -90,7 +90,7 @@ export function toClientView(
   };
 }
 
-function cleanName(name: string): string {
+export function cleanName(name: string): string {
   const v = name.trim();
   if (v.length < 1 || v.length > NAME_MAX) throw invalid('name', `Use 1-${NAME_MAX} characters.`);
   return v;
@@ -112,7 +112,7 @@ export function escapeLike(text: string): string {
  * Serializes concurrent limit checks: a no-op UPDATE holds the organization row
  * lock until the surrounding tenant transaction commits.
  */
-function lockOrganization(tx: TenantTx, actor: ActorContext) {
+export function lockOrganization(tx: TenantTx, actor: ActorContext) {
   return tx.organization.update({
     where: { id: actor.orgId },
     data: { updatedAt: new Date() },

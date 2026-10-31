@@ -131,6 +131,17 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+  /clients/import:
+    post:
+      tags: [Clients]
+      summary: "Import clients from a roster (PRD B17). Body: rows[] of {name, email, goals?, timezone?, units?} (at most 500) and dryRun?. Returns per-row results; rows that fail validation, duplicate an email or exceed the active-client limit are skipped, not rejected. No invites are sent."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
   /clients/{id}:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }

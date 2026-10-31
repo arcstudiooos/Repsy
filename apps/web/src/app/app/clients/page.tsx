@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import {
   clientCompliance,
   DomainError,
@@ -9,6 +10,7 @@ import {
   type TagView,
   type ClientStatus,
 } from '@kinetic/core';
+import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/states/EmptyState';
 import { ErrorState } from '@/components/states/ErrorState';
 import { withServerTenant } from '@/server/serverActor';
@@ -21,6 +23,14 @@ const STATUSES: ClientStatus[] = ['invited', 'active', 'paused', 'archived'];
 
 const first = (v: string | string[] | undefined): string | undefined =>
   (Array.isArray(v) ? v[0] : v) || undefined;
+
+function ImportLink() {
+  return (
+    <Button asChild variant="secondary">
+      <Link href="/app/clients/import">Import from CSV</Link>
+    </Button>
+  );
+}
 
 export default async function ClientsPage({
   searchParams,
@@ -78,13 +88,23 @@ export default async function ClientsPage({
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold md:text-3xl">Clients</h1>
-        {!isEmptyRoster && <NewClientDialog />}
+        {!isEmptyRoster && (
+          <div className="flex flex-wrap gap-3">
+            <ImportLink />
+            <NewClientDialog />
+          </div>
+        )}
       </div>
       {isEmptyRoster ? (
         <EmptyState
           title="Add your first client"
-          body="Invite a client by email. They will get a link to set up their account."
-          action={<NewClientDialog />}
+          body="Invite a client by email. They will get a link to set up their account. Moving from another app? Import your roster from a CSV file."
+          action={
+            <div className="flex flex-wrap justify-center gap-3">
+              <NewClientDialog />
+              <ImportLink />
+            </div>
+          }
         />
       ) : (
         <ClientsTable
