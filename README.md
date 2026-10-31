@@ -57,6 +57,10 @@ R2 builds the web-platform features in `docs/competitive/complete-platform-prd.m
 - **D6/D21 logger:** a rest timer (+30 s, skip, vibrate) after each saved set, and "Same as set N" to copy the last set.
 - **B17 client import:** `/app/clients/import` reads a CSV (Name or First/Last name, Email, optional Goals, Time zone, Units), previews every row with its problems, and imports the valid rows without inviting anyone.
 - **A5 setup checklist:** the dashboard lists seven first-week steps that tick themselves from what exists; a coach can hide it and show it again.
+- **C16 calendar:** a Calendar tab per client (and `/portal/calendar`) shows a month of workouts and check-ins; coaches drag an unstarted workout to another day or use Move, optionally shifting every later workout too (never into the past or during a pause).
+- **E2 trends:** body metrics and exercises get trend charts with 4/12/26/52-week ranges, a crosshair tooltip (pointer or arrow keys) and a table view; body weight shows a 7-day average.
+- **I3 review rules:** owners can turn on extra review rules in Settings: habit slipping, program ending within 7 days, reply time missed and weight change beyond a set band.
+- **C14 program import:** `/app/programs/import` reads a pasted plan or spreadsheet rows, matches exercises to the library for the coach to check, and saves a new template.
 
 ## What works locally (Sprint 5)
 
