@@ -182,6 +182,7 @@ test.describe('client directory', () => {
         'Overview',
         'Program',
         'Sessions',
+        'Calendar',
         'Progress',
         'Habits',
         'Nutrition',
