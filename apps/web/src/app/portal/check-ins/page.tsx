@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { listCheckins, todayInZone } from '@kinetic/core';
+import { checkinStreak, listCheckins, todayInZone } from '@kinetic/core';
 import { EmptyState } from '@/components/states/EmptyState';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatSessionDate } from '@/lib/session-format';
@@ -12,19 +12,25 @@ const STATUS = { open: 'To do', overdue: 'Past due', submitted: 'Sent' } as cons
 
 // Access is enforced by src/proxy.ts and the portal layout's client gate; core scopes to this client.
 export default async function PortalCheckins() {
-  const { checkins, today } = await withPortalTenant(async (tx, actor) => {
+  const { checkins, today, streak } = await withPortalTenant(async (tx, actor) => {
     const client = await tx.client.findFirst({
       where: { id: actor.clientId },
       select: { timezone: true },
     });
     return {
       checkins: await listCheckins(tx, actor),
+      streak: await checkinStreak(tx, actor),
       today: todayInZone(client?.timezone ?? 'UTC'),
     };
   });
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Check-ins</h1>
+      <h1 className="mb-2 text-2xl font-semibold md:text-3xl">Check-ins</h1>
+      <p className="mb-6 text-secondary">
+        {streak > 0
+          ? `${streak} on time in a row. Keep it going.`
+          : 'Send each check-in by its due day to start a streak.'}
+      </p>
       {checkins.length === 0 ? (
         <EmptyState
           title="No check-ins yet"
@@ -41,6 +47,9 @@ export default async function PortalCheckins() {
                     <p className="text-sm text-secondary">
                       {formatSessionDate(c.periodLocalDate, today)} · {STATUS[c.status]}
                     </p>
+                    {c.reviewedAt && (
+                      <p className="text-sm text-accent">Your coach reviewed this</p>
+                    )}
                   </div>
                   <Link
                     href={`/portal/check-ins/${c.id}`}

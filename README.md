@@ -44,6 +44,10 @@ R2 builds the web-platform features in `docs/competitive/complete-platform-prd.m
 
 - **C11 builder fast edits:** "Replace exercise" swaps one exercise for another in every week and day (sets kept when the tracking type matches); "Adjust loads" on a week changes every set load by -50..50%, rounded to 0.5 kg or 1 lb.
 
+- **H17 message search:** the coach inbox searches message text across conversations (newest first, never marks anything read).
+- **F13/F14 check-ins reviewed and streak:** coaches mark a sent check-in reviewed (it also resolves its "New check-in" review item); clients see "Your coach reviewed this" and their on-time streak.
+- **I8 dashboard:** "Check-ins waiting for your review" lists sent, unreviewed check-ins, oldest first.
+
 ## What works locally (Sprint 5)
 
 - `/app/analytics`: adherence (completed of eligible workouts, with skipped, not finished and missed shown separately; paused and cancelled excluded), assigned vs finished, check-in response rate, due check-ins and median time to follow-up, each with its numerator, denominator and period.

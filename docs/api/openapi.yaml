@@ -647,6 +647,18 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+  /checkins/{id}/review:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Check-ins]
+      summary: "A coach marks a sent check-in reviewed; resolves its New check-in flag (PRD F14)."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
   /checkins/{id}/submit:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }

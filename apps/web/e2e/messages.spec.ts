@@ -69,4 +69,44 @@ test.describe('messaging (S4-4)', () => {
       await client.context.close();
     }
   });
+
+  test('coach searches message text across conversations (PRD H17)', async ({
+    page,
+    request,
+    browser,
+  }) => {
+    await signUpVerifiedCoach(page, request);
+    const client = await onboardClient(page, request, browser, 'Sam Search');
+    try {
+      const portal = client.page;
+      await portal.goto('/portal/messages');
+      await portal
+        .getByLabel('Message', { exact: true })
+        .fill('My shoulder clicks on overhead press');
+      await portal.getByRole('button', { name: 'Send' }).click();
+      const sent = portal.getByRole('list', { name: 'Messages' }).getByRole('listitem').first();
+      await expect(sent.getByText('My shoulder clicks on overhead press')).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(sent.getByText(/· Sent$/)).toBeVisible({ timeout: 15_000 });
+
+      await page.goto('/app/messages');
+      await page.getByRole('searchbox', { name: 'Search messages' }).fill('SHOULDER');
+      await page.getByRole('button', { name: 'Search', exact: true }).click();
+      const results = page.getByRole('list', { name: 'Search results' });
+      await expect(results.getByText('My shoulder clicks on overhead press')).toBeVisible({
+        timeout: 15_000,
+      });
+      await expectNoAxeViolations(page);
+      await results.getByRole('link').first().click();
+      await expect(page.getByRole('heading', { name: 'Sam Search', level: 2 })).toBeVisible({
+        timeout: 15_000,
+      });
+
+      await page.goto('/app/messages?q=zzzz-nothing');
+      await expect(page.getByText('No messages match.')).toBeVisible();
+    } finally {
+      await client.context.close();
+    }
+  });
 });

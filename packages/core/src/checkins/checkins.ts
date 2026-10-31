@@ -1,4 +1,5 @@
 import { appendAudit, Prisma, type TenantTx } from '@kinetic/db';
+import { graceMs } from '../analytics/adherence';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { clientsInPauseNow } from '../clients/pause';
@@ -53,6 +54,8 @@ export interface CheckinView {
   issuedAt: string;
   dueAt: string;
   submittedAt: string | null;
+  /** When a coach marked it reviewed (PRD F14); shown to the client too. */
+  reviewedAt: string | null;
   status: CheckinStatus;
   questions: CheckinQuestion[];
   /** Submitted answers (null until submitted). */
@@ -78,6 +81,7 @@ interface CheckinRow {
   issuedAt: Date;
   dueAt: Date;
   submittedAt: Date | null;
+  reviewedAt: Date | null;
   questionsJson: Prisma.JsonValue;
   answersJson: Prisma.JsonValue | null;
   draftJson: Prisma.JsonValue | null;
@@ -91,6 +95,7 @@ const CHECKIN_SELECT = {
   issuedAt: true,
   dueAt: true,
   submittedAt: true,
+  reviewedAt: true,
   questionsJson: true,
   answersJson: true,
   draftJson: true,
@@ -109,6 +114,7 @@ function toView(row: CheckinRow, actor: ActorContext, now: Date): CheckinView {
     issuedAt: row.issuedAt.toISOString(),
     dueAt: row.dueAt.toISOString(),
     submittedAt: row.submittedAt?.toISOString() ?? null,
+    reviewedAt: row.reviewedAt?.toISOString() ?? null,
     status: row.submittedAt ? 'submitted' : now > row.dueAt ? 'overdue' : 'open',
     questions,
     answers: row.submittedAt ? answers(row.answersJson) : null,
@@ -469,4 +475,131 @@ export async function issueDueCheckins(tx: TenantTx, now: Date): Promise<{ issue
     });
   }
   return { issued };
+}
+
+/**
+ * Marks a submitted check-in reviewed (PRD F14) and resolves its open "New check-in sent" flag as the coach's own
+ * follow-up. Repeating is a no-op. A check-in not yet submitted is a CONFLICT.
+ */
+export async function markCheckinReviewed(
+  tx: TenantTx,
+  actor: ActorContext,
+  id: string,
+  opts: { now?: Date; requestId?: string } = {},
+): Promise<CheckinView> {
+  assertCan(actor, 'review:update');
+  const now = opts.now ?? new Date();
+  const row = await findCheckin(tx, actor, id);
+  if (!row.submittedAt) {
+    throw new DomainError('CONFLICT', 'This check-in has not been sent yet.');
+  }
+  if (!row.reviewedAt) {
+    await tx.checkin.update({
+      where: { id: row.id },
+      data: { reviewedAt: now, reviewedByUserId: actor.userId },
+    });
+    await tx.reviewFlag.updateMany({
+      where: { ruleKey: 'checkin_new', sourceId: row.id, state: { in: ['open', 'snoozed'] } },
+      data: {
+        state: 'resolved',
+        resolvedAt: now,
+        resolvedBy: actor.userId,
+        resolutionReason: 'Check-in reviewed',
+        snoozedUntil: null,
+      },
+    });
+    await appendAudit(tx, {
+      orgId: actor.orgId,
+      actorId: actor.userId,
+      objectType: 'checkin',
+      objectId: row.id,
+      action: 'checkin.reviewed',
+      requestId: opts.requestId,
+    });
+  }
+  return toView(await findCheckin(tx, actor, row.id), actor, now);
+}
+
+/**
+ * Consecutive check-ins sent on time, counting back from the newest (PRD F13). On time = sent before due + grace. A
+ * check-in still within its window and not yet sent neither counts nor breaks the streak; a late or missing one ends
+ * it. A client reads their own; a coach any client in the organization.
+ */
+export async function checkinStreak(
+  tx: TenantTx,
+  actor: ActorContext,
+  query: { clientId?: string } = {},
+  opts: { now?: Date } = {},
+): Promise<number> {
+  assertCan(actor, 'checkin:read');
+  const scope = scopeFor(actor, query.clientId);
+  const now = opts.now ?? new Date();
+  const grace = await graceMs(tx);
+  const rows = await tx.checkin.findMany({
+    where: scope,
+    orderBy: { periodLocalDate: 'desc' },
+    take: LIST_MAX,
+    select: { dueAt: true, submittedAt: true },
+  });
+  let streak = 0;
+  for (const r of rows) {
+    const windowEnd = r.dueAt.getTime() + grace;
+    if (r.submittedAt === null) {
+      if (now.getTime() <= windowEnd) continue;
+      break;
+    }
+    if (r.submittedAt.getTime() > windowEnd) break;
+    streak += 1;
+  }
+  return streak;
+}
+
+export interface CheckinAwaitingReview {
+  id: string;
+  clientId: string;
+  clientName: string;
+  periodLocalDate: string;
+  submittedAt: string;
+}
+
+/**
+ * Sent check-ins no coach has marked reviewed yet (PRD I8), oldest sent first, across the organization. Archived
+ * clients are left out. `total` counts them all; `items` holds at most `limit`.
+ */
+export async function listCheckinsAwaitingReview(
+  tx: TenantTx,
+  actor: ActorContext,
+  opts: { limit?: number } = {},
+): Promise<{ total: number; items: CheckinAwaitingReview[] }> {
+  assertCan(actor, 'review:read');
+  const where = {
+    submittedAt: { not: null },
+    reviewedAt: null,
+    client: { is: { status: { not: 'archived' as const } } },
+  };
+  const [total, rows] = await Promise.all([
+    tx.checkin.count({ where }),
+    tx.checkin.findMany({
+      where,
+      orderBy: [{ submittedAt: 'asc' }, { id: 'asc' }],
+      take: Math.min(Math.max(opts.limit ?? 10, 1), 50),
+      select: {
+        id: true,
+        clientId: true,
+        periodLocalDate: true,
+        submittedAt: true,
+        client: { select: { name: true } },
+      },
+    }),
+  ]);
+  return {
+    total,
+    items: rows.map((r) => ({
+      id: r.id,
+      clientId: r.clientId,
+      clientName: r.client.name,
+      periodLocalDate: fromDbDate(r.periodLocalDate),
+      submittedAt: (r.submittedAt as Date).toISOString(),
+    })),
+  };
 }

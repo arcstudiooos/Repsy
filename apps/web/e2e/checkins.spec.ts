@@ -81,6 +81,25 @@ test.describe('weekly check-ins (S4-1)', () => {
       await expect(page.getByText('Travel for work')).toBeVisible();
       await expect(page.getByRole('region', { name: 'Week before' })).toBeVisible();
       await expectNoAxeViolations(page);
+
+      // PRD I8: the dashboard lists it as waiting for review.
+      await page.goto('/app');
+      await expect(page.getByText('Check-ins waiting for your review (1)')).toBeVisible({
+        timeout: 30_000,
+      });
+      await expectNoAxeViolations(page);
+      await page.getByRole('link', { name: /^Review .*check-in$/ }).click();
+      await expect(page).toHaveURL(/\/check-ins$/, { timeout: 15_000 });
+
+      // PRD F14: the coach marks it reviewed; the client sees it (and their on-time streak, F13).
+      await page.getByRole('button', { name: /^Mark as reviewed: check-in of / }).click();
+      await expect(page.getByText(/· Reviewed /)).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByText('On-time streak:')).toBeVisible();
+      await portal.goto('/portal/check-ins');
+      await expect(portal.getByText('Your coach reviewed this')).toBeVisible({ timeout: 30_000 });
+      await expect(portal.getByText('1 on time in a row. Keep it going.')).toBeVisible();
+      await page.goto('/app');
+      await expect(page.getByText(/Check-ins waiting for your review/)).toHaveCount(0);
     } finally {
       await client.context.close();
     }

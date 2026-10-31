@@ -1,6 +1,7 @@
 import { appendAudit, wantsMessageEmail, type TenantTx } from '@kinetic/db';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
+import { escapeLike } from '../clients/clients';
 import { DomainError } from '../errors';
 import { enqueueEmail } from '../outbox';
 import { isUuid } from '../uuid';
@@ -373,4 +374,59 @@ export async function sendMessage(
     createdAt: row.createdAt.toISOString(),
     readAt: null,
   };
+}
+
+/** The most results one message search returns, newest first. */
+export const MESSAGE_SEARCH_LIMIT = 50;
+
+export interface MessageSearchHit {
+  messageId: string;
+  threadId: string;
+  clientName: string;
+  senderName: string;
+  mine: boolean;
+  body: string;
+  createdAt: string;
+}
+
+/**
+ * Searches message text (PRD H17), case-insensitively, newest first (at most 50). A coach searches every thread in
+ * the organization; a client only their own. Searching never marks anything read. Results are UI-only: never logged,
+ * audited or tracked (D-007).
+ */
+export async function searchMessages(
+  tx: TenantTx,
+  actor: ActorContext,
+  query: { q?: unknown },
+): Promise<MessageSearchHit[]> {
+  assertCan(actor, 'message:read');
+  const q = typeof query.q === 'string' ? query.q.trim() : '';
+  if (q.length < 2 || q.length > 100) throw invalid('q', 'Use 2-100 characters.');
+  const scope =
+    actor.role === 'client'
+      ? { thread: { is: { clientId: actor.clientId ?? '00000000-0000-0000-0000-000000000000' } } }
+      : {};
+  const rows = await tx.message.findMany({
+    where: { ...scope, body: { contains: escapeLike(q), mode: 'insensitive' } },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    take: MESSAGE_SEARCH_LIMIT,
+    select: {
+      id: true,
+      threadId: true,
+      senderUserId: true,
+      body: true,
+      createdAt: true,
+      sender: { select: { name: true } },
+      thread: { select: { client: { select: { name: true } } } },
+    },
+  });
+  return rows.map((m) => ({
+    messageId: m.id,
+    threadId: m.threadId,
+    clientName: m.thread.client.name,
+    senderName: m.sender.name,
+    mine: m.senderUserId === actor.userId,
+    body: m.body,
+    createdAt: m.createdAt.toISOString(),
+  }));
 }
