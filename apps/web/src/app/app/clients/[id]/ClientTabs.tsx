@@ -8,6 +8,7 @@ const TABS = [
   { label: 'Overview', segment: '' },
   { label: 'Program', segment: 'program' },
   { label: 'Sessions', segment: 'sessions' },
+  { label: 'Progress', segment: 'progress' },
   { label: 'Check-ins', segment: 'check-ins' },
   { label: 'Messages', segment: 'messages' },
   { label: 'Notes', segment: 'notes' },

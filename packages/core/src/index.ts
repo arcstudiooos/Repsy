@@ -231,6 +231,17 @@ export {
   type ComplianceWindow,
 } from './analytics/compliance';
 export {
+  getPersonalRecords,
+  getExerciseHistory,
+  estimateOneRepMax,
+  REP_MAX_COUNTS,
+  E1RM_MAX_REPS,
+  HISTORY_LIMIT,
+  type ExerciseRecords,
+  type ExerciseHistoryEntry,
+  type SetRecord,
+} from './progress/records';
+export {
   listNotes,
   createNote,
   updateNote,

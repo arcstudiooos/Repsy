@@ -34,6 +34,8 @@ R2 builds the web-platform features in `docs/competitive/complete-platform-prd.m
 
 - **I5 per-client adherence:** the client list shows each client's adherence over the last 7, 30 and 90 days (completed of due workouts, ending today in the client's time zone), and the client Overview has an Adherence card with skipped, not finished and missed counts. Same rules as `/app/analytics`: paused and cancelled workouts are left out, and nothing due reads "No sessions due yet".
 
+- **E6, E7 personal records and exercise history:** a Progress tab on each client (coach) and `/portal/progress` (client, linked from Home) show per-exercise records from completed workouts: estimated 1RM (Epley, labelled estimated), heaviest set, rep maxes for 1-10 reps, best session volume, most reps in a set, longest duration and distance. Each exercise opens every workout it was done in. Coach corrections update the records; skipped and unfinished workouts never count.
+
 ## What works locally (Sprint 5)
 
 - `/app/analytics`: adherence (completed of eligible workouts, with skipped, not finished and missed shown separately; paused and cancelled excluded), assigned vs finished, check-in response rate, due check-ins and median time to follow-up, each with its numerator, denominator and period.
