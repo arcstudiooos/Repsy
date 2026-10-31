@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  checkinResponsesCsv,
   getCheckin,
   getCheckinTemplate,
   listCheckins,
@@ -115,4 +116,20 @@ export const checkinReviewRoute: RouteDef<undefined, true> = {
   can: 'review:update',
   handler: ({ actor, params, requestId, tenant }) =>
     tenant((tx) => markCheckinReviewed(tx, actor, params.id ?? '', { requestId })),
+};
+
+/** `GET /api/v1/clients/:id/checkins.csv` (PRD F12): the client's sent check-ins as CSV, for coaches. */
+export const checkinResponsesCsvRoute: RouteDef<undefined, true> = {
+  can: 'client:read',
+  handler: async ({ actor, params, tenant }) => {
+    const { filename, csv } = await tenant((tx) => checkinResponsesCsv(tx, actor, params.id ?? ''));
+    return new Response(csv, {
+      status: 200,
+      headers: {
+        'content-type': 'text/csv; charset=utf-8',
+        'content-disposition': `attachment; filename="${filename}"`,
+        'cache-control': 'no-store',
+      },
+    });
+  },
 };

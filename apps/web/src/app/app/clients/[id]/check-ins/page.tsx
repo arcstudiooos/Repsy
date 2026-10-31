@@ -53,6 +53,15 @@ export default async function ClientCheckinsPage({ params }: { params: Promise<{
             weekday={client.checkinWeekday}
             disabled={client.status === 'archived'}
           />
+          {items.some(({ checkin }) => checkin.submittedAt) && (
+            <a
+              href={`/api/v1/clients/${client.id}/checkins.csv`}
+              className="inline-flex min-h-11 items-center self-start text-accent underline underline-offset-4"
+              download
+            >
+              Download answers (CSV)
+            </a>
+          )}
           {items.length > 0 && (
             <p>
               On-time streak:{' '}

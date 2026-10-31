@@ -187,6 +187,17 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+  /clients/{id}/checkins.csv:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Check-ins]
+      summary: "The client's sent check-ins as CSV for coaches (PRD F12): one row per check-in, one column per question. Formula-like text is prefixed with an apostrophe."
+      responses:
+        '200': { description: "text/csv attachment" }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
   /clients/{id}/goals:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }
