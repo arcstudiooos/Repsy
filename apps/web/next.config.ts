@@ -16,9 +16,21 @@ if (process.env.KINETIC_DOTENV !== 'off') {
   }
 }
 
+/**
+ * This build's id, for the portal service worker's cache names (PR #2 review follow-up): the deployed commit on
+ * Render, KINETIC_BUILD_ID when set, otherwise the build time. A new id installs a new worker, which drops the
+ * previous build's asset cache.
+ */
+const buildId = (
+  process.env.KINETIC_BUILD_ID?.trim() ||
+  process.env.RENDER_GIT_COMMIT?.trim().slice(0, 12) ||
+  `t${Date.now().toString(36)}`
+).replace(/[^A-Za-z0-9_-]/g, '');
+
 const nextConfig: NextConfig = {
   // The E2E stack (and ad-hoc build checks) use their own build dir so they never share `.next` with `next dev`.
   distDir: process.env.NEXT_DIST_DIR?.trim() || '.next',
+  env: { NEXT_PUBLIC_BUILD_ID: buildId },
   cacheComponents: true,
   transpilePackages: ['@kinetic/core', '@kinetic/db'],
   serverExternalPackages: ['pg'],

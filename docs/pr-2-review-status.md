@@ -6,7 +6,7 @@ Pull request [arcstudiooos/GYM#2](https://github.com/arcstudiooos/GYM/pull/2) co
 
 - **Re-reviews:** done for every fix group (see the table). Fix groups 1 (round 2), 3 and 4 were re-reviewed in the same cloud session that wrote them, so a second pair of eyes is still welcome. That re-review found and fixed one race: a stale export build could delete a newer attempt's files, so export keys now carry the attempt (`exports/<org>/<job>/a<attempt>/…`).
 - **Fixed:** all 16 Critical and Important findings (1 Critical, 15 Important, counting the re-review's N1) and the 2 failing browser tests.
-- **Minor findings:** all 46 are triaged in `docs/pr-2-review-followups.md`: 26 fixed, 2 partly fixed, 1 accepted, 1 recorded, 16 deferred with reasons. One deferred item is needed before the first deploy: the service worker's asset cache naming.
+- **Minor findings:** all 46 are triaged in `docs/pr-2-review-followups.md`: 27 fixed, 2 partly fixed, 1 accepted, 1 recorded, 15 deferred with reasons. The service worker's asset cache naming, which was needed before the first deploy, was fixed after the merge.
 - **Where the work happened:**
   - Fix groups 1 (round 1) and 2: the Windows worktree `D:\Gym-review`.
   - Fix groups 3 and 4, round 2 of fix group 1, the re-reviews and the Minor fixes: a cloud session (Linux, Node 24, Postgres 16).
@@ -123,8 +123,8 @@ Re-implemented in the cloud session from `rereview-F1.md`, without the uncommitt
 
 ## Next steps
 
-1. **Merge** PR #2 into `master` (approved by the user once the checks pass).
-2. **Before the first deploy:** the service worker asset cache naming (`docs/pr-2-review-followups.md`, A M sw growth), plus the Sprint 0, 1 and 5 "before the first deploy" lists.
+1. **Merged:** PR #2 is in `master` (merge commit `b1fa0b7`, 2026-10-31, after green CI).
+2. **Before the first deploy:** the Sprint 0, 1 and 5 "before the first deploy" lists. The service worker asset cache naming is done (build-named caches; on Render the deployed commit is the build id, elsewhere set `KINETIC_BUILD_ID` or the build time is used).
 3. **Deferred Minor findings:** the 16 in `docs/pr-2-review-followups.md`, by priority.
 4. **Run the full checks** after any further change: `pnpm lint && pnpm typecheck && pnpm format:check && pnpm test && pnpm test:e2e`, plus the offline config.
 
