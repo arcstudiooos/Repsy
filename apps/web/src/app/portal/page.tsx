@@ -27,7 +27,7 @@ export default async function PortalHome() {
       <h1 className="mb-2 text-2xl font-semibold md:text-3xl">Home</h1>
       {org && <p className="mb-6 text-secondary">Coached by {org.name}</p>}
       <div className="flex flex-col gap-6">
-        {home.pause && <PausedBanner resumeLocalDate={home.pause.resumeLocalDate} />}
+        {home.pause && <PausedBanner {...home.pause} todayLocalDate={home.todayLocalDate} />}
         {home.openCheckin && (
           <Card>
             <CardHeader>

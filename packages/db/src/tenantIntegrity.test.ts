@@ -737,6 +737,19 @@ describe('messages are immutable (S4-3, PR #2 review I3)', () => {
     expect(await exists(row.id)).toBe(true);
   });
 
+  it('the lawful-erasure flag without system scope deletes nothing (PR #2 review D M2)', async () => {
+    const row = await newMessage(b);
+    await expect(
+      prisma.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe(`SET LOCAL search_path TO "${schema}"`);
+        await tx.$executeRaw`SELECT set_config('app.org_id', ${b.orgId}, true)`;
+        await tx.$executeRaw`SELECT pg_catalog.set_config('app.lawful_erasure', 'on', true)`;
+        await tx.$executeRawUnsafe(`DELETE FROM "${schema}"."messages" WHERE id = '${row.id}'`);
+      }),
+    ).rejects.toThrow(/messages are immutable/);
+    expect(await exists(row.id)).toBe(true);
+  });
+
   it('marking a message read still works', async () => {
     const row = await newMessage(b);
     const n = await withTenant(

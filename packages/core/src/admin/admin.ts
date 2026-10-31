@@ -119,6 +119,11 @@ export async function lookupAccount(
     },
   });
   if (!user) return null;
+  // A lookup reveals a person's name, email and memberships: audited in each of their organizations (PR #2 review
+  // C M-4). A user with no membership has no organization to hold the row.
+  for (const orgId of new Set(user.memberships.map((m) => m.organizationId))) {
+    await audit(tx, orgId, admin, 'user', user.id, 'support.account_lookup');
+  }
   return {
     id: user.id,
     name: user.name,

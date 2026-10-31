@@ -344,6 +344,14 @@ export async function updateClient(
     select: { status: true, userId: true },
   });
   if (!current) throw new DomainError('NOT_FOUND', 'Not found.');
+  // An erased client (S5-3) stays as an anonymized row only: editing or re-inviting it would attach a new person to
+  // the erased client's history (PR #2 review C M-9).
+  const erased = await tx.deletionRequest.findFirst({
+    where: { subjectClientId: id, status: { in: ['processing', 'done'] } },
+    select: { id: true },
+  });
+  if (erased)
+    throw new DomainError('CONFLICT', "This client's data was deleted. Add them as a new client.");
   if (patch.status !== undefined) {
     // Ruling 6: pausing and resuming move sessions, so they go through the pause API only.
     const intoPause = current.status === 'active' && patch.status === 'paused';

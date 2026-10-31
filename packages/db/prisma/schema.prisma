@@ -1034,6 +1034,7 @@ model DeletionRequest {
 
   @@index([status, createdAt])
   @@index([organizationId])
+  @@index([subjectClientId, createdAt])
   @@map("deletion_requests")
 }
 
@@ -1052,7 +1053,7 @@ model SupportAccessGrant {
 
   organization Organization @relation(fields: [organizationId], references: [id])
   admin        User         @relation("SupportAdmin", fields: [adminUserId], references: [id])
-  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId], onDelete: Restrict)
 
   @@index([adminUserId, clientId, expiresAt])
   @@index([organizationId])

@@ -73,7 +73,7 @@ export default async function PortalWorkouts({
       <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Workouts</h1>
       {data.pause && (
         <div className="mb-6">
-          <PausedBanner resumeLocalDate={data.pause.resumeLocalDate} />
+          <PausedBanner {...data.pause} todayLocalDate={data.today} />
         </div>
       )}
       <nav aria-label="Workout lists" className="mb-6 flex gap-2">

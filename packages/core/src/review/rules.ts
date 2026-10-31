@@ -1,5 +1,6 @@
 import { wantsMessageEmail, type Prisma, type TenantTx } from '@kinetic/db';
 import { clientsInPauseNow } from '../clients/pause';
+import { DomainError } from '../errors';
 import { resolveSlotWorkoutVersionId } from '../sessions/resolve';
 
 const HOUR_MS = 3_600_000;
@@ -108,8 +109,14 @@ export async function deriveSessionStates(
     if (!workoutVersionId) {
       try {
         workoutVersionId = await resolveSlotWorkoutVersionId(tx, s);
-      } catch {
-        // A slot that no longer exists: the session is cancelled by the commit that removed it.
+      } catch (error) {
+        if (!(error instanceof DomainError)) throw error;
+        // Its slot no longer exists (a commit removed it, D-002 #7): cancelled here, so it isn't retried on every
+        // sweep (PR #2 review B M-9).
+        await tx.workoutSession.updateMany({
+          where: { id: s.id, state: 'scheduled' },
+          data: { state: 'cancelled' },
+        });
         continue;
       }
     }
@@ -239,8 +246,8 @@ export const messageUnreadRule: Rule = {
   key: 'message_unread',
   async evaluate(tx, _orgId, now) {
     const threads = await tx.conversationThread.findMany({
-      where: { client: { is: { status: { not: 'archived' } } } },
-      select: { id: true, clientId: true, coachUserId: true },
+      where: { client: { is: { status: { not: 'archived' }, userId: { not: null } } } },
+      select: { id: true, clientId: true, coachUserId: true, client: { select: { userId: true } } },
     });
     const optIn = new Map<string, boolean>();
     const out: FlagUpsert[] = [];
@@ -266,7 +273,8 @@ export const messageUnreadRule: Rule = {
         where: {
           threadId: t.id,
           readAt: null,
-          senderUserId: { not: t.coachUserId },
+          // The client's own messages only (PR #2 review B M-7), whoever the thread's coach is now.
+          senderUserId: t.client.userId as string,
           createdAt: { lt: new Date(now.getTime() - DAY_MS), ...(after ? { gt: after } : {}) },
         },
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],

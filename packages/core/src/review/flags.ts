@@ -9,6 +9,12 @@ import { raiseFlag, RULE_TEXT, type RuleKey } from './rules';
 
 const DAY_MS = 86_400_000;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
+/** A real calendar date in YYYY-MM-DD (2026-02-31 is not): a bad one is a 422, not a 500 (PR #2 review B M-3). */
+const isDate = (v: unknown): v is string => {
+  if (typeof v !== 'string' || !DATE.test(v)) return false;
+  const d = new Date(`${v}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
+};
 export const REASON_MAX = 500;
 export const FOLLOWUP_TITLE_MAX = 200;
 export const FLAG_LIST_MAX = 200;
@@ -101,6 +107,7 @@ const STATES: Record<FlagFilter, FlagState[]> = {
 };
 
 const RULES = Object.keys(RULE_TEXT) as RuleKey[];
+const LIVE_CLIENT = { client: { is: { status: { not: 'archived' as const } } } };
 
 /** The review queue (S4-3): oldest source first within needs-attention, newest first for closed. */
 export async function listFlags(
@@ -118,6 +125,8 @@ export async function listFlags(
   const rows = await tx.reviewFlag.findMany({
     where: {
       state: { in: STATES[filter] },
+      // An archived client's flags leave the working queue (PR #2 review B M-12); the closed list keeps history.
+      ...(filter === 'closed' ? {} : LIVE_CLIENT),
       ...(query.rule ? { ruleKey: query.rule as RuleKey } : {}),
       ...(query.clientId ? { clientId: query.clientId } : {}),
     },
@@ -139,7 +148,7 @@ export async function countOpenFlags(
   assertCan(actor, 'review:read');
   const rows = await tx.reviewFlag.groupBy({
     by: ['ruleKey'],
-    where: { state: 'open' },
+    where: { state: 'open', ...LIVE_CLIENT },
     _count: { _all: true },
   });
   const byRule = Object.fromEntries(RULES.map((r) => [r, 0])) as Record<RuleKey, number>;
@@ -217,7 +226,7 @@ export async function updateFlag(
       let until: Date;
       if (input.until !== undefined) {
         const date = input.until;
-        if (typeof date !== 'string' || !DATE.test(date)) throw invalid('until', 'Use YYYY-MM-DD.');
+        if (!isDate(date)) throw invalid('until', 'Use YYYY-MM-DD.');
         const org = await tx.organization.findFirst({ select: { timezone: true } });
         const zone = org?.timezone ?? 'UTC';
         if (date <= todayInZone(zone, now)) throw invalid('until', 'Pick a date after today.');
@@ -296,7 +305,7 @@ export async function createFollowup(
     input.dueLocalDate !== ''
   ) {
     const d = input.dueLocalDate;
-    if (typeof d !== 'string' || !DATE.test(d)) throw invalid('dueLocalDate', 'Use YYYY-MM-DD.');
+    if (!isDate(d)) throw invalid('dueLocalDate', 'Use YYYY-MM-DD.');
     dueLocalDate = d;
   }
   const id = crypto.randomUUID();

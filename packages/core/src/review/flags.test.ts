@@ -80,6 +80,10 @@ describe('review queue', () => {
     expect(await codeOf(act(w, flagId, { action: 'snooze', until: '2026-11-10' }))).toBe(
       'VALIDATION',
     );
+    // Not a calendar date: 422, not 500 (PR #2 review B M-3).
+    for (const until of ['2026-02-31', '2026-13-01']) {
+      expect(await codeOf(act(w, flagId, { action: 'snooze', until }))).toBe('VALIDATION');
+    }
     const snoozed = await act(w, flagId, { action: 'snooze', days: 3 });
     expect(snoozed).toMatchObject({ state: 'snoozed', snoozedUntil: '2026-11-13T12:00:00.000Z' });
     const custom = await act(w, flagId, { action: 'snooze', until: '2026-11-20' });

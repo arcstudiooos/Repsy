@@ -10,6 +10,7 @@ import {
   readClientForSupport,
   revokeSupportAccess,
 } from '../admin/admin';
+import { updateClient } from '../clients/clients';
 import { DomainError } from '../errors';
 import { createNote } from '../history/notes';
 import { reviseSetLogs } from '../logging/revise';
@@ -149,6 +150,12 @@ describe('deletion (S5-3)', () => {
     ]);
     // Rerun: nothing happens.
     expect((await sys((tx) => eraseClientData(tx, id, NOW))).status).toBe('skipped');
+    // The anonymized row can't be revived or edited (PR #2 review C M-9).
+    for (const patch of [{ status: 'invited' as const }, { name: 'Someone new' }]) {
+      expect(
+        await codeOf(runAs(prisma, w.coach, (tx) => updateClient(tx, w.coach, w.clientId, patch))),
+      ).toBe('CONFLICT');
+    }
   });
 
   it('a dual-role user deleted as a client of org B keeps their org A ownership', async () => {
@@ -385,5 +392,9 @@ describe('admin console (S5-3)', () => {
     const email = (await sys((tx) => tx.user.findUniqueOrThrow({ where: { id: w.userId } }))).email;
     const account = await sys((tx) => lookupAccount(tx, admin(), email.toUpperCase()));
     expect(account?.memberships).toMatchObject([{ role: 'client', clientId: w.clientId }]);
+    const audits = await sys((tx) =>
+      tx.auditEvent.findMany({ where: { objectId: w.userId, action: 'support.account_lookup' } }),
+    );
+    expect(audits.map((a) => [a.organizationId, a.actorId])).toEqual([[w.orgId, adminId]]);
   });
 });

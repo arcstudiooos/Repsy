@@ -250,15 +250,24 @@ export function createApiHandler(deps: ApiDeps = {}) {
             return runTenant(actor.orgId, fn);
           },
           orgCookie: (orgId) => serializeOrgCookie(user.id, orgId, secret, isSecure(request, deps)),
-          track: (name, properties) =>
-            (deps.analytics ?? defaultAnalytics()).capture(
-              eventFor(
-                analyticsHashSecret(),
-                { userId: user.id, orgId: actor?.orgId },
-                name,
-                properties,
-              ),
-            ),
+          // Runs after the request's work committed: an analytics fault never fails the request (PR #2 C M-5).
+          track: (name, properties) => {
+            try {
+              (deps.analytics ?? defaultAnalytics()).capture(
+                eventFor(
+                  analyticsHashSecret(),
+                  { userId: user.id, orgId: actor?.orgId },
+                  name,
+                  properties,
+                ),
+              );
+            } catch (error) {
+              logger.error(
+                { requestId, errName: error instanceof Error ? error.name : 'unknown' },
+                'analytics event dropped',
+              );
+            }
+          },
           clientHash: (clientId) => clientHash(analyticsHashSecret(), clientId),
         } as RouteCtx<InputOf<S>, R>);
 

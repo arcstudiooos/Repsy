@@ -24,6 +24,8 @@ const requestSchema = z.object({
 /** `POST /api/v1/exports`: an owner's organization export or a client's own (idempotent per key). */
 export const exportsPostRoute: RouteDef<typeof requestSchema, true> = {
   input: requestSchema,
+  // Each request queues a full build (PR #2 review C M-11): 5 per hour per user.
+  rateLimit: { capacity: 5, refillPerSecond: 5 / 3600 },
   handler: async ({ actor, input, requestId, tenant, track }) => {
     const view = await tenant((tx) => requestExport(tx, actor, input, { requestId }));
     track('export_requested', { scope: input.scope });

@@ -1,6 +1,6 @@
-import { endDuePause, todayInZone } from '@kinetic/core';
+import { endDuePause, todayInZone, type Logger } from '@kinetic/core';
 import { withSystem, withTenant, type PrismaClient } from '@kinetic/db';
-import { defineJob } from './registry';
+import { defineJob, type CaptureException } from './registry';
 
 export const PAUSES_END = 'pauses.end';
 /** pg-boss cron: every 10 minutes. */
@@ -13,7 +13,11 @@ const DAY_MS = 86_400_000;
  * read; each pause is ended in its own organization's tenant transaction by `endDuePause`, which re-checks under the
  * client lock, so overlapping or repeated runs end a pause once and never move a session.
  */
-export async function endDuePauses(prisma: PrismaClient, now: Date): Promise<{ ended: number }> {
+export async function endDuePauses(
+  prisma: PrismaClient,
+  now: Date,
+  report: { logger?: Pick<Logger, 'error'>; captureException?: CaptureException } = {},
+): Promise<{ ended: number; failed: number }> {
   // No zone is more than a day ahead of UTC, so this bound only narrows the scan; the zone check below decides.
   const horizon = new Date(now.getTime() + DAY_MS);
   const open = await withSystem(
@@ -30,25 +34,37 @@ export async function endDuePauses(prisma: PrismaClient, now: Date): Promise<{ e
     prisma,
   );
   let ended = 0;
+  let failed = 0;
   for (const p of open) {
-    if (p.resumeLocalDate.toISOString().slice(0, 10) > todayInZone(p.client.timezone, now)) {
-      continue;
+    // One failing pause (bad zone data, a lock timeout) never holds back the others (PR #2 review A); the next run
+    // retries it.
+    try {
+      if (p.resumeLocalDate.toISOString().slice(0, 10) > todayInZone(p.client.timezone, now)) {
+        continue;
+      }
+      const done = await withTenant(
+        p.organizationId,
+        (tx) => endDuePause(tx, p.organizationId, p.clientId, now),
+        prisma,
+      );
+      if (done) ended += 1;
+    } catch (error) {
+      failed += 1;
+      const errName = error instanceof Error ? error.name : 'unknown';
+      report.logger?.error({ clientId: p.clientId, errName }, 'ending a pause failed');
+      report.captureException?.(new Error(`ending a pause failed: ${errName}`), {
+        clientId: p.clientId,
+      });
     }
-    const done = await withTenant(
-      p.organizationId,
-      (tx) => endDuePause(tx, p.organizationId, p.clientId, now),
-      prisma,
-    );
-    if (done) ended += 1;
   }
-  return { ended };
+  return { ended, failed };
 }
 
 export const pausesEndJob = defineJob<object>({
   name: PAUSES_END,
   cron: PAUSES_END_CRON,
   async handle(_data, deps) {
-    const { ended } = await endDuePauses(deps.prisma, new Date());
+    const { ended } = await endDuePauses(deps.prisma, new Date(), deps);
     if (ended > 0) deps.logger.info({ ended }, 'pauses ended');
   },
 });

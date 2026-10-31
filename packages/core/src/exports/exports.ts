@@ -100,6 +100,19 @@ export async function requestExport(
     });
   }
   if (scope === 'client_self' && !actor.clientId) throw notFound();
+  // One build at a time per requester and scope (PR #2 review C M-11): a new key while one is queued or running gets
+  // that one back instead of queuing another full build. A replay of a key still returns its own job.
+  const replay = await tx.exportJob.findFirst({
+    where: { requestedBy: actor.userId, idempotencyKey: key },
+    select: JOB_SELECT,
+  });
+  if (replay) return toView(replay, opts.now ?? new Date());
+  const inFlight = await tx.exportJob.findFirst({
+    where: { requestedBy: actor.userId, scope, status: { in: ['queued', 'running'] } },
+    orderBy: { createdAt: 'desc' },
+    select: JOB_SELECT,
+  });
+  if (inFlight) return toView(inFlight, opts.now ?? new Date());
   const { count } = await tx.exportJob.createMany({
     data: [
       {
@@ -158,7 +171,14 @@ export async function exportFileFor(
   if (!isUuid(jobId)) throw notFound();
   const job = await tx.exportJob.findFirst({
     where: { id: jobId },
-    select: { requestedBy: true, status: true, expiresAt: true, filesJson: true },
+    select: {
+      requestedBy: true,
+      scope: true,
+      clientId: true,
+      status: true,
+      expiresAt: true,
+      filesJson: true,
+    },
   });
   if (!job) throw notFound();
   if (job.requestedBy !== actor.userId) {
@@ -167,6 +187,10 @@ export async function exportFileFor(
       'Only the person who requested this export can download it.',
     );
   }
+  // The requester must still hold the role the export needs (PR #2 review C M-1): an owner demoted since, or a
+  // client whose membership no longer points at this client, can't download it.
+  assertCan(actor, job.scope === 'org' ? 'export:org' : 'export:self');
+  if (job.scope === 'client_self' && job.clientId !== actor.clientId) throw notFound();
   if (job.status !== 'done' || (job.expiresAt && job.expiresAt <= (opts.now ?? new Date()))) {
     throw new DomainError('FORBIDDEN', 'This export is no longer available.');
   }
@@ -481,7 +505,8 @@ export async function completeExport(
   const files = await run((tx) => buildExportFiles(tx, job), {
     timeout: EXPORT_BUILD_TIMEOUT_MS,
   });
-  const prefix = `exports/${orgId}/${job.id}`;
+  // One prefix per attempt: a build that lost its claim removes only its own files, never a newer attempt's.
+  const prefix = `exports/${orgId}/${job.id}/a${job.attempts}`;
   const written: string[] = [];
   try {
     const recorded: ExportFile[] = [];

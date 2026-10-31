@@ -13,7 +13,11 @@ export function createPrismaClient(
   options: { authContext?: boolean } = {},
 ): PrismaClient {
   // A non-default schema (test databases) is also the search_path, so raw SQL that names app functions resolves
-  // the same way Prisma's qualified table names do.
+  // the same way Prisma's qualified table names do. It goes into libpq options unquoted: a plain identifier only, so
+  // no value can add further `-c` settings (PR #2 review D M7).
+  if (schema !== undefined && !/^[a-z_][a-z0-9_]*$/.test(schema)) {
+    throw new Error('createPrismaClient: schema must be a plain lowercase identifier');
+  }
   const settings = [
     ...(options.authContext ? [AUTH_CONTEXT_OPTIONS] : []),
     ...(schema ? [`-c search_path=${schema},public`] : []),

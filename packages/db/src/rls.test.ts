@@ -194,6 +194,16 @@ describe('row level security', () => {
     expect(await auditOrgs(orgB)).toEqual([orgB]);
   });
 
+  it('app_message_email_opt_in pins its search_path while bypass is on (PR #2 review D M1)', async () => {
+    const [fn] = await prisma.$queryRaw<{ config: string[] | null; src: string }[]>`
+      SELECT p.proconfig AS config, p.prosrc AS src FROM pg_proc p
+      WHERE p.pronamespace = ${schema}::regnamespace AND p.proname = 'app_message_email_opt_in'`;
+    expect(fn?.config).toEqual(
+      expect.arrayContaining(['app.bypass_rls=on', `search_path=${schema}, pg_temp`]),
+    );
+    expect(fn?.src).toContain(`${schema}.memberships`);
+  });
+
   it('helper functions are schema-qualified and immune to search_path', async () => {
     const fns = await prisma.$queryRaw<{ proname: string; prosrc: string }[]>`
       SELECT p.proname, p.prosrc FROM pg_proc p

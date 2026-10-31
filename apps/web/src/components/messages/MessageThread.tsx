@@ -54,9 +54,20 @@ export function MessageThread({
     if (res.ok) setMessages((m) => merge(m, res.data.items));
   }, [threadId]);
 
+  // A poll marks the other party's messages read, so it runs only while the thread is on screen (PR #2 review B
+  // M-6): a background tab never reads for the user. Coming back refreshes at once.
   useEffect(() => {
-    const timer = window.setInterval(() => void refresh(), POLL_MS);
-    return () => window.clearInterval(timer);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void refresh();
+    }, POLL_MS);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refresh();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [refresh]);
 
   async function loadOlder() {

@@ -69,8 +69,8 @@ describe('endDuePauses', () => {
     const notYet = await pausedClient('America/Los_Angeles', '2026-11-27');
     const later = await pausedClient('UTC', '2026-12-04');
 
-    expect(await endDuePauses(prisma, now)).toEqual({ ended: 1 });
-    expect(await endDuePauses(prisma, now)).toEqual({ ended: 0 });
+    expect(await endDuePauses(prisma, now)).toEqual({ ended: 1, failed: 0 });
+    expect(await endDuePauses(prisma, now)).toEqual({ ended: 0, failed: 0 });
 
     const ended = await state(due);
     expect(ended.status).toBe('active');
@@ -82,7 +82,10 @@ describe('endDuePauses', () => {
     }
 
     // Once Los Angeles reaches the 27th, that pause ends too.
-    expect(await endDuePauses(prisma, new Date('2026-11-27T09:00:00Z'))).toEqual({ ended: 1 });
+    expect(await endDuePauses(prisma, new Date('2026-11-27T09:00:00Z'))).toEqual({
+      ended: 1,
+      failed: 0,
+    });
     expect((await state(notYet)).status).toBe('active');
   });
 });

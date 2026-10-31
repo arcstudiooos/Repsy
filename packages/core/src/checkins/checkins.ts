@@ -298,10 +298,12 @@ export async function saveCheckinDraft(
   if (JSON.stringify(answers).length > DRAFT_MAX_BYTES)
     throw invalid('draft', 'The draft is too large.');
   const now = new Date();
-  await tx.checkin.update({
-    where: { id: row.id },
+  // Only while unsubmitted: a save racing the submit loses with a 409, never a constraint 500 (PR #2 review B M-5).
+  const saved = await tx.checkin.updateMany({
+    where: { id: row.id, submittedAt: null },
     data: { draftJson: answers as Prisma.InputJsonValue, draftUpdatedAt: now },
   });
+  if (saved.count === 0) throw new DomainError('CONFLICT', 'This check-in was already submitted.');
   return { savedAt: now.toISOString() };
 }
 

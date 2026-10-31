@@ -143,6 +143,11 @@ describe('exports (S5-2)', () => {
     );
     expect(b.id).toBe(a.id);
     expect(a).toMatchObject({ status: 'queued', files: [] });
+    // A new key while that one is queued: the same job, not a second full build (PR #2 review C M-11).
+    const c = await runAs(prisma, w.coach, (tx) =>
+      requestExport(tx, w.coach, { scope: 'org', idempotencyKey: crypto.randomUUID() }),
+    );
+    expect(c.id).toBe(a.id);
     expect(
       await codeOf(
         runAs(prisma, w.client, (tx) =>
@@ -166,7 +171,7 @@ describe('exports (S5-2)', () => {
     const mine = await runAs(prisma, w.client, (tx) =>
       exportFileFor(tx, w.client, id, 'sessions.csv', { now: NOW }),
     );
-    expect(mine.key).toBe(`exports/${w.orgId}/${id}/sessions.csv`);
+    expect(mine.key).toBe(`exports/${w.orgId}/${id}/a1/sessions.csv`);
     expect(
       await codeOf(
         runAs(prisma, w.coach, (tx) =>
@@ -219,6 +224,12 @@ describe('exports (S5-2)', () => {
 });
 
 describe('toCsv', () => {
+  it('neutralises formulas after whitespace, full-width signs and a leading newline (PR #2 C M-7)', () => {
+    const lines = toCsv(['a'], [['  =1+1'], ['＝SUM(A1)'], ['@cmd'], ['fine']]).split('\r\n');
+    expect(lines.slice(1, -1)).toEqual(["'  =1+1", "'＝SUM(A1)", "'@cmd", 'fine']);
+    expect(toCsv(['a'], [['\n=1']])).toBe('a\r\n"\'\n=1"\r\n');
+  });
+
   it('escapes quotes, commas and newlines; neutralises formulas', () => {
     expect(
       toCsv(

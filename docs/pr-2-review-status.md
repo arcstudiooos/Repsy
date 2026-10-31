@@ -1,24 +1,24 @@
 # PR #2 review — status and hand-over
 
-Pull request [arcstudiooos/GYM#2](https://github.com/arcstudiooos/GYM/pull/2) covers Sprints 3–5. It merges branch `claude/sprint-3-wip-9t9dd0` into `master`. Do not merge it until the open items below are done.
+Pull request [arcstudiooos/GYM#2](https://github.com/arcstudiooos/GYM/pull/2) covers Sprints 3–5. It merges branch `claude/sprint-3-wip-9t9dd0` into `master`. The user approved merging it into `master` once the re-reviews and the Minor triage were done and every check passed (2026-10-31).
 
 ## Current state (2026-10-31)
 
-- **Branch head:** `b971472`. CI (`verify`: lint, format, typecheck, unit tests, `db:diff`, production build, every browser test) is green on it. There are no review comments on the PR.
-- **Fixed:** all 16 Critical and Important findings (1 Critical, 15 Important, counting the re-review's N1) have a committed fix, and so do the 2 failing browser tests. Each fix group still needs its re-review: fix group 1 round 1 is the only one re-reviewed so far.
-- **Minor findings:** 3 of about 44 are fixed (B M-2, C M-2, C M-8). The rest are not triaged yet.
+- **Re-reviews:** done for every fix group (see the table). Fix groups 1 (round 2), 3 and 4 were re-reviewed in the same cloud session that wrote them, so a second pair of eyes is still welcome. That re-review found and fixed one race: a stale export build could delete a newer attempt's files, so export keys now carry the attempt (`exports/<org>/<job>/a<attempt>/…`).
+- **Fixed:** all 16 Critical and Important findings (1 Critical, 15 Important, counting the re-review's N1) and the 2 failing browser tests.
+- **Minor findings:** all 46 are triaged in `docs/pr-2-review-followups.md`: 26 fixed, 2 partly fixed, 1 accepted, 1 recorded, 16 deferred with reasons. One deferred item is needed before the first deploy: the service worker's asset cache naming.
 - **Where the work happened:**
   - Fix groups 1 (round 1) and 2: the Windows worktree `D:\Gym-review`.
-  - Fix groups 3 and 4 and round 2 of fix group 1: a cloud session (Linux, Node 24, Postgres 16).
+  - Fix groups 3 and 4, round 2 of fix group 1, the re-reviews and the Minor fixes: a cloud session (Linux, Node 24, Postgres 16).
   - The uncommitted round-2 files left in `D:\Gym-review` are superseded by `b971472`: discard them.
 - **Branches:** `claude/amazing-johnson-qdf5ij` (the cloud session's branch) holds the same commits; the PR branch was fast-forwarded to it, with no history rewritten.
 
-| Fix group             | Findings                                         | Commits              | Re-review                     |
-| --------------------- | ------------------------------------------------ | -------------------- | ----------------------------- |
-| 1. Offline            | A-C1, A-I1–I3; round 2: A-N1, A-M1–M4, residuals | `d186da3`; `b971472` | Round 1 done; round 2 pending |
-| 2. Database and admin | D-I1–I3                                          | `4dfae04`, `ab90168` | Pending                       |
-| 3. Privacy jobs       | C-I1–I3, D-I4 (+ C M-2, C M-8)                   | `2dca49d`            | Pending                       |
-| 4. Sprint 4           | B-I1–I4 (+ B M-2), 2 failing browser tests       | `04ffe04`            | Pending                       |
+| Fix group             | Findings                                         | Commits              | Re-review                          |
+| --------------------- | ------------------------------------------------ | -------------------- | ---------------------------------- |
+| 1. Offline            | A-C1, A-I1–I3; round 2: A-N1, A-M1–M4, residuals | `d186da3`; `b971472` | Done (round 2: self-review)        |
+| 2. Database and admin | D-I1–I3                                          | `4dfae04`, `ab90168` | Done, no new issues                |
+| 3. Privacy jobs       | C-I1–I3, D-I4 (+ C M-2, C M-8)                   | `2dca49d`            | Done (self-review); one race fixed |
+| 4. Sprint 4           | B-I1–I4 (+ B M-2), 2 failing browser tests       | `04ffe04`            | Done (self-review)                 |
 
 The review covered commits `991ae94..30b1cea`. Commits up to `991ae94` (Sprint 3 Tasks 3.1–3.5) had already been reviewed task by task. Four reviewers each read one area, and their full reports are in `docs/pr-2-review/`:
 
@@ -74,7 +74,7 @@ Fix group 2 (D-I1, D-I2, D-I3) has **not had its re-review yet**. Its fixer's re
 
 ### Minor
 
-There are about 44 Minor findings, listed by ID with file, line and suggested fix in the four `docs/pr-2-review/review-*.md` files. Three were fixed along with fix groups 3 and 4 (B M-2, C M-2, C M-8, marked below); the rest are open. Before merging, move them into `docs/pr-2-review-followups.md` (as the review brief asks) and triage them.
+There are about 44 Minor findings, listed by ID with file, line and suggested fix in the four `docs/pr-2-review/review-*.md` files. All of them, with what happened to each, are in `docs/pr-2-review-followups.md`.
 
 Notable ones:
 
@@ -123,13 +123,10 @@ Re-implemented in the cloud session from `rereview-F1.md`, without the uncommitt
 
 ## Next steps
 
-1. **Re-review round 2 of fix group 1** against N1, M1–M4 and the residuals in `rereview-F1.md`.
-2. **Re-review fix group 2** (`4dfae04`, `ab90168`) against D-I1–I3 in `review-D-db.md`, and confirm `db:diff` is clean. That command is `pnpm --filter @kinetic/db db:diff` with `SHADOW_DATABASE_URL` set.
-3. **Re-review fix group 3** (`2dca49d`) against C-I1–I3 and D-I4 in `review-C-sprint5.md` and `review-D-db.md`.
-4. **Re-review fix group 4** (`04ffe04`) against B-I1–I4 in `review-B-sprint4.md`.
-5. **Write `docs/pr-2-review-followups.md`** with the triaged Minor findings.
-6. **Run the full checks** after any further fix: `pnpm lint && pnpm typecheck && pnpm format:check && pnpm test && pnpm test:e2e`, plus the offline config. Everything must be green. They are green on `b971472`, locally and in CI.
-7. **Report back to the user** before merging. The user approves the merge.
+1. **Merge** PR #2 into `master` (approved by the user once the checks pass).
+2. **Before the first deploy:** the service worker asset cache naming (`docs/pr-2-review-followups.md`, A M sw growth), plus the Sprint 0, 1 and 5 "before the first deploy" lists.
+3. **Deferred Minor findings:** the 16 in `docs/pr-2-review-followups.md`, by priority.
+4. **Run the full checks** after any further change: `pnpm lint && pnpm typecheck && pnpm format:check && pnpm test && pnpm test:e2e`, plus the offline config.
 
 Before the pilot (not code, tracked in `docs/sprint-5-followups.md`): a hosted deploy, then the restore drill and the real S3 and PostHog setup; counsel's review of the two notice drafts; a manual screen-reader pass; and the bucket lifecycle rule for `exports/`. The export purge sweep (`2dca49d`) now deletes expired export files itself, so the lifecycle rule is only a backstop.
 

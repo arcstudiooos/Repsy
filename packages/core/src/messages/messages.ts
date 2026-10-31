@@ -200,10 +200,20 @@ export async function listMessages(
   const thread = await threadFor(tx, actor, threadId);
   const now = opts.now ?? new Date();
   if (query.cursor === undefined) {
-    await tx.message.updateMany({
-      where: { threadId: thread.id, readAt: null, senderUserId: { not: actor.userId } },
-      data: { readAt: now },
-    });
+    // Only the other party's messages (PR #2 review B M-7): an owner opening a coach's thread doesn't mark the
+    // coach's messages to the client as read.
+    const fromOtherParty =
+      actor.role === 'client'
+        ? { senderUserId: { not: actor.userId } }
+        : thread.client.userId
+          ? { senderUserId: thread.client.userId }
+          : null;
+    if (fromOtherParty) {
+      await tx.message.updateMany({
+        where: { threadId: thread.id, readAt: null, ...fromOtherParty },
+        data: { readAt: now },
+      });
+    }
   }
   const c = query.cursor !== undefined ? decode(query.cursor) : null;
   const rows = await tx.message.findMany({
@@ -297,16 +307,34 @@ export async function sendMessage(
       };
     }
   }
-  const row = await tx.message.create({
-    data: {
-      threadId: thread.id,
-      senderUserId: actor.userId,
-      body,
-      clientMessageId: typeof key === 'string' ? key : null,
-      createdAt: now,
-    } as never,
-    select,
-  });
+  const data = {
+    threadId: thread.id,
+    senderUserId: actor.userId,
+    body,
+    clientMessageId: typeof key === 'string' ? key : null,
+    createdAt: now,
+  };
+  let row;
+  if (typeof key === 'string') {
+    // ON CONFLICT DO NOTHING on (thread, clientMessageId): two concurrent sends of one key store one message, and
+    // the second returns it instead of a unique-violation 500 (PR #2 review B M-4).
+    const { count } = await tx.message.createMany({ data: [data] as never, skipDuplicates: true });
+    row = await tx.message.findFirstOrThrow({
+      where: { threadId: thread.id, clientMessageId: key },
+      select,
+    });
+    if (count === 0) {
+      return {
+        ...row,
+        senderName: row.sender.name,
+        mine: row.senderUserId === actor.userId,
+        createdAt: row.createdAt.toISOString(),
+        readAt: row.readAt?.toISOString() ?? null,
+      };
+    }
+  } else {
+    row = await tx.message.create({ data: data as never, select });
+  }
   await appendAudit(tx, {
     orgId: actor.orgId,
     actorId: actor.userId,

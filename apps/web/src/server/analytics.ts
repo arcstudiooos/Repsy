@@ -1,6 +1,7 @@
 import {
   assertAllowedEvent,
   hashId,
+  logger,
   noopAnalytics,
   type ActorContext,
   type AnalyticsPort,
@@ -17,6 +18,14 @@ type Env = Record<string, string | undefined>;
 export function createPostHogPort(env: Env = process.env): AnalyticsPort {
   const key = env.POSTHOG_KEY?.trim();
   if (!key) return noopAnalytics;
+  // Misconfigured (PR #2 review C M-5): ids would be hashed with the public dev key, so nothing is sent at all.
+  if (env.NODE_ENV === 'production' && !env.ANALYTICS_HASH_SECRET?.trim()) {
+    logger.error(
+      { event: 'analytics_disabled' },
+      'POSTHOG_KEY is set without ANALYTICS_HASH_SECRET',
+    );
+    return noopAnalytics;
+  }
   const host = (env.POSTHOG_HOST?.trim() || 'https://eu.i.posthog.com').replace(/\/+$/, '');
   return {
     capture(event) {
@@ -36,14 +45,12 @@ export function createPostHogPort(env: Env = process.env): AnalyticsPort {
   };
 }
 
-/** The HMAC key for ids sent to analytics. Required in production when analytics is on. */
+/**
+ * The HMAC key for ids sent to analytics. Never throws, since it runs after a request's work committed (PR #2 review
+ * C M-5): without it in production the PostHog port is a no-op, so the dev fallback hashes nothing that is sent.
+ */
 export function analyticsHashSecret(env: Env = process.env): string {
-  const secret = env.ANALYTICS_HASH_SECRET?.trim();
-  if (secret) return secret;
-  if (env.NODE_ENV === 'production' && env.POSTHOG_KEY?.trim()) {
-    throw new Error('ANALYTICS_HASH_SECRET is required when POSTHOG_KEY is set');
-  }
-  return 'dev-only-analytics-hash-secret';
+  return env.ANALYTICS_HASH_SECRET?.trim() || 'dev-only-analytics-hash-secret';
 }
 
 let shared: AnalyticsPort | undefined;

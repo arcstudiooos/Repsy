@@ -9,8 +9,20 @@ const formatLong = (localDate: string) =>
     timeZone: 'UTC',
   }).format(new Date(`${localDate}T00:00:00Z`));
 
-/** Shown on the portal while the client's program is paused (S3-5). */
-export function PausedBanner({ resumeLocalDate }: { resumeLocalDate: string }) {
+/**
+ * Shown on the portal while the client's program is paused (S3-5), and from the day a pause is booked: a pause that
+ * starts later says when, since workouts are still due until then (PR #2 review A).
+ */
+export function PausedBanner({
+  startLocalDate,
+  resumeLocalDate,
+  todayLocalDate,
+}: {
+  startLocalDate: string;
+  resumeLocalDate: string;
+  todayLocalDate: string;
+}) {
+  const upcoming = startLocalDate > todayLocalDate;
   return (
     <div
       role="status"
@@ -18,8 +30,12 @@ export function PausedBanner({ resumeLocalDate }: { resumeLocalDate: string }) {
     >
       <PauseCircle aria-hidden className="mt-0.5 size-5 shrink-0 text-accent" />
       <div>
-        <p className="font-semibold">Program paused</p>
-        <p className="text-secondary">Expected back on {formatLong(resumeLocalDate)}.</p>
+        <p className="font-semibold">{upcoming ? 'Pause coming up' : 'Program paused'}</p>
+        <p className="text-secondary">
+          {upcoming
+            ? `Your program pauses on ${formatLong(startLocalDate)}. Expected back on ${formatLong(resumeLocalDate)}.`
+            : `Expected back on ${formatLong(resumeLocalDate)}.`}
+        </p>
       </div>
     </div>
   );
