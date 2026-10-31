@@ -102,10 +102,12 @@ describe('export routes (S5-2)', () => {
       (tx) => claimExport(tx, job.id, new Date()),
       prisma,
     );
-    await withTenant(
+    await completeExport(
+      (fn) => withTenant(t.orgA.id, fn, prisma),
       t.orgA.id,
-      (tx) => completeExport(tx, t.orgA.id, claimed!, createFsStorage(dir), new Date()),
-      prisma,
+      claimed!,
+      createFsStorage(dir),
+      new Date(),
     );
 
     const list = await (await call(exportsListRoute, asClientA(), '/api/v1/exports', 'GET')).json();

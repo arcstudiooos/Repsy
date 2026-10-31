@@ -131,6 +131,13 @@ export default async function AdminPage({
                       <code className="font-mono">{d.clientId}</code> · by{' '}
                       {d.requestedByClient ? 'the client' : 'the owner'} · {when(d.createdAt)}
                     </p>
+                    {d.status === 'verified' && d.failedAttempts > 0 && (
+                      <p className="text-sm text-danger">
+                        Erasure failed {d.failedAttempts}{' '}
+                        {d.failedAttempts === 1 ? 'time' : 'times'} ({d.lastErrorCode ?? 'unknown'}
+                        ). It is retried every minute; check the worker logs.
+                      </p>
+                    )}
                     <DeletionActions id={d.id} status={d.status} legalHold={d.legalHold} />
                   </li>
                 ))}

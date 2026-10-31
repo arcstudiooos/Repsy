@@ -152,6 +152,9 @@ export interface DeletionQueueItem {
   createdAt: string;
   verifiedAt: string | null;
   completedAt: string | null;
+  /** Failed erasure runs and the last error code (PR #2 review C-I1); the worker keeps retrying. */
+  failedAttempts: number;
+  lastErrorCode: string | null;
 }
 
 export async function listDeletionRequests(
@@ -175,6 +178,8 @@ export async function listDeletionRequests(
     createdAt: r.createdAt.toISOString(),
     verifiedAt: r.verifiedAt?.toISOString() ?? null,
     completedAt: r.completedAt?.toISOString() ?? null,
+    failedAttempts: r.attempts,
+    lastErrorCode: r.lastErrorCode,
   }));
 }
 

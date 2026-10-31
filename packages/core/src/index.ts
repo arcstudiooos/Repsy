@@ -168,6 +168,8 @@ export {
   requestDeletion,
   deletionStatusFor,
   eraseClientData,
+  recordErasureFailure,
+  ERASURE_TIMEOUT_MS,
   type DeletionRequestView,
   type DeletionStatus,
   type ErasureResult,
@@ -199,7 +201,9 @@ export {
   claimExport,
   completeExport,
   failExport,
+  exportFileKeys,
   EXPORT_AVAILABLE_DAYS,
+  EXPORT_BUILD_TIMEOUT_MS,
   EXPORT_MAX_ATTEMPTS,
   type ExportView,
   type ExportFile,
@@ -207,6 +211,7 @@ export {
   type ExportStatus,
   type ExportStorage,
   type ClaimedExport,
+  type ExportTxRunner,
 } from './exports/exports';
 export { toCsv, type CsvValue } from './exports/csv';
 export {

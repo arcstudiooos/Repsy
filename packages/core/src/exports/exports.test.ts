@@ -21,6 +21,7 @@ import {
   listMyExports,
   requestExport,
   type ExportStorage,
+  type ExportTxRunner,
 } from './exports';
 
 let prisma: PrismaClient;
@@ -56,6 +57,12 @@ function memoryStorage(failOnPut?: number) {
   return { storage, objects };
 }
 
+/** The worker's tenant-transaction runner, as the coach (`completeExport` opens its own transactions). */
+const runner =
+  (w: ClientWorld): ExportTxRunner =>
+  (fn) =>
+    runAs(prisma, w.coach, fn);
+
 /** Requests, claims and builds an export for `actor` in `w`'s org; returns the CSVs by file name. */
 async function exportFor(w: ClientWorld, as: 'coach' | 'client', storage = memoryStorage()) {
   const actor = as === 'coach' ? w.coach : w.client;
@@ -66,7 +73,7 @@ async function exportFor(w: ClientWorld, as: 'coach' | 'client', storage = memor
     }),
   );
   const job = await runAs(prisma, w.coach, (tx) => claimExport(tx, view.id, NOW));
-  await runAs(prisma, w.coach, (tx) => completeExport(tx, w.orgId, job!, storage.storage, NOW));
+  expect(await completeExport(runner(w), w.orgId, job!, storage.storage, NOW)).toBe(true);
   const csv = Object.fromEntries(
     [...storage.objects.entries()].map(([k, v]) => [k.split('/').pop() as string, v]),
   );
@@ -198,9 +205,9 @@ describe('exports (S5-2)', () => {
     for (let attempt = 1; attempt <= 3; attempt++) {
       const mem = memoryStorage(3);
       const job = await runAs(prisma, w.coach, (tx) => claimExport(tx, view.id, NOW));
-      await expect(
-        runAs(prisma, w.coach, (tx) => completeExport(tx, w.orgId, job!, mem.storage, NOW)),
-      ).rejects.toThrow('disk full');
+      await expect(completeExport(runner(w), w.orgId, job!, mem.storage, NOW)).rejects.toThrow(
+        'disk full',
+      );
       expect(mem.objects.size).toBe(0);
       const outcome = await runAs(prisma, w.coach, (tx) => failExport(tx, job!));
       expect(outcome).toBe(attempt < 3 ? 'retry' : 'failed');

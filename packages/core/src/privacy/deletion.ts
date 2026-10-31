@@ -117,16 +117,32 @@ export async function deletionStatusFor(
 
 export interface ErasureResult {
   status: 'done' | 'skipped' | 'held';
-  /** Storage objects of the client's exports, for the worker to remove. */
-  storageKeys: string[];
+}
+
+/** The erasure transaction's timeout: a long-tenured client means many deletes (C-I3). */
+export const ERASURE_TIMEOUT_MS = 120_000;
+
+/** Records a failed erasure run (a short code, never content); the request stays `verified` and is retried. */
+export async function recordErasureFailure(
+  tx: SystemTx,
+  requestId: string,
+  errorCode: string,
+): Promise<void> {
+  await tx.deletionRequest.updateMany({
+    where: { id: requestId, status: 'verified' },
+    data: { attempts: { increment: 1 }, lastErrorCode: errorCode.slice(0, 64) },
+  });
 }
 
 /**
  * Erases a verified request's data (S5-3, Ruling 5), in system scope because it spans the user's account. Within the
  * request's organization only: the client's sessions, set logs and their revisions, check-ins, messages and thread,
- * review flags, notes, pauses, invites, exports, assignments, support grants and their membership there. The client
- * row stays (immutable program history points at it) but is anonymized, as is the user account when no other
- * membership remains (their credentials and sessions are deleted). Other memberships of the same user are never
+ * review flags, notes, pauses, invites, assignments, support grants, their program copies (versions, slots and the
+ * workout versions no other program uses), the emails addressed to or naming them, and their membership there. Their
+ * exports, and the organization's exports built before now (they hold the client's rows), are expired at once; the
+ * export sweep then removes the files from storage, retrying until it succeeds (D-I4). The client row stays (the
+ * request and the audit trail point at it) but is anonymized, as is the user account when no other membership
+ * remains (their credentials, sessions and platform emails are deleted). Other memberships of the same user are never
  * touched. Content-free audit. A request that isn't `verified` (already done, rejected) or is on legal hold is a
  * no-op.
  */
@@ -136,47 +152,101 @@ export async function eraseClientData(
   now: Date,
 ): Promise<ErasureResult> {
   const req = await tx.deletionRequest.findUnique({ where: { id: requestId } });
-  if (!req || req.status !== 'verified') return { status: 'skipped', storageKeys: [] };
-  if (req.legalHold) return { status: 'held', storageKeys: [] };
+  if (!req || req.status !== 'verified') return { status: 'skipped' };
+  if (req.legalHold) return { status: 'held' };
   const claimed = await tx.deletionRequest.updateMany({
     where: { id: req.id, status: 'verified', legalHold: false },
     data: { status: 'processing' },
   });
-  if (claimed.count === 0) return { status: 'skipped', storageKeys: [] };
+  if (claimed.count === 0) return { status: 'skipped' };
 
   const orgId = req.organizationId;
   const clientId = req.subjectClientId;
   const inClient = { organizationId: orgId, clientId };
   const ofSessions = { session: { is: { organizationId: orgId, clientId } } };
+  const client = await tx.client.findUniqueOrThrow({ where: { id: clientId } });
+  const othersAfter = client.userId
+    ? await tx.membership.count({
+        where: {
+          userId: client.userId,
+          NOT: { organizationId: orgId, role: 'client' },
+        },
+      })
+    : 0;
 
-  // Lawful erasure only (migration 000029): set_log_revisions are otherwise append-only.
+  // Lawful erasure only (migrations 000029-000031): set_log_revisions, messages and committed program history are
+  // otherwise immutable.
   await tx.$executeRaw`SELECT pg_catalog.set_config('app.lawful_erasure', 'on', true)`;
   await tx.setLogRevision.deleteMany({ where: ofSessions });
   await tx.setLog.deleteMany({ where: ofSessions });
   await tx.reviewFlag.deleteMany({ where: inClient });
-  await tx.message.deleteMany({ where: { organizationId: orgId, thread: { is: { clientId } } } });
+  const messageIds = (
+    await tx.message.findMany({
+      where: { organizationId: orgId, thread: { is: { clientId } } },
+      select: { id: true },
+    })
+  ).map((m) => m.id);
+  await tx.message.deleteMany({ where: { id: { in: messageIds } } });
   await tx.conversationThread.deleteMany({ where: inClient });
   await tx.checkin.deleteMany({ where: inClient });
   await tx.internalNote.deleteMany({ where: inClient });
   await tx.clientPause.deleteMany({ where: inClient });
+  const inviteIds = (await tx.clientInvite.findMany({ where: inClient, select: { id: true } })).map(
+    (i) => i.id,
+  );
   await tx.clientInvite.deleteMany({ where: inClient });
-  const exports = await tx.exportJob.findMany({ where: inClient, select: { filesJson: true } });
-  await tx.exportJob.deleteMany({ where: inClient });
   await tx.workoutSession.deleteMany({ where: inClient });
   await tx.programAssignment.deleteMany({ where: inClient });
-  const copies = await tx.program.findMany({
-    where: { organizationId: orgId, clientId, kind: 'client' },
-    select: { id: true },
-  });
-  await tx.programDraft.deleteMany({ where: { programId: { in: copies.map((p) => p.id) } } });
-  await tx.program.updateMany({
-    where: { id: { in: copies.map((p) => p.id) } },
-    data: { title: 'Deleted client program', status: 'archived' },
-  });
+  await eraseProgramCopies(tx, orgId, clientId);
   await tx.supportAccessGrant.deleteMany({ where: inClient });
+
+  // Emails addressed to the client, or naming them (C-I2): invites (to their address), check-in and message
+  // notifications (to their account), the owner's "deletion requested" and "new message" notifications. Pending ones
+  // are never sent; sent ones are no longer kept.
+  await tx.outboxEmail.deleteMany({
+    where: {
+      organizationId: orgId,
+      OR: [
+        { toEmail: client.email },
+        ...(client.userId ? [{ toUserId: client.userId }] : []),
+        {
+          idempotencyKey: {
+            in: [
+              `deletion-requested:${req.id}`,
+              ...messageIds.map((id) => `new-message:${id}`),
+              ...inviteIds.map((id) => `client_invite:${id}`),
+            ],
+          },
+        },
+      ],
+    },
+  });
+  if (client.userId && othersAfter === 0) {
+    await tx.outboxEmail.deleteMany({ where: { organizationId: null, toUserId: client.userId } });
+  }
   await tx.$executeRaw`SELECT pg_catalog.set_config('app.lawful_erasure', 'off', true)`;
 
-  const client = await tx.client.findUniqueOrThrow({ where: { id: clientId } });
+  // Exports (D-I4): the client's own, and every organization export built (or being built) before now, hold the
+  // client's rows. Expired now, so no link works any more; the export sweep removes the files. A build in progress
+  // goes back to the queue, so the files it writes are discarded and it rebuilds without the client.
+  await tx.exportJob.updateMany({
+    where: {
+      organizationId: orgId,
+      status: 'done',
+      purgedAt: null,
+      OR: [{ clientId }, { scope: 'org', createdAt: { lte: now } }],
+    },
+    data: { expiresAt: now },
+  });
+  await tx.exportJob.updateMany({
+    where: { organizationId: orgId, scope: 'org', status: 'running' },
+    data: { status: 'queued', claimedAt: null },
+  });
+  await tx.exportJob.updateMany({
+    where: { ...inClient, status: { in: ['queued', 'running'] } },
+    data: { status: 'failed', errorCode: 'ERASED', claimedAt: null },
+  });
+
   await tx.client.update({
     where: { id: clientId },
     data: {
@@ -196,8 +266,7 @@ export async function eraseClientData(
     await tx.membership.deleteMany({
       where: { userId: client.userId, organizationId: orgId, role: 'client' },
     });
-    const others = await tx.membership.count({ where: { userId: client.userId } });
-    if (others === 0) {
+    if (othersAfter === 0) {
       await tx.session.deleteMany({ where: { userId: client.userId } });
       await tx.account.deleteMany({ where: { userId: client.userId } });
       await tx.user.update({
@@ -213,7 +282,7 @@ export async function eraseClientData(
   }
   await tx.deletionRequest.update({
     where: { id: req.id },
-    data: { status: 'done', completedAt: now },
+    data: { status: 'done', completedAt: now, lastErrorCode: null },
   });
   await appendAudit(tx, {
     orgId,
@@ -223,13 +292,57 @@ export async function eraseClientData(
     action: 'deletion.completed',
     metadata: { clientId },
   });
+  return { status: 'done' };
+}
 
-  const storageKeys = exports.flatMap((e) =>
-    Array.isArray(e.filesJson)
-      ? (e.filesJson as { key?: unknown }[]).flatMap((f) =>
-          typeof f.key === 'string' ? [f.key] : [],
-        )
-      : [],
-  );
-  return { status: 'done', storageKeys };
+/**
+ * Deletes the client's program copies (C-I2, Ruling 5): coach-written, client-specific text. Their slots and versions,
+ * the workout versions only they used (a copy shares the template's workout versions until it is edited), and the
+ * program rows. Must run with app.lawful_erasure on, after the client's sessions and set logs are gone.
+ */
+async function eraseProgramCopies(tx: SystemTx, orgId: string, clientId: string): Promise<void> {
+  const programIds = (
+    await tx.program.findMany({
+      where: { organizationId: orgId, clientId, kind: 'client' },
+      select: { id: true },
+    })
+  ).map((p) => p.id);
+  if (programIds.length === 0) return;
+  const versionIds = (
+    await tx.programVersion.findMany({
+      where: { organizationId: orgId, programId: { in: programIds } },
+      select: { id: true },
+    })
+  ).map((v) => v.id);
+  const workoutVersionIds = [
+    ...new Set(
+      (
+        await tx.programSlot.findMany({
+          where: { organizationId: orgId, programVersionId: { in: versionIds } },
+          select: { workoutVersionId: true },
+        })
+      ).map((s) => s.workoutVersionId),
+    ),
+  ];
+  await tx.program.updateMany({
+    where: { id: { in: programIds } },
+    data: { currentVersionId: null },
+  });
+  await tx.programSlot.deleteMany({
+    where: { organizationId: orgId, programVersionId: { in: versionIds } },
+  });
+  await tx.programVersion.deleteMany({ where: { id: { in: versionIds } } });
+  // Still used by a template or another client's copy (slots), or by another session: kept.
+  const unused = await tx.workoutVersion.findMany({
+    where: {
+      id: { in: workoutVersionIds },
+      slots: { none: {} },
+      workoutSessions: { none: {} },
+    },
+    select: { id: true },
+  });
+  const unusedIds = unused.map((w) => w.id);
+  await tx.workoutVersionExercise.deleteMany({ where: { workoutVersionId: { in: unusedIds } } });
+  await tx.workoutVersion.deleteMany({ where: { id: { in: unusedIds } } });
+  await tx.program.deleteMany({ where: { id: { in: programIds } } });
 }

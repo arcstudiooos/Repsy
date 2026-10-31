@@ -417,7 +417,18 @@ export interface ClaimedExport {
   clientId: string | null;
   requestedBy: string;
   attempts: number;
+  /** This claim's lease: `done` is recorded only while it still holds. */
+  claimedAt: Date | null;
 }
+
+/** Runs `fn` in a tenant transaction of the export's organization (the worker passes `withTenant`). */
+export type ExportTxRunner = <T>(
+  fn: (tx: TenantTx) => Promise<T>,
+  opts?: { timeout?: number },
+) => Promise<T>;
+
+/** The read transaction's timeout: an organization export reads every session, set log and check-in (C-I3). */
+export const EXPORT_BUILD_TIMEOUT_MS = 120_000;
 
 /**
  * Claims a queued export (or a running one whose lease ran out). The worker commits this on its own, so the attempt
@@ -441,26 +452,38 @@ export async function claimExport(
   if (claimed.count === 0) return null;
   return tx.exportJob.findFirstOrThrow({
     where: { id: jobId },
-    select: { id: true, scope: true, clientId: true, requestedBy: true, attempts: true },
+    select: {
+      id: true,
+      scope: true,
+      clientId: true,
+      requestedBy: true,
+      attempts: true,
+      claimedAt: true,
+    },
   });
 }
 
 /**
- * Builds a claimed export: every CSV goes to storage first, then the file list is recorded with `done`. On failure
- * the objects already written are removed and the error is rethrown (the worker then calls `failExport`), so a
- * partial export is never offered.
+ * Builds a claimed export in three steps (PR #2 review C-I3), so neither a large organization nor a slow storage
+ * endpoint runs into a transaction timeout: the CSVs are read in one read transaction (with a generous timeout),
+ * written to storage outside any transaction, then the file list is recorded with `done` in a short transaction. On
+ * failure the objects already written are removed and the error is rethrown (the worker then calls `failExport`), so a
+ * partial export is never offered. Returns false, after removing the files, when the claim no longer holds (an
+ * erasure sent the job back to the queue, or another worker took over its expired lease).
  */
 export async function completeExport(
-  tx: TenantTx,
+  run: ExportTxRunner,
   orgId: string,
   job: ClaimedExport,
   storage: ExportStorage,
   now: Date,
-): Promise<void> {
+): Promise<boolean> {
+  const files = await run((tx) => buildExportFiles(tx, job), {
+    timeout: EXPORT_BUILD_TIMEOUT_MS,
+  });
   const prefix = `exports/${orgId}/${job.id}`;
   const written: string[] = [];
   try {
-    const files = await buildExportFiles(tx, job);
     const recorded: ExportFile[] = [];
     for (const f of files) {
       const key = `${prefix}/${f.name}`;
@@ -468,29 +491,40 @@ export async function completeExport(
       written.push(key);
       recorded.push({ name: f.name, key, rows: f.rows });
     }
-    await tx.exportJob.update({
-      where: { id: job.id },
-      data: {
-        status: 'done',
-        objectKey: prefix,
-        filesJson: recorded as unknown as Prisma.InputJsonValue,
-        completedAt: now,
-        expiresAt: new Date(now.getTime() + EXPORT_AVAILABLE_DAYS * DAY_MS),
-        errorCode: null,
-      },
+    const held = await run(async (tx) => {
+      const done = await tx.exportJob.updateMany({
+        where: { id: job.id, status: 'running', claimedAt: job.claimedAt },
+        data: {
+          status: 'done',
+          objectKey: prefix,
+          filesJson: recorded as unknown as Prisma.InputJsonValue,
+          completedAt: now,
+          expiresAt: new Date(now.getTime() + EXPORT_AVAILABLE_DAYS * DAY_MS),
+          errorCode: null,
+        },
+      });
+      if (done.count === 0) return false;
+      await appendAudit(tx, {
+        orgId,
+        actorId: null,
+        objectType: 'export_job',
+        objectId: job.id,
+        action: 'export.built',
+        metadata: { files: recorded.length },
+      });
+      return true;
     });
-    await appendAudit(tx, {
-      orgId,
-      actorId: null,
-      objectType: 'export_job',
-      objectId: job.id,
-      action: 'export.built',
-      metadata: { files: recorded.length },
-    });
+    if (!held) await storage.deleteMany(written).catch(() => undefined);
+    return held;
   } catch (error) {
     await storage.deleteMany(written).catch(() => undefined);
     throw error;
   }
+}
+
+/** The storage keys an export's file list records (for the purge sweep). */
+export function exportFileKeys(filesJson: Prisma.JsonValue | null): string[] {
+  return filesOf(filesJson).flatMap((f) => (typeof f.key === 'string' ? [f.key] : []));
 }
 
 /** After a failed build: back to `queued` for a retry, or `failed` after the last attempt. */

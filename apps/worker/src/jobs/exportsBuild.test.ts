@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { withSystem, type PrismaClient } from '@kinetic/db';
 import { createTestDb } from '@kinetic/db/testing';
 import { createFsStorage, type StoragePort } from '@kinetic/storage';
-import { buildExports } from './exportsBuild';
+import { buildExports, purgeExpiredExports } from './exportsBuild';
 
 let prisma: PrismaClient;
 let drop: () => Promise<void>;
@@ -79,5 +79,71 @@ describe('buildExports', () => {
       prisma,
     );
     expect(job).toMatchObject({ status: 'failed', filesJson: null, attempts: 3 });
+  });
+});
+
+describe('purgeExpiredExports (PR #2 review D-I4)', () => {
+  it('removes the files of expired exports once, and retries after a storage failure', async () => {
+    const { orgId, jobId } = await queuedOrgExport();
+    const storage = createFsStorage(dir);
+    // Later than the other tests' exports, which this first purge removes.
+    const built = new Date('2027-01-04T12:00:00Z');
+    await buildExports(prisma, storage, built);
+    expect(await readdir(join(dir, 'exports', orgId, jobId))).toHaveLength(4);
+    await purgeExpiredExports(prisma, storage, built);
+
+    // Not expired yet: nothing happens.
+    expect(await purgeExpiredExports(prisma, storage, built)).toEqual({ purged: 0, failed: 0 });
+
+    const later = new Date(built.getTime() + 8 * 86_400_000);
+    const broken: StoragePort = {
+      put: async () => undefined,
+      read: async () => null,
+      deleteMany: async () => {
+        throw new Error('unavailable');
+      },
+    };
+    const errors: unknown[] = [];
+    expect(
+      await purgeExpiredExports(prisma, broken, later, { error: (o) => void errors.push(o) }),
+    ).toEqual({ purged: 0, failed: 1 });
+    expect(errors).toEqual([{ exportJobId: jobId, errName: 'Error' }]);
+
+    expect(await purgeExpiredExports(prisma, storage, later)).toEqual({ purged: 1, failed: 0 });
+    expect(await readdir(join(dir, 'exports', orgId, jobId))).toEqual([]);
+    expect(await purgeExpiredExports(prisma, storage, later)).toEqual({ purged: 0, failed: 0 });
+    const job = await withSystem(
+      (tx) => tx.exportJob.findUniqueOrThrow({ where: { id: jobId } }),
+      prisma,
+    );
+    expect(job.purgedAt).toEqual(later);
+  });
+
+  it('a build whose claim was lost (an erasure re-queued it) records nothing and removes its files', async () => {
+    const { orgId, jobId } = await queuedOrgExport();
+    const now = new Date('2026-11-04T12:00:00Z');
+    const storage = createFsStorage(dir);
+    // Re-queue the job while its files are being written, as an erasure does.
+    const racing: StoragePort = {
+      ...storage,
+      put: async (key, body, type) => {
+        await storage.put(key, body, type);
+        await withSystem(
+          (tx) =>
+            tx.exportJob.updateMany({
+              where: { id: jobId },
+              data: { status: 'queued', claimedAt: null },
+            }),
+          prisma,
+        );
+      },
+    };
+    expect(await buildExports(prisma, racing, now)).toEqual({ done: 0, retried: 0, failed: 0 });
+    expect(await readdir(join(dir, 'exports', orgId, jobId)).catch(() => [])).toEqual([]);
+    const job = await withSystem(
+      (tx) => tx.exportJob.findUniqueOrThrow({ where: { id: jobId } }),
+      prisma,
+    );
+    expect(job.status).toBe('queued');
   });
 });

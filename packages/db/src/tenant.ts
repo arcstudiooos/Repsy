@@ -253,6 +253,8 @@ export interface TenantOptions {
    * update) their own row even without a membership row match.
    */
   userId?: string;
+  /** Interactive-transaction timeout in ms (Prisma's default is 5 000). For worker jobs that read or write a lot. */
+  timeout?: number;
 }
 
 /**
@@ -266,13 +268,16 @@ export function withTenant<T>(
   client: PrismaClient = defaultPrisma,
   options: TenantOptions = {},
 ): Promise<T> {
-  return scoped(client, orgId).$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.org_id', ${orgId}, true)`;
-    if (options.userId !== undefined) {
-      await tx.$executeRaw`SELECT set_config('app.user_id', ${options.userId}, true)`;
-    }
-    return fn(tx);
-  });
+  return scoped(client, orgId).$transaction(
+    async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.org_id', ${orgId}, true)`;
+      if (options.userId !== undefined) {
+        await tx.$executeRaw`SELECT set_config('app.user_id', ${options.userId}, true)`;
+      }
+      return fn(tx);
+    },
+    options.timeout === undefined ? undefined : { timeout: options.timeout },
+  );
 }
 
 export type SystemTx = Prisma.TransactionClient;
@@ -315,9 +320,13 @@ export type SystemTx = Prisma.TransactionClient;
 export function withSystem<T>(
   fn: (tx: SystemTx) => Promise<T>,
   client: PrismaClient = defaultPrisma,
+  options: Pick<TenantOptions, 'timeout'> = {},
 ): Promise<T> {
-  return client.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.bypass_rls', 'on', true)`;
-    return fn(tx);
-  });
+  return client.$transaction(
+    async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.bypass_rls', 'on', true)`;
+      return fn(tx);
+    },
+    options.timeout === undefined ? undefined : { timeout: options.timeout },
+  );
 }

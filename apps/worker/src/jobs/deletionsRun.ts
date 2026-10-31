@@ -1,63 +1,65 @@
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { eraseClientData, type Logger } from '@kinetic/core';
+import {
+  eraseClientData,
+  ERASURE_TIMEOUT_MS,
+  recordErasureFailure,
+  type Logger,
+} from '@kinetic/core';
 import { withSystem, type PrismaClient } from '@kinetic/db';
-import { createStorage, type StoragePort } from '@kinetic/storage';
-import { defineJob } from './registry';
+import { defineJob, type CaptureException } from './registry';
 
 export const DELETIONS_RUN = 'deletions.run';
 /** pg-boss cron: every minute (a verified request runs soon after the admin's decision). */
 export const DELETIONS_RUN_CRON = '* * * * *';
 
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
-
 /**
  * Runs verified deletion requests not on legal hold (S5-3). Each runs in its own system transaction
- * (`eraseClientData` is idempotent: a done request is skipped). The client's export files are removed from storage
- * after the database commit.
+ * (`eraseClientData` is idempotent: a done request is skipped). A failing request is recorded and reported, and the
+ * run continues with the next one; requests that failed before run after untried ones, so one bad request cannot
+ * block the queue (PR #2 review C-I1). Export files are removed by the export sweep, not here (D-I4).
  */
 export async function runDeletions(
   prisma: PrismaClient,
-  storage: StoragePort,
   now: Date,
   logger?: Pick<Logger, 'error'>,
-): Promise<{ done: number; held: number }> {
+  captureException?: CaptureException,
+): Promise<{ done: number; held: number; failed: number }> {
   const due = await withSystem(
     (tx) =>
       tx.deletionRequest.findMany({
         where: { status: 'verified', legalHold: false },
-        orderBy: { verifiedAt: 'asc' },
+        orderBy: [{ attempts: 'asc' }, { verifiedAt: 'asc' }],
         take: 10,
         select: { id: true },
       }),
     prisma,
   );
-  const result = { done: 0, held: 0 };
+  const result = { done: 0, held: 0, failed: 0 };
   for (const { id } of due) {
-    const r = await withSystem((tx) => eraseClientData(tx, id, now), prisma);
-    if (r.status === 'held') result.held += 1;
-    if (r.status !== 'done') continue;
-    result.done += 1;
     try {
-      await storage.deleteMany(r.storageKeys);
+      const r = await withSystem((tx) => eraseClientData(tx, id, now), prisma, {
+        timeout: ERASURE_TIMEOUT_MS,
+      });
+      if (r.status === 'held') result.held += 1;
+      if (r.status === 'done') result.done += 1;
     } catch (error) {
-      logger?.error(
-        { deletionRequestId: id, errName: error instanceof Error ? error.name : 'unknown' },
-        'export files not removed',
+      result.failed += 1;
+      const errName = error instanceof Error ? error.name : 'unknown';
+      // Never content (a database error can quote row values): which request and the error class.
+      logger?.error({ deletionRequestId: id, errName }, 'erasure failed');
+      captureException?.(new Error(`erasure failed: ${errName}`), { deletionRequestId: id });
+      await withSystem((tx) => recordErasureFailure(tx, id, errName), prisma).catch(
+        () => undefined,
       );
     }
   }
   return result;
 }
 
-let storage: StoragePort | undefined;
-
 export const deletionsRunJob = defineJob<object>({
   name: DELETIONS_RUN,
   cron: DELETIONS_RUN_CRON,
   async handle(_data, deps) {
-    storage ??= createStorage(process.env, repoRoot);
-    const r = await runDeletions(deps.prisma, storage, new Date(), deps.logger);
-    if (r.done > 0) deps.logger.info(r, 'deletions run');
+    const r = await runDeletions(deps.prisma, new Date(), deps.logger, deps.captureException);
+    if (r.done + r.failed > 0) deps.logger.info(r, 'deletions run');
   },
 });

@@ -17,6 +17,7 @@ import { upsertSetLogs } from '../logging/upsertSetLogs';
 import { getMyThread, sendMessage } from '../messages/messages';
 import { completeSession, startSession } from '../sessions/lifecycle';
 import {
+  commitClientCopyVersion,
   newClientWorld,
   newOrg,
   NOW,
@@ -196,6 +197,121 @@ describe('deletion (S5-3)', () => {
       tx.outboxEmail.count({ where: { kind: 'deletion_requested', organizationId: w.orgId } }),
     );
     expect(emails).toBe(1);
+  });
+
+  it('removes emails addressed to or naming the client, and the client program copies (PR #2 C-I2)', async () => {
+    const w = await busyClient();
+    const own = await commitClientCopyVersion(prisma, w, 'Left knee: avoid deep flexion');
+    const other = await newClientWorld(prisma, w);
+    const clientEmail = (
+      await sys((tx) => tx.client.findUniqueOrThrow({ where: { id: w.clientId } }))
+    ).email;
+    await sys(async (tx) => {
+      const mail = (kind: string, to: { toEmail: string } | { toUserId: string }, key: string) =>
+        tx.outboxEmail.create({
+          data: {
+            organizationId: w.orgId,
+            kind,
+            ...to,
+            templateKey: kind,
+            payloadJson: {},
+            idempotencyKey: key,
+          },
+        });
+      await mail('client_invite', { toEmail: clientEmail }, `t-invite-${w.clientId}`);
+      await mail('checkin_ready', { toUserId: w.userId }, `t-checkin-${w.clientId}`);
+      await mail('checkin_ready', { toUserId: other.userId }, `t-checkin-${other.clientId}`);
+      await tx.outboxEmail.create({
+        data: {
+          kind: 'verify_email',
+          toUserId: w.userId,
+          templateKey: 'verify_email',
+          payloadJson: {},
+          idempotencyKey: `t-verify-${w.userId}`,
+        },
+      });
+    });
+    const id = await verifiedRequest(w);
+    // requestDeletion (by the client) notified the owner with the client's name.
+    const mailsBefore = await sys((tx) =>
+      tx.outboxEmail.findMany({ where: { idempotencyKey: { startsWith: 'deletion-requested:' } } }),
+    );
+    expect(mailsBefore.map((m) => m.idempotencyKey)).toContain(`deletion-requested:${id}`);
+    const templateWorkouts = await sys((tx) =>
+      tx.programSlot.findMany({
+        where: { programVersion: { is: { programId: w.templateId } } },
+        select: { workoutVersionId: true },
+      }),
+    );
+
+    expect((await sys((tx) => eraseClientData(tx, id, NOW))).status).toBe('done');
+    const left = await sys(async (tx) => ({
+      keys: (
+        await tx.outboxEmail.findMany({
+          where: { OR: [{ organizationId: w.orgId }, { toUserId: w.userId }] },
+          select: { idempotencyKey: true },
+        })
+      ).map((m) => m.idempotencyKey),
+      copies: await tx.program.count({ where: { clientId: w.clientId } }),
+      ownWorkout: await tx.workoutVersion.count({ where: { id: own } }),
+      templateWorkouts: await tx.workoutVersion.count({
+        where: { id: { in: templateWorkouts.map((s) => s.workoutVersionId) } },
+      }),
+      otherCopy: await tx.program.count({ where: { clientId: other.clientId } }),
+    }));
+    // Only the other client's email is left; the erased user's platform email went with their account.
+    expect(left.keys).toEqual([`t-checkin-${other.clientId}`]);
+    expect(left).toMatchObject({ copies: 0, ownWorkout: 0, otherCopy: 1 });
+    // The template's workout versions are shared with the copies and stay.
+    expect(left.templateWorkouts).toBe(templateWorkouts.length);
+    // No trace of the client's name or email in the organization's programs or emails.
+    const dump = JSON.stringify(
+      await sys(async (tx) => ({
+        programs: await tx.program.findMany({ where: { organizationId: w.orgId } }),
+        workouts: await tx.workoutVersion.findMany({ where: { organizationId: w.orgId } }),
+        outbox: await tx.outboxEmail.findMany({ where: { organizationId: w.orgId } }),
+      })),
+    );
+    expect(dump).not.toContain(clientEmail);
+    expect(dump).not.toContain('Left knee');
+  });
+
+  it("expires the client's exports and the organization's earlier ones; a running build is re-queued (D-I4)", async () => {
+    const w = await busyClient();
+    const job = (data: { scope: 'org' | 'client_self'; status: 'done' | 'running' | 'queued' }) =>
+      sys((tx) =>
+        tx.exportJob.create({
+          data: {
+            organizationId: w.orgId,
+            requestedBy: data.scope === 'org' ? w.coach.userId : w.userId,
+            clientId: data.scope === 'org' ? null : w.clientId,
+            scope: data.scope,
+            status: data.status,
+            claimedAt: data.status === 'running' ? NOW : null,
+            expiresAt: data.status === 'done' ? new Date(NOW.getTime() + 7 * 86_400_000) : null,
+            filesJson: data.status === 'done' ? [{ name: 'a.csv', key: 'k', rows: 1 }] : undefined,
+            idempotencyKey: crypto.randomUUID(),
+          },
+        }),
+      );
+    const orgDone = await job({ scope: 'org', status: 'done' });
+    const orgRunning = await job({ scope: 'org', status: 'running' });
+    const mineDone = await job({ scope: 'client_self', status: 'done' });
+    const mineQueued = await job({ scope: 'client_self', status: 'queued' });
+    const id = await verifiedRequest(w);
+    await sys((tx) => eraseClientData(tx, id, NOW));
+    const rows = await sys((tx) =>
+      tx.exportJob.findMany({
+        where: { id: { in: [orgDone.id, orgRunning.id, mineDone.id, mineQueued.id] } },
+      }),
+    );
+    const byId = (x: { id: string }) => rows.find((r) => r.id === x.id)!;
+    expect(byId(orgDone).expiresAt).toEqual(NOW);
+    expect(byId(mineDone).expiresAt).toEqual(NOW);
+    // Keys stay until the export sweep removes the files.
+    expect(byId(mineDone).filesJson).toEqual([{ name: 'a.csv', key: 'k', rows: 1 }]);
+    expect(byId(orgRunning)).toMatchObject({ status: 'queued', claimedAt: null });
+    expect(byId(mineQueued)).toMatchObject({ status: 'failed', errorCode: 'ERASED' });
   });
 
   it('set_log_revisions stay append-only outside the deletion job', async () => {

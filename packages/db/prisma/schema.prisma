@@ -974,6 +974,8 @@ model ExportJob {
   expiresAt      DateTime?    @map("expires_at") @db.Timestamptz(3)
   /// A short error code (never content) when failed.
   errorCode      String?      @map("error_code")
+  /// When the files were removed from storage (after expiry, or after an erasure expired the export).
+  purgedAt       DateTime?    @map("purged_at") @db.Timestamptz(3)
   idempotencyKey String       @map("idempotency_key")
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -986,6 +988,7 @@ model ExportJob {
   @@unique([organizationId, requestedBy, idempotencyKey])
   @@index([status, createdAt])
   @@index([organizationId, requestedBy, createdAt])
+  @@index([expiresAt])
   @@map("export_jobs")
 }
 
@@ -1016,6 +1019,10 @@ model DeletionRequest {
   verifiedAt      DateTime?      @map("verified_at") @db.Timestamptz(3)
   completedAt     DateTime?      @map("completed_at") @db.Timestamptz(3)
   rejectedReason  String?        @map("rejected_reason")
+  /// Failed erasure runs; a request that failed runs after untried ones.
+  attempts        Int            @default(0)
+  /// A short error code (never content) from the last failed run.
+  lastErrorCode   String?        @map("last_error_code")
   createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
 
