@@ -40,6 +40,10 @@ R2 builds the web-platform features in `docs/competitive/complete-platform-prd.m
 
 - **C13 template library:** `/app/programs` has a title search and Active/Archived views; each template can be duplicated ("Copy of …", from its current version) or archived and restored. An archived template can't be assigned; clients already on it keep their own copy.
 
+- **C10 longer programs:** programs can run up to 104 weeks (was 16), and drafts up to 1 MiB still autosave. Programs with more than 8 weeks get a "Go to week" picker beside the week tabs.
+
+- **C11 builder fast edits:** "Replace exercise" swaps one exercise for another in every week and day (sets kept when the tracking type matches); "Adjust loads" on a week changes every set load by -50..50%, rounded to 0.5 kg or 1 lb.
+
 ## What works locally (Sprint 5)
 
 - `/app/analytics`: adherence (completed of eligible workouts, with skipped, not finished and missed shown separately; paused and cancelled excluded), assigned vs finished, check-in response rate, due check-ins and median time to follow-up, each with its numerator, denominator and period.

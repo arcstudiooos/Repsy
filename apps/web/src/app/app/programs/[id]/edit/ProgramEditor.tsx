@@ -34,6 +34,7 @@ import {
   type EditorValues,
 } from './editorSchema';
 import { PerformanceRail } from './PerformanceRail';
+import { ReplaceExerciseDialog } from './ReplaceExerciseDialog';
 import { SaveBar } from './SaveBar';
 import { clearLocalDraft, readLocalDraft, useDraftAutosave } from './useDraftAutosave';
 import { WeekSection } from './WeekSection';
@@ -440,6 +441,28 @@ export function ProgramEditor({
               )}
             </div>
 
+            <div className="flex flex-wrap items-center gap-3">
+              <ReplaceExerciseDialog onReplace={(next) => weeks.replace(next)} />
+              {weeks.fields.length > 8 && (
+                <div className="flex items-center gap-2">
+                  <label htmlFor="jump-to-week" className="text-sm font-medium">
+                    Go to week
+                  </label>
+                  <select
+                    id="jump-to-week"
+                    value={activeWeek}
+                    onChange={(e) => setActiveWeek(e.target.value)}
+                    className="min-h-11 rounded-control border border-input-border bg-surface px-3 text-base text-ink"
+                  >
+                    {weeks.fields.map((f, w) => (
+                      <option key={f.id} value={String(w)}>
+                        Week {w + 1}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
             <Tabs value={activeWeek} onValueChange={setActiveWeek}>
               <TabsList ref={tabList} aria-label="Weeks" className="min-w-0">
                 {weeks.fields.map((f, w) => (

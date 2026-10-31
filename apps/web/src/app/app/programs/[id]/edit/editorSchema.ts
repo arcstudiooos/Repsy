@@ -4,7 +4,7 @@ import { TRACKING_TYPES, type TrackingType } from '@kinetic/core/exercise-option
 import { fromDisplay, toDisplay, type Units } from '@kinetic/core/units';
 
 /** Mirrors the server limits in packages/core/src/programs (commit.ts, targets.ts). */
-const MAX_WEEKS = 16;
+const MAX_WEEKS = 104;
 export const MAX_DAYS = 7;
 const MAX_EXERCISES = 30;
 const MAX_SETS = 20;
@@ -330,4 +330,93 @@ export function mapServerWeekErrors(messages: string[]): {
     }
   }
   return { fields, other };
+}
+
+/** Each distinct exercise in the program with how many workouts use it, in first-seen order (PRD C11). */
+export function programExercises(
+  values: EditorValues,
+): { exerciseId: string; exerciseName: string; trackingType: TrackingType; uses: number }[] {
+  const seen = new Map<
+    string,
+    { exerciseId: string; exerciseName: string; trackingType: TrackingType; uses: number }
+  >();
+  for (const w of values.weeks)
+    for (const d of w.days)
+      for (const e of d.exercises) {
+        const hit = seen.get(e.exerciseId);
+        if (hit) hit.uses += 1;
+        else seen.set(e.exerciseId, { ...e, uses: 1 });
+      }
+  return [...seen.values()].map(({ exerciseId, exerciseName, trackingType, uses }) => ({
+    exerciseId,
+    exerciseName,
+    trackingType,
+    uses,
+  }));
+}
+
+/**
+ * Replaces one exercise with another in every week and day (PRD C11). Sets, notes and order are kept when the
+ * tracking type matches; otherwise each set restarts from the new type's default.
+ */
+export function replaceExerciseEverywhere(
+  values: EditorValues,
+  fromId: string,
+  to: { exerciseId: string; exerciseName: string; trackingType: TrackingType },
+): { weeks: EditorValues['weeks']; replaced: number } {
+  let replaced = 0;
+  const weeks = values.weeks.map((w) => ({
+    days: w.days.map((d) => ({
+      ...d,
+      exercises: d.exercises.map((e) => {
+        if (e.exerciseId !== fromId) return e;
+        replaced += 1;
+        return {
+          ...e,
+          exerciseId: to.exerciseId,
+          exerciseName: to.exerciseName,
+          trackingType: to.trackingType,
+          sets:
+            e.trackingType === to.trackingType
+              ? e.sets
+              : e.sets.map(() => defaultSet(to.trackingType)),
+        };
+      }),
+    })),
+  }));
+  return { weeks, replaced };
+}
+
+/** Load steps the adjusted values round to, in display units. */
+const LOAD_STEP: Record<Units, number> = { kg: 0.5, lb: 1 };
+
+/**
+ * Scales every set load in one week by `percent` (PRD C11), rounded to 0.5 kg or 1 lb and kept within 0 and the
+ * input's maximum. Sets without a load are untouched. A changed load drops its exact stored kg value.
+ */
+export function scaleWeekLoads(
+  days: EditorDay[],
+  percent: number,
+  units: Units,
+): { days: EditorDay[]; changed: number } {
+  const step = LOAD_STEP[units];
+  const max = maxDisplayLoad(units);
+  let changed = 0;
+  const next = days.map((d) => ({
+    ...d,
+    exercises: d.exercises.map((e) => ({
+      ...e,
+      sets: e.sets.map((s) => {
+        if (s.loadKg === undefined) return s;
+        const scaled = Math.round((s.loadKg * (1 + percent / 100)) / step) * step;
+        const loadKg = Math.min(max, Math.max(0, Math.round(scaled * 10) / 10));
+        if (loadKg === s.loadKg) return s;
+        changed += 1;
+        const next: EditorSet = { ...s, loadKg };
+        delete next.exactKg;
+        return next;
+      }),
+    })),
+  }));
+  return { days: next, changed };
 }

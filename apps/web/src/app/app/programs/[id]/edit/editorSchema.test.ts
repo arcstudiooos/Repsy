@@ -6,6 +6,9 @@ import {
   fromDraftPayload,
   mapServerWeekErrors,
   maxDisplayLoad,
+  programExercises,
+  replaceExerciseEverywhere,
+  scaleWeekLoads,
   toDraftPayload,
   toEditorValues,
   toWeekInputs,
@@ -211,5 +214,55 @@ describe('load input bounds', () => {
     expect(tempoIssue('31X1')).toBeNull();
     expect(tempoIssue('31x')).toBe('Use four characters, each 0-9 or X.');
     expect(tempoIssue('3-1-1')).toBe('Use four characters, each 0-9 or X.');
+  });
+});
+
+describe('fast editing (PRD C11)', () => {
+  const BENCH = 'e0000000-0000-4000-8000-000000000001';
+  const values = () => {
+    const v = toEditorValues(program(100), 'kg');
+    v.weeks.push(structuredClone(v.weeks[0]!));
+    return v;
+  };
+
+  it('lists each exercise once with its uses', () => {
+    expect(programExercises(values())).toEqual([
+      { exerciseId: BENCH, exerciseName: 'Bench', trackingType: 'reps_load', uses: 2 },
+    ]);
+  });
+
+  it('replaces an exercise everywhere, keeping sets when the tracking type matches', () => {
+    const v = values();
+    const same = replaceExerciseEverywhere(v, BENCH, {
+      exerciseId: 'x',
+      exerciseName: 'DB Bench',
+      trackingType: 'reps_load',
+    });
+    expect(same.replaced).toBe(2);
+    expect(same.weeks[1]!.days[0]!.exercises[0]).toMatchObject({
+      exerciseId: 'x',
+      exerciseName: 'DB Bench',
+      sets: v.weeks[1]!.days[0]!.exercises[0]!.sets,
+    });
+    const other = replaceExerciseEverywhere(v, BENCH, {
+      exerciseId: 'y',
+      exerciseName: 'Plank',
+      trackingType: 'duration',
+    });
+    expect(other.weeks[0]!.days[0]!.exercises[0]!.sets).toEqual([{ durationSec: 30 }]);
+    // The input is never mutated.
+    expect(v.weeks[0]!.days[0]!.exercises[0]!.exerciseId).toBe(BENCH);
+  });
+
+  it('scales a week of loads, rounding to the unit step and clamping', () => {
+    const days = values().weeks[0]!.days;
+    const up = scaleWeekLoads(days, 5, 'kg');
+    expect(up.changed).toBe(1);
+    expect(up.days[0]!.exercises[0]!.sets[0]).toEqual({ reps: 5, loadKg: 105 });
+    expect(scaleWeekLoads(days, -2.6, 'kg').days[0]!.exercises[0]!.sets[0]!.loadKg).toBe(97.5);
+    expect(scaleWeekLoads(days, 0, 'kg').changed).toBe(0);
+    expect(scaleWeekLoads(days, -100, 'kg').days[0]!.exercises[0]!.sets[0]!.loadKg).toBe(0);
+    const lb = toEditorValues(program(100), 'lb').weeks[0]!.days;
+    expect(scaleWeekLoads(lb, 10, 'lb').days[0]!.exercises[0]!.sets[0]!.loadKg).toBe(243);
   });
 });

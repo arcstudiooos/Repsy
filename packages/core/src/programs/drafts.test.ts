@@ -124,7 +124,7 @@ describe('program drafts', () => {
   it('oversize draft -> VALIDATION weeks; non-array and too many weeks too', async () => {
     const actor = await newActor();
     const id = await mk(actor);
-    const big = [{ pad: 'x'.repeat(300_000) }];
+    const big = [{ pad: 'x'.repeat(1_100_000) }];
     const err = await run(actor, (tx) =>
       saveDraft(tx, actor, id, { baseVersionNo: null, weeks: big }),
     ).catch((e: unknown) => e);
@@ -141,7 +141,7 @@ describe('program drafts', () => {
     expect(
       await codeOf(
         run(actor, (tx) =>
-          saveDraft(tx, actor, id, { baseVersionNo: null, weeks: Array(17).fill({}) }),
+          saveDraft(tx, actor, id, { baseVersionNo: null, weeks: Array(105).fill({}) }),
         ),
       ),
     ).toBe('VALIDATION');

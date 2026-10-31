@@ -38,7 +38,14 @@ async function fetchPage(q: string, cursor: string | null, signal: AbortSignal):
   return { items: body.data, nextCursor: body.meta?.nextCursor ?? null };
 }
 
-function PickerBody({ onPick }: { onPick: (exercise: ExerciseView) => void }) {
+export function PickerBody({
+  onPick,
+  actionLabel = 'Add',
+}: {
+  onPick: (exercise: ExerciseView) => void;
+  /** The verb on each result's button ("Add Bench Press", "Use Bench Press"). */
+  actionLabel?: string;
+}) {
   const [search, setSearch] = useState('');
   const [items, setItems] = useState<ExerciseView[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -144,8 +151,8 @@ function PickerBody({ onPick }: { onPick: (exercise: ExerciseView) => void }) {
                 </a>
               )}
             </div>
-            <Button size="sm" aria-label={`Add ${e.name}`} onClick={() => onPick(e)}>
-              Add
+            <Button size="sm" aria-label={`${actionLabel} ${e.name}`} onClick={() => onPick(e)}>
+              {actionLabel}
             </Button>
           </li>
         ))}
