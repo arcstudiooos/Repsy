@@ -1,6 +1,7 @@
 import { logger } from '@kinetic/core';
 import { assertRuntimeRoleIfEnforced, prisma } from '@kinetic/db';
 import { createEmailPort } from './adapters';
+import { createAnalytics } from './adapters/analytics';
 import { createBoss, pgBossSchemaIsPrecreated } from './boss';
 import { outboxPollIntervalMs } from './config';
 import { startHealthServer } from './health';
@@ -31,7 +32,13 @@ async function main(): Promise<void> {
   const captureException = (error: unknown, context?: Record<string, unknown>) => {
     Sentry.captureException(error, context ? { extra: context } : undefined);
   };
-  await registerJobs(boss, jobs, { prisma, port: emailPort, logger, captureException });
+  await registerJobs(boss, jobs, {
+    prisma,
+    port: emailPort,
+    logger,
+    captureException,
+    analytics: createAnalytics(),
+  });
 
   const intervalMs = outboxPollIntervalMs();
   const poll = () =>

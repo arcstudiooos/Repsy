@@ -97,10 +97,18 @@ describe('row level security', () => {
             AND col.table_name = c.relname AND col.column_name = 'organization_id'))`;
     expect(tables.map((t) => t.relname).sort()).toEqual([
       'audit_events',
+      'checkin_templates',
+      'checkins',
       'client_invites',
+      'client_pauses',
       'clients',
+      'conversation_threads',
+      'deletion_requests',
       'exercises',
+      'export_jobs',
+      'internal_notes',
       'memberships',
+      'messages',
       'organizations',
       'outbox_emails',
       'program_assignments',
@@ -108,8 +116,10 @@ describe('row level security', () => {
       'program_slots',
       'program_versions',
       'programs',
+      'review_flags',
       'set_log_revisions',
       'set_logs',
+      'support_access_grants',
       'users',
       'workout_sessions',
       'workout_version_exercises',
@@ -128,9 +138,16 @@ describe('row level security', () => {
       WHERE schemaname = ${schema} AND policyname = 'tenant_isolation'`;
     expect(policies.map((p) => p.tablename).sort()).toEqual([
       'audit_events',
+      'checkin_templates',
+      'checkins',
       'client_invites',
+      'client_pauses',
       'clients',
+      'conversation_threads',
+      'export_jobs',
+      'internal_notes',
       'memberships',
+      'messages',
       'organizations',
       'outbox_emails',
       'program_assignments',
@@ -138,6 +155,7 @@ describe('row level security', () => {
       'program_slots',
       'program_versions',
       'programs',
+      'review_flags',
       'set_log_revisions',
       'set_logs',
       'workout_sessions',
@@ -176,6 +194,16 @@ describe('row level security', () => {
     expect(await auditOrgs(orgB)).toEqual([orgB]);
   });
 
+  it('app_message_email_opt_in pins its search_path while bypass is on (PR #2 review D M1)', async () => {
+    const [fn] = await prisma.$queryRaw<{ config: string[] | null; src: string }[]>`
+      SELECT p.proconfig AS config, p.prosrc AS src FROM pg_proc p
+      WHERE p.pronamespace = ${schema}::regnamespace AND p.proname = 'app_message_email_opt_in'`;
+    expect(fn?.config).toEqual(
+      expect.arrayContaining(['app.bypass_rls=on', `search_path=${schema}, pg_temp`]),
+    );
+    expect(fn?.src).toContain(`${schema}.memberships`);
+  });
+
   it('helper functions are schema-qualified and immune to search_path', async () => {
     const fns = await prisma.$queryRaw<{ proname: string; prosrc: string }[]>`
       SELECT p.proname, p.prosrc FROM pg_proc p
@@ -191,6 +219,171 @@ describe('row level security', () => {
         SELECT organization_id FROM ${Prisma.raw(`"${schema}".audit_events`)}`;
     });
     expect(rows.map((r) => r.organization_id)).toEqual([orgB]);
+  });
+});
+
+describe('privacy tables: tenants read, only system scope writes', () => {
+  // deletion_requests and support_access_grants use split policies (migration 000030): a tenant transaction reads its
+  // organization's rows and files a deletion request in its initial state, nothing more. Verifying, holding,
+  // rejecting and every support-grant write is system scope (the admin console, the erasure job).
+  let userId: string;
+  let clientA: string;
+  beforeAll(async () => {
+    await withSystem(async (tx) => {
+      const u = await tx.user.create({ data: { email: 'dr@example.test', name: 'DR' } });
+      userId = u.id;
+      const c = await tx.client.create({
+        data: {
+          organizationId: orgA,
+          coachUserId: u.id,
+          name: 'C',
+          email: 'dr-client@example.test',
+          timezone: 'UTC',
+        },
+      });
+      clientA = c.id;
+    }, prisma);
+  });
+  const request = (extra: Partial<Prisma.DeletionRequestUncheckedCreateInput> = {}) => ({
+    organizationId: orgA,
+    subjectClientId: clientA,
+    requestedBy: userId,
+    ...extra,
+  });
+  const grant = (extra: Partial<Prisma.SupportAccessGrantUncheckedCreateInput> = {}) => ({
+    organizationId: orgA,
+    adminUserId: userId,
+    clientId: clientA,
+    reason: 'Ticket',
+    expiresAt: new Date('2099-01-01'),
+    ...extra,
+  });
+
+  it('use split policies: tenant_read (+ tenant_request) and a bypass-only system_write', async () => {
+    const rows = await prisma.$queryRaw<
+      {
+        tablename: string;
+        policyname: string;
+        cmd: string;
+        qual: string | null;
+        with_check: string | null;
+      }[]
+    >`SELECT tablename, policyname, cmd, qual, with_check FROM pg_policies
+      WHERE schemaname = ${schema} AND tablename IN ('deletion_requests', 'support_access_grants')
+      ORDER BY tablename, policyname`;
+    expect(rows.map((r) => `${r.tablename}.${r.policyname}:${r.cmd}`)).toEqual([
+      'deletion_requests.system_write:ALL',
+      'deletion_requests.tenant_read:SELECT',
+      'deletion_requests.tenant_request:INSERT',
+      'support_access_grants.system_write:ALL',
+      'support_access_grants.tenant_read:SELECT',
+    ]);
+    for (const r of rows.filter((x) => x.policyname === 'system_write')) {
+      expect(r.qual, r.tablename).toBe('app_rls_bypass()');
+      expect(r.with_check, r.tablename).toBe('app_rls_bypass()');
+    }
+    for (const r of rows.filter((x) => x.policyname !== 'system_write')) {
+      expect(r.qual ?? r.with_check, r.policyname).toContain('app_current_org()');
+    }
+  });
+
+  it('a tenant transaction files a request only in its initial state and can never decide it', async () => {
+    for (const forged of [
+      { status: 'verified' as const },
+      { status: 'processing' as const },
+      { status: 'done' as const },
+      { legalHold: true },
+      { verifiedBy: userId },
+      { verifiedAt: new Date() },
+      { completedAt: new Date() },
+      { rejectedReason: 'no' },
+    ]) {
+      await expect(
+        withTenant(orgA, (tx) => tx.deletionRequest.create({ data: request(forged) }), prisma),
+        JSON.stringify(forged),
+      ).rejects.toThrow();
+    }
+    const row = await withTenant(
+      orgA,
+      (tx) => tx.deletionRequest.create({ data: request() }),
+      prisma,
+    );
+    expect(row.status).toBe('requested');
+
+    const writes = await withTenant(
+      orgA,
+      async (tx) => ({
+        seen: (await tx.deletionRequest.findMany()).map((r) => r.id),
+        verify: (
+          await tx.deletionRequest.updateMany({
+            where: { id: row.id },
+            data: { status: 'verified', verifiedBy: userId, verifiedAt: new Date() },
+          })
+        ).count,
+        hold: (
+          await tx.deletionRequest.updateMany({ where: { id: row.id }, data: { legalHold: true } })
+        ).count,
+        remove: (await tx.deletionRequest.deleteMany({ where: { id: row.id } })).count,
+      }),
+      prisma,
+    );
+    expect(writes).toEqual({ seen: [row.id], verify: 0, hold: 0, remove: 0 });
+    expect(await withTenant(orgB, (tx) => tx.deletionRequest.count(), prisma)).toBe(0);
+
+    // The admin console (system scope) still decides it.
+    await withSystem(
+      (tx) =>
+        tx.deletionRequest.update({
+          where: { id: row.id },
+          data: { status: 'rejected', rejectedReason: 'Test' },
+        }),
+      prisma,
+    );
+    expect(
+      await withTenant(
+        orgA,
+        (tx) => tx.deletionRequest.findUniqueOrThrow({ where: { id: row.id } }),
+        prisma,
+      ),
+    ).toMatchObject({ status: 'rejected', legalHold: false });
+  });
+
+  it('a tenant transaction reads support grants but never creates, extends, un-revokes or deletes one', async () => {
+    await expect(
+      withTenant(orgA, (tx) => tx.supportAccessGrant.create({ data: grant() }), prisma),
+    ).rejects.toThrow();
+    const row = await withSystem(
+      (tx) => tx.supportAccessGrant.create({ data: grant({ revokedAt: new Date() }) }),
+      prisma,
+    );
+    const writes = await withTenant(
+      orgA,
+      async (tx) => ({
+        seen: (await tx.supportAccessGrant.findMany()).map((r) => r.id),
+        extend: (
+          await tx.supportAccessGrant.updateMany({
+            where: { id: row.id },
+            data: { expiresAt: new Date('2199-01-01') },
+          })
+        ).count,
+        unrevoke: (
+          await tx.supportAccessGrant.updateMany({
+            where: { id: row.id },
+            data: { revokedAt: null },
+          })
+        ).count,
+        remove: (await tx.supportAccessGrant.deleteMany({ where: { id: row.id } })).count,
+      }),
+      prisma,
+    );
+    expect(writes).toEqual({ seen: [row.id], extend: 0, unrevoke: 0, remove: 0 });
+    expect(await withTenant(orgB, (tx) => tx.supportAccessGrant.count(), prisma)).toBe(0);
+    const after = await withSystem(
+      (tx) => tx.supportAccessGrant.findUniqueOrThrow({ where: { id: row.id } }),
+      prisma,
+    );
+    expect(after.revokedAt).not.toBeNull();
+    expect(after.expiresAt.toISOString()).toBe('2099-01-01T00:00:00.000Z');
   });
 });
 

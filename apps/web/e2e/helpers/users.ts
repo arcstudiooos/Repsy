@@ -109,3 +109,12 @@ export async function signUpVerifiedClient(
   await makeClientOfCoach(coach.email, user.email);
   return user;
 }
+
+/** Signs in through the login form and waits to land on `landing` (/app for coaches, /portal for clients). */
+export async function signIn(page: Page, email: string, landing: RegExp): Promise<void> {
+  await page.goto('/login');
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill(E2E_PASSWORD);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page).toHaveURL(landing, { timeout: 30_000 });
+}

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { getSettings } from '@kinetic/core';
+import { getSettings, listMyExports } from '@kinetic/core';
+import { DataExportSection } from '@/components/settings/DataExportSection';
 import {
   OrganizationSection,
   ProfileSection,
@@ -15,9 +16,10 @@ export const metadata: Metadata = { title: 'Settings | Kinetic' };
 
 // Access is enforced by src/proxy.ts and the coach shell in the settings layout.
 export default async function SettingsPage() {
-  const { actor, settings } = await withServerTenant(async (tx, a) => ({
+  const { actor, settings, exports } = await withServerTenant(async (tx, a) => ({
     actor: a,
     settings: a.role === 'client' ? null : await getSettings(tx, a),
+    exports: a.role === 'owner' ? await listMyExports(tx, a) : [],
   }));
   // A client who lands here belongs in their portal.
   if (!settings?.profile || !settings.org) redirect('/portal/profile');
@@ -35,6 +37,7 @@ export default async function SettingsPage() {
           count={settings.org.activeClientCount}
           limit={settings.org.activeClientLimit}
         />
+        {isOwner && <DataExportSection scope="org" initial={exports} />}
         <SecuritySection />
       </div>
     </>

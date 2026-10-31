@@ -219,6 +219,10 @@ export interface PortalHome {
   hasAssignment: boolean;
   /** Today in the client's time zone (YYYY-MM-DD), for date labels. */
   todayLocalDate: string;
+  /** The open pause of the client's program (S3-5), for the "Program paused" banner. */
+  pause: { startLocalDate: string; resumeLocalDate: string } | null;
+  /** The newest check-in not yet sent (S4-1), for the portal home card. */
+  openCheckin: { id: string; title: string; dueAt: string } | null;
 }
 
 /** The portal home for the acting client (S2-1). */
@@ -246,6 +250,17 @@ export async function getPortalHome(
       orderBy: order,
       select: SUMMARY_SELECT,
     })) ??
+    // Started in the last day and swept to incomplete (training across midnight, low grace): still continued here
+    // (PR #2 review B-I3). Older ones are history, finished from the workouts list.
+    (await tx.workoutSession.findFirst({
+      where: {
+        clientId: client.id,
+        state: 'incomplete',
+        startedAt: { gte: new Date(now.getTime() - 24 * 3_600_000) },
+      },
+      orderBy: order,
+      select: SUMMARY_SELECT,
+    })) ??
     (await tx.workoutSession.findFirst({
       where: { clientId: client.id, state: 'scheduled', dueAt: { gte: now } },
       orderBy: order,
@@ -270,6 +285,15 @@ export async function getPortalHome(
     },
   });
   const assignments = await tx.programAssignment.count({ where: { clientId: client.id } });
+  const checkin = await tx.checkin.findFirst({
+    where: { clientId: client.id, submittedAt: null },
+    orderBy: { periodLocalDate: 'desc' },
+    select: { id: true, dueAt: true, template: { select: { title: true } } },
+  });
+  const pause = await tx.clientPause.findFirst({
+    where: { clientId: client.id, endedAt: null },
+    select: { startLocalDate: true, resumeLocalDate: true },
+  });
 
   return {
     nextWorkout: next ? ((await summarize(tx, [next], now))[0] ?? null) : null,
@@ -277,5 +301,14 @@ export async function getPortalHome(
     showSafetyReminder: begun === 0,
     hasAssignment: assignments > 0,
     todayLocalDate: today,
+    pause: pause
+      ? {
+          startLocalDate: fromDbDate(pause.startLocalDate),
+          resumeLocalDate: fromDbDate(pause.resumeLocalDate),
+        }
+      : null,
+    openCheckin: checkin
+      ? { id: checkin.id, title: checkin.template.title, dueAt: checkin.dueAt.toISOString() }
+      : null,
   };
 }

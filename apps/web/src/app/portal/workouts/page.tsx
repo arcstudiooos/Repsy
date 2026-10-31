@@ -1,6 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { DomainError, listSessions, todayInZone, type SessionListScope } from '@kinetic/core';
+import {
+  DomainError,
+  listSessions,
+  openPauseOf,
+  todayInZone,
+  type SessionListScope,
+} from '@kinetic/core';
+import { PausedBanner } from '@/components/portal/PausedBanner';
 import { EmptyState } from '@/components/states/EmptyState';
 import { LoggedByCoachBadge, SessionStateBadge } from '@/components/sessions/SessionStateBadge';
 import { buttonVariants } from '@/components/ui/button';
@@ -37,6 +44,7 @@ export default async function PortalWorkouts({
       });
       return {
         today: todayInZone(client?.timezone ?? 'UTC'),
+        pause: actor.clientId ? await openPauseOf(tx, actor.clientId) : null,
         ...(await listSessions(tx, actor, { scope, cursor })),
       };
     });
@@ -63,6 +71,11 @@ export default async function PortalWorkouts({
   return (
     <>
       <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Workouts</h1>
+      {data.pause && (
+        <div className="mb-6">
+          <PausedBanner {...data.pause} todayLocalDate={data.today} />
+        </div>
+      )}
       <nav aria-label="Workout lists" className="mb-6 flex gap-2">
         {TABS.map((tab) => (
           <Link

@@ -5,6 +5,7 @@ _old-scaffold/
 node_modules/
 .next/
 .next-e2e/
+.next-e2e-prod/
 .next-build/
 out/
 dist/
@@ -20,6 +21,7 @@ npm-debug.log*
 
 # local
 .dev-emails/
+.dev-exports/
 .DS_Store
 
 # playwright

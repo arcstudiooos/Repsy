@@ -25,6 +25,10 @@ interface Tenant {
   sessionId: string;
   workoutVersionExerciseId: string;
   setLogId: string;
+  checkinTemplateId: string;
+  threadId: string;
+  /** A client without a thread. */
+  spareClientId: string;
 }
 let a: Tenant;
 let b: Tenant;
@@ -105,8 +109,26 @@ async function seedTenant(tx: SystemTx, label: string): Promise<Tenant> {
       loggedByUserId: user.id,
     },
   });
+  const template = await tx.checkinTemplate.create({
+    data: { organizationId: org.id, title: 'T', questionsJson: [] },
+  });
+  const thread = await tx.conversationThread.create({
+    data: { organizationId: org.id, clientId: client.id, coachUserId: user.id },
+  });
+  const spare = await tx.client.create({
+    data: {
+      organizationId: org.id,
+      coachUserId: user.id,
+      name: 'S',
+      email: `s-${label}@example.test`,
+      timezone: 'UTC',
+    },
+  });
   return {
     orgId: org.id,
+    spareClientId: spare.id,
+    threadId: thread.id,
+    checkinTemplateId: template.id,
     setLogId: log.id,
     userId: user.id,
     sessionId: ws.id,
@@ -118,6 +140,16 @@ async function seedTenant(tx: SystemTx, label: string): Promise<Tenant> {
     assignmentId: assignment.id,
   };
 }
+
+const checkinRow = (own: Tenant, clientId: string, templateId: string) => ({
+  organizationId: own.orgId,
+  clientId,
+  templateId,
+  periodLocalDate: new Date(`20${Math.floor(Math.random() * 70) + 30}-01-05`),
+  questionsJson: [],
+  issuedAt: new Date('2026-11-04T06:00:00Z'),
+  dueAt: new Date('2026-11-04T23:59:00Z'),
+});
 
 const session = (own: Tenant, assignmentId: string, clientId: string, day: number) => ({
   organizationId: own.orgId,
@@ -265,6 +297,130 @@ const CASES: [string, Insert][] = [
           clientId: parent.clientId,
           tokenHash: `h-${crypto.randomUUID()}`,
           expiresAt: new Date('2099-01-01'),
+          createdBy: own.userId,
+        },
+      }),
+  ],
+  [
+    'conversation_threads -> clients',
+    (tx, own, parent) =>
+      tx.conversationThread.create({
+        data: {
+          organizationId: own.orgId,
+          clientId: parent.spareClientId,
+          coachUserId: own.userId,
+        },
+      }),
+  ],
+  [
+    'messages -> conversation_threads',
+    (tx, own, parent) =>
+      tx.message.create({
+        data: {
+          organizationId: own.orgId,
+          threadId: parent.threadId,
+          senderUserId: own.userId,
+          body: 'hi',
+        },
+      }),
+  ],
+  [
+    'deletion_requests -> clients',
+    (tx, own, parent) =>
+      tx.deletionRequest.create({
+        data: {
+          organizationId: own.orgId,
+          subjectClientId: parent.spareClientId,
+          requestedBy: own.userId,
+        },
+      }),
+  ],
+  [
+    'support_access_grants -> clients',
+    (tx, own, parent) =>
+      tx.supportAccessGrant.create({
+        data: {
+          organizationId: own.orgId,
+          adminUserId: own.userId,
+          clientId: parent.clientId,
+          reason: 'r',
+          expiresAt: new Date('2099-01-01'),
+        },
+      }),
+  ],
+  [
+    'export_jobs -> clients',
+    (tx, own, parent) =>
+      tx.exportJob.create({
+        data: {
+          organizationId: own.orgId,
+          requestedBy: own.userId,
+          clientId: parent.clientId,
+          scope: 'client_self',
+          idempotencyKey: crypto.randomUUID(),
+        },
+      }),
+  ],
+  [
+    'internal_notes -> clients',
+    (tx, own, parent) =>
+      tx.internalNote.create({
+        data: {
+          organizationId: own.orgId,
+          clientId: parent.clientId,
+          authorUserId: own.userId,
+          body: 'n',
+        },
+      }),
+  ],
+  [
+    'review_flags -> clients',
+    (tx, own, parent) =>
+      tx.reviewFlag.create({
+        data: {
+          organizationId: own.orgId,
+          clientId: parent.clientId,
+          ruleKey: 'coach_followup',
+          sourceType: 'followup',
+          dedupeKey: `coach_followup:${crypto.randomUUID()}`,
+          evidenceJson: {},
+        },
+      }),
+  ],
+  [
+    'checkins -> clients',
+    (tx, own, parent) =>
+      tx.checkin.create({ data: checkinRow(own, parent.clientId, own.checkinTemplateId) }),
+  ],
+  [
+    'checkins -> checkin_templates',
+    (tx, own, parent) =>
+      tx.checkin.create({ data: checkinRow(own, own.clientId, parent.checkinTemplateId) }),
+  ],
+  [
+    'clients -> checkin_templates',
+    (tx, own, parent) =>
+      tx.client.create({
+        data: {
+          organizationId: own.orgId,
+          coachUserId: own.userId,
+          name: 'C2',
+          email: `c2-${crypto.randomUUID()}@example.test`,
+          timezone: 'UTC',
+          checkinWeekday: 1,
+          checkinTemplateId: parent.checkinTemplateId,
+        },
+      }),
+  ],
+  [
+    'client_pauses -> clients',
+    (tx, own, parent) =>
+      tx.clientPause.create({
+        data: {
+          organizationId: own.orgId,
+          clientId: parent.clientId,
+          startLocalDate: new Date('2099-01-01'),
+          resumeLocalDate: new Date('2099-01-08'),
           createdBy: own.userId,
         },
       }),
@@ -535,6 +691,87 @@ describe('set_log_revisions (S3-4)', () => {
         prisma,
       ),
     ).rejects.toThrow();
+  });
+});
+
+describe('messages are immutable (S4-3, PR #2 review I3)', () => {
+  const newMessage = (t: Tenant) =>
+    withSystem(
+      (tx) =>
+        tx.message.create({
+          data: {
+            organizationId: t.orgId,
+            threadId: t.threadId,
+            senderUserId: t.userId,
+            body: 'Keep me',
+          },
+        }),
+      prisma,
+    );
+  const exists = (id: string) =>
+    withSystem((tx) => tx.message.count({ where: { id } }), prisma).then((n) => n === 1);
+
+  it('DELETE fails from tenant and system scope; TRUNCATE fails always', async () => {
+    const row = await newMessage(b);
+    await expect(
+      withTenant(b.orgId, (tx) => tx.message.deleteMany({ where: { id: row.id } }), prisma),
+    ).rejects.toThrow(/messages are immutable/);
+    await expect(
+      withSystem((tx) => tx.message.deleteMany({ where: { id: row.id } }), prisma),
+    ).rejects.toThrow(/messages are immutable/);
+    await expect(
+      withSystem(
+        (tx) => tx.$executeRawUnsafe(`DELETE FROM "${schema}"."messages" WHERE id = '${row.id}'`),
+        prisma,
+      ),
+    ).rejects.toThrow(/messages are immutable/);
+    await expect(
+      prisma.$executeRawUnsafe(`TRUNCATE "${schema}"."messages" CASCADE`),
+    ).rejects.toThrow(/messages are immutable/);
+    await expect(
+      withSystem(async (tx) => {
+        await tx.$executeRaw`SELECT pg_catalog.set_config('app.lawful_erasure', 'on', true)`;
+        await tx.$executeRawUnsafe(`TRUNCATE "${schema}"."messages" CASCADE`);
+      }, prisma),
+    ).rejects.toThrow(/messages are immutable/);
+    expect(await exists(row.id)).toBe(true);
+  });
+
+  it('the lawful-erasure flag without system scope deletes nothing (PR #2 review D M2)', async () => {
+    const row = await newMessage(b);
+    await expect(
+      prisma.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe(`SET LOCAL search_path TO "${schema}"`);
+        await tx.$executeRaw`SELECT set_config('app.org_id', ${b.orgId}, true)`;
+        await tx.$executeRaw`SELECT pg_catalog.set_config('app.lawful_erasure', 'on', true)`;
+        await tx.$executeRawUnsafe(`DELETE FROM "${schema}"."messages" WHERE id = '${row.id}'`);
+      }),
+    ).rejects.toThrow(/messages are immutable/);
+    expect(await exists(row.id)).toBe(true);
+  });
+
+  it('marking a message read still works', async () => {
+    const row = await newMessage(b);
+    const n = await withTenant(
+      b.orgId,
+      (tx) => tx.message.updateMany({ where: { id: row.id }, data: { readAt: new Date() } }),
+      prisma,
+    );
+    expect(n.count).toBe(1);
+  });
+
+  it('lawful erasure (transaction-local app.lawful_erasure) may delete a row', async () => {
+    const row = await newMessage(b);
+    await withSystem(async (tx) => {
+      await tx.$executeRaw`SELECT pg_catalog.set_config('app.lawful_erasure', 'on', true)`;
+      await tx.message.deleteMany({ where: { id: row.id } });
+    }, prisma);
+    expect(await exists(row.id)).toBe(false);
+    // The flag is transaction-local: the next transaction is guarded again.
+    const next = await newMessage(b);
+    await expect(
+      withSystem((tx) => tx.message.deleteMany({ where: { id: next.id } }), prisma),
+    ).rejects.toThrow(/messages are immutable/);
   });
 });
 

@@ -112,7 +112,9 @@ test.describe('settings', () => {
       const page = await ctx.newPage();
       await page.goto('/portal/profile');
       await expect(page.getByRole('heading', { name: 'Profile', level: 1 })).toBeVisible();
-      await expect(page.getByText('Available soon').first()).toBeVisible();
+      // S5-2 / S5-3: export and deletion are live.
+      await expect(page.getByRole('button', { name: 'Download my data' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Request deletion' })).toBeVisible();
       await expectNoHorizontalOverflow(page);
       await expectNoAxeViolations(page);
       await ctx.close();

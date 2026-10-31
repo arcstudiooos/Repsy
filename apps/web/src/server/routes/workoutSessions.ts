@@ -38,9 +38,23 @@ export const sessionGetRoute: RouteDef<undefined, true> = {
 /** `POST /api/v1/sessions/:id/start`: locks the workout version (D-002 #6). Idempotent. */
 export const sessionStartRoute: RouteDef<undefined, true> = {
   can: 'session:log',
-  handler: ({ actor, params, requestId, tenant }) =>
-    tenant((tx) => startSession(tx, actor, params.id ?? '', { requestId })),
+  handler: async ({ actor, params, requestId, tenant, track, clientHash }) => {
+    const t0 = Date.now();
+    const detail = await tenant((tx) => startSession(tx, actor, params.id ?? '', { requestId }));
+    // Replays return the stored start: only a start made by this request is an event.
+    if (madeNow(detail.session.startedAt, t0)) {
+      track('workout_started', {
+        client_id_hash: clientHash(detail.client.id),
+        logged_by_coach: actor.role !== 'client',
+      });
+    }
+    return detail;
+  },
 };
+
+/** True when `iso` (a timestamp the request may have written) is not older than the request. */
+// Written by this process during the request (core stamps `new Date()`), so a replay is always older than t0.
+const madeNow = (iso: string | null, t0: number) => iso !== null && Date.parse(iso) >= t0;
 
 // Items are validated in core (setLogInputSchema), which reports them under fieldError `items`.
 const logsSchema = z.object({ items: z.array(z.unknown()).min(1).max(100) });
@@ -85,8 +99,20 @@ export const sessionLogsReviseRoute: RouteDef<typeof reviseSchema, true> = {
 export const sessionCompleteRoute: RouteDef<typeof finishBodySchema, true> = {
   can: 'session:log',
   input: finishBodySchema,
-  handler: ({ actor, input, params, requestId, tenant }) =>
-    tenant((tx) => completeSession(tx, actor, params.id ?? '', input, { requestId })),
+  handler: async ({ actor, input, params, requestId, tenant, track, clientHash }) => {
+    const t0 = Date.now();
+    const detail = await tenant((tx) =>
+      completeSession(tx, actor, params.id ?? '', input, { requestId }),
+    );
+    if (madeNow(detail.session.completedAt, t0)) {
+      track('workout_completed', {
+        client_id_hash: clientHash(detail.client.id),
+        logged_by_coach: detail.session.loggedByCoach,
+        set_count: detail.logs.length,
+      });
+    }
+    return detail;
+  },
 };
 
 /** `POST /api/v1/sessions/:id/skip`: idempotent per session. */

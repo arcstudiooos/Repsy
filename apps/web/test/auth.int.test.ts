@@ -132,7 +132,7 @@ describe('route guard', () => {
     const headers = { cookie };
     expect(await guardRequest(new NextRequest(`${ORIGIN}/app`, { headers }), deps)).toBeNull();
     const admin = await guardRequest(new NextRequest(`${ORIGIN}/admin`, { headers }), deps);
-    expect(admin?.status).toBe(403);
+    expect(admin?.status).toBe(404);
   });
 });
 

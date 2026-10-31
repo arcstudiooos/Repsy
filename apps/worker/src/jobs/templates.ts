@@ -35,6 +35,46 @@ const TEMPLATES: Record<string, Template> = {
     const subject = `${coachName} invited you to Kinetic`.replace(/[\r\n]+/g, ' ');
     return { subject, text, html };
   },
+  // S4-1: no answers or questions in the email, only the link (D-007).
+  checkin_ready: (payload, appBaseUrl) => {
+    const coachName = str(payload, 'coachName') ?? 'Your coach';
+    const id = str(payload, 'checkinId') ?? '';
+    const link = `${appBaseUrl.replace(/\/+$/, '')}/portal/check-ins/${encodeURIComponent(id)}`;
+    const text =
+      `Your weekly check-in from ${coachName} is ready.\n\n` +
+      `Fill it in: ${link}\n\n` +
+      'Every question is optional.';
+    const html =
+      `<p>Your weekly check-in from ${escapeHtml(coachName)} is ready.</p>` +
+      `<p><a href="${escapeHtml(link)}">Fill it in</a></p>` +
+      '<p>Every question is optional.</p>';
+    const subject = 'Your weekly check-in is ready';
+    return { subject, text, html };
+  },
+  // S4-4: who wrote, never what (the body stays in the app).
+  new_message: (payload, appBaseUrl) => {
+    const sender = str(payload, 'senderName') ?? 'your coach';
+    const path = payload.toPortal === true ? '/portal/messages' : '/app/messages';
+    const link = `${appBaseUrl.replace(/\/+$/, '')}${path}`;
+    const text = `You have a new message from ${sender}.\n\nRead it in Kinetic: ${link}`;
+    const html =
+      `<p>You have a new message from ${escapeHtml(sender)}.</p>` +
+      `<p><a href="${escapeHtml(link)}">Read it in Kinetic</a></p>`;
+    const subject = `New message from ${sender}`.replace(/[\r\n]+/g, ' ');
+    return { subject, text, html };
+  },
+  // S5-3: the coach is told a client asked for deletion (D-010 #4). No content beyond the client's name.
+  deletion_requested: (payload, appBaseUrl) => {
+    const name = str(payload, 'clientName') ?? 'A client';
+    const text =
+      `${name} asked for their data in your Kinetic workspace to be deleted.\n\n` +
+      'Kinetic will verify the request and then delete it. You need to do nothing.\n\n' +
+      `${appBaseUrl.replace(/\/+$/, '')}/app/clients`;
+    const html =
+      `<p>${escapeHtml(name)} asked for their data in your Kinetic workspace to be deleted.</p>` +
+      '<p>Kinetic will verify the request and then delete it. You need to do nothing.</p>';
+    return { subject: 'A client asked for data deletion', text, html };
+  },
 };
 
 export function renderTemplate(

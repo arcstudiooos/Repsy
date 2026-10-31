@@ -28,6 +28,31 @@ Open http://localhost:3000 and sign in as `coach@example.test` (or `admin@exampl
 - `pnpm dev`, `pnpm db:migrate`, `pnpm db:seed`, `pilot-code:create` and `pgboss:migrate` read the root `.env` (Node's built-in env-file loader; variables already set in the shell win). `pnpm test` does not.
 - `pnpm db:down` stops the container (data persists in a named volume).
 
+## What works locally (Sprint 5)
+
+- `/app/analytics`: adherence (completed of eligible workouts, with skipped, not finished and missed shown separately; paused and cancelled excluded), assigned vs finished, check-in response rate, due check-ins and median time to follow-up, each with its numerator, denominator and period.
+- Exports: an owner exports the organization (Settings) and a client their own data (portal Profile) as CSV files. The worker (`exports.build`) prepares them in private storage (`.dev-exports/` locally, S3 in production); each download link works for 15 minutes and only for the person who asked.
+- Deletion: a client (Profile) or an owner (client Overview) requests deletion; a platform admin verifies it on `/admin`, and the worker (`deletions.run`) erases the client's data in that workspace. `/admin` also has pilot codes, account lookup and audited, time-limited support access. Non-admins get a 404.
+- Product events (§13) go to PostHog when `POSTHOG_KEY` is set, with hashed ids and allowlisted properties only.
+- Pilot readiness: `pnpm perf:dashboard`, `docs/api/openapi.yaml`, `docs/qa-matrix.md`, `docs/accessibility-checklist.md`, `docs/runbook.md` (jobs, exports, deletion, support access, restore drill), `docs/legal/` drafts for counsel, `docs/screenshots/`, and the pilot operations kit in `docs/pilot/` (Sprint 6).
+
+## What works locally (Sprint 4)
+
+- Weekly check-ins: the coach edits one set of questions (1-5 scale, short text, yes/no; all optional) at `/app/check-ins` and picks each client's check-in day on their Check-ins tab. The worker (`checkins.issue`, every 10 minutes) sends it at 06:00 in the client's time zone with a "check-in ready" email; it is due 23:59 that day and never sent while the program is paused. The client fills it in from the portal (the draft autosaves and survives a reload); the coach reads the answers beside the week before.
+- Messages: one conversation per client, text only, with unread counts and sent/read state, at `/app/messages` (two panes on desktop), on the client's Messages tab and at `/portal/messages`. Email notifications only for users who opted in, and they never contain the message.
+- Review queue: workouts not done by their due time plus the grace period become missed (or incomplete if started). The worker (`review.sweep`, every 10 minutes) raises "Needs review" items for 2+ missed workouts in 7 days, overdue check-ins and (for coaches who opted in) client messages unread for 24 hours; a sent check-in raises one at once. At `/app/review` the coach filters by state and rule, resolves or dismisses with a reason, snoozes for 1 day, 3 days, 1 week or to a date, messages the client or creates a follow-up. The dashboard shows what needs attention first.
+- Each client has private Notes (coaches only, never in any client view) and a History timeline: assignments and program versions, workouts, log changes, check-ins, pauses and notes.
+- E2E: `closed-loop.spec.ts` (invite → assign → log → check-in → review → note → resolve) and `journey-d.spec.ts` (the review queue) join the golden path.
+
+## What works locally (Sprint 3)
+
+- Program builder: drafts autosave (to the server, and on the device while offline) and are restored after a reload; "Save changes" creates a new version, a save from a stale tab is a conflict that keeps the draft, and every program has a version history. Weeks can be duplicated and removed, days and exercises reordered, workouts copied to another day; day and exercise notes and per-set tempo are editable. Templates show how many clients use them.
+- A client's own program can be edited from their Program tab. Saving applies only to upcoming workouts (completed and started workouts never change); removed weeks cancel their unstarted sessions and added weeks are scheduled after the last one.
+- Clients can fix a finished workout's log for 24 hours ("Edited"); coaches can correct a log at any time with a reason (the client sees "Corrected by your coach", never the reason). Every change keeps a revision.
+- Pause and resume: "Pause program" on a client moves upcoming workouts forward by the pause length (1-90 days), the portal shows "Program paused" with the expected date, and the program resumes on that date (worker job) or with "Resume now". Changing the resume date or resuming early moves workouts only by the difference.
+- Offline workouts: once a workout is started online, the client can log it, complete it, close the page and reopen it with no connection. Every set reads "Saved on device", then "Syncing", then "Synced" once the server has acknowledged everything; nothing is applied twice. A workout that was never started can't be started offline.
+- `pnpm test:e2e` runs every spec on the dev server, then `e2e/offline.spec.ts` against a production build (`next build` + `next start` on port 3300, build dir `apps/web/.next-e2e-prod`): the service worker needs stable build assets. Run it alone with `pnpm --filter @kinetic/web exec playwright test -c playwright.offline.config.ts`. Its users are seeded in the database because a production server keeps the breached-password check on.
+
 ## What works locally (Sprint 2)
 
 - Client portal home: the next workout with a Start/Continue button, this week's progress ("n of m workouts done"), and a safety reminder until the first workout starts.
@@ -56,7 +81,8 @@ Open http://localhost:3000 and sign in as `coach@example.test` (or `admin@exampl
 - `pnpm typecheck` - TypeScript in every workspace
 - `pnpm dev` - web + worker for local development
 - `pnpm test` - Vitest unit and integration tests
-- `pnpm test:e2e` - Playwright end-to-end tests (web app)
+- `pnpm test:e2e` - Playwright end-to-end tests (web app; the offline spec runs against a production build)
+- `pnpm perf:dashboard` - dashboard data-load timing for 50 clients (needs `DATABASE_URL`)
 - `pnpm db:up` / `pnpm db:down` - start or stop local Postgres
 - `pnpm db:migrate` / `pnpm db:seed` - apply migrations / seed demo data (read the root `.env`)
 - `pnpm format` - Prettier (writes; prefer formatting only files you changed)

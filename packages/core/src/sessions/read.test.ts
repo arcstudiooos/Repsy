@@ -176,6 +176,24 @@ describe('getPortalHome', () => {
     });
   });
 
+  it('a workout started in the last day and swept to incomplete is still next (PR #2 review B-I3)', async () => {
+    const w = await newClientWorld(prisma, await newOrg(prisma), { weeks: grid(2, 3) });
+    const [d1] = await sessionsOf(prisma, w.assignmentId);
+    const started = new Date('2026-11-05T03:00:00Z');
+    await setState(d1!.id, { state: 'incomplete', startedAt: started });
+    const homeAt = (now: Date) =>
+      runAs(prisma, w.client, (tx) => getPortalHome(tx, w.client, { now }));
+    expect((await homeAt(new Date('2026-11-05T12:00:00Z'))).nextWorkout).toMatchObject({
+      id: d1!.id,
+      state: 'incomplete',
+    });
+    // A day after the start it is history; the next scheduled workout shows.
+    expect((await homeAt(new Date('2026-11-06T04:00:00Z'))).nextWorkout).toMatchObject({
+      scheduledLocalDate: '2026-11-06',
+      state: 'scheduled',
+    });
+  });
+
   it('empty when the client has no assignment; coaches are refused', async () => {
     const org = await newOrg(prisma);
     const w = await newClientWorld(prisma, org);
@@ -201,6 +219,8 @@ describe('getPortalHome', () => {
       showSafetyReminder: true,
       hasAssignment: false,
       todayLocalDate: '2026-11-04',
+      pause: null,
+      openCheckin: null,
     });
     expect(await codeOf(runAs(prisma, w.coach, (tx) => getPortalHome(tx, w.coach)))).toBe(
       'FORBIDDEN',

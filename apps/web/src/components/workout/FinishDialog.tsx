@@ -12,7 +12,9 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import type { SessionDetail } from '@kinetic/core';
-import { finishWorkout } from '@/lib/workout-api';
+import { finishWorkout, type ApiCall } from '@/lib/workout-api';
+
+export type FinishBody = { idempotencyKey: string; comment?: string };
 
 const COPY = {
   complete: {
@@ -37,11 +39,14 @@ export function FinishDialog({
   kind,
   sessionId,
   disabled,
+  submit,
   onDone,
 }: {
   kind: 'complete' | 'skip';
   sessionId: string;
   disabled?: boolean;
+  /** Replaces the direct API call (the portal queues it in the device outbox, S3-3). */
+  submit?: (body: FinishBody) => Promise<ApiCall<SessionDetail>>;
   onDone(detail: SessionDetail): void;
 }) {
   const copy = COPY[kind];
@@ -56,10 +61,8 @@ export function FinishDialog({
     if (busy) return;
     setBusy(true);
     setError(null);
-    const res = await finishWorkout(sessionId, kind, {
-      idempotencyKey: key,
-      ...(comment.trim() ? { comment } : {}),
-    });
+    const body: FinishBody = { idempotencyKey: key, ...(comment.trim() ? { comment } : {}) };
+    const res = await (submit ? submit(body) : finishWorkout(sessionId, kind, body));
     setBusy(false);
     if (res.ok) {
       setOpen(false);

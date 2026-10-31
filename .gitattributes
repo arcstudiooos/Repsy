@@ -1,0 +1,2 @@
+# Keep LF in the repository and in every checkout (Windows included): tests compare migration SQL byte for byte.
+* text=auto eol=lf

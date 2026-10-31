@@ -1,10 +1,20 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { getReviewOverview, todayInZone, type ReviewSection } from '@kinetic/core';
+import {
+  getReviewOverview,
+  listFlags,
+  RULE_TEXT,
+  todayInZone,
+  type FlagFilter,
+  type ReviewSection,
+  type RuleKey,
+} from '@kinetic/core';
 import { LoggedByCoachBadge, SessionStateBadge } from '@/components/sessions/SessionStateBadge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatSessionDate } from '@/lib/session-format';
 import { withServerTenant } from '@/server/serverActor';
+import { cn } from '@/lib/utils';
+import { FlagQueue } from './FlagQueue';
 import { MarkSeenButton } from './MarkSeenButton';
 
 export const metadata: Metadata = { title: 'Review | Kinetic' };
@@ -32,7 +42,7 @@ function Section({
       <Card>
         <CardHeader className="flex-row flex-wrap items-start justify-between gap-3">
           <div className="flex flex-col gap-1">
-            <CardTitle id={headingId}>
+            <CardTitle as="h3" id={headingId}>
               {title} ({section.count})
             </CardTitle>
             <CardDescription>{description}</CardDescription>
@@ -81,12 +91,39 @@ function Section({
   );
 }
 
+const FILTERS: { value: FlagFilter; label: string }[] = [
+  { value: 'needs_attention', label: 'Needs attention' },
+  { value: 'snoozed', label: 'Snoozed' },
+  { value: 'closed', label: 'Closed' },
+];
+const RULES = Object.keys(RULE_TEXT) as RuleKey[];
+const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) || undefined;
+
 /**
- * Sprint 2 review list (S2-4): statuses and counts read from sessions on every request, so a completion shows on
- * the next load. Snooze, resolve and the missed-workout rules arrive with review flags in Sprint 4.
+ * The review queue (S4-3): "Needs review" flags from the rules engine and follow-ups, one card per client, with
+ * filters by state and rule. Below it, the Sprint 2 activity lists (new completed, due, skipped this week).
  */
-export default async function ReviewPage() {
-  const { review, timezone } = await withServerTenant(async (tx, actor) => ({
+export default async function ReviewPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const filterParam = first(sp.filter);
+  const filter: FlagFilter = FILTERS.some((f) => f.value === filterParam)
+    ? (filterParam as FlagFilter)
+    : 'needs_attention';
+  const ruleParam = first(sp.rule);
+  const rule = RULES.includes(ruleParam as RuleKey) ? (ruleParam as RuleKey) : undefined;
+  const hrefFor = (f: FlagFilter, r?: RuleKey) => {
+    const q = new URLSearchParams();
+    if (f !== 'needs_attention') q.set('filter', f);
+    if (r) q.set('rule', r);
+    const qs = q.toString();
+    return qs ? `/app/review?${qs}` : '/app/review';
+  };
+  const { review, timezone, flags } = await withServerTenant(async (tx, actor) => ({
+    flags: await listFlags(tx, actor, { filter, rule }),
     review: await getReviewOverview(tx, actor),
     timezone:
       (
@@ -100,6 +137,58 @@ export default async function ReviewPage() {
   return (
     <>
       <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Review</h1>
+      <section aria-labelledby="queue-heading" className="mb-8 flex flex-col gap-4">
+        <h2 id="queue-heading" className="text-lg font-semibold">
+          Needs review
+        </h2>
+        <nav aria-label="Queue filters" className="flex flex-wrap gap-2">
+          {FILTERS.map((f) => (
+            <Link
+              key={f.value}
+              href={hrefFor(f.value, rule)}
+              aria-current={f.value === filter ? 'page' : undefined}
+              className={cn(
+                'inline-flex min-h-11 items-center rounded-control border px-3',
+                f.value === filter ? 'border-accent font-semibold' : 'border-input-border',
+              )}
+            >
+              {f.label}
+            </Link>
+          ))}
+        </nav>
+        <nav aria-label="Filter by rule" className="flex flex-wrap gap-2 text-sm">
+          <Link
+            href={hrefFor(filter)}
+            aria-current={!rule ? 'page' : undefined}
+            className={cn(
+              'inline-flex min-h-11 items-center underline-offset-4',
+              !rule ? 'font-semibold' : 'underline',
+            )}
+          >
+            All rules
+          </Link>
+          {RULES.map((r) => (
+            <Link
+              key={r}
+              href={hrefFor(filter, r)}
+              aria-current={r === rule ? 'page' : undefined}
+              className={cn(
+                'inline-flex min-h-11 items-center underline-offset-4',
+                r === rule ? 'font-semibold' : 'underline',
+              )}
+            >
+              {RULE_TEXT[r]}
+            </Link>
+          ))}
+        </nav>
+        <FlagQueue
+          key={`${filter}:${rule ?? ''}:${flags.map((f) => f.id).join(',')}`}
+          initial={flags}
+          filter={filter}
+          todayLocalDate={today}
+        />
+      </section>
+      <h2 className="mb-4 text-lg font-semibold">Activity</h2>
       <div className="flex flex-col gap-6">
         <Section
           id="new"

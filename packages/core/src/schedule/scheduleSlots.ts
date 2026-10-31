@@ -109,6 +109,18 @@ export function localDayBounds(
   };
 }
 
+/** `hour:minute` local on `localDate` in `timeZone`, as a UTC instant (same DST rules as `localDayBounds`). */
+export function localTimeOn(
+  localDate: string,
+  hour: number,
+  minute: number,
+  timeZone: string,
+): Date {
+  const zone = resolveTimeZone(timeZone);
+  const { y, m, d } = parseLocalDate(localDate, 'localDate');
+  return localInstant(y, m, d, hour, minute, zone);
+}
+
 /**
  * Fill ordered program slots onto selected weekdays (D-010 #1). Pure and DST-correct:
  * dates are walked as calendar dates, then converted to UTC per local day.

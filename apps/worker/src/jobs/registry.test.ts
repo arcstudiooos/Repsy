@@ -7,6 +7,7 @@ function fakeBoss() {
   const workers = new Map<string, (batch: Array<{ data: object }>) => Promise<void>>();
   const boss = {
     createQueue: vi.fn(async () => undefined),
+    schedule: vi.fn(async () => undefined),
     work: vi.fn(
       async (name: string, handler: (batch: Array<{ data: object }>) => Promise<void>) => {
         workers.set(name, handler);
@@ -14,7 +15,7 @@ function fakeBoss() {
       },
     ),
   };
-  return { boss: boss as unknown as PgBoss, workers };
+  return { boss: boss as unknown as PgBoss, workers, schedule: boss.schedule };
 }
 
 describe('registerJobs', () => {
@@ -40,5 +41,18 @@ describe('registerJobs', () => {
     await registerJobs(boss, [job], { captureException } as unknown as JobDeps);
     await workers.get('test.ok')?.([{ data: {} }]);
     expect(captureException).not.toHaveBeenCalled();
+  });
+
+  it('schedules a job that has a cron expression, and only that one', async () => {
+    const cron = defineJob<object>({
+      name: 'test.cron',
+      cron: '*/10 * * * *',
+      handle: async () => undefined,
+    });
+    const plain = defineJob<object>({ name: 'test.plain', handle: async () => undefined });
+    const { boss, schedule } = fakeBoss();
+    await registerJobs(boss, [cron, plain], {} as JobDeps);
+    expect(schedule).toHaveBeenCalledTimes(1);
+    expect(schedule).toHaveBeenCalledWith('test.cron', '*/10 * * * *');
   });
 });

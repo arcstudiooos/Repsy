@@ -1,10 +1,24 @@
-import { EmptyState } from '@/components/states/EmptyState';
+import type { Metadata } from 'next';
+import { getClientThread, listMessages } from '@kinetic/core';
+import { MessageThread } from '@/components/messages/MessageThread';
+import { withServerTenant } from '@/server/serverActor';
+import { loadClient } from '../data';
 
-export default function Page() {
+export const metadata: Metadata = { title: 'Messages | Kinetic' };
+
+export default async function ClientMessagesPage({ params }: { params: Promise<{ id: string }> }) {
+  const client = await loadClient((await params).id);
+  const { thread, page } = await withServerTenant(async (tx, actor) => {
+    const t = await getClientThread(tx, actor, client.id);
+    return { thread: t, page: await listMessages(tx, actor, t.id) };
+  });
   return (
-    <EmptyState
-      title="No messages yet"
-      body="Your conversation with this client will appear here."
+    <MessageThread
+      threadId={thread.id}
+      canPost={thread.canPost}
+      otherName={client.name}
+      initial={page.items}
+      initialCursor={page.nextCursor}
     />
   );
 }

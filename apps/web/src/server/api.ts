@@ -8,14 +8,19 @@ import {
   type ActorContext,
   type ErrorCode,
   type MembershipRef,
+  type AnalyticsPort,
+  type EventName,
+  type EventValue,
 } from '@kinetic/core';
 import { prisma as defaultPrisma, withTenant, type PrismaClient, type TenantTx } from '@kinetic/db';
 import { auth as defaultAuth, getSessionUser, type Auth, type SessionUser } from '@/lib/auth';
 import { loadMemberships, resolveActor } from './actor';
+import { platformAdminOf } from './platformAdmin';
 import { orgCookieSecret, serializeOrgCookie } from './orgCookie';
 import { defaultLimiter, InMemoryRateLimiter, type RateLimiter } from './rateLimit';
 import { clientIp } from './clientIp';
 import { getRequestId } from './requestId';
+import { analyticsHashSecret, clientHash, defaultAnalytics, eventFor } from './analytics';
 
 export interface ApiDeps {
   auth?: Pick<Auth, 'api'>;
@@ -25,6 +30,8 @@ export interface ApiDeps {
   /** Trusted origin for CSRF checks; defaults to APP_BASE_URL. */
   appBaseUrl?: string;
   limiter?: RateLimiter;
+  /** Product analytics (S5-4); the PostHog adapter (no-op without POSTHOG_KEY) by default. */
+  analytics?: AnalyticsPort;
 }
 
 type InputOf<S> = S extends z.ZodType ? z.output<S> : undefined;
@@ -53,6 +60,10 @@ export interface RouteCtx<I, R extends boolean> {
   tenant<T>(fn: (tx: TenantTx) => Promise<T>): Promise<T>;
   /** `Set-Cookie` value that makes `orgId` this user's active organization (signed, user-bound). */
   orgCookie(orgId: string): string;
+  /** Sends a §13 product event for the acting user (hashed ids, allowlisted properties only). */
+  track(name: EventName, properties?: Record<string, EventValue>): void;
+  /** `client_id_hash` for an event about a client. */
+  clientHash(clientId: string): string;
 }
 
 /** Return from a handler to set `meta` or a non-200 status. A bare return value becomes `data`. */
@@ -74,6 +85,11 @@ export interface RouteDef<S extends z.ZodType | undefined, R extends boolean> {
   requireOrg?: R;
   /** Authorization policy checked against the resolved actor. Requires an active org. */
   can?: Action;
+  /**
+   * Platform-admin console route (S5-3): anyone else gets 404 NOT_FOUND straight after authentication, before any
+   * database access (memberships, system scope) or input validation. Requires `requireOrg: false`.
+   */
+  requirePlatformAdmin?: boolean;
   /**
    * Per-route token bucket (per user, or per IP when anonymous). Replaces the
    * global bucket for this route; omit to use the global per-user default.
@@ -160,6 +176,9 @@ export function createApiHandler(deps: ApiDeps = {}) {
         'apiHandler: `can` needs an active org; it cannot be used with requireOrg: false',
       );
     }
+    if (def.requirePlatformAdmin && def.requireOrg !== false) {
+      throw new Error('apiHandler: requirePlatformAdmin routes must set requireOrg: false');
+    }
     const routeLimiter = def.rateLimit ? new InMemoryRateLimiter(def.rateLimit) : undefined;
     return async (request, context) => {
       const requestId = getRequestId(request);
@@ -182,6 +201,7 @@ export function createApiHandler(deps: ApiDeps = {}) {
           });
         }
         if (!user) return fail('UNAUTHENTICATED', 'Sign in to continue.', requestId);
+        if (def.requirePlatformAdmin) platformAdminOf(user);
 
         const memberships = await loadMemberships(user.id, deps.prisma);
 
@@ -230,8 +250,32 @@ export function createApiHandler(deps: ApiDeps = {}) {
             return runTenant(actor.orgId, fn);
           },
           orgCookie: (orgId) => serializeOrgCookie(user.id, orgId, secret, isSecure(request, deps)),
+          // Runs after the request's work committed: an analytics fault never fails the request (PR #2 C M-5).
+          track: (name, properties) => {
+            try {
+              (deps.analytics ?? defaultAnalytics()).capture(
+                eventFor(
+                  analyticsHashSecret(),
+                  { userId: user.id, orgId: actor?.orgId },
+                  name,
+                  properties,
+                ),
+              );
+            } catch (error) {
+              logger.error(
+                { requestId, errName: error instanceof Error ? error.name : 'unknown' },
+                'analytics event dropped',
+              );
+            }
+          },
+          clientHash: (clientId) => clientHash(analyticsHashSecret(), clientId),
         } as RouteCtx<InputOf<S>, R>);
 
+        // A raw response (a file download) passes through with the request id.
+        if (result instanceof Response) {
+          result.headers.set('x-request-id', requestId);
+          return result;
+        }
         const { data, options } =
           result instanceof ApiResult
             ? { data: result.data, options: result.options }
@@ -265,6 +309,17 @@ export function createApiHandler(deps: ApiDeps = {}) {
           },
           'unhandled API error',
         );
+        // §13 error_visible: the code and the route pattern only.
+        try {
+          (deps.analytics ?? defaultAnalytics()).capture(
+            eventFor(analyticsHashSecret(), { userId: 'anonymous' }, 'error_visible', {
+              code: 'INTERNAL',
+              route: new URL(request.url).pathname.replace(/[0-9a-f]{8}-[0-9a-f-]{27}/gi, ':id'),
+            }),
+          );
+        } catch {
+          // Analytics never turns an error response into another error.
+        }
         return fail('INTERNAL', 'Something went wrong.', requestId);
       }
     };

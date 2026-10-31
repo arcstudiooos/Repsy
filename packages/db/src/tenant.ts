@@ -253,6 +253,8 @@ export interface TenantOptions {
    * update) their own row even without a membership row match.
    */
   userId?: string;
+  /** Interactive-transaction timeout in ms (Prisma's default is 5 000). For worker jobs that read or write a lot. */
+  timeout?: number;
 }
 
 /**
@@ -266,13 +268,16 @@ export function withTenant<T>(
   client: PrismaClient = defaultPrisma,
   options: TenantOptions = {},
 ): Promise<T> {
-  return scoped(client, orgId).$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.org_id', ${orgId}, true)`;
-    if (options.userId !== undefined) {
-      await tx.$executeRaw`SELECT set_config('app.user_id', ${options.userId}, true)`;
-    }
-    return fn(tx);
-  });
+  return scoped(client, orgId).$transaction(
+    async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.org_id', ${orgId}, true)`;
+      if (options.userId !== undefined) {
+        await tx.$executeRaw`SELECT set_config('app.user_id', ${options.userId}, true)`;
+      }
+      return fn(tx);
+    },
+    options.timeout === undefined ? undefined : { timeout: options.timeout },
+  );
 }
 
 export type SystemTx = Prisma.TransactionClient;
@@ -298,13 +303,30 @@ export type SystemTx = Prisma.TransactionClient;
  * - `registerCoach` / `redeemPilotCode` / `deleteUser` (web lib/register-coach.ts) and auth bootstrap (web
  *   lib/auth.ts outbox enqueue): sign-up creates the user's first organization and membership, checks/uses a pilot
  *   code (platform table), undoes a half-finished sign-up, and enqueues platform auth emails; no org exists yet.
+ *
+ * Platform-admin console (S5-3): cross-organization by design, so the rule above does not hold; instead every use
+ * goes through `withPlatformAdmin` (web server/platformAdmin.ts), which authorizes the authenticated user as a
+ * platform admin before it opens this transaction (non-admins get 404 with no database access), and each core admin
+ * function (`core/admin`) asserts it again inside. Every mutation and every support read is audited.
+ * - web server/routes/privacy.ts admin routes (`requirePlatformAdmin`, checked right after authentication): pilot
+ *   codes (list, create), account lookup, the deletion queue (list, verify / reject / hold), support grants (list,
+ *   grant, revoke) and the grant-gated support read of one client.
+ * - web app/admin/page.tsx (the console: pilot codes, account lookup, deletion queue, own grants) and
+ *   web app/admin/support/[clientId]/page.tsx (the grant-gated support read); each calls `notFound()` first.
+ * A client's or owner's own deletion request is a tenant operation (`withTenant`), not system scope.
+ * apps/web/test/platform-admin.test.ts fails when a web module starts calling `withSystem` or `withPlatformAdmin`
+ * without a line here.
  */
 export function withSystem<T>(
   fn: (tx: SystemTx) => Promise<T>,
   client: PrismaClient = defaultPrisma,
+  options: Pick<TenantOptions, 'timeout'> = {},
 ): Promise<T> {
-  return client.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.bypass_rls', 'on', true)`;
-    return fn(tx);
-  });
+  return client.$transaction(
+    async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.bypass_rls', 'on', true)`;
+      return fn(tx);
+    },
+    options.timeout === undefined ? undefined : { timeout: options.timeout },
+  );
 }

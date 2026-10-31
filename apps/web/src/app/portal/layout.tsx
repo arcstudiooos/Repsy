@@ -4,6 +4,8 @@ import { PortalNav } from '@/components/nav/PortalNav';
 import { WorkspaceSwitchLink } from '@/components/nav/WorkspaceSwitchLink';
 import { EmptyState } from '@/components/states/EmptyState';
 import { LoadingState } from '@/components/states/LoadingState';
+import { PortalDevice } from '@/portal/offline/PortalDevice';
+import { ServiceWorker } from '@/portal/offline/ServiceWorker';
 import { getServerActorOutcome, getServerSession, withServerTenant } from '@/server/serverActor';
 import { shellRedirect } from '@/server/shellGate';
 
@@ -18,9 +20,13 @@ async function ClientGate({ children }: { children: ReactNode }) {
   if (!user) redirect('/login?next=%2Fportal');
   const target = shellRedirect('portal', await getServerActorOutcome(user));
   if (target) redirect(target);
-  const linked = await withServerTenant((tx, actor) =>
-    tx.client.findFirst({ where: { userId: actor.userId }, select: { id: true, status: true } }),
-  );
+  const { linked, owner } = await withServerTenant(async (tx, actor) => ({
+    linked: await tx.client.findFirst({
+      where: { userId: actor.userId },
+      select: { id: true, status: true },
+    }),
+    owner: { userId: actor.userId, orgId: actor.orgId },
+  }));
   // D-010 #4: archiving a client ends their access to this coach's organization.
   if (linked?.status === 'archived') {
     return (
@@ -40,13 +46,20 @@ async function ClientGate({ children }: { children: ReactNode }) {
       />
     );
   }
-  return children;
+  return (
+    <>
+      {/* Before the page, so the device store is bound to this user before the page reads it (PR #2 review C1). */}
+      <PortalDevice userId={owner.userId} orgId={owner.orgId} />
+      {children}
+    </>
+  );
 }
 
 /** Client portal shell: bottom tab bar on mobile, top bar from 768px up. */
 export default function PortalLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col">
+      <ServiceWorker />
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-control focus:bg-surface focus:px-4 focus:py-3"

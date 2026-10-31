@@ -1,6 +1,17 @@
 export const CORE_VERSION = '0.0.0';
 export type { EmailMessage, EmailPort } from './ports/email';
 export {
+  EVENT_PROPERTIES,
+  assertAllowedEvent,
+  hashId,
+  noopAnalytics,
+  AnalyticsPropertyError,
+  type AnalyticsEvent,
+  type AnalyticsPort,
+  type EventName,
+  type EventValue,
+} from './ports/analytics';
+export {
   enqueueEmail,
   enqueuePlatformEmail,
   type EnqueueEmailInput,
@@ -37,6 +48,15 @@ export {
   type ClientView,
   type ClientStatus,
 } from './clients/clients';
+export {
+  applyPause,
+  updatePause,
+  resumeNow,
+  endDuePause,
+  openPauseOf,
+  MAX_PAUSE_DAYS,
+  type PauseView,
+} from './clients/pause';
 export {
   issueInvite,
   revokeInvite,
@@ -94,7 +114,155 @@ export {
   type WorkoutTargets,
 } from './programs/targets';
 export { toDisplay, fromDisplay, type Units } from './units';
-export { scheduleSlots, localDayBounds, ScheduleInputError } from './schedule/scheduleSlots';
+export {
+  scheduleSlots,
+  localDayBounds,
+  localTimeOn,
+  ScheduleInputError,
+} from './schedule/scheduleSlots';
+export {
+  getCheckinTemplate,
+  updateCheckinTemplate,
+  setCheckinWeekday,
+  listCheckins,
+  getCheckin,
+  saveCheckinDraft,
+  submitCheckin,
+  weekActivityBefore,
+  issueDueCheckins,
+  ISSUE_HOUR,
+  type CheckinTemplateView,
+  type CheckinView,
+  type CheckinStatus,
+  type WeekActivity,
+  type CheckinSubmittedHook,
+} from './checkins/checkins';
+export {
+  evaluateRules,
+  deriveSessionStates,
+  resolveStaleMissedFlags,
+  onCheckinSubmittedRules,
+  raiseFlag,
+  RULE_TEXT,
+  AUTO_RESOLVED,
+  SWEEP_RULES,
+  type RuleKey,
+  type Rule,
+  type FlagUpsert,
+} from './review/rules';
+export {
+  listFlags,
+  countOpenFlags,
+  countRecentMissed,
+  updateFlag,
+  createFollowup,
+  SNOOZE_DAYS,
+  REASON_MAX,
+  FOLLOWUP_TITLE_MAX,
+  type FlagView,
+  type FlagState,
+  type FlagFilter,
+  type FlagAction,
+} from './review/flags';
+export {
+  requestDeletion,
+  deletionStatusFor,
+  eraseClientData,
+  recordErasureFailure,
+  ERASURE_TIMEOUT_MS,
+  type DeletionRequestView,
+  type DeletionStatus,
+  type ErasureResult,
+} from './privacy/deletion';
+export {
+  assertPlatformAdmin,
+  listPilotCodes,
+  createPilotCode,
+  lookupAccount,
+  listDeletionRequests,
+  decideDeletion,
+  grantSupportAccess,
+  revokeSupportAccess,
+  listMyGrants,
+  readClientForSupport,
+  SUPPORT_GRANT_MS,
+  type PlatformAdmin,
+  type PilotCodeView,
+  type AccountView,
+  type DeletionQueueItem,
+  type SupportGrantView,
+  type SupportClientView,
+} from './admin/admin';
+export {
+  requestExport,
+  listMyExports,
+  exportFileFor,
+  buildExportFiles,
+  claimExport,
+  completeExport,
+  failExport,
+  exportFileKeys,
+  EXPORT_AVAILABLE_DAYS,
+  EXPORT_BUILD_TIMEOUT_MS,
+  EXPORT_MAX_ATTEMPTS,
+  type ExportView,
+  type ExportFile,
+  type ExportScope,
+  type ExportStatus,
+  type ExportStorage,
+  type ClaimedExport,
+  type ExportTxRunner,
+} from './exports/exports';
+export { toCsv, type CsvValue } from './exports/csv';
+export {
+  adherence,
+  getAnalytics,
+  parseRange,
+  MAX_RANGE_DAYS,
+  type AnalyticsView,
+  type AdherenceCounts,
+  type DateRange,
+  type Ratio,
+} from './analytics/adherence';
+export {
+  listNotes,
+  createNote,
+  updateNote,
+  deleteNote,
+  NOTE_MAX,
+  type NoteView,
+} from './history/notes';
+export {
+  getClientTimeline,
+  TIMELINE_MAX,
+  type TimelineEvent,
+  type TimelineKind,
+} from './history/timeline';
+export {
+  getMyThread,
+  getClientThread,
+  getThread,
+  listThreads,
+  listMessages,
+  sendMessage,
+  unreadMessageCount,
+  MESSAGE_MAX,
+  MESSAGE_PAGE_SIZE,
+  type MessageView,
+  type ThreadSummary,
+  type ThreadView,
+  type MessageSentHook,
+} from './messages/messages';
+export {
+  SEEDED_QUESTIONS,
+  QUESTION_TYPES,
+  MAX_QUESTIONS,
+  SHORT_TEXT_MAX,
+  type CheckinQuestion,
+  type CheckinAnswers,
+  type CheckinAnswer,
+  type QuestionType,
+} from './checkins/questions';
 export type { SlotKey, IsoWeekday, ScheduledSlot, ScheduleSlotsInput } from './schedule/types';
 export {
   assignProgram,

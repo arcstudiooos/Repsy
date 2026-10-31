@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { countAudits, storedSetLogs } from './support/db';
+import { countAudits, sessionFacts, storedSetLogs, sweepAsDue } from './support/db';
 import {
   assignFromClientTab,
   buildProgram,
@@ -89,6 +89,54 @@ test.describe('workout logging', () => {
       await expect(portal.getByText('Set 1: 8 reps × 62.5 kg')).toBeVisible();
       await expect(portal.getByText('Set 1: 45s')).toBeVisible();
       await expectNoAxeViolations(portal);
+    } finally {
+      await client.context.close();
+    }
+  });
+
+  test('a workout swept to incomplete can still be finished, and a missed one started (PR #2 review B-I3)', async ({
+    page,
+    request,
+    browser,
+  }) => {
+    await signUpVerifiedCoach(page, request);
+    const client = await onboardClient(page, request, browser, 'Lee Late');
+    try {
+      await buildProgram(page, 'Late block', [
+        [['bench', 'Barbell Bench Press']],
+        [['bench', 'Barbell Bench Press']],
+      ]);
+      await assignFromClientTab(page, 'Lee Late', 'Late block', 2);
+
+      const portal = client.page;
+      const first = await openNextWorkout(portal);
+      await portal.getByRole('button', { name: 'Start workout' }).click();
+      await logSet(portal, 'Barbell Bench Press', 1, { reps: '5', 'weight (kg)': '60' });
+      const [missed] = await sweepAsDue(first);
+      expect(missed).toBeTruthy();
+
+      // The portal home still offers to continue it, and the workout reloads open for logging.
+      await portal.goto('/portal');
+      await expect(portal.getByRole('link', { name: 'Continue workout' })).toBeVisible({
+        timeout: 30_000,
+      });
+      await portal.goto(`/portal/workouts/${first}`);
+      await expect(portal.getByLabel('Set 1 reps', { exact: true })).toHaveValue('5', {
+        timeout: 30_000,
+      });
+      await portal.getByRole('button', { name: 'Complete workout' }).click();
+      await portal
+        .getByRole('dialog', { name: 'Complete workout?' })
+        .getByRole('button', { name: 'Complete', exact: true })
+        .click();
+      await expect(portal).toHaveURL(/scope=past$/, { timeout: 15_000 });
+      expect((await sessionFacts(first)).state).toBe('completed');
+
+      // The missed workout can still be started late.
+      await portal.goto(`/portal/workouts/${missed}`);
+      await portal.getByRole('button', { name: 'Start workout' }).click();
+      await expect(portal.getByText('In progress')).toBeVisible({ timeout: 15_000 });
+      expect((await sessionFacts(missed!)).state).toBe('in_progress');
     } finally {
       await client.context.close();
     }

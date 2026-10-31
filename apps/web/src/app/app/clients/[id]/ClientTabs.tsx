@@ -11,6 +11,7 @@ const TABS = [
   { label: 'Check-ins', segment: 'check-ins' },
   { label: 'Messages', segment: 'messages' },
   { label: 'Notes', segment: 'notes' },
+  { label: 'History', segment: 'history' },
 ] as const;
 
 /** Route-based tabs: plain links, so they are keyboard reachable and scroll sideways on mobile. */

@@ -1,11 +1,14 @@
 import { z } from 'zod';
 import { appendAudit } from '@kinetic/db';
 import {
+  applyPause,
   createClient,
   getClient,
   getClientHistory,
   listClients,
+  resumeNow,
   updateClient,
+  updatePause,
   type ClientView,
 } from '@kinetic/core';
 import { ApiResult, type RouteDef } from '../api';
@@ -105,5 +108,61 @@ export const clientHistoryRoute: RouteDef<typeof historySchema, true> = {
       .map((id) => id.trim())
       .filter((id) => id !== '');
     return tenant((tx) => getClientHistory(tx, actor, params.id ?? '', ids));
+  },
+};
+
+// Dates are checked by the core (fieldErrors on the field), so a bad value reads like every other 422.
+const pauseSchema = z.object({
+  startLocalDate: z.string().max(20),
+  resumeLocalDate: z.string().max(20),
+});
+
+/** `:id` is the client. Pauses the program (D-003); replaying the same dates is a no-op. Returns the client. */
+export const clientPausePostRoute: RouteDef<typeof pauseSchema, true> = {
+  can: 'client:update',
+  input: pauseSchema,
+  handler: async ({ actor, input, params, requestId, tenant }) => {
+    const { client, shifted } = await tenant(async (tx) => {
+      const res = await applyPause(
+        tx,
+        actor,
+        { clientId: params.id ?? '', ...input },
+        { requestId },
+      );
+      return { client: await getClient(tx, actor, params.id ?? ''), shifted: res.shifted };
+    });
+    return new ApiResult(client, { meta: { shifted } });
+  },
+};
+
+const pausePatchSchema = z.object({ resumeLocalDate: z.string().max(20) });
+
+/** Changes the expected resume date of the open pause. */
+export const clientPausePatchRoute: RouteDef<typeof pausePatchSchema, true> = {
+  can: 'client:update',
+  input: pausePatchSchema,
+  handler: async ({ actor, input, params, requestId, tenant }) => {
+    const { client, shifted } = await tenant(async (tx) => {
+      const res = await updatePause(
+        tx,
+        actor,
+        { clientId: params.id ?? '', resumeLocalDate: input.resumeLocalDate },
+        { requestId },
+      );
+      return { client: await getClient(tx, actor, params.id ?? ''), shifted: res.shifted };
+    });
+    return new ApiResult(client, { meta: { shifted } });
+  },
+};
+
+/** Ends the open pause today. */
+export const clientResumeRoute: RouteDef<undefined, true> = {
+  can: 'client:update',
+  handler: async ({ actor, params, requestId, tenant }) => {
+    const { client, shifted } = await tenant(async (tx) => {
+      const res = await resumeNow(tx, actor, { clientId: params.id ?? '' }, { requestId });
+      return { client: await getClient(tx, actor, params.id ?? ''), shifted: res.shifted };
+    });
+    return new ApiResult(client, { meta: { shifted } });
   },
 };

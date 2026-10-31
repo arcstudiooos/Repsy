@@ -1,5 +1,5 @@
 import type { PgBoss, Queue } from 'pg-boss';
-import type { EmailPort, Logger } from '@kinetic/core';
+import type { AnalyticsPort, EmailPort, Logger } from '@kinetic/core';
 import type { PrismaClient } from '@kinetic/db';
 
 /** Error reporter (Sentry.captureException in the worker; a no-op without SENTRY_DSN). */
@@ -10,11 +10,15 @@ export interface JobDeps {
   port: EmailPort;
   logger: Logger;
   captureException?: CaptureException;
+  /** Product analytics (S5-4); a no-op without POSTHOG_KEY. */
+  analytics?: AnalyticsPort;
 }
 
 export interface JobDefinition<T extends object> {
   name: string;
   queue?: Omit<Queue, 'name'>;
+  /** pg-boss cron expression (UTC): the job is also queued on this schedule. */
+  cron?: string;
   handle(data: T, deps: JobDeps): Promise<void>;
 }
 
@@ -23,7 +27,7 @@ export function defineJob<T extends object>(definition: JobDefinition<T>): JobDe
 }
 
 /**
- * Registers every job's queue and worker. A throwing handler is reported via
+ * Registers every job's queue, worker and schedule (if any). A throwing handler is reported via
  * captureException, then rethrown so pg-boss retries.
  */
 export async function registerJobs(
@@ -44,5 +48,6 @@ export async function registerJobs(
         }
       }
     });
+    if (job.cron) await boss.schedule(job.name, job.cron);
   }
 }

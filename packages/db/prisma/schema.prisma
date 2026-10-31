@@ -81,6 +81,17 @@ model User {
   writtenSetLogs           SetLog[]                @relation("SetLogWriter")
   programDrafts            ProgramDraft[]          @relation("ProgramDraftEditor")
   setLogRevisions          SetLogRevision[]        @relation("SetLogReviser")
+  clientPauses             ClientPause[]           @relation("ClientPauseCreator")
+  coachThreads             ConversationThread[]    @relation("ThreadCoach")
+  sentMessages             Message[]               @relation("MessageSender")
+  resolvedFlags            ReviewFlag[]            @relation("FlagResolver")
+  createdFlags             ReviewFlag[]            @relation("FlagCreator")
+  internalNotes            InternalNote[]          @relation("NoteAuthor")
+  exportJobs               ExportJob[]             @relation("ExportRequester")
+  deletionSubjects         DeletionRequest[]       @relation("DeletionSubject")
+  deletionRequested        DeletionRequest[]       @relation("DeletionRequester")
+  deletionVerified         DeletionRequest[]       @relation("DeletionVerifier")
+  supportGrants            SupportAccessGrant[]    @relation("SupportAdmin")
   sessions                 Session[]
   accounts                 Account[]
   coachProfile             CoachProfile?
@@ -176,6 +187,16 @@ model Organization {
   setLogs                 SetLog[]
   programDrafts           ProgramDraft[]
   setLogRevisions         SetLogRevision[]
+  clientPauses            ClientPause[]
+  checkinTemplates        CheckinTemplate[]
+  checkins                Checkin[]
+  conversationThreads     ConversationThread[]
+  messages                Message[]
+  reviewFlags             ReviewFlag[]
+  internalNotes           InternalNote[]
+  exportJobs              ExportJob[]
+  deletionRequests        DeletionRequest[]
+  supportAccessGrants     SupportAccessGrant[]
 
   @@map("organizations")
 }
@@ -274,6 +295,9 @@ model Client {
   preferredUnits Units        @default(kg) @map("preferred_units")
   consentVersion String?      @map("consent_version")
   consentAt      DateTime?    @map("consent_at") @db.Timestamptz(3)
+  /// ISO weekday (1 = Monday ... 7 = Sunday) the weekly check-in is issued on; null = no check-ins (S4-1).
+  checkinWeekday    Int?      @map("checkin_weekday")
+  checkinTemplateId String?   @map("checkin_template_id") @db.Uuid
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -284,6 +308,16 @@ model Client {
   programs        Program[]
   assignments     ProgramAssignment[]
   workoutSessions WorkoutSession[]
+  pauses          ClientPause[]
+  /// Composite FK (MATCH SIMPLE: null until a weekday is set) keeps the template in this org.
+  checkinTemplate CheckinTemplate?    @relation(fields: [checkinTemplateId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  checkins        Checkin[]
+  thread          ConversationThread?
+  reviewFlags     ReviewFlag[]
+  internalNotes   InternalNote[]
+  exportJobs      ExportJob[]
+  deletionRequests DeletionRequest[]
+  supportGrants   SupportAccessGrant[]
 
   @@unique([organizationId, email])
   @@unique([organizationId, userId])
@@ -703,4 +737,325 @@ model ProgramDraft {
   @@unique([programId, organizationId])
   @@index([organizationId])
   @@map("program_drafts")
+}
+
+/// A pause of a client's program (S3-5, D-003, Ruling 6). `appliedOffsetDays` is how far the client's scheduled
+/// sessions from `startLocalDate` on have been moved for this pause, so every reschedule shifts only the difference
+/// and nothing moves twice. At most one open pause (`endedAt` null) per client (partial unique index, migration).
+model ClientPause {
+  id                String    @id @default(uuid()) @db.Uuid
+  organizationId    String    @map("organization_id") @db.Uuid
+  clientId          String    @map("client_id") @db.Uuid
+  startLocalDate    DateTime  @map("start_local_date") @db.Date
+  resumeLocalDate   DateTime  @map("resume_local_date") @db.Date
+  appliedOffsetDays Int       @default(0) @map("applied_offset_days")
+  endedAt           DateTime? @map("ended_at") @db.Timestamptz(3)
+  createdBy         String    @map("created_by") @db.Uuid
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  creator      User         @relation("ClientPauseCreator", fields: [createdBy], references: [id])
+
+  @@index([clientId])
+  @@index([organizationId])
+  /// The worker's due-pause scan.
+  @@index([endedAt, resumeLocalDate])
+  @@map("client_pauses")
+}
+
+/// The organization's weekly check-in template (S4-1, D-008 #9, Ruling 1: one per organization), created from the
+/// seeded questions on first use and editable by the coach. `questionsJson` is validated by core (`questionsSchema`).
+model CheckinTemplate {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @unique @map("organization_id") @db.Uuid
+  title          String
+  questionsJson  Json     @map("questions_json")
+  isSeeded       Boolean  @default(true) @map("is_seeded")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  clients      Client[]
+  checkins     Checkin[]
+
+  @@unique([id, organizationId])
+  @@map("checkin_templates")
+}
+
+/// One weekly check-in of a client (S4-1, D-010 #3): issued 06:00 local, due 23:59 local. `questionsJson` is the
+/// template's questions when issued, so later template edits never change what was asked.
+model Checkin {
+  id                   String    @id @default(uuid()) @db.Uuid
+  organizationId       String    @map("organization_id") @db.Uuid
+  clientId             String    @map("client_id") @db.Uuid
+  templateId           String    @map("template_id") @db.Uuid
+  periodLocalDate      DateTime  @map("period_local_date") @db.Date
+  questionsJson        Json      @map("questions_json")
+  issuedAt             DateTime  @map("issued_at") @db.Timestamptz(3)
+  dueAt                DateTime  @map("due_at") @db.Timestamptz(3)
+  submittedAt          DateTime? @map("submitted_at") @db.Timestamptz(3)
+  answersJson          Json?     @map("answers_json")
+  draftJson            Json?     @map("draft_json")
+  draftUpdatedAt       DateTime? @map("draft_updated_at") @db.Timestamptz(3)
+  submitIdempotencyKey String?   @map("submit_idempotency_key")
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  client       Client          @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  template     CheckinTemplate @relation(fields: [templateId, organizationId], references: [id, organizationId])
+
+  @@unique([clientId, periodLocalDate])
+  @@unique([id, organizationId])
+  @@index([organizationId, dueAt])
+  @@index([organizationId, submittedAt])
+  @@index([templateId])
+  @@map("checkins")
+}
+
+/// The one conversation of a client and their coach (S4-4, Ruling 6), created on first open.
+model ConversationThread {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  clientId       String   @unique @map("client_id") @db.Uuid
+  coachUserId    String   @map("coach_user_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  coach        User         @relation("ThreadCoach", fields: [coachUserId], references: [id])
+  messages     Message[]
+
+  @@unique([id, organizationId])
+  /// Implied by the unique client_id; required by Prisma for the one-to-one composite relation.
+  @@unique([clientId, organizationId])
+  @@index([organizationId])
+  @@map("conversation_threads")
+}
+
+/// A text message (D-008 #1): immutable except `readAt` (trigger, migration 000025); DELETE only under lawful
+/// erasure and never TRUNCATE (migration 000030). The body never reaches logs, analytics or audit.
+/// `clientMessageId` makes a retried send idempotent.
+model Message {
+  id              String    @id @default(uuid()) @db.Uuid
+  organizationId  String    @map("organization_id") @db.Uuid
+  threadId        String    @map("thread_id") @db.Uuid
+  senderUserId    String    @map("sender_user_id") @db.Uuid
+  body            String
+  clientMessageId String?   @map("client_message_id") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  readAt          DateTime? @map("read_at") @db.Timestamptz(3)
+
+  organization Organization       @relation(fields: [organizationId], references: [id])
+  thread       ConversationThread @relation(fields: [threadId, organizationId], references: [id, organizationId])
+  sender       User               @relation("MessageSender", fields: [senderUserId], references: [id])
+
+  @@unique([threadId, clientMessageId])
+  @@index([threadId, createdAt, id])
+  @@index([organizationId, readAt])
+  @@map("messages")
+}
+
+enum ReviewRule {
+  missed_workouts
+  checkin_overdue
+  checkin_new
+  message_unread
+  coach_followup
+
+  @@map("review_rule")
+}
+
+enum ReviewFlagState {
+  open
+  snoozed
+  resolved
+  dismissed
+
+  @@map("review_flag_state")
+}
+
+/// A "Needs review" item in the coach's queue (S4-2/S4-3, F10, D-008 #11). Raised by the rules engine (time-based,
+/// `review.sweep`) or in the triggering transaction (check-in submitted, coach follow-up). `dedupeKey` makes each
+/// raise idempotent; `evidenceJson` lists the rule text, dates and source ids (never free text).
+model ReviewFlag {
+  id               String          @id @default(uuid()) @db.Uuid
+  organizationId   String          @map("organization_id") @db.Uuid
+  clientId         String          @map("client_id") @db.Uuid
+  ruleKey          ReviewRule      @map("rule_key")
+  /// Always "needs_review" in R1 ("Needs review", never "At risk").
+  severity         String          @default("needs_review")
+  sourceType       String          @map("source_type")
+  sourceId         String?         @map("source_id") @db.Uuid
+  dedupeKey        String          @map("dedupe_key")
+  evidenceJson     Json            @map("evidence_json")
+  /// When the source was due (session or check-in), for sorting and display; unchanged by a snooze.
+  sourceDueAt      DateTime?       @map("source_due_at") @db.Timestamptz(3)
+  state            ReviewFlagState @default(open)
+  snoozedUntil     DateTime?       @map("snoozed_until") @db.Timestamptz(3)
+  resolvedBy       String?         @map("resolved_by") @db.Uuid
+  resolvedAt       DateTime?       @map("resolved_at") @db.Timestamptz(3)
+  resolutionReason String?         @map("resolution_reason")
+  reopenedAt       DateTime?       @map("reopened_at") @db.Timestamptz(3)
+  /// The coach who created a follow-up (null for rule-raised flags).
+  createdBy        String?         @map("created_by") @db.Uuid
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  resolver     User?        @relation("FlagResolver", fields: [resolvedBy], references: [id])
+  creator      User?        @relation("FlagCreator", fields: [createdBy], references: [id])
+
+  @@unique([organizationId, dedupeKey])
+  @@index([organizationId, state])
+  @@index([clientId, ruleKey, state])
+  @@map("review_flags")
+}
+
+/// A coach's private note about a client (S4-5, F12). Coach/owner only: never in a client API or portal payload.
+/// Only the author edits or deletes it.
+model InternalNote {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  clientId       String   @map("client_id") @db.Uuid
+  authorUserId   String   @map("author_user_id") @db.Uuid
+  body           String
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  author       User         @relation("NoteAuthor", fields: [authorUserId], references: [id])
+
+  @@index([clientId, createdAt])
+  @@index([organizationId])
+  @@map("internal_notes")
+}
+
+enum ExportScope {
+  client_self
+  org
+
+  @@map("export_scope")
+}
+
+enum ExportStatus {
+  queued
+  running
+  done
+  failed
+
+  @@map("export_status")
+}
+
+/// A data export (S5-2, D-010 #4): requested in the app, built by the worker (`exports.build`) as CSV objects in
+/// private storage, downloadable only by the requester through short-lived app links. `filesJson` is written last,
+/// so a failed or half-built export never offers a file.
+model ExportJob {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  requestedBy    String       @map("requested_by") @db.Uuid
+  /// The client's own export (`client_self`); null for an organization export.
+  clientId       String?      @map("client_id") @db.Uuid
+  scope          ExportScope
+  resourceType   String       @default("csv_bundle") @map("resource_type")
+  status         ExportStatus @default(queued)
+  /// Storage prefix of the job's files.
+  objectKey      String?      @map("object_key")
+  /// `[{ name, key, rows }]`, set when the job is done.
+  filesJson      Json?        @map("files_json")
+  attempts       Int          @default(0)
+  claimedAt      DateTime?    @map("claimed_at") @db.Timestamptz(3)
+  completedAt    DateTime?    @map("completed_at") @db.Timestamptz(3)
+  /// Downloads are offered until then.
+  expiresAt      DateTime?    @map("expires_at") @db.Timestamptz(3)
+  /// A short error code (never content) when failed.
+  errorCode      String?      @map("error_code")
+  /// When the files were removed from storage (after expiry, or after an erasure expired the export).
+  purgedAt       DateTime?    @map("purged_at") @db.Timestamptz(3)
+  idempotencyKey String       @map("idempotency_key")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  requester    User         @relation("ExportRequester", fields: [requestedBy], references: [id])
+  /// Composite FK (MATCH SIMPLE: null for org exports) keeps the client in this org.
+  client       Client?      @relation(fields: [clientId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@unique([organizationId, requestedBy, idempotencyKey])
+  @@index([status, createdAt])
+  @@index([organizationId, requestedBy, createdAt])
+  @@index([expiresAt])
+  @@map("export_jobs")
+}
+
+enum DeletionStatus {
+  requested
+  verified
+  processing
+  done
+  rejected
+
+  @@map("deletion_status")
+}
+
+/// A request to erase a client's data in one organization (S5-3, D-008 #16, D-010 #4): by the client or the
+/// organization's owner, verified by a platform admin, then run by the worker (`deletions.run`). `legalHold` blocks
+/// the run. One open request per client (partial unique index, migration). A tenant transaction may only read rows
+/// and file one in its initial `requested` state; every other write is system scope (RLS, migration 000030).
+model DeletionRequest {
+  id              String         @id @default(uuid()) @db.Uuid
+  organizationId  String         @map("organization_id") @db.Uuid
+  subjectClientId String         @map("subject_client_id") @db.Uuid
+  /// The client's account at request time (kept for the admin; the account is anonymized, not deleted).
+  subjectUserId   String?        @map("subject_user_id") @db.Uuid
+  requestedBy     String         @map("requested_by") @db.Uuid
+  status          DeletionStatus @default(requested)
+  legalHold       Boolean        @default(false) @map("legal_hold")
+  verifiedBy      String?        @map("verified_by") @db.Uuid
+  verifiedAt      DateTime?      @map("verified_at") @db.Timestamptz(3)
+  completedAt     DateTime?      @map("completed_at") @db.Timestamptz(3)
+  rejectedReason  String?        @map("rejected_reason")
+  /// Failed erasure runs; a request that failed runs after untried ones.
+  attempts        Int            @default(0)
+  /// A short error code (never content) from the last failed run.
+  lastErrorCode   String?        @map("last_error_code")
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  client       Client       @relation(fields: [subjectClientId, organizationId], references: [id, organizationId])
+  subject      User?        @relation("DeletionSubject", fields: [subjectUserId], references: [id])
+  requester    User         @relation("DeletionRequester", fields: [requestedBy], references: [id])
+  verifier     User?        @relation("DeletionVerifier", fields: [verifiedBy], references: [id])
+
+  @@index([status, createdAt])
+  @@index([organizationId])
+  @@index([subjectClientId, createdAt])
+  @@map("deletion_requests")
+}
+
+/// Explicit, audited platform-admin access to one client's data (S5-3, D-006 roles, D-008 #19): a reason and a
+/// 24-hour expiry. Without an unexpired, unrevoked grant an admin can't read client data. The organization may read
+/// its grants; only system scope writes them (RLS, migration 000030).
+model SupportAccessGrant {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  adminUserId    String    @map("admin_user_id") @db.Uuid
+  clientId       String    @map("client_id") @db.Uuid
+  reason         String
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt      DateTime? @map("revoked_at") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  admin        User         @relation("SupportAdmin", fields: [adminUserId], references: [id])
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@index([adminUserId, clientId, expiresAt])
+  @@index([organizationId])
+  @@map("support_access_grants")
 }

@@ -59,7 +59,7 @@ Deployment is deferred (the founder will add it later). `render.yaml` is written
 
 1. Create the Render account and connect the GitHub repository.
 2. **New > Blueprint**, select `render.yaml`. It creates `web`, `worker`, the `kinetic-db` Postgres and the `kinetic-shared` env group.
-3. Fill the `sync: false` values in the dashboard: `DATABASE_URL` (set in step 5), `BETTER_AUTH_SECRET`, `ORG_COOKIE_SECRET`, `BETTER_AUTH_URL`, `APP_BASE_URL` (the real service URL; never a hardcoded domain), `EMAIL_FROM`, `RESEND_API_KEY`, `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, `ANALYTICS_HASH_SECRET`. Generate secrets with a password manager or `openssl rand -hex 32`. The worker refuses to boot in production without `RESEND_API_KEY` and `EMAIL_FROM` (there is no dev-sink fallback in production). Permanently failed outbox rows and job handler errors are reported to Sentry when `SENTRY_DSN` is set.
+3. Fill the `sync: false` values in the dashboard: `DATABASE_URL` (set in step 5), `BETTER_AUTH_SECRET`, `ORG_COOKIE_SECRET`, `BETTER_AUTH_URL`, `APP_BASE_URL` (the real service URL; never a hardcoded domain), `EMAIL_FROM`, `RESEND_API_KEY`, `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, `ANALYTICS_HASH_SECRET`, the export bucket (`S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION`; the bucket must be private), `EXPORT_LINK_SECRET`, and `POSTHOG_KEY` / `POSTHOG_HOST` when analytics should be on (`ANALYTICS_HASH_SECRET` is then required). Generate secrets with a password manager or `openssl rand -hex 32`. The worker refuses to boot in production without `RESEND_API_KEY` and `EMAIL_FROM` (there is no dev-sink fallback in production). Permanently failed outbox rows and job handler errors are reported to Sentry when `SENTRY_DSN` is set.
 4. The first deploy runs `preDeployCommand` as the owner (`MIGRATION_DATABASE_URL` is wired from the database): `prisma migrate deploy`, then `pgboss:migrate`. Until step 5 is done the services cannot boot in production; that is expected.
 5. As the owner, run `app-role.sql` (command above, against the database's external connection string; allow your IP in the database access list). **Confirm Render allows creating the role; if it does not, stop and escalate.** Then set `DATABASE_URL` in `kinetic-shared` to the `kinetic_app` connection string and redeploy both services.
 6. **Verify role refusal**: temporarily set `DATABASE_URL` to the owner string and redeploy `web`; boot must fail with `Unsafe database role`. Restore the `kinetic_app` string.
@@ -76,10 +76,50 @@ Post-pilot target (option b): run migrations from CI with the owner URL stored o
 - **Migrations are forward-only.** Never edit an applied migration. To undo a schema change, ship a new migration, and keep each release compatible with the previous schema for one deploy (expand, then contract).
 - **Secrets**: rotate by changing the dashboard value and redeploying. Rotate the runtime password by re-running `app-role.sql` with the new password, then updating `DATABASE_URL`.
 
-## Backups and restore: placeholder
+## Background jobs (worker)
 
-To be completed once the database exists:
+All jobs are pg-boss queues created by `pgboss:migrate`; scheduled ones are registered on boot. Every job is idempotent, so an overlapping or repeated run changes nothing.
 
-- Backup schedule and retention: backups expire within 35 days (D-010).
-- Restore drill: restore into a scratch database, run `assertRuntimeRole` against it, run the smoke spec.
-- Record the owner of this procedure and the date of the last successful restore drill here.
+| Job | Schedule | What it does |
+| --- | --- | --- |
+| `email.deliver` | outbox sweep (`OUTBOX_POLL_INTERVAL_MS`) | Sends queued emails with retries. |
+| `pauses.end` | every 10 min | Ends pauses whose resume date arrived in the client's zone. |
+| `checkins.issue` | every 10 min | Issues weekly check-ins at 06:00 client-local. |
+| `review.sweep` | every 10 min | Marks missed/incomplete sessions, reopens snoozes, raises and auto-resolves review flags. |
+| `exports.build` | every minute | Builds requested exports into the private bucket (3 attempts). |
+| `deletions.run` | every minute | Runs verified deletion requests not on legal hold. |
+
+A stuck job shows in the worker logs (`... failed`, never with content) and in Sentry. Re-running is safe.
+
+## Exports
+
+Exports are CSV objects under `exports/{organizationId}/{jobId}/` in the private bucket. Users download them only through `/api/v1/exports/:id/files/:name` with a 15-minute link bound to their account; the app re-checks the requester on every download. Files are offered for 7 days. **Lifecycle:** configure the bucket to delete `exports/` objects after 8 days (not automated by the app yet).
+
+## Deletion requests (Journey E)
+
+1. A client (portal Profile) or an owner (client Overview) requests deletion. The owner is emailed; the request is audited.
+2. A platform admin opens `/admin`, checks the request (account lookup helps), and either **Verify and run**, **Reject** with a reason, or sets a **legal hold** (which stops the run until cleared).
+3. Within a minute `deletions.run` erases the client's data in that workspace: workouts, logged sets and their revisions, check-ins, messages, flags, notes, pauses, invites, exports and the membership. The client row stays as "Deleted client" because immutable program history points at it. The user account is anonymized and signed out only when it has no other membership; other workspaces are never touched. Audit rows stay (they hold ids and actions only).
+4. Target: done within 30 days of the request (D-008 #16). Backups expire within 35 days, so the data is gone from backups after that.
+
+## Support access
+
+A platform admin can read a client's data only after granting themselves access on `/admin` with a reason; a grant lasts 24 hours and can be revoked. Every grant, revoke and read is audited against the client's organization. Platform admins are set in the database (`users.is_platform_admin`) by the owner of the database.
+
+## Performance check
+
+`pnpm perf:dashboard` seeds a throwaway organization with 50 clients and times the dashboard's data load (p50/p75/p95 over 40 runs; fails above a 2.5 s p75). Run it with `DATABASE_URL` pointing at Postgres 16. Last result (2026-10-30, local container): p75 19 ms.
+
+## Backups and restore
+
+Render Postgres takes daily backups; retention must stay at or under 35 days (D-010). Restore drill (do it before the pilot, then quarterly):
+
+1. In the Render dashboard, restore the latest backup to a **new** database (never over the live one).
+2. Run `app-role.sql` against it (owner connection), then `assertRuntimeRole` through a local `pnpm dev` pointed at the restored `kinetic_app` URL; the app must boot.
+3. Spot-check counts against the live database (clients, sessions, set logs) and sign in as a test coach.
+4. Run the smoke workflow against a temporary web service pointed at the restored database, then delete the scratch database and service.
+5. Record the date, the backup's timestamp, the person and any problems below.
+
+| Date | Backup restored | By | Result |
+| --- | --- | --- | --- |
+| — | — | — | Not run yet (no hosted database exists). |
