@@ -2,10 +2,18 @@
 
 const supported = () => typeof navigator !== 'undefined' && 'serviceWorker' in navigator;
 
-/** Registers the portal service worker (S3-3). Does nothing where service workers are unavailable. */
+/** This build's id (next.config.ts): the worker names its asset cache after it. */
+const BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID ?? 'dev';
+
+/**
+ * Registers the portal service worker (S3-3). Does nothing where service workers are unavailable. The script URL
+ * carries the build id, so each deploy installs a new worker even though `sw.js` itself is unchanged.
+ */
 export function registerServiceWorker(): void {
   if (!supported()) return;
-  void navigator.serviceWorker.register('/sw.js', { scope: '/portal' }).catch(() => undefined);
+  void navigator.serviceWorker
+    .register(`/sw.js?build=${encodeURIComponent(BUILD_ID)}`, { scope: '/portal' })
+    .catch(() => undefined);
 }
 
 async function post(message: Record<string, unknown>): Promise<void> {

@@ -74,6 +74,12 @@ async function startToday(portal: Page): Promise<string> {
       { timeout: 30_000 },
     )
     .toBe(true);
+  // The asset cache is named after this build (the worker is registered as /sw.js?build=<id>), not a fixed version.
+  const assetCaches = (await portal.evaluate(() => caches.keys())).filter((n) =>
+    n.startsWith('kinetic-assets-'),
+  );
+  expect(assetCaches).toHaveLength(1);
+  expect(assetCaches[0]).not.toMatch(/^kinetic-assets-(v1|dev)$/);
   return sessionId;
 }
 

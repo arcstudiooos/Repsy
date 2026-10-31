@@ -15,17 +15,63 @@
  * device is online: a portal navigation that the server redirects or refuses deletes the stored pages (PR #2
  * re-review residual 1).
  */
-const VERSION = 'v1';
-const PAGES = `kinetic-pages-${VERSION}`;
-const ASSETS = `kinetic-assets-${VERSION}`;
+// Stored pages are the user's and outlive a deploy (an in-progress workout must still open offline). Build assets are
+// per build: the app registers this worker as /sw.js?build=<id>, so each deploy installs a new worker with its own
+// asset cache, and activation drops the old ones (PR #2 review follow-up: they grew with every deploy).
+const PAGES = 'kinetic-pages-v1';
+const BUILD = (new URL(self.location.href).searchParams.get('build') || 'dev')
+  .replace(/[^A-Za-z0-9_-]/g, '')
+  .slice(0, 40);
+const ASSETS = `kinetic-assets-${BUILD}`;
+const ASSET_PREFIX = 'kinetic-assets-';
+// A stored workout page not opened again in this long (an abandoned session) is dropped on the next activation.
+const STALE_PAGE_MS = 14 * 24 * 60 * 60 * 1000;
 
 self.addEventListener('install', () => self.skipWaiting());
+
+/**
+ * On activation: drops workout pages stored longer ago than STALE_PAGE_MS; carries over from older asset caches only
+ * what the remaining stored pages reference (so they still hydrate offline), then deletes those caches and any other
+ * stale kinetic-* cache.
+ */
+async function tidyCaches() {
+  const pages = await caches.open(PAGES);
+  const needed = new Set();
+  const now = Date.now();
+  for (const req of await pages.keys()) {
+    const res = await pages.match(req);
+    if (!res) continue;
+    const path = new URL(req.url).pathname;
+    const stored = Date.parse(res.headers.get('date') || '');
+    if (isWorkoutPage(path) && Number.isFinite(stored) && now - stored > STALE_PAGE_MS) {
+      await pages.delete(req);
+      continue;
+    }
+    for (const u of assetsIn(await res.clone().text())) needed.add(u);
+  }
+  const assets = await caches.open(ASSETS);
+  for (const key of await caches.keys()) {
+    if (!key.startsWith('kinetic-') || key === PAGES || key === ASSETS) continue;
+    if (key.startsWith(ASSET_PREFIX)) {
+      const old = await caches.open(key);
+      for (const req of await old.keys()) {
+        const path = new URL(req.url).pathname;
+        if (!needed.has(path) || (await assets.match(req))) continue;
+        const hit = await old.match(req);
+        if (hit) await assets.put(req, hit);
+      }
+    }
+    await caches.delete(key);
+  }
+}
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
-      for (const key of await caches.keys()) {
-        if (key.startsWith('kinetic-') && key !== PAGES && key !== ASSETS) await caches.delete(key);
+      try {
+        await tidyCaches();
+      } catch {
+        // Storage trouble: the worker still takes over; the next activation tidies.
       }
       await self.clients.claim();
     })(),
@@ -56,9 +102,12 @@ async function store(cacheName, url) {
   }
 }
 
+/** The build asset paths a page's HTML references. */
+const assetsIn = (html) => new Set(html.match(/\/_next\/static\/[^"'\s)\\]+/g) || []);
+
 /** Every build asset a stored page references (scripts, styles, fonts), so the page hydrates offline. */
 async function storeAssetsOf(html) {
-  const found = new Set(html.match(/\/_next\/static\/[^"'\s)\\]+/g) || []);
+  const found = assetsIn(html);
   const cache = await caches.open(ASSETS);
   await Promise.all(
     [...found].map(async (u) => {
