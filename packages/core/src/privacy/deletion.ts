@@ -192,6 +192,8 @@ export async function eraseClientData(
   await tx.internalNote.deleteMany({ where: inClient });
   await tx.metricEntryRevision.deleteMany({ where: inClient });
   await tx.metricEntry.deleteMany({ where: inClient });
+  await tx.habitLog.deleteMany({ where: inClient });
+  await tx.habit.deleteMany({ where: inClient });
   await tx.clientPause.deleteMany({ where: inClient });
   const inviteIds = (await tx.clientInvite.findMany({ where: inClient, select: { id: true } })).map(
     (i) => i.id,

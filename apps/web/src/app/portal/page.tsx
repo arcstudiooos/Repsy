@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ShieldCheck } from 'lucide-react';
-import { getPortalHome } from '@kinetic/core';
+import { getPortalHome, listHabits } from '@kinetic/core';
+import { HabitChecklist } from '@/components/habits/HabitChecklist';
 import { PausedBanner } from '@/components/portal/PausedBanner';
 import { EmptyState } from '@/components/states/EmptyState';
 import { LoggedByCoachBadge, SessionStateBadge } from '@/components/sessions/SessionStateBadge';
@@ -15,9 +16,10 @@ export const metadata: Metadata = { title: 'Home | Kinetic' };
 
 // Access is enforced by src/proxy.ts and the portal layout's client gate.
 export default async function PortalHome() {
-  const { org, home } = await withPortalTenant(async (tx, actor) => ({
+  const { org, home, habits } = await withPortalTenant(async (tx, actor) => ({
     org: await tx.organization.findFirst({ where: { id: actor.orgId }, select: { name: true } }),
     home: await getPortalHome(tx, actor),
+    habits: await listHabits(tx, actor, actor.clientId as string),
   }));
   const next = home.nextWorkout;
   const { week } = home;
@@ -86,6 +88,8 @@ export default async function PortalHome() {
         ) : (
           <EmptyState title="No upcoming workouts" body="Your coach will add more soon." />
         )}
+
+        <HabitChecklist view={habits} />
 
         {week.total > 0 && (
           <Card>

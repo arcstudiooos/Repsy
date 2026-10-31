@@ -316,6 +316,30 @@ async function metricRows(tx: TenantTx, clientId?: string): Promise<Rows> {
   ]);
 }
 
+async function habitRows(tx: TenantTx, clientId?: string): Promise<Rows> {
+  const logs = await tx.habitLog.findMany({
+    where: clientId ? { clientId } : {},
+    orderBy: [{ clientId: 'asc' }, { localDate: 'asc' }],
+    select: {
+      clientId: true,
+      localDate: true,
+      value: true,
+      habit: { select: { title: true, isTask: true, targetCount: true, unit: true } },
+    },
+  });
+  return logs.map((l) => [
+    l.clientId,
+    l.habit.title,
+    l.habit.isTask ? 'task' : 'habit',
+    fromDbDate(l.localDate),
+    l.value,
+    l.habit.targetCount,
+    l.habit.unit,
+  ]);
+}
+
+const HABIT_HEADER = ['client_id', 'habit', 'kind', 'local_date', 'value', 'target', 'unit'];
+
 const METRIC_HEADER = [
   'client_id',
   'metric',
@@ -359,8 +383,8 @@ const CHECKIN_HEADER = [
 ];
 
 /**
- * The CSVs of one export (Ruling 3). Organization: clients, sessions, set logs, check-ins, body metrics. Client: their
- * profile, sessions, set logs, check-ins, body metrics and their own conversation. Internal notes are never exported to a client.
+ * The CSVs of one export (Ruling 3). Organization: clients, sessions, set logs, check-ins, body metrics, habits. Client:
+ * their profile, sessions, set logs, check-ins, body metrics, habits and their own conversation. Internal notes are never exported to a client.
  */
 export async function buildExportFiles(
   tx: TenantTx,
@@ -414,6 +438,7 @@ export async function buildExportFiles(
       file('set_logs.csv', SET_HEADER, sets),
       file('checkins.csv', CHECKIN_HEADER, await checkinRows(tx)),
       file('metrics.csv', METRIC_HEADER, await metricRows(tx)),
+      file('habits.csv', HABIT_HEADER, await habitRows(tx)),
     ];
   }
   const clientId = job.clientId as string;
@@ -459,6 +484,7 @@ export async function buildExportFiles(
     file('set_logs.csv', SET_HEADER, sets),
     file('checkins.csv', CHECKIN_HEADER, await checkinRows(tx, clientId)),
     file('metrics.csv', METRIC_HEADER, await metricRows(tx, clientId)),
+    file('habits.csv', HABIT_HEADER, await habitRows(tx, clientId)),
     file(
       'messages.csv',
       ['sent_at', 'from', 'body', 'read_at'],

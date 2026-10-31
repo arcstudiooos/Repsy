@@ -27,6 +27,7 @@ import {
   type ClientWorld,
 } from '../sessions/fixtures.test-helpers';
 import { eraseClientData, requestDeletion } from './deletion';
+import { createHabit, logHabit } from '../habits/habits';
 import { recordMetric } from '../progress/metrics';
 import { todayInZone } from '../timezone';
 
@@ -88,6 +89,10 @@ async function busyClient(): Promise<ClientWorld> {
   await runAs(prisma, w.client, (tx) => sendMessage(tx, w.client, thread.id, { body: 'Hello' }));
   await runAs(prisma, w.coach, (tx) => createNote(tx, w.coach, w.clientId, { body: 'Note' }));
   const measuredOn = todayInZone('America/New_York', NOW);
+  const habit = await runAs(prisma, w.coach, (tx) =>
+    createHabit(tx, w.coach, w.clientId, { title: 'Walk', startDate: measuredOn }, { now: NOW }),
+  );
+  await runAs(prisma, w.client, (tx) => logHabit(tx, w.client, habit.id, {}, { now: NOW }));
   for (const value of [70, 71]) {
     await runAs(prisma, w.client, (tx) =>
       recordMetric(tx, w.client, w.clientId, { metric: 'weight', measuredOn, value }, { now: NOW }),
@@ -107,6 +112,8 @@ const counts = (w: ClientWorld) =>
     notes: await tx.internalNote.count({ where: { clientId: w.clientId } }),
     metrics: await tx.metricEntry.count({ where: { clientId: w.clientId } }),
     metricRevisions: await tx.metricEntryRevision.count({ where: { clientId: w.clientId } }),
+    habits: await tx.habit.count({ where: { clientId: w.clientId } }),
+    habitLogs: await tx.habitLog.count({ where: { clientId: w.clientId } }),
     assignments: await tx.programAssignment.count({ where: { clientId: w.clientId } }),
   }));
 
@@ -127,6 +134,8 @@ describe('deletion (S5-3)', () => {
       notes: 1,
       metrics: 1,
       metricRevisions: 1,
+      habits: 1,
+      habitLogs: 1,
     });
     const id = await verifiedRequest(w);
     const first = await sys((tx) => eraseClientData(tx, id, NOW));
@@ -139,6 +148,8 @@ describe('deletion (S5-3)', () => {
       notes: 0,
       metrics: 0,
       metricRevisions: 0,
+      habits: 0,
+      habitLogs: 0,
       assignments: 0,
     });
     const after = await sys(async (tx) => ({

@@ -374,6 +374,20 @@ const CASES: [string, Insert][] = [
       }),
   ],
   [
+    'habits -> clients',
+    (tx, own, parent) =>
+      tx.habit.create({
+        data: {
+          organizationId: own.orgId,
+          clientId: parent.clientId,
+          title: 'Walk',
+          daysPerWeek: 7,
+          startDate: new Date('2026-11-01T00:00:00Z'),
+          createdByUserId: own.userId,
+        },
+      }),
+  ],
+  [
     'metric_entries -> clients',
     (tx, own, parent) =>
       tx.metricEntry.create({

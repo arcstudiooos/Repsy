@@ -315,6 +315,57 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+  /clients/{id}/habits:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Progress]
+      summary: "Habits and tasks with recent ticks, streaks and completion (PRD G1-G3). A client reads only their own."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Progress]
+      summary: "A coach assigns a habit (repeats on N days a week) or a one-off task."
+      requestBody:
+        content: { application/json: { schema: { type: object, required: [title] } } }
+      responses:
+        '201': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+  /habits/{id}/status:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [Progress]
+      summary: "Archive or restore a habit or task (coach)."
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { status: { type: string, enum: [active, archived] } } } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /habits/{id}/log:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Progress]
+      summary: "Tick a habit for today or the two days before, untick with done=false, or mark a task done."
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { localDate: { type: string, format: date }, value: { type: integer }, done: { type: boolean } } } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
   /clients/{id}/timeline:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }

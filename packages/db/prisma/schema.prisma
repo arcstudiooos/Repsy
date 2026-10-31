@@ -90,6 +90,7 @@ model User {
   recordedMetrics          MetricEntry[]           @relation("MetricRecorder")
   metricRevisions          MetricEntryRevision[]   @relation("MetricReviser")
   reviewedCheckins         Checkin[]               @relation("CheckinReviewer")
+  createdHabits            Habit[]                 @relation("HabitCreator")
   exportJobs               ExportJob[]             @relation("ExportRequester")
   deletionSubjects         DeletionRequest[]       @relation("DeletionSubject")
   deletionRequested        DeletionRequest[]       @relation("DeletionRequester")
@@ -202,6 +203,8 @@ model Organization {
   supportAccessGrants     SupportAccessGrant[]
   metricEntries           MetricEntry[]
   metricEntryRevisions    MetricEntryRevision[]
+  habits                  Habit[]
+  habitLogs               HabitLog[]
 
   @@map("organizations")
 }
@@ -325,6 +328,8 @@ model Client {
   supportGrants   SupportAccessGrant[]
   metricEntries   MetricEntry[]
   metricEntryRevisions MetricEntryRevision[]
+  habits          Habit[]
+  habitLogs       HabitLog[]
 
   @@unique([organizationId, email])
   @@unique([organizationId, userId])
@@ -1019,6 +1024,70 @@ model MetricEntryRevision {
   @@index([organizationId])
   @@index([clientId])
   @@map("metric_entry_revisions")
+}
+
+enum HabitStatus {
+  active
+  archived
+
+  @@map("habit_status")
+}
+
+/// A habit or one-off task a coach assigns to one client (PRD G1, G3). A habit repeats on `daysPerWeek` days (7 =
+/// daily) from `startDate` until `endDate`; a task (`isTask`) is done once by `dueDate`. Ranges are CHECKs in the
+/// migration.
+model Habit {
+  id              String      @id @default(uuid()) @db.Uuid
+  organizationId  String      @map("organization_id") @db.Uuid
+  clientId        String      @map("client_id") @db.Uuid
+  title           String
+  isTask          Boolean     @default(false) @map("is_task")
+  /// Habits only: how many days a week (1-7).
+  daysPerWeek     Int?        @map("days_per_week")
+  /// Optional amount per day ("8" glasses); null = a simple done/not done.
+  targetCount     Int?        @map("target_count")
+  unit            String?
+  startDate       DateTime    @map("start_date") @db.Date
+  endDate         DateTime?   @map("end_date") @db.Date
+  /// Tasks only.
+  dueDate         DateTime?   @map("due_date") @db.Date
+  status          HabitStatus @default(active)
+  createdByUserId String      @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  createdBy    User         @relation("HabitCreator", fields: [createdByUserId], references: [id])
+  logs         HabitLog[]
+
+  /// Target of habit_logs' composite tenant FK.
+  @@unique([id, organizationId])
+  @@index([clientId, status])
+  @@index([organizationId])
+  @@map("habits")
+}
+
+/// One day's tick on a habit (or the completion of a task), on the client-local date (PRD G1): unique per habit and
+/// day, so a double tap never counts twice. Unticking deletes the row.
+model HabitLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  clientId       String   @map("client_id") @db.Uuid
+  habitId        String   @map("habit_id") @db.Uuid
+  localDate      DateTime @map("local_date") @db.Date
+  /// 1 for a simple tick; the amount for a habit with a target.
+  value          Int      @default(1)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  habit        Habit        @relation(fields: [habitId, organizationId], references: [id, organizationId])
+
+  @@unique([habitId, localDate])
+  @@index([clientId, localDate])
+  @@index([organizationId])
+  @@map("habit_logs")
 }
 
 enum ExportScope {

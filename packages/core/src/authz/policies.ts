@@ -28,6 +28,9 @@ export type Action =
   | 'analytics:read'
   | 'metric:read'
   | 'metric:write'
+  | 'habit:read'
+  | 'habit:manage'
+  | 'habit:log'
   | 'export:org'
   | 'export:self';
 
@@ -62,6 +65,10 @@ const POLICY: Record<Action, readonly Role[]> = {
   // Body metrics (PRD E1): clients too, scoped by core to their own record.
   'metric:read': ['owner', 'coach', 'client'],
   'metric:write': ['owner', 'coach', 'client'],
+  // Habits and tasks (PRD G1-G3): coaches assign them; clients tick their own (core scopes a client to their record).
+  'habit:read': ['owner', 'coach', 'client'],
+  'habit:manage': ['owner', 'coach'],
+  'habit:log': ['owner', 'coach', 'client'],
   // D-010 #4: the owner exports the organization; a client exports their own data.
   'export:org': ['owner'],
   'export:self': ['client'],

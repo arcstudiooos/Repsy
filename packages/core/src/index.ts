@@ -264,6 +264,19 @@ export {
 } from './progress/metrics';
 export { duplicateTemplate, setTemplateArchived, copyTitle } from './programs/library';
 export {
+  listHabits,
+  createHabit,
+  setHabitStatus,
+  logHabit,
+  summarizeHabit,
+  HABIT_HISTORY_DAYS,
+  HABIT_BACKFILL_DAYS,
+  HABIT_TITLE_MAX,
+  type HabitView,
+  type HabitsView,
+  type CreateHabitInput,
+} from './habits/habits';
+export {
   listNotes,
   createNote,
   updateNote,
