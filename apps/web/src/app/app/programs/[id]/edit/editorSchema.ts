@@ -4,7 +4,7 @@ import { TRACKING_TYPES, type TrackingType } from '@kinetic/core/exercise-option
 import { fromDisplay, toDisplay, type Units } from '@kinetic/core/units';
 
 /** Mirrors the server limits in packages/core/src/programs (commit.ts, targets.ts). */
-const MAX_WEEKS = 16;
+const MAX_WEEKS = 104;
 export const MAX_DAYS = 7;
 const MAX_EXERCISES = 30;
 const MAX_SETS = 20;

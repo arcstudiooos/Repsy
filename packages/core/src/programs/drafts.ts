@@ -6,7 +6,7 @@ import { isUuid } from '../uuid';
 import { MAX_WEEKS, TITLE_MAX } from './commit';
 
 /** Serialized `draftJson` limit (S3-1). */
-export const MAX_DRAFT_BYTES = 262_144;
+export const MAX_DRAFT_BYTES = 1_048_576;
 
 export interface ProgramDraftView {
   baseVersionNo: number | null;

@@ -254,13 +254,26 @@ describe('commitProgramVersion', () => {
     expect((err as DomainError).fieldErrors?.weeks?.length).toBeGreaterThan(0);
   });
 
-  it('bounds: 0 or 17 weeks, 8 days, 31 exercises, 0 exercises -> VALIDATION', async () => {
+  it('a 52-week program commits (PRD C10: up to 104 weeks)', async () => {
+    const actor = await newActor();
+    const { id } = await run(actor, (tx) => createProgram(tx, actor, { title: 'Year' }));
+    const res = await run(actor, (tx) =>
+      commitProgramVersion(tx, actor, {
+        programId: id,
+        expectedVersionNo: null,
+        weeks: grid(52, 4),
+      }),
+    );
+    expect(res.versionNo).toBe(1);
+  });
+
+  it('bounds: 0 or 105 weeks, 8 days, 31 exercises, 0 exercises -> VALIDATION', async () => {
     const actor = await newActor();
     const { id } = await run(actor, (tx) => createProgram(tx, actor, { title: 'P' }));
     const ex = { exerciseId: BENCH, sets: [{ reps: 5 }] };
     for (const weeks of [
       [],
-      grid(17, 1),
+      grid(105, 1),
       grid(1, 8),
       grid(1, 1, () => ({ exercises: Array.from({ length: 31 }, () => ex) })),
       grid(1, 1, () => ({ exercises: [] })),

@@ -440,6 +440,25 @@ export function ProgramEditor({
               )}
             </div>
 
+            {weeks.fields.length > 8 && (
+              <div className="flex items-center gap-2">
+                <label htmlFor="jump-to-week" className="text-sm font-medium">
+                  Go to week
+                </label>
+                <select
+                  id="jump-to-week"
+                  value={activeWeek}
+                  onChange={(e) => setActiveWeek(e.target.value)}
+                  className="min-h-11 rounded-control border border-input-border bg-surface px-3 text-base text-ink"
+                >
+                  {weeks.fields.map((f, w) => (
+                    <option key={f.id} value={String(w)}>
+                      Week {w + 1}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <Tabs value={activeWeek} onValueChange={setActiveWeek}>
               <TabsList ref={tabList} aria-label="Weeks" className="min-w-0">
                 {weeks.fields.map((f, w) => (

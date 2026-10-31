@@ -9,7 +9,7 @@ import { isUuid } from '../uuid';
 import { assertEditableProgram } from './drafts';
 import { targetSchema, type SetTarget } from './targets';
 
-export const MAX_WEEKS = 16;
+export const MAX_WEEKS = 104;
 export const MAX_DAYS_PER_WEEK = 7;
 export const MAX_EXERCISES_PER_DAY = 30;
 export const TITLE_MAX = 120;
