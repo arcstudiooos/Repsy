@@ -258,6 +258,7 @@ export {
   type MetricsView,
   type RecordMetricInput,
 } from './progress/metrics';
+export { duplicateTemplate, setTemplateArchived, copyTitle } from './programs/library';
 export {
   listNotes,
   createNote,

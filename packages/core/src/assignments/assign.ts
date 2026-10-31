@@ -81,9 +81,12 @@ export async function assignProgram(
 
   const template = await tx.program.findFirst({
     where: { id: templateProgramId, kind: 'template' },
-    select: { id: true, title: true, currentVersionId: true },
+    select: { id: true, title: true, currentVersionId: true, status: true },
   });
   if (!template) throw notFound();
+  if (template.status === 'archived') {
+    throw invalid('templateProgramId', 'Restore this program before assigning it.');
+  }
   if (template.currentVersionId === null) {
     throw invalid('templateProgramId', 'Save the program before assigning it.');
   }

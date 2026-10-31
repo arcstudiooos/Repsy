@@ -5,6 +5,7 @@ import { DomainError } from '../errors';
 import { logger } from '../log';
 import type { TrackingType } from '../exercises/options';
 import { decodeCursor, encodeCursor, PAGE_SIZE } from '../pagination';
+import { escapeLike } from '../clients/clients';
 import { isUuid } from '../uuid';
 import { TITLE_MAX } from './commit';
 import { assertEditableProgram } from './drafts';
@@ -150,10 +151,19 @@ export async function renameProgram(
 export async function listPrograms(
   tx: TenantTx,
   actor: ActorContext,
-  query: { kind: 'template'; cursor?: string },
+  query: { kind: 'template'; cursor?: string; q?: string; status?: 'active' | 'archived' },
 ): Promise<{ items: ProgramSummary[]; nextCursor: string | null }> {
   assertCan(actor, 'program:read');
-  const and: Record<string, unknown>[] = [{ kind: query.kind, status: 'active' }];
+  const and: Record<string, unknown>[] = [{ kind: query.kind, status: query.status ?? 'active' }];
+  if (query.q !== undefined) {
+    const q = query.q.trim();
+    if (q.length < 1 || q.length > TITLE_MAX) {
+      throw new DomainError('VALIDATION', 'Some fields are invalid.', {
+        q: [`Use 1-${TITLE_MAX} characters.`],
+      });
+    }
+    and.push({ title: { contains: escapeLike(q), mode: 'insensitive' } });
+  }
   if (query.cursor !== undefined) {
     const c = decodeCursor(query.cursor);
     and.push({

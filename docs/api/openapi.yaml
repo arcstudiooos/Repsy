@@ -389,6 +389,33 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+  /programs/{id}/duplicate:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Programs]
+      summary: "Duplicate a template from its current version as \"Copy of …\" (PRD C13)."
+      responses:
+        '201': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /programs/{id}/archive:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [Programs]
+      summary: "Archive or restore a template; clients already on it keep their copy (PRD C13)."
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object, required: [archived], properties: { archived: { type: boolean } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
   /programs/{id}:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }

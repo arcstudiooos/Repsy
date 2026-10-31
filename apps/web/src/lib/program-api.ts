@@ -69,3 +69,16 @@ export const fetchClientHistory = (clientId: string, exerciseIds: string[]) =>
       .map(encodeURIComponent)
       .join(',')}`,
   );
+
+/** Duplicates a template from its current version (PRD C13). */
+export const duplicateProgram = (id: string) =>
+  call<{ id: string; title: string }>(`/api/v1/programs/${encodeURIComponent(id)}/duplicate`, {
+    method: 'POST',
+  });
+
+/** Archives or restores a template (PRD C13). */
+export const setProgramArchived = (id: string, archived: boolean) =>
+  call<{ id: string; status: 'active' | 'archived' }>(
+    `/api/v1/programs/${encodeURIComponent(id)}/archive`,
+    { method: 'PUT', body: { archived } },
+  );
