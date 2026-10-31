@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
-import { deletionStatusFor } from '@kinetic/core';
+import { clientCompliance, COMPLIANCE_WINDOWS, deletionStatusFor } from '@kinetic/core';
+import { CompliancePercent, WINDOW_LABEL } from '@/components/analytics/Compliance';
 import { DeletionRequestButton } from '@/components/settings/DeletionRequestButton';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';
 import { formatDate } from '../StatusBadge';
 import { loadClient } from './data';
@@ -11,9 +12,10 @@ export const metadata: Metadata = { title: 'Client | Kinetic' };
 
 export default async function ClientOverviewPage({ params }: { params: Promise<{ id: string }> }) {
   const client = await loadClient((await params).id);
-  const { isOwner, deletion } = await withServerTenant(async (tx, actor) => ({
+  const { isOwner, deletion, compliance } = await withServerTenant(async (tx, actor) => ({
     isOwner: actor.role === 'owner',
     deletion: await deletionStatusFor(tx, actor, client.id),
+    compliance: (await clientCompliance(tx, actor, [client.id])).get(client.id) ?? null,
   }));
   const joined = client.joinedAt ? client.joinedAt.slice(0, 10) : null;
   const rows: [string, string][] = [
@@ -58,6 +60,37 @@ export default async function ClientOverviewPage({ params }: { params: Promise<{
           </dl>
         </CardContent>
       </Card>
+      {compliance && (
+        <Card>
+          <CardHeader>
+            <CardTitle as="h2">Adherence</CardTitle>
+            <CardDescription>
+              Completed of due workouts, ending today in the client&apos;s time zone. Paused and
+              cancelled workouts are left out.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <dl className="grid gap-4 sm:grid-cols-3">
+              {COMPLIANCE_WINDOWS.map((days) => {
+                const c = compliance[days];
+                return (
+                  <div key={days}>
+                    <dt className="text-sm text-secondary">Last {WINDOW_LABEL[days]}</dt>
+                    <dd className="text-lg font-semibold">
+                      <CompliancePercent counts={c} />
+                    </dd>
+                    {c.eligible > 0 && (
+                      <dd className="text-sm text-secondary">
+                        {c.skipped} skipped · {c.incomplete} not finished · {c.missed} missed
+                      </dd>
+                    )}
+                  </div>
+                );
+              })}
+            </dl>
+          </CardContent>
+        </Card>
+      )}
       {isOwner && (
         <Card>
           <CardHeader>

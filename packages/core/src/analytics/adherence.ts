@@ -61,8 +61,29 @@ export function parseRange(input: { from?: unknown; to?: unknown }): DateRange {
   return { from, to };
 }
 
-const graceMs = async (tx: TenantTx) =>
+/** The organization's grace period in ms (D-008 #5; default 24h). */
+export const graceMs = async (tx: TenantTx) =>
   ((await tx.organization.findFirst({ select: { graceHours: true } }))?.graceHours ?? 24) * HOUR_MS;
+
+export const emptyAdherence = (): AdherenceCounts => ({
+  completed: 0,
+  eligible: 0,
+  skipped: 0,
+  incomplete: 0,
+  missed: 0,
+});
+
+/**
+ * Adds `n` eligible sessions in `state` to `counts`. A session still `scheduled` or `in_progress` past its window
+ * (the sweep has not run yet) counts as missed or incomplete. Cancelled sessions never reach here.
+ */
+export function addToAdherence(counts: AdherenceCounts, state: string, n: number): void {
+  counts.eligible += n;
+  if (state === 'completed') counts.completed += n;
+  else if (state === 'skipped') counts.skipped += n;
+  else if (state === 'incomplete' || state === 'in_progress') counts.incomplete += n;
+  else if (state === 'missed' || state === 'scheduled') counts.missed += n;
+}
 
 /**
  * Adherence for the organization (S5-1, D-008 clar. 1): completed ÷ eligible sessions scheduled in `range`.
@@ -85,15 +106,9 @@ export async function adherence(
     },
     _count: { _all: true },
   });
-  const n = (s: string) => rows.find((r) => r.state === s)?._count._all ?? 0;
-  return {
-    completed: n('completed'),
-    // A session still `scheduled` or `in_progress` past its window (sweep not run yet) is eligible too.
-    eligible: rows.reduce((sum, r) => sum + r._count._all, 0),
-    skipped: n('skipped'),
-    incomplete: n('incomplete') + n('in_progress'),
-    missed: n('missed') + n('scheduled'),
-  };
+  const counts = emptyAdherence();
+  for (const r of rows) addToAdherence(counts, r.state, r._count._all);
+  return counts;
 }
 
 function median(values: number[]): number | null {

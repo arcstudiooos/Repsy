@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
-import type { ClientView } from '@kinetic/core';
+import type { ClientCompliance, ClientView } from '@kinetic/core';
+import { CompliancePercent } from '@/components/analytics/Compliance';
 import { EmptyState } from '@/components/states/EmptyState';
 import { buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,12 +27,15 @@ function hrefFor(
 
 export function ClientsTable({
   items,
+  compliance,
   nextCursor,
   q,
   status,
   hasCursor,
 }: {
   items: ClientView[];
+  /** Rolling adherence per client id (PRD I5); a client with no entry shows no figures. */
+  compliance: Record<string, ClientCompliance>;
   nextCursor: string | null;
   q: string;
   status: string;
@@ -116,6 +120,21 @@ export function ClientsTable({
                   <th scope="col" className="px-4 py-3 font-medium">
                     Start date
                   </th>
+                  <th scope="col" className="px-4 py-3 font-medium">
+                    <abbr title="Adherence, last 7 days" className="no-underline">
+                      7d
+                    </abbr>
+                  </th>
+                  <th scope="col" className="px-4 py-3 font-medium">
+                    <abbr title="Adherence, last 30 days" className="no-underline">
+                      30d
+                    </abbr>
+                  </th>
+                  <th scope="col" className="px-4 py-3 font-medium">
+                    <abbr title="Adherence, last 90 days" className="no-underline">
+                      90d
+                    </abbr>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -134,6 +153,14 @@ export function ClientsTable({
                       <StatusBadge status={c.status} inviteStatus={c.inviteStatus} />
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap">{formatDate(c.startDate)}</td>
+                    {([7, 30, 90] as const).map((days) => {
+                      const counts = compliance[c.id]?.[days];
+                      return (
+                        <td key={days} className="px-4 py-2">
+                          {counts && <CompliancePercent counts={counts} />}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>
@@ -154,6 +181,16 @@ export function ClientsTable({
                 </div>
                 <p className="text-sm break-all text-secondary">{c.email}</p>
                 <p className="mt-1 text-sm text-secondary">Start date: {formatDate(c.startDate)}</p>
+                {compliance[c.id] && (
+                  <p className="mt-1 text-sm">
+                    <span className="text-secondary">Adherence 7d:</span>{' '}
+                    <CompliancePercent counts={compliance[c.id]![7]} />
+                    <span className="text-secondary"> · 30d:</span>{' '}
+                    <CompliancePercent counts={compliance[c.id]![30]} />
+                    <span className="text-secondary"> · 90d:</span>{' '}
+                    <CompliancePercent counts={compliance[c.id]![90]} />
+                  </p>
+                )}
               </li>
             ))}
           </ul>

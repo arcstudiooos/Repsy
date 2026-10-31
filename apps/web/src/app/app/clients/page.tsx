@@ -1,5 +1,11 @@
 import type { Metadata } from 'next';
-import { DomainError, listClients, type ClientStatus } from '@kinetic/core';
+import {
+  clientCompliance,
+  DomainError,
+  listClients,
+  type ClientCompliance,
+  type ClientStatus,
+} from '@kinetic/core';
 import { EmptyState } from '@/components/states/EmptyState';
 import { ErrorState } from '@/components/states/ErrorState';
 import { withServerTenant } from '@/server/serverActor';
@@ -25,8 +31,17 @@ export default async function ClientsPage({
   const cursor = first(sp.cursor);
 
   let result: Awaited<ReturnType<typeof listClients>>;
+  let compliance: Record<string, ClientCompliance>;
   try {
-    result = await withServerTenant((tx, actor) => listClients(tx, actor, { q, status, cursor }));
+    ({ result, compliance } = await withServerTenant(async (tx, actor) => {
+      const list = await listClients(tx, actor, { q, status, cursor });
+      const byClient = await clientCompliance(
+        tx,
+        actor,
+        list.items.map((c) => c.id),
+      );
+      return { result: list, compliance: Object.fromEntries(byClient) };
+    }));
   } catch (error) {
     // A malformed cursor in the URL is the only user-reachable validation failure.
     if (error instanceof DomainError && error.code === 'VALIDATION') {
@@ -58,6 +73,7 @@ export default async function ClientsPage({
       ) : (
         <ClientsTable
           items={result.items}
+          compliance={compliance}
           nextCursor={result.nextCursor}
           q={q ?? ''}
           status={status ?? ''}

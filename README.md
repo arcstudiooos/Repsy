@@ -28,6 +28,12 @@ Open http://localhost:3000 and sign in as `coach@example.test` (or `admin@exampl
 - `pnpm dev`, `pnpm db:migrate`, `pnpm db:seed`, `pilot-code:create` and `pgboss:migrate` read the root `.env` (Node's built-in env-file loader; variables already set in the shell win). `pnpm test` does not.
 - `pnpm db:down` stops the container (data persists in a named volume).
 
+## What works locally (R2, in progress)
+
+R2 builds the web-platform features in `docs/competitive/complete-platform-prd.md`, one per PR.
+
+- **I5 per-client adherence:** the client list shows each client's adherence over the last 7, 30 and 90 days (completed of due workouts, ending today in the client's time zone), and the client Overview has an Adherence card with skipped, not finished and missed counts. Same rules as `/app/analytics`: paused and cancelled workouts are left out, and nothing due reads "No sessions due yet".
+
 ## What works locally (Sprint 5)
 
 - `/app/analytics`: adherence (completed of eligible workouts, with skipped, not finished and missed shown separately; paused and cancelled excluded), assigned vs finished, check-in response rate, due check-ins and median time to follow-up, each with its numerator, denominator and period.
