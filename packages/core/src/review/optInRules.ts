@@ -38,11 +38,17 @@ interface OrgRuleSettings {
   enabled: Set<OptInRule>;
   replyTargetHours: number | null;
   weightChangeBandPct: number | null;
+  clientsCanMoveWorkouts: boolean;
 }
 
 async function orgSettings(tx: TenantTx): Promise<OrgRuleSettings> {
   const org = await tx.organization.findFirst({
-    select: { reviewRules: true, replyTargetHours: true, weightChangeBandPct: true },
+    select: {
+      reviewRules: true,
+      replyTargetHours: true,
+      weightChangeBandPct: true,
+      clientsCanMoveWorkouts: true,
+    },
   });
   return {
     enabled: new Set(
@@ -52,6 +58,7 @@ async function orgSettings(tx: TenantTx): Promise<OrgRuleSettings> {
     ),
     replyTargetHours: org?.replyTargetHours ?? null,
     weightChangeBandPct: org?.weightChangeBandPct ?? null,
+    clientsCanMoveWorkouts: org?.clientsCanMoveWorkouts ?? false,
   };
 }
 
@@ -289,6 +296,8 @@ export async function staleOptInFlags(tx: TenantTx, now: Date): Promise<string[]
 
 export interface ReviewRuleSettings {
   enabled: OptInRule[];
+  /** PRD D14: clients may move a workout within its week. */
+  clientsCanMoveWorkouts: boolean;
   weightChangeBandPct: number | null;
   /** reply_overdue needs the organization's usual reply time (Settings, Messaging). */
   replyTargetHours: number | null;
@@ -302,6 +311,7 @@ export async function getReviewRuleSettings(
   const s = await orgSettings(tx);
   return {
     enabled: OPT_IN_RULES.filter((r) => s.enabled.has(r)),
+    clientsCanMoveWorkouts: s.clientsCanMoveWorkouts,
     weightChangeBandPct: s.weightChangeBandPct,
     replyTargetHours: s.replyTargetHours,
   };
@@ -311,7 +321,7 @@ export async function getReviewRuleSettings(
 export async function updateReviewRuleSettings(
   tx: TenantTx,
   actor: ActorContext,
-  input: { enabled: unknown; weightChangeBandPct?: unknown },
+  input: { enabled: unknown; weightChangeBandPct?: unknown; clientsCanMoveWorkouts?: unknown },
 ): Promise<ReviewRuleSettings> {
   assertCan(actor, 'settings:org:update');
   const invalid = (field: string, message: string) =>
@@ -341,14 +351,33 @@ export async function updateReviewRuleSettings(
       );
     }
   }
+  if (
+    input.clientsCanMoveWorkouts !== undefined &&
+    typeof input.clientsCanMoveWorkouts !== 'boolean'
+  ) {
+    throw invalid('clientsCanMoveWorkouts', 'Use true or false.');
+  }
   const current = await orgSettings(tx);
+  const moves =
+    typeof input.clientsCanMoveWorkouts === 'boolean'
+      ? input.clientsCanMoveWorkouts
+      : current.clientsCanMoveWorkouts;
   const nextBand = band === undefined ? current.weightChangeBandPct : band;
   if (enabled.includes('weight_change') && nextBand === null) {
     throw invalid('weightChangeBandPct', 'Set a percentage to use the weight change rule.');
   }
   await tx.organization.update({
     where: { id: actor.orgId },
-    data: { reviewRules: enabled, ...(band !== undefined ? { weightChangeBandPct: band } : {}) },
+    data: {
+      reviewRules: enabled,
+      clientsCanMoveWorkouts: moves,
+      ...(band !== undefined ? { weightChangeBandPct: band } : {}),
+    },
   });
-  return { enabled, weightChangeBandPct: nextBand, replyTargetHours: current.replyTargetHours };
+  return {
+    enabled,
+    clientsCanMoveWorkouts: moves,
+    weightChangeBandPct: nextBand,
+    replyTargetHours: current.replyTargetHours,
+  };
 }

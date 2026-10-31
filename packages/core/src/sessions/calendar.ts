@@ -5,6 +5,7 @@ import { DomainError } from '../errors';
 import { localDayBounds } from '../schedule/scheduleSlots';
 import { todayInZone } from '../timezone';
 import { isUuid } from '../uuid';
+import { raiseFlag } from '../review/rules';
 import { fromDbDate, sessionScope, summarize, SUMMARY_SELECT, toDbDate } from './read';
 import type { SessionState } from './types';
 
@@ -51,6 +52,15 @@ export interface ClientCalendar {
   checkins: CalendarCheckin[];
   /** The open pause, if any; workouts cannot be moved while it lasts. */
   pause: { startLocalDate: string; resumeLocalDate: string } | null;
+  /** How far the viewer may move a workout: anywhere ahead (coach), within its own week (client, PRD D14), or not. */
+  moveLimit: 'any' | 'week' | 'none';
+}
+
+/** Monday and Sunday (YYYY-MM-DD) of the ISO week containing `d`. */
+export function weekOf(d: string): { monday: string; sunday: string } {
+  const dow = toDbDate(d).getUTCDay();
+  const monday = addDays(d, -((dow + 6) % 7));
+  return { monday, sunday: addDays(monday, 6) };
 }
 
 function monthGrid(month: string): { gridStart: string; gridEnd: string } {
@@ -114,7 +124,16 @@ export async function getClientCalendar(
     select: SUMMARY_SELECT,
   });
   const summaries = await summarize(tx, rows, now);
-  const canMove = actor.role !== 'client' && pause === null;
+  const org = await tx.organization.findFirst({ select: { clientsCanMoveWorkouts: true } });
+  const moveLimit: ClientCalendar['moveLimit'] =
+    pause !== null
+      ? 'none'
+      : actor.role !== 'client'
+        ? 'any'
+        : org?.clientsCanMoveWorkouts
+          ? 'week'
+          : 'none';
+  const canMove = moveLimit !== 'none';
   const workouts: CalendarWorkout[] = summaries.map((s) => ({
     id: s.id,
     date: s.scheduledLocalDate,
@@ -158,6 +177,7 @@ export async function getClientCalendar(
     workouts,
     checkins,
     pause,
+    moveLimit,
   };
 }
 
@@ -174,14 +194,22 @@ export async function rescheduleSession(
   input: { toLocalDate: string; shiftLater?: boolean },
   opts: { now?: Date; requestId?: string } = {},
 ): Promise<{ moved: number; deltaDays: number }> {
-  assertCan(actor, 'assignment:write');
+  assertCan(actor, 'session:log');
+  const isClient = actor.role === 'client';
+  if (isClient) {
+    const org = await tx.organization.findFirst({ select: { clientsCanMoveWorkouts: true } });
+    if (!org?.clientsCanMoveWorkouts) {
+      throw new DomainError('FORBIDDEN', 'Your coach has not turned on moving workouts.');
+    }
+    if (input.shiftLater) throw invalid('shiftLater', 'Move one workout at a time.');
+  }
   if (!isUuid(sessionId)) throw notFound();
   const to = input.toLocalDate;
   if (typeof to !== 'string' || !DATE.test(to) || fromDbDate(toDbDate(to)) !== to) {
     throw invalid('toLocalDate', 'Use YYYY-MM-DD.');
   }
   const session = await tx.workoutSession.findFirst({
-    where: { id: sessionId, state: { not: 'cancelled' } },
+    where: { id: sessionId, ...sessionScope(actor), state: { not: 'cancelled' } },
     select: {
       id: true,
       clientId: true,
@@ -209,6 +237,12 @@ export async function rescheduleSession(
     throw new DomainError('CONFLICT', 'This workout is already past its day.');
   }
   if (to < today) throw invalid('toLocalDate', 'Pick today or a later day.');
+  if (isClient) {
+    const week = weekOf(from);
+    if (to < week.monday || to > week.sunday) {
+      throw invalid('toLocalDate', 'Pick a day in the same week (Monday to Sunday).');
+    }
+  }
   if (daysBetween(today, to) > RESCHEDULE_MAX_DAYS_AHEAD) {
     throw invalid('toLocalDate', 'Pick a day within two years.');
   }
@@ -243,5 +277,16 @@ export async function rescheduleSession(
     metadata: { from, to, deltaDays: delta, moved: targets.length },
     requestId: opts.requestId,
   });
+  if (isClient) {
+    // PRD D14: the coach hears about it in the review queue.
+    await raiseFlag(tx, {
+      clientId: session.clientId,
+      ruleKey: 'workout_moved',
+      sourceType: 'session',
+      sourceId: session.id,
+      dedupeKey: `workout_moved:${session.id}:${to}`,
+      evidence: { sessionId: session.id, dates: [from, to] },
+    });
+  }
   return { moved: targets.length, deltaDays: delta };
 }

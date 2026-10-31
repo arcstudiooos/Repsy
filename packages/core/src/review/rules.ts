@@ -16,7 +16,8 @@ export type RuleKey =
   | 'habit_low'
   | 'program_ending'
   | 'reply_overdue'
-  | 'weight_change';
+  | 'weight_change'
+  | 'workout_moved';
 
 /** The rule text shown with every flag (F10, §10). Copy is "Needs review", never "At risk". */
 export const RULE_TEXT: Record<RuleKey, string> = {
@@ -29,6 +30,7 @@ export const RULE_TEXT: Record<RuleKey, string> = {
   program_ending: 'Program ends within 7 days with nothing planned after',
   reply_overdue: 'Client message unread past your usual reply time',
   weight_change: 'Body weight changed more than your set band in about 2 weeks',
+  workout_moved: 'Client moved a workout to another day',
 };
 
 export const AUTO_RESOLVED = 'Resolved automatically';

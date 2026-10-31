@@ -24,6 +24,15 @@ const utc = (d: string) => new Date(`${d}T00:00:00Z`);
 const iso = (t: number) => new Date(t).toISOString().slice(0, 10);
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+/** The days a workout on `date` may move to: from today on, and within its Monday-Sunday week for clients. */
+function moveRange(date: string, today: string, limit: ClientCalendar['moveLimit']) {
+  if (limit !== 'week') return { min: today, max: undefined as string | undefined };
+  const dow = utc(date).getUTCDay();
+  const monday = iso(utc(date).getTime() - ((dow + 6) % 7) * DAY_MS);
+  const sunday = iso(utc(monday).getTime() + 6 * DAY_MS);
+  return { min: monday > today ? monday : today, max: sunday };
+}
+
 const fmt = (d: string, opts: Intl.DateTimeFormatOptions) =>
   new Intl.DateTimeFormat('en-GB', { ...opts, timeZone: 'UTC' }).format(utc(d));
 const longDate = (d: string) => fmt(d, { weekday: 'long', day: 'numeric', month: 'long' });
@@ -111,7 +120,9 @@ export function CalendarMonth({
     setDropDay(null);
     const w = calendar.workouts.find((x) => x.id === dragId);
     setDragId(null);
-    if (!w || w.date === day || day < calendar.todayLocalDate) return;
+    if (!w || w.date === day) return;
+    const range = moveRange(w.date, calendar.todayLocalDate, calendar.moveLimit);
+    if (day < range.min || (range.max && day > range.max)) return;
     void move(w, day, false);
   }
 
@@ -192,7 +203,9 @@ export function CalendarMonth({
       )}
       {anyMovable && (
         <p className="text-sm text-secondary">
-          Drag a workout that has not started to another day, or use Move.
+          {calendar.moveLimit === 'week'
+            ? 'You can move a workout that has not started to another day in the same week. Your coach will see it.'
+            : 'Drag a workout that has not started to another day, or use Move.'}
         </p>
       )}
 
@@ -218,7 +231,12 @@ export function CalendarMonth({
           {Array.from({ length: days.length / 7 }, (_, wk) => (
             <tr key={wk}>
               {days.slice(wk * 7, wk * 7 + 7).map((d) => {
-                const droppable = dragId !== null && d >= calendar.todayLocalDate;
+                const dragged = calendar.workouts.find((x) => x.id === dragId);
+                const range = dragged
+                  ? moveRange(dragged.date, calendar.todayLocalDate, calendar.moveLimit)
+                  : null;
+                const droppable =
+                  range !== null && d >= range.min && (!range.max || d <= range.max);
                 return (
                   <td
                     key={d}
@@ -283,6 +301,7 @@ export function CalendarMonth({
         <MoveDialog
           workout={moving}
           today={calendar.todayLocalDate}
+          limit={calendar.moveLimit}
           onClose={() => setMoving(null)}
           onMove={async (to, later) => {
             if (await move(moving, to, later)) setMoving(null);
@@ -296,11 +315,13 @@ export function CalendarMonth({
 function MoveDialog({
   workout,
   today,
+  limit,
   onClose,
   onMove,
 }: {
   workout: CalendarWorkout;
   today: string;
+  limit: ClientCalendar['moveLimit'];
   onClose: () => void;
   onMove: (toLocalDate: string, shiftLater: boolean) => Promise<void>;
 }) {
@@ -309,6 +330,8 @@ function MoveDialog({
   const [date, setDate] = useState(workout.date);
   const [later, setLater] = useState(false);
   const [busy, setBusy] = useState(false);
+  const range = moveRange(workout.date, today, limit);
+  const outside = date < range.min || (range.max !== undefined && date > range.max);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -334,24 +357,27 @@ function MoveDialog({
                 id={dateId}
                 type="date"
                 required
-                min={today}
+                min={range.min}
+                max={range.max}
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 className="min-h-11 w-full rounded-control border border-input-border bg-surface px-3"
               />
             </div>
-            <div className="flex items-start gap-2">
-              <input
-                id={laterId}
-                type="checkbox"
-                checked={later}
-                onChange={(e) => setLater(e.target.checked)}
-                className="mt-1 size-5"
-              />
-              <label htmlFor={laterId}>
-                Also move every later workout of this program by the same number of days
-              </label>
-            </div>
+            {limit === 'any' && (
+              <div className="flex items-start gap-2">
+                <input
+                  id={laterId}
+                  type="checkbox"
+                  checked={later}
+                  onChange={(e) => setLater(e.target.checked)}
+                  className="mt-1 size-5"
+                />
+                <label htmlFor={laterId}>
+                  Also move every later workout of this program by the same number of days
+                </label>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <DialogClose asChild>
@@ -359,7 +385,7 @@ function MoveDialog({
                 Cancel
               </Button>
             </DialogClose>
-            <Button type="submit" disabled={busy || date === workout.date || date < today}>
+            <Button type="submit" disabled={busy || date === workout.date || outside}>
               {busy ? 'Moving…' : 'Move workout'}
             </Button>
           </DialogFooter>

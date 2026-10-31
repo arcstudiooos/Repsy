@@ -170,4 +170,53 @@ describe('client calendar (PRD C16)', () => {
     expect(paused.pause).toEqual({ startLocalDate: '2026-12-01', resumeLocalDate: '2026-12-08' });
     expect(paused.workouts.some((x) => x.movable)).toBe(false);
   });
+
+  it('clients move a workout within its week when the coach allows it; the coach gets a review item (PRD D14)', async () => {
+    const org = await newOrg(prisma);
+    const w = await newClientWorld(prisma, org, { weeks: grid(2, 3) });
+    const sessions = await withSystem(
+      (tx) =>
+        tx.workoutSession.findMany({
+          where: { assignmentId: w.assignmentId },
+          orderBy: { scheduledLocalDate: 'asc' },
+        }),
+      prisma,
+    );
+    const friday = sessions[1]!; // 2026-11-06
+    const move = (to: string, shiftLater?: boolean) =>
+      runAs(prisma, w.client, (tx) =>
+        rescheduleSession(tx, w.client, friday.id, { toLocalDate: to, shiftLater }, at),
+      );
+    await expect(move('2026-11-07')).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await withSystem(
+      (tx) =>
+        tx.organization.update({
+          where: { id: org.orgId },
+          data: { clientsCanMoveWorkouts: true },
+        }),
+      prisma,
+    );
+    const cal = await runAs(prisma, w.client, (tx) =>
+      getClientCalendar(tx, w.client, { month: '2026-11' }, at),
+    );
+    expect(cal.moveLimit).toBe('week');
+    expect(cal.workouts.filter((x) => x.movable).length).toBeGreaterThan(0);
+    // Next week, or several at once, is the coach's call.
+    await expect(move('2026-11-09')).rejects.toMatchObject({ code: 'VALIDATION' });
+    await expect(move('2026-11-07', true)).rejects.toMatchObject({ code: 'VALIDATION' });
+    expect(await move('2026-11-08')).toEqual({ moved: 1, deltaDays: 2 });
+    const flags = await withSystem(
+      (tx) => tx.reviewFlag.findMany({ where: { clientId: w.clientId, ruleKey: 'workout_moved' } }),
+      prisma,
+    );
+    expect(flags).toHaveLength(1);
+    expect(flags[0]!.evidenceJson).toMatchObject({ dates: ['2026-11-06', '2026-11-08'] });
+    // Another client's workout is out of reach.
+    const other = await newClientWorld(prisma, org);
+    await expect(
+      runAs(prisma, other.client, (tx) =>
+        rescheduleSession(tx, other.client, friday.id, { toLocalDate: '2026-11-07' }, at),
+      ),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
 });

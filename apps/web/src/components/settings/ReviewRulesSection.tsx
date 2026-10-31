@@ -43,6 +43,7 @@ export function ReviewRulesSection({
   const id = useId();
   const [enabled, setEnabled] = useState<OptInRule[]>(settings.enabled);
   const [band, setBand] = useState(settings.weightChangeBandPct?.toString() ?? '3');
+  const [moves, setMoves] = useState(settings.clientsCanMoveWorkouts);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -53,6 +54,7 @@ export function ReviewRulesSection({
     const res = await call<ReviewRuleSettings>('PUT', '/api/v1/org/review-rules', {
       enabled,
       weightChangeBandPct: band.trim() === '' ? null : Number(band),
+      clientsCanMoveWorkouts: moves,
     });
     setBusy(false);
     if (!res.ok) {
@@ -105,6 +107,25 @@ export function ReviewRulesSection({
                 </div>
               </div>
             ))}
+            <div className="flex items-start gap-3 border-t border-divider pt-3">
+              <input
+                id={`${id}-moves`}
+                type="checkbox"
+                className="mt-1 size-5"
+                checked={moves}
+                onChange={(e) => setMoves(e.target.checked)}
+                aria-describedby={`${id}-moves-help`}
+              />
+              <div>
+                <label htmlFor={`${id}-moves`} className="font-medium">
+                  Clients can move workouts
+                </label>
+                <p id={`${id}-moves-help`} className="text-sm text-secondary">
+                  A client may move a workout that has not started to another day in the same week.
+                  Each move adds a review item for you.
+                </p>
+              </div>
+            </div>
             <div className="flex flex-col gap-1 sm:max-w-xs">
               <label htmlFor={`${id}-band`} className="text-sm font-medium">
                 Weight change band (%)

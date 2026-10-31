@@ -68,6 +68,8 @@ function hrefOf(row: FlagRow): string {
       return `${base}/program`;
     case 'weight_change':
       return `${base}/progress`;
+    case 'workout_moved':
+      return `${base}/calendar`;
     case 'message_unread':
     case 'reply_overdue':
       return typeof ev.threadId === 'string'

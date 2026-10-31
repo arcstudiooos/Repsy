@@ -165,6 +165,7 @@ describe('opt-in review rules (PRD I3)', () => {
     const w = await newClientWorld(prisma, await newOrg(prisma));
     expect(await runAs(prisma, w.coach, (tx) => getReviewRuleSettings(tx, w.coach))).toEqual({
       enabled: [],
+      clientsCanMoveWorkouts: false,
       weightChangeBandPct: null,
       replyTargetHours: null,
     });

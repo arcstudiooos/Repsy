@@ -561,7 +561,7 @@ paths:
         '403': { $ref: '#/components/responses/Error' }
     put:
       tags: [Organization]
-      summary: "Owner only. Body: {enabled: string[], weightChangeBandPct?: 1-20 | null}; weight_change needs a band."
+      summary: "Owner only. Body: {enabled: string[], weightChangeBandPct?: 1-20 | null, clientsCanMoveWorkouts?: boolean}; weight_change needs a band."
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -943,7 +943,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     post:
       tags: [Sessions]
-      summary: "Move an unstarted workout to another day (PRD C16). Body: {toLocalDate: YYYY-MM-DD, shiftLater?: boolean} (shiftLater moves every later unstarted workout of the program by the same number of days). 409 when started, past or paused."
+      summary: "Move an unstarted workout to another day (PRD C16). Body: {toLocalDate: YYYY-MM-DD, shiftLater?: boolean} (shiftLater moves every later unstarted workout of the program by the same number of days; coaches only). Clients may move their own workout within its Monday-Sunday week when the workspace allows it (PRD D14), which raises a review item. 409 when started, past or paused."
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:

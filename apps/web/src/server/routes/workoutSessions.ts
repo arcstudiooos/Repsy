@@ -144,7 +144,7 @@ const rescheduleSchema = z.object({
 
 /** `POST /api/v1/sessions/:id/reschedule`: move an unstarted workout (and optionally every later one). */
 export const sessionRescheduleRoute: RouteDef<typeof rescheduleSchema, true> = {
-  can: 'assignment:write',
+  can: 'session:log',
   input: rescheduleSchema,
   handler: ({ actor, input, params, requestId, tenant }) =>
     tenant((tx) => rescheduleSession(tx, actor, params.id ?? '', input, { requestId })),

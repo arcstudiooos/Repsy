@@ -180,6 +180,8 @@ model Organization {
   reviewRules       String[] @default([]) @map("review_rules")
   /// weight_change: flag a body-weight change of more than this percent over about two weeks (1-20).
   weightChangeBandPct Int?   @map("weight_change_band_pct")
+  /// PRD D14: clients may move an unstarted workout to another day in the same week. Off by default.
+  clientsCanMoveWorkouts Boolean @default(false) @map("clients_can_move_workouts")
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -919,6 +921,7 @@ enum ReviewRule {
   program_ending
   reply_overdue
   weight_change
+  workout_moved
 
   @@map("review_rule")
 }

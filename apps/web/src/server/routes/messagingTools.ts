@@ -61,6 +61,7 @@ export const reviewRulesGetRoute: RouteDef<undefined, true> = {
 const reviewRulesSchema = z.object({
   enabled: z.array(z.string().max(40)).max(10),
   weightChangeBandPct: z.number().nullable().optional(),
+  clientsCanMoveWorkouts: z.boolean().optional(),
 });
 
 /** `PUT /api/v1/org/review-rules`: owner only. */
