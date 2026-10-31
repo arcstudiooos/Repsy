@@ -41,5 +41,15 @@ test.describe('builder fast editing (PRD C11)', () => {
     );
     await page.getByRole('button', { name: 'Save changes', exact: true }).click();
     await expect(page.getByText('Saved as version 2')).toBeVisible({ timeout: 30_000 });
+
+    // PRD C15: a printable view of the saved program.
+    await page.getByRole('link', { name: 'Print', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Fast edit block', level: 1 })).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByRole('button', { name: 'Print or save as PDF' })).toBeVisible();
+    await expect(page.getByRole('rowheader', { name: 'Dumbbell Bench Press' })).toBeVisible();
+    await expect(page.getByText('10 reps · 105 kg')).toBeVisible();
+    await expectNoAxeViolations(page);
   });
 });

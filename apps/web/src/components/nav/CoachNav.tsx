@@ -54,7 +54,7 @@ export function CoachNav({ switcher }: { switcher?: ReactNode }) {
   const pathname = usePathname();
   return (
     <>
-      <aside className="hidden border-r border-divider bg-surface md:sticky md:top-0 md:flex md:h-dvh md:flex-col md:p-4">
+      <aside className="hidden border-r border-divider bg-surface md:sticky md:top-0 md:flex md:h-dvh md:flex-col md:p-4 print:hidden">
         <p className="mb-6 px-3 text-lg font-semibold text-ink">Kinetic</p>
         <nav aria-label="Primary" className="flex flex-1 flex-col">
           <ul className="flex flex-col gap-1">
@@ -77,7 +77,7 @@ export function CoachNav({ switcher }: { switcher?: ReactNode }) {
       </aside>
       <nav
         aria-label="Primary mobile"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-divider bg-surface md:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-divider bg-surface md:hidden print:hidden"
       >
         <ul className="grid grid-cols-5">
           {coachMobileItems.map((item) => (

@@ -357,6 +357,14 @@ export function ProgramEditor({
                     Version history
                   </Link>
                 )}
+                {versionNo !== null && (
+                  <Link
+                    href={`/app/programs/${program.id}/print`}
+                    className="font-medium text-accent underline"
+                  >
+                    Print
+                  </Link>
+                )}
               </div>
             </div>
 

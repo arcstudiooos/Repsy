@@ -45,7 +45,7 @@ export function CoachShell({
   noMembershipPath: string;
 }) {
   return (
-    <div className="min-h-dvh md:grid md:grid-cols-[15rem_minmax(0,1fr)]">
+    <div className="min-h-dvh md:grid md:grid-cols-[15rem_minmax(0,1fr)] print:block">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-control focus:bg-surface focus:px-4 focus:py-3"
@@ -63,7 +63,7 @@ export function CoachShell({
         />
       </Suspense>
       <div className="flex min-w-0 flex-col">
-        <header className="flex items-center justify-between gap-2 border-b border-divider bg-surface px-4 py-2 md:hidden">
+        <header className="flex items-center justify-between gap-2 border-b border-divider bg-surface px-4 py-2 md:hidden print:hidden">
           <p className="text-lg font-semibold">Kinetic</p>
           <Suspense fallback={null}>
             <WorkspaceSwitchLink className="text-sm" />
@@ -73,9 +73,11 @@ export function CoachShell({
           id="main"
           className="mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-24 md:px-8 md:pt-8 md:pb-8"
         >
-          <Suspense fallback={null}>
-            <PathBreadcrumbs />
-          </Suspense>
+          <div className="print:hidden">
+            <Suspense fallback={null}>
+              <PathBreadcrumbs />
+            </Suspense>
+          </div>
           <Suspense fallback={<LoadingState />}>
             <MembershipGate loginNext={loginNext} noMembershipPath={noMembershipPath}>
               {children}
