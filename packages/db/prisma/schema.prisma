@@ -115,6 +115,9 @@ model User {
   agreementAcceptances     AgreementAcceptance[]
   teamInvitesSent          TeamInvite[]            @relation("TeamInviter")
   teamInvitesAccepted      TeamInvite[]            @relation("TeamInvitee")
+  coversAway               CoachCover[]            @relation("CoverAway")
+  coversCovering           CoachCover[]            @relation("CoverCovering")
+  coversCreated            CoachCover[]            @relation("CoverCreator")
   outboxPushes             OutboxPush[]
 
   @@map("users")
@@ -273,6 +276,7 @@ model Organization {
   agreements Agreement[]
   agreementAcceptances AgreementAcceptance[]
   teamInvites TeamInvite[]
+  coachCovers CoachCover[]
 }
 
 model Membership {
@@ -1863,4 +1867,26 @@ model TeamInvite {
 
   @@index([organizationId])
   @@map("team_invites")
+}
+
+/// PRD A13: one coach covers another's clients for a date range.
+model CoachCover {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  coachUserId    String    @map("coach_user_id") @db.Uuid
+  coverUserId    String    @map("cover_user_id") @db.Uuid
+  startsAt       DateTime  @map("starts_at") @db.Timestamptz(3)
+  endsAt         DateTime  @map("ends_at") @db.Timestamptz(3)
+  createdBy      String    @map("created_by") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  cancelledAt    DateTime? @map("cancelled_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  coach        User         @relation("CoverAway", fields: [coachUserId], references: [id])
+  cover        User         @relation("CoverCovering", fields: [coverUserId], references: [id])
+  creator      User         @relation("CoverCreator", fields: [createdBy], references: [id])
+
+  @@index([organizationId, coverUserId])
+  @@index([organizationId, coachUserId])
+  @@map("coach_covers")
 }

@@ -35,6 +35,8 @@ export interface ClientView {
   checkinTemplateId: string | null;
   /** PRD B20. */
   lifecycleStage: LifecycleStage;
+  /** PRD A11: the primary coach. */
+  coachUserId: string;
   createdAt: string;
 }
 
@@ -51,6 +53,7 @@ interface ClientRow {
   checkinEveryWeeks: number;
   checkinTemplateId: string | null;
   lifecycleStage: string;
+  coachUserId: string;
   createdAt: Date;
 }
 
@@ -99,6 +102,7 @@ export function toClientView(
     checkinEveryWeeks: row.checkinEveryWeeks,
     checkinTemplateId: row.checkinTemplateId,
     lifecycleStage: effectiveStage(row),
+    coachUserId: row.coachUserId,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -231,6 +235,8 @@ export async function listClients(
     tagId?: string;
     /** PRD B20. */
     stage?: LifecycleStage;
+    /** PRD A12: only clients of these primary coaches ("My clients"). */
+    coachUserIds?: string[];
   },
 ): Promise<{ items: ClientView[]; nextCursor: string | null }> {
   assertCan(actor, 'client:read');
@@ -239,6 +245,7 @@ export async function listClients(
   if (query.stage && (LIFECYCLE_STAGES as readonly string[]).includes(query.stage)) {
     and.push(stageWhere(query.stage));
   }
+  if (query.coachUserIds) and.push({ coachUserId: { in: query.coachUserIds } });
   if (query.tagId !== undefined) {
     if (!isUuid(query.tagId)) throw invalid('tagId', 'Use a tag id.');
     and.push({ tagLinks: { some: { tagId: query.tagId } } });

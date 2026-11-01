@@ -407,7 +407,7 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
 ## D-012 — R3 rulings delegated to the builder (2026-11-01)
 
 **Status:** Accepted, under the same delegation as D-011; each can be revisited.
-**PRD refs:** A10, B14, B20, H5, I4, I9, L7 (more added as R3 is built).
+**PRD refs:** A10-A13, B14, B20, H5, I4, I9, L7 (more added as R3 is built).
 
 1. **Lifecycle stage (B20)** stores only the stages a coach chooses (Onboarding, Active, At renewal). Paused and
    Alumni are read from the client's status, so a stage can never contradict a pause or archiving (D-003). The first
@@ -431,3 +431,6 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
    audit log). Exporting the organization's data and handling deletion requests stay with the owner (D-010 #4).
    Teammates join by an emailed single-use link (7 days) with an account whose verified email matches. A new person
    signs up first (which also gives them their own workspace), then opens the link.
+8. **My clients and cover (A12, A13)** are a default view, not a wall. Everyone on the team can still open any
+   client, which keeps cover simple and keeps history in one place. Only owners, admins and a client's own coach
+   move a client. Cover changes who is notified and what "mine" includes for its dates; it moves nothing.

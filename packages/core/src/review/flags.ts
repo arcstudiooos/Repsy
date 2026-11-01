@@ -126,7 +126,12 @@ const LIVE_CLIENT = { client: { is: { status: { not: 'archived' as const } } } }
 export async function listFlags(
   tx: TenantTx,
   actor: ActorContext,
-  query: { filter?: FlagFilter; rule?: string; clientId?: string } = {},
+  query: {
+    filter?: FlagFilter;
+    rule?: string;
+    clientId?: string;
+    coachUserIds?: string[] | null;
+  } = {},
 ): Promise<FlagView[]> {
   assertCan(actor, 'review:read');
   const filter = query.filter ?? 'needs_attention';
@@ -142,6 +147,10 @@ export async function listFlags(
       ...(filter === 'closed' ? {} : LIVE_CLIENT),
       ...(query.rule ? { ruleKey: query.rule as RuleKey } : {}),
       ...(query.clientId ? { clientId: query.clientId } : {}),
+      // PRD A12: "My clients".
+      ...(query.coachUserIds
+        ? { AND: [{ client: { is: { coachUserId: { in: query.coachUserIds } } } }] }
+        : {}),
     },
     orderBy:
       filter === 'closed'

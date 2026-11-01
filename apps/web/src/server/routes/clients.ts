@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { appendAudit } from '@kinetic/db';
-import { setLifecycleStage } from '@kinetic/core';
+import { setLifecycleStage, transferClient } from '@kinetic/core';
 import {
   applyPause,
   createClient,
@@ -223,4 +223,14 @@ export const clientStagePutRoute: RouteDef<typeof stageSchema, true> = {
       setLifecycleStage(tx, actor, params.id, input.stage, { requestId }),
     ),
   }),
+};
+
+const coachSchema = z.object({ coachUserId: z.string().max(64) });
+
+/** `PUT /api/v1/clients/:id/coach` (PRD A11): move the client to another coach on the team. */
+export const clientCoachPutRoute: RouteDef<typeof coachSchema, true> = {
+  can: 'client:read',
+  input: coachSchema,
+  handler: ({ actor, input, params, requestId, tenant }) =>
+    tenant((tx) => transferClient(tx, actor, params.id, input.coachUserId, { requestId })),
 };

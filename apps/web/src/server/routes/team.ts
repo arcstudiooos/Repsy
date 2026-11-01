@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import {
+  cancelCover,
   changeTeamRole,
+  createCover,
   inviteTeammate,
   listTeam,
   removeTeammate,
@@ -54,5 +56,31 @@ export const teamMemberDeleteRoute: RouteDef<undefined, true> = {
   handler: async ({ actor, params, requestId, tenant }) => {
     await tenant((tx) => removeTeammate(tx, actor, params.id, { requestId }));
     return { removed: true };
+  },
+};
+
+const coverSchema = z.object({
+  coachUserId: z.string().max(64).optional(),
+  coverUserId: z.string().max(64),
+  startDate: z.string().max(10),
+  endDate: z.string().max(10),
+});
+
+/** `POST /api/v1/team/covers` (PRD A13): someone covers a coach's clients for a date range. */
+export const coverPostRoute: RouteDef<typeof coverSchema, true> = {
+  can: 'org:read',
+  input: coverSchema,
+  handler: async ({ actor, input, requestId, tenant }) =>
+    new ApiResult(await tenant((tx) => createCover(tx, actor, input, { requestId })), {
+      status: 201,
+    }),
+};
+
+/** `DELETE /api/v1/team/covers/:id`: end the cover early. */
+export const coverDeleteRoute: RouteDef<undefined, true> = {
+  can: 'org:read',
+  handler: async ({ actor, params, requestId, tenant }) => {
+    await tenant((tx) => cancelCover(tx, actor, params.id, { requestId }));
+    return { ended: true };
   },
 };

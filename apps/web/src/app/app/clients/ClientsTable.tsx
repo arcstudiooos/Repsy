@@ -40,6 +40,7 @@ export function ClientsTable({
   q,
   status,
   stage = '',
+  coachNames = {},
   hasCursor,
   templates = [],
 }: {
@@ -59,6 +60,8 @@ export function ClientsTable({
   status: string;
   /** PRD B20: the selected lifecycle stage ('' = all). */
   stage?: string;
+  /** PRD A11: primary coach names, when the workspace has a team. */
+  coachNames?: Record<string, string>;
   hasCursor: boolean;
 }) {
   const router = useRouter();
@@ -253,6 +256,7 @@ export function ClientsTable({
                       <StatusBadge status={c.status} inviteStatus={c.inviteStatus} />
                       <span className="mt-1 block text-sm text-secondary">
                         {STAGE_LABEL[c.lifecycleStage]}
+                        {coachNames[c.coachUserId] && ` · ${coachNames[c.coachUserId]}`}
                       </span>
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap">{formatDate(c.startDate)}</td>
@@ -291,6 +295,7 @@ export function ClientsTable({
                 </div>
                 <p className="text-sm break-all text-secondary">
                   {c.email} · {STAGE_LABEL[c.lifecycleStage]}
+                  {coachNames[c.coachUserId] && ` · ${coachNames[c.coachUserId]}`}
                 </p>
                 {clientTags[c.id] && (
                   <p className="mt-1 flex flex-wrap gap-1">

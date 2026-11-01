@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { getClientContext } from '@kinetic/core';
+import { getClientContext, isManager, TRAINER_ROLES } from '@kinetic/core';
 import { Breadcrumbs } from '@/components/nav/Breadcrumbs';
 import { withServerTenant } from '@/server/serverActor';
 import { StatusBadge } from '../StatusBadge';
@@ -7,6 +7,7 @@ import { ClientTabs } from './ClientTabs';
 import { ContextCard } from './ContextCard';
 import { loadClient } from './data';
 import { PauseControls } from './PauseControls';
+import { CoachSelect } from './CoachSelect';
 import { StageSelect } from './StageSelect';
 
 export default async function ClientLayout({
@@ -18,7 +19,19 @@ export default async function ClientLayout({
 }) {
   const { id } = await params;
   const client = await loadClient(id);
-  const context = await withServerTenant((tx, actor) => getClientContext(tx, actor, client.id));
+  const { context, coaches, canTransfer } = await withServerTenant(async (tx, actor) => ({
+    context: await getClientContext(tx, actor, client.id),
+    // PRD A11: the team's coaches, to move the client to another.
+    coaches: (
+      await tx.membership.findMany({
+        where: { status: 'active', role: { in: [...TRAINER_ROLES] } },
+        orderBy: { createdAt: 'asc' },
+        select: { userId: true, user: { select: { name: true } } },
+      })
+    ).map((m) => ({ userId: m.userId, name: m.user.name })),
+    canTransfer:
+      isManager(actor.role) || (actor.role === 'coach' && actor.userId === client.coachUserId),
+  }));
   return (
     <>
       <Breadcrumbs items={[{ label: 'Clients', href: '/app/clients' }, { label: client.name }]} />
@@ -26,6 +39,14 @@ export default async function ClientLayout({
         <h1 className="text-2xl font-semibold break-words md:text-3xl">{client.name}</h1>
         <StatusBadge status={client.status} />
         <StageSelect clientId={client.id} stage={client.lifecycleStage} />
+        {coaches.length > 1 && (
+          <CoachSelect
+            clientId={client.id}
+            coachUserId={client.coachUserId}
+            coaches={coaches}
+            canTransfer={canTransfer}
+          />
+        )}
       </div>
       <div className="mb-4">
         <PauseControls client={client} />

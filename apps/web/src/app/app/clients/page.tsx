@@ -11,8 +11,11 @@ import {
   type TagView,
   type ClientStatus,
   LIFECYCLE_STAGES,
+  parseScope,
+  scopeCoachIds,
+  TRAINER_ROLES,
 } from '@kinetic/core';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { EmptyState } from '@/components/states/EmptyState';
 import { ErrorState } from '@/components/states/ErrorState';
 import { loadAllTemplates } from '@/server/selectOptions';
@@ -56,12 +59,29 @@ export default async function ClientsPage({
   let tagId: string | undefined;
   let templates: { id: string; title: string; daysPerWeek: number }[];
   let intakeForms: { id: string; title: string }[];
+  let scope: 'mine' | 'all';
+  let coachNames: Record<string, string>;
   try {
-    ({ result, compliance, tags, clientTags, tagId, templates, intakeForms } =
+    ({ result, compliance, tags, clientTags, tagId, templates, intakeForms, scope, coachNames } =
       await withServerTenant(async (tx, actor) => {
         const all = await listTags(tx, actor);
         const tagId = all.find((t) => t.id === tagParam)?.id;
-        const list = await listClients(tx, actor, { q, status, cursor, tagId, stage });
+        // PRD A12: coaches see their own clients by default, owners and admins everyone.
+        const trainers = await tx.membership.findMany({
+          where: { status: 'active', role: { in: [...TRAINER_ROLES] } },
+          select: { userId: true, user: { select: { name: true } } },
+        });
+        const team = trainers.length > 1;
+        const scope = team ? parseScope(actor.role, first(sp.scope)) : 'all';
+        const coachUserIds = (await scopeCoachIds(tx, actor, scope)) ?? undefined;
+        const list = await listClients(tx, actor, {
+          q,
+          status,
+          cursor,
+          tagId,
+          stage,
+          coachUserIds,
+        });
         const byClient = await clientCompliance(
           tx,
           actor,
@@ -69,6 +89,8 @@ export default async function ClientsPage({
         );
         const ids = list.items.map((c) => c.id);
         return {
+          scope,
+          coachNames: team ? Object.fromEntries(trainers.map((t) => [t.userId, t.user.name])) : {},
           result: list,
           compliance: Object.fromEntries(byClient),
           tags: all.map(({ id, name, color }) => ({ id, name, color })),
@@ -99,7 +121,11 @@ export default async function ClientsPage({
   }
 
   const filtered =
-    q !== undefined || status !== undefined || tagId !== undefined || stage !== undefined;
+    q !== undefined ||
+    status !== undefined ||
+    tagId !== undefined ||
+    stage !== undefined ||
+    scope === 'mine';
   const isEmptyRoster = result.items.length === 0 && !filtered && cursor === undefined;
 
   return (
@@ -114,6 +140,28 @@ export default async function ClientsPage({
           </div>
         )}
       </div>
+      {Object.keys(coachNames).length > 1 && (
+        <nav aria-label="Whose clients" className="mb-4 flex gap-2">
+          {(
+            [
+              ['mine', 'My clients'],
+              ['all', 'All clients'],
+            ] as const
+          ).map(([value, label]) => (
+            <Link
+              key={value}
+              href={`/app/clients?scope=${value}`}
+              aria-current={scope === value ? 'page' : undefined}
+              className={buttonVariants({
+                variant: scope === value ? 'default' : 'secondary',
+                size: 'sm',
+              })}
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
+      )}
       {isEmptyRoster ? (
         <EmptyState
           title="Add your first client"
@@ -136,6 +184,7 @@ export default async function ClientsPage({
           nextCursor={result.nextCursor}
           q={q ?? ''}
           status={status ?? ''}
+          coachNames={coachNames}
           stage={stage ?? ''}
           hasCursor={cursor !== undefined}
           templates={templates}

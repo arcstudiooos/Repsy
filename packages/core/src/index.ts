@@ -590,6 +590,21 @@ export {
 export { equipmentGuideFor, type EquipmentGuide } from './exercises/equipmentGuide';
 export { setExerciseDemo } from './exercises/demo';
 export {
+  defaultScope,
+  parseScope,
+  scopeCoachIds,
+  transferClient,
+  type ClientScope,
+} from './team/scope';
+export {
+  activeCover,
+  cancelCover,
+  coverForClient,
+  createCover,
+  listCovers,
+  type CoverView,
+} from './team/cover';
+export {
   acceptTeamInvite,
   changeTeamRole,
   inviteTeammate,

@@ -6,6 +6,7 @@ import { assertCan } from '../authz/policies';
 import { escapeLike } from '../clients/clients';
 import { DomainError } from '../errors';
 import { enqueuePush } from '../notifications/push';
+import { activeCover } from '../team/cover';
 import { enqueueEmail } from '../outbox';
 import { isUuid } from '../uuid';
 
@@ -396,7 +397,11 @@ export async function sendMessage(
   });
 
   const fromClient = actor.role === 'client';
-  const recipientId = fromClient ? thread.coachUserId : thread.client.userId;
+  // PRD A13: while someone covers the coach, the client's messages notify them.
+  const cover = fromClient ? await activeCover(tx, thread.coachUserId, now) : null;
+  const recipientId = fromClient
+    ? (cover?.coverUserId ?? thread.coachUserId)
+    : thread.client.userId;
   if (recipientId) {
     if (await wantsMessageEmail(tx, recipientId)) {
       await enqueueEmail(tx, {

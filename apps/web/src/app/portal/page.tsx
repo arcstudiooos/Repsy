@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ShieldCheck } from 'lucide-react';
-import { getPortalHome, listHabits } from '@kinetic/core';
+import { coverForClient, getPortalHome, listHabits } from '@kinetic/core';
 import { HabitChecklist } from '@/components/habits/HabitChecklist';
 import { PausedBanner } from '@/components/portal/PausedBanner';
 import { EmptyState } from '@/components/states/EmptyState';
@@ -21,10 +21,12 @@ export const metadata: Metadata = { title: 'Home | Kinetic' };
 
 // Access is enforced by src/proxy.ts and the portal layout's client gate.
 export default async function PortalHome() {
-  const { org, home, habits } = await withPortalTenant(async (tx, actor) => ({
+  const { org, home, habits, cover } = await withPortalTenant(async (tx, actor) => ({
     org: await tx.organization.findFirst({ where: { id: actor.orgId }, select: { name: true } }),
     home: await getPortalHome(tx, actor),
     habits: await listHabits(tx, actor, actor.clientId as string),
+    // PRD A13: who is covering while the coach is away.
+    cover: await coverForClient(tx, actor.clientId as string),
   }));
   const next = home.nextWorkout;
   const { week } = home;
@@ -36,6 +38,17 @@ export default async function PortalHome() {
       {org && <p className="mb-6 text-secondary">Coached by {org.name}</p>}
       <div className="flex flex-col gap-6">
         {home.pause && <PausedBanner {...home.pause} todayLocalDate={home.todayLocalDate} />}
+        {cover && (
+          <p role="status" className="rounded-card bg-surface p-4 shadow-card">
+            {cover.coachName} is away until{' '}
+            {new Intl.DateTimeFormat('en-GB', {
+              day: 'numeric',
+              month: 'long',
+              timeZone: 'UTC',
+            }).format(new Date(`${cover.until}T00:00:00Z`))}
+            . {cover.coverName} is looking after you meanwhile, and gets your messages.
+          </p>
+        )}
         {home.openCheckin && (
           <Card>
             <CardHeader>

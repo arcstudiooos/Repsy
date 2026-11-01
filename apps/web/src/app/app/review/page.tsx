@@ -8,6 +8,9 @@ import {
   type FlagFilter,
   type ReviewSection,
   type RuleKey,
+  parseScope,
+  scopeCoachIds,
+  TRAINER_ROLES,
 } from '@kinetic/core';
 import {
   ExtraWorkoutBadge,
@@ -146,21 +149,56 @@ export default async function ReviewPage({
     const qs = q.toString();
     return qs ? `/app/review?${qs}` : '/app/review';
   };
-  const { review, timezone, flags } = await withServerTenant(async (tx, actor) => ({
-    flags: await listFlags(tx, actor, { filter, rule }),
-    review: await getReviewOverview(tx, actor),
-    timezone:
-      (
-        await tx.organization.findFirst({
-          where: { id: actor.orgId },
-          select: { timezone: true },
-        })
-      )?.timezone ?? 'UTC',
-  }));
+  const { review, timezone, flags, scope, team } = await withServerTenant(async (tx, actor) => {
+    // PRD A12: coaches review their own clients by default (and anyone they cover for).
+    const team =
+      (await tx.membership.count({
+        where: { status: 'active', role: { in: [...TRAINER_ROLES] } },
+      })) > 1;
+    const scope = team ? parseScope(actor.role, first(sp.scope)) : 'all';
+    const coachUserIds = await scopeCoachIds(tx, actor, scope);
+    return {
+      scope,
+      team,
+      flags: await listFlags(tx, actor, { filter, rule, coachUserIds }),
+      review: await getReviewOverview(tx, actor, { coachUserIds }),
+      timezone:
+        (
+          await tx.organization.findFirst({
+            where: { id: actor.orgId },
+            select: { timezone: true },
+          })
+        )?.timezone ?? 'UTC',
+    };
+  });
   const today = todayInZone(timezone, new Date(review.generatedAt));
   return (
     <>
       <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Review</h1>
+      {team && (
+        <nav aria-label="Whose clients" className="mb-4 flex gap-2">
+          {(
+            [
+              ['mine', 'My clients'],
+              ['all', 'All clients'],
+            ] as const
+          ).map(([value, label]) => (
+            <Link
+              key={value}
+              href={`/app/review?scope=${value}`}
+              aria-current={scope === value ? 'page' : undefined}
+              className={cn(
+                'inline-flex min-h-11 items-center rounded-control border px-3',
+                scope === value
+                  ? 'border-accent bg-accent text-white'
+                  : 'border-input-border bg-surface text-ink',
+              )}
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
+      )}
       <section aria-labelledby="queue-heading" className="mb-8 flex flex-col gap-4">
         <h2 id="queue-heading" className="text-lg font-semibold">
           Needs review

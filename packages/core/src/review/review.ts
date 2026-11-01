@@ -81,15 +81,20 @@ async function reviewWindow(tx: TenantTx, actor: ActorContext, now: Date) {
 export async function getReviewOverview(
   tx: TenantTx,
   actor: ActorContext,
-  opts: { now?: Date } = {},
+  opts: { now?: Date; coachUserIds?: string[] | null } = {},
 ): Promise<ReviewOverview> {
   const now = opts.now ?? new Date();
   const { seenAt, since, start, end, week } = await reviewWindow(tx, actor, now);
+  // PRD A12: "My clients".
+  const mine = opts.coachUserIds
+    ? { client: { is: { coachUserId: { in: opts.coachUserIds } } } }
+    : {};
 
   const section = async (
-    where: Record<string, unknown>,
+    scoped: Record<string, unknown>,
     orderBy: Record<string, 'asc' | 'desc'>[],
   ): Promise<ReviewSection> => {
+    const where = { ...scoped, ...mine };
     const count = await tx.workoutSession.count({ where });
     const rows = await tx.workoutSession.findMany({
       where,
