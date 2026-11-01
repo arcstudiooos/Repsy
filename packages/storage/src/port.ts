@@ -3,7 +3,8 @@
  * Nothing here is ever public: the app streams objects to the one user allowed to download them.
  */
 export interface StoragePort {
-  put(key: string, body: string, contentType: string): Promise<void>;
+  /** Text (exports) or bytes (media uploads, PRD E3, H2). */
+  put(key: string, body: string | Buffer, contentType: string): Promise<void>;
   /** The object's bytes, or null when it doesn't exist. */
   read(key: string): Promise<Buffer | null>;
   /** Removes the objects (missing ones are fine). */

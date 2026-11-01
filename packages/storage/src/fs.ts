@@ -12,7 +12,7 @@ export function createFsStorage(root: string): StoragePort {
     async put(key, body) {
       const p = path(key);
       await mkdir(dirname(p), { recursive: true });
-      await writeFile(p, body, 'utf8');
+      await (typeof body === 'string' ? writeFile(p, body, 'utf8') : writeFile(p, body));
     },
     async read(key) {
       try {

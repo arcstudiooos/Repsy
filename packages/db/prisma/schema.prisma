@@ -71,6 +71,7 @@ model User {
   ownedOrganizations       Organization[]
   createdJoinLinks         JoinLink[]              @relation("JoinLinkCreator")
   platformNotices          PlatformNotice[]        @relation("PlatformNoticeCreator")
+  uploadedMedia            MediaFile[]             @relation("MediaUploader")
   twoFactors               TwoFactor[]
   memberships              Membership[]
   createdPilotCodes        PilotCode[]             @relation("PilotCodeCreatedBy")
@@ -256,6 +257,8 @@ model Organization {
 
   @@map("organizations")
   joinLinks JoinLink[]
+  mediaFiles MediaFile[]
+  progressPhotos ProgressPhoto[]
 }
 
 model Membership {
@@ -402,6 +405,8 @@ model Client {
   @@index([organizationId, status])
   @@index([organizationId, createdAt, id])
   @@map("clients")
+  mediaFiles MediaFile[]
+  progressPhotos ProgressPhoto[]
 }
 
 model ClientInvite {
@@ -486,6 +491,8 @@ model Exercise {
   /// beginner, intermediate or advanced; null = not set.
   difficulty     String?
   cues           String[]     @default([])
+  /// PRD C2: an uploaded MP4 demo (custom exercises).
+  demoMediaId    String?      @map("demo_media_id") @db.Uuid
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
 
   organization            Organization?            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
@@ -498,6 +505,7 @@ model Exercise {
   @@index([organizationId, name, id])
   @@index([organizationId, createdAt])
   @@map("exercises")
+  demoMedia MediaFile? @relation(fields: [demoMediaId], references: [id], onDelete: SetNull)
 }
 
 enum ProgramKind {
@@ -652,6 +660,7 @@ model WorkoutVersionExercise {
   @@index([organizationId])
   @@index([exerciseId])
   @@map("workout_version_exercises")
+  media SessionMedia[]
 }
 
 enum AssignmentStatus {
@@ -760,6 +769,7 @@ model WorkoutSession {
   @@index([assignmentId])
   @@index([workoutVersionId])
   @@map("workout_sessions")
+  media SessionMedia[]
 }
 
 /// One logged set (F08, D-004 #7, D-008 #8): upserted on (session, workout version exercise, set index), so replays
@@ -979,6 +989,8 @@ model Message {
   anchorType      String?   @map("anchor_type")
   anchorId        String?   @map("anchor_id") @db.Uuid
   anchorLabel     String?   @map("anchor_label")
+  /// PRD H2: an image or PDF sent with the message.
+  attachmentMediaId String? @map("attachment_media_id") @db.Uuid
 
   organization Organization       @relation(fields: [organizationId], references: [id])
   thread       ConversationThread @relation(fields: [threadId, organizationId], references: [id, organizationId])
@@ -988,6 +1000,7 @@ model Message {
   @@index([threadId, createdAt, id])
   @@index([organizationId, readAt])
   @@map("messages")
+  attachment MediaFile? @relation(fields: [attachmentMediaId, organizationId], references: [id, organizationId])
 }
 
 enum ReviewRule {
@@ -1625,4 +1638,70 @@ model PlatformNotice {
 
   @@index([createdAt])
   @@map("platform_notices")
+}
+
+/// D-011 #5: an uploaded file in private storage (CHECK in migration 000063). Erasure sets erased_at; a worker job
+/// deletes the object and then the row.
+model MediaFile {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  clientId       String?   @map("client_id") @db.Uuid
+  uploadedBy     String    @map("uploaded_by") @db.Uuid
+  /// progress_photo, message, form_check or exercise_demo.
+  purpose        String
+  contentType    String    @map("content_type")
+  bytes          Int
+  storageKey     String    @unique @map("storage_key")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  erasedAt       DateTime? @map("erased_at") @db.Timestamptz(3)
+
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  client         Client?         @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  uploader       User            @relation("MediaUploader", fields: [uploadedBy], references: [id])
+  progressPhoto  ProgressPhoto?
+  sessionMedia   SessionMedia?
+  messages       Message[]
+  exercises      Exercise[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, clientId])
+  @@map("media_files")
+}
+
+/// PRD E3: a front, side or back progress photo on a day.
+model ProgressPhoto {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  clientId       String   @map("client_id") @db.Uuid
+  mediaId        String   @unique @map("media_id") @db.Uuid
+  pose           String
+  takenOn        DateTime @map("taken_on") @db.Date
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  media        MediaFile    @relation(fields: [mediaId, organizationId], references: [id, organizationId])
+
+  @@unique([mediaId, organizationId])
+  @@index([organizationId, clientId, takenOn])
+  @@map("progress_photos")
+}
+
+/// PRD D10: a form-check video on a session (optionally on one exercise of it).
+model SessionMedia {
+  id                       String   @id @default(uuid()) @db.Uuid
+  organizationId           String   @map("organization_id") @db.Uuid
+  sessionId                String   @map("session_id") @db.Uuid
+  workoutVersionExerciseId String?  @map("workout_version_exercise_id") @db.Uuid
+  mediaId                  String   @unique @map("media_id") @db.Uuid
+  createdAt                DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  session               WorkoutSession          @relation(fields: [sessionId, organizationId], references: [id, organizationId])
+  workoutVersionExercise WorkoutVersionExercise? @relation(fields: [workoutVersionExerciseId, organizationId], references: [id, organizationId])
+  media                 MediaFile               @relation(fields: [mediaId, organizationId], references: [id, organizationId])
+
+  @@unique([mediaId, organizationId])
+  @@index([sessionId])
+  @@index([organizationId])
+  @@map("session_media")
 }

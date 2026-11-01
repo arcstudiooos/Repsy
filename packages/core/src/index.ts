@@ -629,3 +629,23 @@ export {
   type NoticeView,
 } from './admin/notices';
 export { requestSupport, SUPPORT_RESPONSE_TARGET, SUPPORT_TOPICS } from './admin/support';
+export {
+  eraseMedia,
+  mediaForDownload,
+  MEDIA_PURPOSES,
+  ownMedia,
+  prepareUpload,
+  purgeErasedMedia,
+  recordMedia,
+  storageKeyFor,
+  uploadOwner,
+  type MediaPurpose,
+} from './media/media';
+export {
+  addProgressPhoto,
+  deleteProgressPhoto,
+  listProgressPhotos,
+  POSES,
+  type Pose,
+  type ProgressPhotoView,
+} from './media/progressPhotos';
