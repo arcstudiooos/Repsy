@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { deletionStatusFor, getSettings, listMyExports, twoFactorStatus } from '@kinetic/core';
 import { DeletionRequestButton } from '@/components/settings/DeletionRequestButton';
 import { DataExportSection } from '@/components/settings/DataExportSection';
@@ -31,6 +32,12 @@ export default async function PortalProfile() {
         </DataExportSection>
         <TwoFactorSection enabled={twoFactor.enabled} required={false} />
         <SecuritySection />
+        <p className="text-secondary">
+          Need help?{' '}
+          <Link href="/portal/support" className="text-accent underline">
+            Help and support
+          </Link>
+        </p>
         <Card>
           <CardHeader>
             <CardTitle>Account</CardTitle>

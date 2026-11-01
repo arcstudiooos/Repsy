@@ -70,6 +70,7 @@ model User {
 
   ownedOrganizations       Organization[]
   createdJoinLinks         JoinLink[]              @relation("JoinLinkCreator")
+  platformNotices          PlatformNotice[]        @relation("PlatformNoticeCreator")
   twoFactors               TwoFactor[]
   memberships              Membership[]
   createdPilotCodes        PilotCode[]             @relation("PilotCodeCreatedBy")
@@ -1608,4 +1609,20 @@ model JoinLink {
 
   @@index([organizationId, createdAt])
   @@map("join_links")
+}
+
+/// PRD M8: platform-wide incident and maintenance notices (system scope only; CHECK in migration 000062).
+model PlatformNotice {
+  id         String    @id @default(uuid()) @db.Uuid
+  severity   String
+  message    String
+  createdBy  String    @map("created_by") @db.Uuid
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  resolvedAt DateTime? @map("resolved_at") @db.Timestamptz(3)
+  postmortem String?
+
+  creator User @relation("PlatformNoticeCreator", fields: [createdBy], references: [id])
+
+  @@index([createdAt])
+  @@map("platform_notices")
 }

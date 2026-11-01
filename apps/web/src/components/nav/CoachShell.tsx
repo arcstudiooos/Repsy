@@ -3,6 +3,7 @@ import { Suspense, type ReactNode } from 'react';
 import Link from 'next/link';
 import { isCoachRole, twoFactorStatus } from '@kinetic/core';
 import { CoachNav } from '@/components/nav/CoachNav';
+import { NoticeBanner } from '@/components/nav/NoticeBanner';
 import { PathBreadcrumbs } from '@/components/nav/PathBreadcrumbs';
 import { WorkspaceSwitchLink } from '@/components/nav/WorkspaceSwitchLink';
 import { LoadingState } from '@/components/states/LoadingState';
@@ -31,6 +32,9 @@ async function MembershipGate({
   if (target) redirect(target);
   return (
     <>
+      <Suspense fallback={null}>
+        <NoticeBanner />
+      </Suspense>
       <Suspense fallback={null}>
         <TwoFactorRequiredBanner />
       </Suspense>

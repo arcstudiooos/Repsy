@@ -401,3 +401,24 @@ export async function seedSentCheckin(
     await client.end();
   }
 }
+
+/** PRD M8: posts (or, with `resolve`, resolves) a platform notice as the first platform admin would. */
+export async function setPlatformNotice(message: string, resolve = false): Promise<void> {
+  const client = new pg.Client({ connectionString: readState().adminUrl });
+  await client.connect();
+  try {
+    if (resolve) {
+      await client.query(`UPDATE platform_notices SET resolved_at = now() WHERE message = $1`, [
+        message,
+      ]);
+      return;
+    }
+    await client.query(
+      `INSERT INTO platform_notices (id, severity, message, created_by)
+       SELECT gen_random_uuid(), 'maintenance', $1, id FROM users ORDER BY created_at LIMIT 1`,
+      [message],
+    );
+  } finally {
+    await client.end();
+  }
+}

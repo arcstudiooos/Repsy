@@ -1,3 +1,4 @@
+import { NoticeBanner } from '@/components/nav/NoticeBanner';
 import { redirect } from 'next/navigation';
 import { Suspense, type ReactNode } from 'react';
 import { PortalBrand } from '@/components/nav/PortalBrand';
@@ -51,6 +52,9 @@ async function ClientGate({ children }: { children: ReactNode }) {
     <>
       {/* Before the page, so the device store is bound to this user before the page reads it (PR #2 review C1). */}
       <PortalDevice userId={owner.userId} orgId={owner.orgId} />
+      <Suspense fallback={null}>
+        <NoticeBanner />
+      </Suspense>
       {children}
     </>
   );

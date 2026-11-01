@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import {
   getBranding,
@@ -61,6 +62,12 @@ export default async function SettingsPage() {
         {isOwner && <DataExportSection scope="org" initial={exports} />}
         <TwoFactorSection enabled={twoFactor.enabled} required={twoFactor.required} />
         <SecuritySection />
+        <p className="text-secondary">
+          Need help?{' '}
+          <Link href="/app/support" className="text-accent underline">
+            Help and support
+          </Link>
+        </p>
       </div>
     </>
   );

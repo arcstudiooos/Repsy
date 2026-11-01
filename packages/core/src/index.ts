@@ -619,3 +619,13 @@ export {
   type TemplateKind,
 } from './checkins/checkins';
 export { CONTEXT_FIELDS, type ContextField } from './checkins/questions';
+export {
+  postNotice,
+  readNotices,
+  resolveNotice,
+  NOTICE_SEVERITIES,
+  RELIABILITY_TARGETS,
+  type NoticeSeverity,
+  type NoticeView,
+} from './admin/notices';
+export { requestSupport, SUPPORT_RESPONSE_TARGET, SUPPORT_TOPICS } from './admin/support';

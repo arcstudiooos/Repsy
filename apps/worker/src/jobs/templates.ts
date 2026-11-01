@@ -38,6 +38,19 @@ const TEMPLATES: Record<string, Template> = {
     const subject = `${coachName} invited you to Kinetic`.replace(/[\r\n]+/g, ' ');
     return { subject, text, html };
   },
+  // PRD M13: to the support inbox; the request text is the point of this email.
+  support_request: (payload) => {
+    const topic = str(payload, 'topic') ?? 'question';
+    const from = `${str(payload, 'fromName') ?? ''} <${str(payload, 'fromEmail') ?? ''}>`;
+    const org = str(payload, 'orgName') ?? '';
+    const role = str(payload, 'role') ?? '';
+    const message = str(payload, 'message') ?? '';
+    return {
+      subject: `Support (${topic}) from ${org}`.replace(/[\r\n]+/g, ' '),
+      text: `From: ${from}\nWorkspace: ${org} (${role})\nTopic: ${topic}\n\n${message}`,
+      html: `<p>From: ${escapeHtml(from)}<br>Workspace: ${escapeHtml(org)} (${escapeHtml(role)})<br>Topic: ${escapeHtml(topic)}</p><p style="white-space:pre-wrap">${escapeHtml(message)}</p>`,
+    };
+  },
   // PRD F2: a one-off form from the coach; never its questions (D-007).
   form_ready: (payload, appBaseUrl) => {
     const coachName = str(payload, 'coachName') ?? 'Your coach';

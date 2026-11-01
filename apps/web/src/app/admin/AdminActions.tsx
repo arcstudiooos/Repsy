@@ -210,3 +210,96 @@ export function RevokeGrant({ id }: { id: string }) {
     </Button>
   );
 }
+
+/** PRD M8: post an incident or maintenance notice (a banner in the app and the status page). */
+export function NoticeForm() {
+  const router = useRouter();
+  const id = useId();
+  const [busy, setBusy] = useState(false);
+  return (
+    <form
+      aria-label="Post a notice"
+      className="flex flex-col gap-2"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        const form = e.currentTarget;
+        const data = new FormData(form);
+        setBusy(true);
+        const res = await send('POST', '/api/v1/admin/notices', {
+          severity: String(data.get('severity')),
+          message: String(data.get('message') ?? ''),
+        });
+        setBusy(false);
+        if (res.ok) {
+          form.reset();
+          toast.success('Notice posted');
+          router.refresh();
+        } else toast.error(res.message);
+      }}
+    >
+      <label htmlFor={`${id}-sev`} className="text-sm font-medium">
+        Kind
+      </label>
+      <select
+        id={`${id}-sev`}
+        name="severity"
+        className="block min-h-11 rounded-control border border-input-border bg-surface px-3 text-base text-ink"
+      >
+        <option value="maintenance">Planned maintenance</option>
+        <option value="degraded">Degraded</option>
+        <option value="outage">Outage</option>
+      </select>
+      <label htmlFor={`${id}-msg`} className="text-sm font-medium">
+        Message (shown to everyone)
+      </label>
+      <Input id={`${id}-msg`} name="message" maxLength={300} required />
+      <div>
+        <Button type="submit" disabled={busy}>
+          Post notice
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+/** Resolve an open notice, with an optional post-mortem. */
+export function ResolveNotice({ id: noticeId, message }: { id: string; message: string }) {
+  const router = useRouter();
+  const id = useId();
+  const [busy, setBusy] = useState(false);
+  return (
+    <form
+      aria-label={`Resolve: ${message}`}
+      className="flex flex-col gap-2"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        const data = new FormData(e.currentTarget);
+        setBusy(true);
+        const res = await send('PATCH', `/api/v1/admin/notices/${noticeId}`, {
+          postmortem: String(data.get('postmortem') ?? ''),
+        });
+        setBusy(false);
+        if (res.ok) {
+          toast.success('Resolved');
+          router.refresh();
+        } else toast.error(res.message);
+      }}
+    >
+      <label htmlFor={`${id}-pm`} className="text-sm font-medium">
+        Post-mortem (optional, public)
+      </label>
+      <textarea
+        id={`${id}-pm`}
+        name="postmortem"
+        rows={3}
+        maxLength={5000}
+        className="rounded-control border border-input-border bg-surface px-3 py-2 text-base"
+      />
+      <div>
+        <Button type="submit" variant="secondary" disabled={busy}>
+          Resolve
+        </Button>
+      </div>
+    </form>
+  );
+}

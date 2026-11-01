@@ -13,7 +13,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { withPlatformAdmin } from '@/server/platformAdmin';
 import { getServerSession } from '@/server/serverActor';
-import { DeletionActions, GrantForm, PilotCodeCreator, RevokeGrant } from './AdminActions';
+import {
+  DeletionActions,
+  GrantForm,
+  NoticeForm,
+  PilotCodeCreator,
+  ResolveNotice,
+  RevokeGrant,
+} from './AdminActions';
+import { readNotices } from '@kinetic/core';
 
 export const metadata: Metadata = { title: 'Admin | Kinetic' };
 
@@ -30,6 +38,7 @@ export default async function AdminPage({
   const { user } = await getServerSession();
   // Authorize before system scope opens (the layout's gate renders in parallel, so it is not relied on here).
   if (!user?.isPlatformAdmin) notFound();
+  const notices = await readNotices();
   const data = await withPlatformAdmin(user, async (tx, admin) => {
     let account = null;
     let lookupError: string | null = null;
@@ -55,6 +64,25 @@ export default async function AdminPage({
     <>
       <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Admin</h1>
       <div className="flex flex-col gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Status notices</CardTitle>
+            <CardDescription>
+              Shown as a banner in the app and on the public status page until resolved.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            {notices.open.map((n) => (
+              <div key={n.id} className="flex flex-col gap-2 rounded-control bg-canvas p-3">
+                <p className="font-medium">
+                  {n.severity}: {n.message}
+                </p>
+                <ResolveNotice id={n.id} message={n.message} />
+              </div>
+            ))}
+            <NoticeForm />
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader>
             <CardTitle>Pilot codes</CardTitle>

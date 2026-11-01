@@ -10,6 +10,8 @@ import {
   readClientForSupport,
   requestDeletion,
   revokeSupportAccess,
+  postNotice,
+  resolveNotice,
 } from '@kinetic/core';
 import { ApiResult, type RouteCtx, type RouteDef } from '../api';
 import { withPlatformAdmin } from '../platformAdmin';
@@ -118,4 +120,28 @@ export const adminSupportClientRoute: RouteDef<undefined, false> = {
   requirePlatformAdmin: true,
   handler: (ctx) =>
     asAdmin(ctx, (tx, admin) => readClientForSupport(tx, admin, ctx.params.id ?? '')),
+};
+
+const noticeSchema = z.object({ severity: z.string().max(20), message: z.string().max(400) });
+
+/** `POST /api/v1/admin/notices` (PRD M8): post an incident or maintenance notice. */
+export const adminNoticePostRoute: RouteDef<typeof noticeSchema, false> = {
+  requireOrg: false,
+  requirePlatformAdmin: true,
+  input: noticeSchema,
+  handler: async (ctx) =>
+    new ApiResult(await asAdmin(ctx, (tx, admin) => postNotice(tx, admin, ctx.input)), {
+      status: 201,
+    }),
+};
+
+const resolveSchema = z.object({ postmortem: z.string().max(6000).optional() });
+
+/** `PATCH /api/v1/admin/notices/:id`: resolve it, optionally with a post-mortem. */
+export const adminNoticeResolveRoute: RouteDef<typeof resolveSchema, false> = {
+  requireOrg: false,
+  requirePlatformAdmin: true,
+  input: resolveSchema,
+  handler: (ctx) =>
+    asAdmin(ctx, (tx, admin) => resolveNotice(tx, admin, ctx.params.id ?? '', ctx.input)),
 };
