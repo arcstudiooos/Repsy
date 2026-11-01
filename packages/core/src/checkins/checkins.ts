@@ -1,3 +1,5 @@
+import { recordMetric } from '../progress/metrics';
+import { metricDef, metricFromCanonical } from '../progress/metric-catalog';
 import { appendAudit, Prisma, type TenantTx } from '@kinetic/db';
 import { graceMs } from '../analytics/adherence';
 import type { ActorContext } from '../authz/actor';
@@ -393,8 +395,49 @@ export async function submitCheckin(
     metadata: { answered: Object.keys(answers).length },
     requestId: opts.requestId,
   });
+  await recordMetricAnswers(tx, actor, row, answers, now);
   await opts.onSubmitted?.(tx, { id: row.id, clientId: row.clientId }, now);
   return toView(row, actor, now);
+}
+
+/**
+ * PRD F3: metric answers become body measurements (E1) on the check-in's date, as if the client logged them; a value
+ * the measurement itself refuses is skipped (the answer stays on the check-in).
+ */
+async function recordMetricAnswers(
+  tx: TenantTx,
+  actor: ActorContext,
+  row: { clientId: string; periodLocalDate: Date; questionsJson: unknown },
+  answers: CheckinAnswers,
+  now: Date,
+): Promise<void> {
+  const metricQs = readQuestions(row.questionsJson).filter(
+    (q) => q.type === 'metric' && q.metric && typeof answers[q.id] === 'number',
+  );
+  if (metricQs.length === 0) return;
+  const client = await tx.client.findFirst({
+    where: { id: row.clientId },
+    select: { preferredUnits: true },
+  });
+  const units = client?.preferredUnits ?? 'kg';
+  for (const q of metricQs) {
+    const def = metricDef(q.metric!);
+    try {
+      await recordMetric(
+        tx,
+        actor,
+        row.clientId,
+        {
+          metric: def.key,
+          measuredOn: fromDbDate(row.periodLocalDate),
+          value: metricFromCanonical(def.kind, answers[q.id] as number, units),
+        },
+        { now },
+      );
+    } catch (error) {
+      if (!(error instanceof DomainError)) throw error;
+    }
+  }
 }
 
 /** Session counts in the 7 days before `periodLocalDate` (cancelled excluded). */

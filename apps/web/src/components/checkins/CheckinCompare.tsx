@@ -3,6 +3,7 @@
 import { useId, useState } from 'react';
 import type { CheckinAnswers, CheckinQuestion, MetricAsOf, Units } from '@kinetic/core';
 import { metricDef, metricFromCanonical, metricUnit } from '@kinetic/core/metric-catalog';
+import { formatAnswer } from '@/lib/checkin-answer';
 
 export interface CompareCheckin {
   id: string;
@@ -18,13 +19,6 @@ const fmtDate = (d: string) =>
     year: 'numeric',
     timeZone: 'UTC',
   }).format(new Date(`${d}T00:00:00Z`));
-
-const show = (q: CheckinQuestion | undefined, v: CheckinAnswers[string] | undefined): string => {
-  if (v === undefined || !q) return '–';
-  if (q.type === 'yes_no') return v ? 'Yes' : 'No';
-  if (q.type === 'scale_1_5') return `${v} of 5`;
-  return String(v);
-};
 
 /**
  * A check-in beside any earlier one (PRD F6): answers question by question (matched by id, then by label, so an
@@ -113,8 +107,12 @@ export function CheckinCompare({
                       <th scope="row" className="py-2 pr-3 font-normal text-secondary">
                         {q.label}
                       </th>
-                      <td className="py-2 pr-3 break-words whitespace-pre-line">{show(q, a)}</td>
-                      <td className="py-2 pr-3 break-words whitespace-pre-line">{show(o, b)}</td>
+                      <td className="py-2 pr-3 break-words whitespace-pre-line">
+                        {formatAnswer(q, a, units, '–')}
+                      </td>
+                      <td className="py-2 pr-3 break-words whitespace-pre-line">
+                        {formatAnswer(o, b, units, '–')}
+                      </td>
                       <td className="py-2">
                         {delta === null ? '–' : delta > 0 ? `+${delta}` : String(delta)}
                       </td>

@@ -8,11 +8,18 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/toast';
 import { updateCheckinTemplate } from '@/lib/checkin-api';
+import { BODY_METRICS, type BodyMetric } from '@kinetic/core/metric-catalog';
 
 const TYPE_LABEL: Record<QuestionType, string> = {
   scale_1_5: 'Scale 1 to 5',
   short_text: 'Short text',
+  long_text: 'Long text',
   yes_no: 'Yes or no',
+  number: 'Number',
+  single_choice: 'Pick one',
+  multi_choice: 'Pick any',
+  date: 'Date',
+  metric: 'Body measurement',
 };
 const MAX = 20;
 
@@ -42,7 +49,13 @@ export function TemplateEditor({ template }: { template: CheckinTemplateView }) 
     setBusy(true);
     setErrors({});
     setFormError(null);
-    const res = await updateCheckinTemplate({ title, questions });
+    // Blank option lines are only there while typing.
+    const res = await updateCheckinTemplate({
+      title,
+      questions: questions.map((q) =>
+        q.options ? { ...q, options: q.options.map((o) => o.trim()).filter(Boolean) } : q,
+      ),
+    });
     setBusy(false);
     if (res.ok) {
       toast.success('Check-in questions saved');
@@ -125,6 +138,66 @@ export function TemplateEditor({ template }: { template: CheckinTemplateView }) 
                       ))}
                     </select>
                   </div>
+                  {q.type === 'number' && (
+                    <div className="flex flex-col gap-1 sm:max-w-xs">
+                      <label htmlFor={`${uid}-${q.id}-unit`} className="text-sm font-medium">
+                        Question {i + 1} unit (optional)
+                      </label>
+                      <Input
+                        id={`${uid}-${q.id}-unit`}
+                        value={q.unit ?? ''}
+                        maxLength={20}
+                        placeholder="hours"
+                        onChange={(e) => update(i, { unit: e.target.value })}
+                      />
+                    </div>
+                  )}
+                  {(q.type === 'single_choice' || q.type === 'multi_choice') && (
+                    <div className="flex flex-col gap-1">
+                      <label htmlFor={`${uid}-${q.id}-options`} className="text-sm font-medium">
+                        Question {i + 1} options, one per line
+                      </label>
+                      <textarea
+                        id={`${uid}-${q.id}-options`}
+                        rows={4}
+                        value={(q.options ?? []).join('\n')}
+                        onChange={(e) => update(i, { options: e.target.value.split('\n') })}
+                        aria-invalid={errors[`questions.${i}.options`] ? true : undefined}
+                        aria-describedby={
+                          errors[`questions.${i}.options`]
+                            ? `${uid}-questions.${i}.options`
+                            : undefined
+                        }
+                        className="rounded-control border border-input-border bg-surface px-3 py-2 text-base"
+                      />
+                      {err(`questions.${i}.options`)}
+                    </div>
+                  )}
+                  {q.type === 'metric' && (
+                    <div className="flex flex-col gap-1 sm:max-w-xs">
+                      <label htmlFor={`${uid}-${q.id}-metric`} className="text-sm font-medium">
+                        Question {i + 1} measurement
+                      </label>
+                      <select
+                        id={`${uid}-${q.id}-metric`}
+                        value={q.metric ?? ''}
+                        onChange={(e) => update(i, { metric: e.target.value as BodyMetric })}
+                        aria-invalid={errors[`questions.${i}.metric`] ? true : undefined}
+                        className="block min-h-11 rounded-control border border-input-border bg-surface px-3 text-base text-ink"
+                      >
+                        <option value="">Choose…</option>
+                        {BODY_METRICS.map((m) => (
+                          <option key={m.key} value={m.key}>
+                            {m.label}
+                          </option>
+                        ))}
+                      </select>
+                      {err(`questions.${i}.metric`)}
+                      <p className="text-sm text-secondary">
+                        The answer is saved to the client&apos;s progress too.
+                      </p>
+                    </div>
+                  )}
                   <div className="flex flex-wrap gap-2">
                     <Button
                       variant="secondary"

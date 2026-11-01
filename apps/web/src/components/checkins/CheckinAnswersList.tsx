@@ -1,19 +1,17 @@
 import type { CheckinAnswers, CheckinQuestion } from '@kinetic/core';
-
-const show = (q: CheckinQuestion, v: CheckinAnswers[string] | undefined): string => {
-  if (v === undefined) return 'Not answered';
-  if (q.type === 'yes_no') return v ? 'Yes' : 'No';
-  if (q.type === 'scale_1_5') return `${v} of 5`;
-  return String(v);
-};
+import type { Units } from '@kinetic/core/units';
+import { formatAnswer } from '@/lib/checkin-answer';
 
 /** A submitted check-in's answers, question by question (unanswered ones say so). */
 export function CheckinAnswersList({
   questions,
   answers,
+  units = 'kg',
 }: {
   questions: CheckinQuestion[];
   answers: CheckinAnswers;
+  /** For body measurement answers (PRD F3). */
+  units?: Units;
 }) {
   return (
     <dl className="flex flex-col gap-3">
@@ -25,7 +23,7 @@ export function CheckinAnswersList({
               answers[q.id] === undefined ? 'text-secondary' : 'break-words whitespace-pre-line'
             }
           >
-            {show(q, answers[q.id])}
+            {formatAnswer(q, answers[q.id], units, 'Not answered')}
           </dd>
         </div>
       ))}

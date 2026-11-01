@@ -431,3 +431,92 @@ describe('listCheckinsAwaitingReview (PRD I8)', () => {
     ).toBe('FORBIDDEN');
   });
 });
+
+describe('question types (PRD F3)', () => {
+  const F3 = [
+    { id: 'how', type: 'long_text', label: 'Tell me about your week', optional: true },
+    { id: 'sleep_h', type: 'number', label: 'Average sleep', unit: 'hours', optional: true },
+    {
+      id: 'mood',
+      type: 'single_choice',
+      label: 'Mood',
+      options: ['Good', 'Okay', 'Rough'],
+      optional: true,
+    },
+    {
+      id: 'aches',
+      type: 'multi_choice',
+      label: 'Any aches?',
+      options: ['Knees', 'Back', 'Shoulders'],
+      optional: true,
+    },
+    { id: 'trip', type: 'date', label: 'Next trip', optional: true },
+    { id: 'kg', type: 'metric', label: 'Morning weight', metric: 'weight', optional: true },
+  ];
+
+  it('validates questions: options for choices, a measurement for metrics; extra fields dropped', async () => {
+    const w = await world();
+    const bad = (questions: unknown) =>
+      codeOf(runAs(prisma, w.coach, (tx) => updateCheckinTemplate(tx, w.coach, { questions })));
+    expect(await bad([{ id: 'a', type: 'single_choice', label: 'A', options: ['One'] }])).toBe(
+      'VALIDATION',
+    );
+    expect(await bad([{ id: 'a', type: 'metric', label: 'A', metric: 'blood_sugar' }])).toBe(
+      'VALIDATION',
+    );
+    const saved = await runAs(prisma, w.coach, (tx) =>
+      updateCheckinTemplate(tx, w.coach, {
+        questions: [{ id: 'a', type: 'short_text', label: 'A', options: ['x', 'y'], unit: 'u' }],
+      }),
+    );
+    expect(saved.questions).toEqual([{ id: 'a', type: 'short_text', label: 'A', optional: true }]);
+  });
+
+  it('accepts each type, refuses wrong values, and records metric answers as measurements', async () => {
+    const w = await world();
+    await runAs(prisma, w.coach, (tx) => updateCheckinTemplate(tx, w.coach, { questions: F3 }));
+    await issue(w);
+    const [row] = await checkinsOf(w);
+    const submit = (key: string, answers: unknown) =>
+      runAs(prisma, w.client, (tx) =>
+        submitCheckin(tx, w.client, row!.id, { answers, idempotencyKey: key }, { now: NOW }),
+      );
+    const wrong = await submit('key-f3-bad-01', {
+      mood: 'Great',
+      aches: ['Elbows'],
+      trip: '2026-13-40',
+      kg: 5,
+    }).catch((e: unknown) => e);
+    expect(wrong).toMatchObject({
+      code: 'VALIDATION',
+      fieldErrors: {
+        'answers.mood': expect.any(Array),
+        'answers.aches': expect.any(Array),
+        'answers.trip': expect.any(Array),
+        'answers.kg': expect.any(Array),
+      },
+    });
+    const done = await submit('key-f3-ok-001', {
+      how: '  Busy but good  ',
+      sleep_h: 7.5,
+      mood: 'Okay',
+      aches: ['Shoulders', 'Knees', 'Knees'],
+      trip: '2026-12-20',
+      kg: 81.4,
+    });
+    expect(done.answers).toEqual({
+      how: 'Busy but good',
+      sleep_h: 7.5,
+      mood: 'Okay',
+      aches: ['Knees', 'Shoulders'],
+      trip: '2026-12-20',
+      kg: 81.4,
+    });
+    const entry = await withSystem(
+      (tx) => tx.metricEntry.findFirst({ where: { clientId: w.clientId, metric: 'weight' } }),
+      prisma,
+    );
+    expect(entry?.measuredOn.toISOString().slice(0, 10)).toBe('2026-11-04');
+    expect(Number(entry?.value.toString())).toBe(81.4);
+  });
+});

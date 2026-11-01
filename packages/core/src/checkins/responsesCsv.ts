@@ -38,11 +38,13 @@ export async function checkinResponsesCsv(
   const labels: string[] = [];
   const parsed = rows.map((r) => {
     const questions = readQuestions(r.questionsJson);
-    const answers = (r.answersJson ?? {}) as Record<string, CsvValue>;
+    const answers = (r.answersJson ?? {}) as Record<string, CsvValue | string[]>;
     const byLabel = new Map<string, CsvValue>();
     for (const q of questions) {
       if (!labels.includes(q.label)) labels.push(q.label);
-      byLabel.set(q.label, answers[q.id] ?? null);
+      const v = answers[q.id];
+      // PRD F3: several choices in one cell; metric answers are canonical (kg, cm).
+      byLabel.set(q.label, Array.isArray(v) ? v.join('; ') : (v ?? null));
     }
     return { r, byLabel };
   });

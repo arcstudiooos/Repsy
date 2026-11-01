@@ -132,7 +132,11 @@ export default async function ClientCheckinsPage({ params }: { params: Promise<{
                 <CardContent className="grid gap-6 md:grid-cols-[2fr_1fr]">
                   {c.answers ? (
                     <div className="flex flex-col gap-4">
-                      <CheckinAnswersList questions={c.questions} answers={c.answers} />
+                      <CheckinAnswersList
+                        questions={c.questions}
+                        answers={c.answers}
+                        units={units}
+                      />
                       <CheckinCompare
                         current={sent.find((x) => x.id === c.id)!}
                         earlier={sent.filter((x) => x.periodLocalDate < c.periodLocalDate)}

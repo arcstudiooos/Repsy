@@ -48,7 +48,7 @@ export default async function PortalCheckin({ params }: { params: Promise<{ id: 
           Filled in from what you logged, so you don&apos;t need to enter it again.
         </p>
       </div>
-      <CheckinFormLoader initial={checkin} />
+      <CheckinFormLoader initial={checkin} units={units} />
       <Link
         href={`/portal/messages?re=checkin:${checkin.id}`}
         className="mt-4 inline-flex min-h-11 items-center text-accent underline underline-offset-4"

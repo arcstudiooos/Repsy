@@ -2,6 +2,14 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import type { CheckinAnswers, CheckinQuestion, CheckinView } from '@kinetic/core';
+import {
+  metricDef,
+  metricFromCanonical,
+  metricToCanonical,
+  metricUnit,
+} from '@kinetic/core/metric-catalog';
+import type { Units } from '@kinetic/core/units';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { saveCheckinDraft, submitCheckin } from '@/lib/checkin-api';
 import { CheckinAnswersList } from './CheckinAnswersList';
@@ -36,15 +44,57 @@ const SAVE_LABEL: Record<SaveState, string> = {
   error: "The draft couldn't be saved. Your answers are still here.",
 };
 
+/** PRD F3: a body measurement typed in the client's units, kept canonical (kg, cm...). */
+function MetricInput({
+  id,
+  q,
+  value,
+  units,
+  describedBy,
+  onChange,
+}: {
+  id: string;
+  q: CheckinQuestion;
+  value: number | undefined;
+  units: Units;
+  describedBy?: string;
+  onChange(v: number | undefined): void;
+}) {
+  const def = metricDef(q.metric!);
+  const [text, setText] = useState(
+    value === undefined ? '' : String(metricFromCanonical(def.kind, value, units)),
+  );
+  return (
+    <div className="flex items-center gap-2 sm:max-w-xs">
+      <Input
+        id={id}
+        type="number"
+        inputMode="decimal"
+        step="any"
+        value={text}
+        aria-describedby={describedBy}
+        onChange={(e) => {
+          setText(e.target.value);
+          const n = e.target.value === '' ? NaN : Number(e.target.value);
+          onChange(Number.isFinite(n) ? metricToCanonical(def.kind, n, units) : undefined);
+        }}
+      />
+      <span className="text-secondary">{metricUnit(def.kind, units)}</span>
+    </div>
+  );
+}
+
 function QuestionField({
   q,
   value,
   error,
+  units,
   onChange,
 }: {
   q: CheckinQuestion;
   value: CheckinAnswers[string] | undefined;
   error?: string;
+  units: Units;
   onChange(v: CheckinAnswers[string] | undefined): void;
 }) {
   const id = useId();
@@ -54,7 +104,95 @@ function QuestionField({
       {error}
     </p>
   ) : null;
-  if (q.type === 'short_text') {
+  const label = (
+    <label htmlFor={id} className="font-medium">
+      {q.label} <span className="text-sm font-normal text-secondary">(optional)</span>
+    </label>
+  );
+  if (q.type === 'number') {
+    return (
+      <div className="flex flex-col gap-1">
+        {label}
+        <div className="flex items-center gap-2 sm:max-w-xs">
+          <Input
+            id={id}
+            type="number"
+            inputMode="decimal"
+            step="any"
+            value={typeof value === 'number' ? value : ''}
+            onChange={(e) => onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? errorId : undefined}
+          />
+          {q.unit && <span className="text-secondary">{q.unit}</span>}
+        </div>
+        {err}
+      </div>
+    );
+  }
+  if (q.type === 'metric' && q.metric) {
+    return (
+      <div className="flex flex-col gap-1">
+        {label}
+        <MetricInput
+          id={id}
+          q={q}
+          units={units}
+          value={typeof value === 'number' ? value : undefined}
+          describedBy={error ? errorId : undefined}
+          onChange={onChange}
+        />
+        <p className="text-sm text-secondary">Also saved to your progress.</p>
+        {err}
+      </div>
+    );
+  }
+  if (q.type === 'date') {
+    return (
+      <div className="flex flex-col gap-1">
+        {label}
+        <Input
+          id={id}
+          type="date"
+          className="sm:max-w-xs"
+          value={typeof value === 'string' ? value : ''}
+          onChange={(e) => onChange(e.target.value === '' ? undefined : e.target.value)}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
+        />
+        {err}
+      </div>
+    );
+  }
+  if (q.type === 'multi_choice') {
+    const chosen = Array.isArray(value) ? value : [];
+    return (
+      <fieldset className="flex flex-col gap-2" aria-describedby={error ? errorId : undefined}>
+        <legend className="mb-1 font-medium">
+          {q.label} <span className="text-sm font-normal text-secondary">(optional)</span>
+        </legend>
+        <p className="text-sm text-secondary">Pick any that apply.</p>
+        <div className="flex flex-col gap-1">
+          {(q.options ?? []).map((o) => (
+            <label key={o} className="flex min-h-11 items-center gap-2">
+              <input
+                type="checkbox"
+                className="size-5 accent-accent"
+                checked={chosen.includes(o)}
+                onChange={(e) => {
+                  const next = e.target.checked ? [...chosen, o] : chosen.filter((x) => x !== o);
+                  onChange(next.length ? next : undefined);
+                }}
+              />
+              {o}
+            </label>
+          ))}
+        </div>
+        {err}
+      </fieldset>
+    );
+  }
+  if (q.type === 'short_text' || q.type === 'long_text') {
     return (
       <div className="flex flex-col gap-1">
         <label htmlFor={id} className="font-medium">
@@ -62,8 +200,8 @@ function QuestionField({
         </label>
         <textarea
           id={id}
-          rows={3}
-          maxLength={2000}
+          rows={q.type === 'long_text' ? 6 : 3}
+          maxLength={q.type === 'long_text' ? 5000 : 2000}
           value={typeof value === 'string' ? value : ''}
           onChange={(e) => onChange(e.target.value === '' ? undefined : e.target.value)}
           aria-invalid={error ? true : undefined}
@@ -74,13 +212,15 @@ function QuestionField({
       </div>
     );
   }
-  const options: { label: string; value: number | boolean }[] =
+  const options: { label: string; value: number | boolean | string }[] =
     q.type === 'scale_1_5'
       ? [1, 2, 3, 4, 5].map((n) => ({ label: String(n), value: n }))
-      : [
-          { label: 'Yes', value: true },
-          { label: 'No', value: false },
-        ];
+      : q.type === 'single_choice'
+        ? (q.options ?? []).map((o) => ({ label: o, value: o }))
+        : [
+            { label: 'Yes', value: true },
+            { label: 'No', value: false },
+          ];
   return (
     <fieldset className="flex flex-col gap-2" aria-describedby={error ? errorId : undefined}>
       <legend className="mb-1 font-medium">
@@ -117,7 +257,14 @@ function QuestionField({
 }
 
 /** The client's weekly check-in (S4-1): every question optional, the draft autosaves, one submission. */
-export function CheckinForm({ initial }: { initial: CheckinView }) {
+export function CheckinForm({
+  initial,
+  units = 'kg',
+}: {
+  initial: CheckinView;
+  /** The client's units, for body measurement questions (PRD F3). */
+  units?: Units;
+}) {
   const [checkin, setCheckin] = useState(initial);
   // A device copy (saved offline, or the tab closed mid-save) is newer than the server draft. This component only
   // renders in the browser (CheckinFormLoader), so localStorage is readable here.
@@ -154,7 +301,11 @@ export function CheckinForm({ initial }: { initial: CheckinView }) {
         <p role="status" className="rounded-card border border-accent bg-surface p-4">
           Check-in sent to your coach. Thank you.
         </p>
-        <CheckinAnswersList questions={checkin.questions} answers={checkin.answers ?? {}} />
+        <CheckinAnswersList
+          questions={checkin.questions}
+          answers={checkin.answers ?? {}}
+          units={units}
+        />
       </div>
     );
   }
@@ -208,6 +359,7 @@ export function CheckinForm({ initial }: { initial: CheckinView }) {
           q={q}
           value={answers[q.id]}
           error={errors[q.id] || undefined}
+          units={units}
           onChange={(v) => change(q.id, v)}
         />
       ))}
