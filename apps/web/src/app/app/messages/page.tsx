@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
+  broadcastAudiences,
   DomainError,
   getThread,
   isUuid,
@@ -12,6 +13,7 @@ import {
 } from '@kinetic/core';
 import { buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { BroadcastDialog } from '@/components/messages/BroadcastDialog';
 import { MessageThread } from '@/components/messages/MessageThread';
 import { EmptyState } from '@/components/states/EmptyState';
 import { Card } from '@/components/ui/card';
@@ -31,9 +33,10 @@ export default async function MessagesPage({
   const sp = await searchParams;
   const selected = first(sp.thread);
   const q = first(sp.q)?.trim().slice(0, 100) || undefined;
-  const { threads, open, hits, searchError, replies } = await withServerTenant(
+  const { threads, open, hits, searchError, replies, audiences } = await withServerTenant(
     async (tx, actor) => {
       const replies = await listSavedReplies(tx, actor);
+      const audiences = await broadcastAudiences(tx, actor);
       let hits: MessageSearchHit[] | null = null;
       let searchError: string | null = null;
       if (q !== undefined) {
@@ -47,7 +50,7 @@ export default async function MessagesPage({
       const list = await listThreads(tx, actor);
       const pick =
         selected && isUuid(selected) && list.some((t) => t.id === selected) ? selected : null;
-      if (!pick) return { threads: list, open: null, hits, searchError, replies };
+      if (!pick) return { threads: list, open: null, hits, searchError, replies, audiences };
       const thread = await getThread(tx, actor, pick);
       const page = await listMessages(tx, actor, pick);
       // Opening the thread marked it read.
@@ -57,13 +60,17 @@ export default async function MessagesPage({
         hits,
         searchError,
         replies,
+        audiences,
       };
     },
   );
 
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Messages</h1>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold md:text-3xl">Messages</h1>
+        <BroadcastDialog audiences={audiences} />
+      </div>
       {threads.length === 0 ? (
         <EmptyState
           title="No conversations yet"

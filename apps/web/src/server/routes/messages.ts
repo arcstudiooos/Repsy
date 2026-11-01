@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  broadcastMessage,
   getClientThread,
   getMyThread,
   listMessages,
@@ -64,4 +65,18 @@ export const messagesPostRoute: RouteDef<typeof sendSchema, true> = {
     }
     return new ApiResult(message, { status: 201 });
   },
+};
+
+const broadcastSchema = z.object({
+  audience: z.string().max(64),
+  body: z.string().max(8000),
+  idempotencyKey: z.string().max(64),
+});
+
+/** `POST /api/v1/messages/broadcast` (PRD H6): one message to everyone or a tag, as individual messages. */
+export const broadcastRoute: RouteDef<typeof broadcastSchema, true> = {
+  can: 'message:send',
+  input: broadcastSchema,
+  handler: ({ actor, input, requestId, tenant }) =>
+    tenant((tx) => broadcastMessage(tx, actor, input, { requestId, onSent: onMessageSent })),
 };

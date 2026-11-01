@@ -518,3 +518,9 @@ export {
   type SessionNoteView,
 } from './sessions/notes';
 export { metricsAsOf, type MetricAsOf } from './progress/metricsAsOf';
+export {
+  broadcastAudiences,
+  broadcastMessage,
+  BROADCAST_MAX_RECIPIENTS,
+  type BroadcastAudience,
+} from './messages/broadcast';

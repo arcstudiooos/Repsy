@@ -1108,6 +1108,17 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+  /messages/broadcast:
+    post:
+      tags: [Messages]
+      summary: "Coaches send one text message to everyone or a tag (PRD H6), delivered as an individual message in each joined client's thread. Body: {audience: 'all' | tagId, body, idempotencyKey: uuid}; a retried key sends nothing twice. Returns {sent}."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
   /threads:
     get:
       tags: [Messages]

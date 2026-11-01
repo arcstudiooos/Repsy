@@ -69,6 +69,7 @@ R2 builds the web-platform features in `docs/competitive/complete-platform-prd.m
 - **D9 workout notes:** in a started or finished workout, the client or coach adds a note on an exercise or one set; notes read in order under the exercise, so the coach can reply. Notes are immutable, erased with the client and exported.
 - **F6 compare check-ins:** on the client's Check-ins tab, any sent check-in can be compared with any earlier one: answers side by side, the change on 1-5 scales, and how each measurement moved between the two dates.
 - **A9 devices:** Settings lists every signed-in device (browser and system, last active) and signs out any one of them, or all others at once; tokens never leave the server.
+- **H6 broadcast:** from the inbox, a coach sends one message to all active clients or a tag; each client receives it privately in their own conversation and replies stay one-to-one.
 
 ## What works locally (Sprint 5)
 
