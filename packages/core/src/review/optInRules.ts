@@ -3,6 +3,7 @@ import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { clientsInPauseNow } from '../clients/pause';
 import { DomainError } from '../errors';
+import { isOnTarget } from '../nutrition/nutrition';
 import { fromDbDate, toDbDate } from '../sessions/read';
 import { todayInZone } from '../timezone';
 import type { FlagUpsert } from './rules';
@@ -16,11 +17,14 @@ export const OPT_IN_RULES = [
   'program_ending',
   'reply_overdue',
   'weight_change',
+  'nutrition_low',
 ] as const;
 export type OptInRule = (typeof OPT_IN_RULES)[number];
 
 export const PROGRAM_ENDING_DAYS = 7;
 export const HABIT_LOW_RATIO = 0.5;
+/** PRD G13: share of days on target (unlogged days count as off) below which a week is low. */
+export const NUTRITION_LOW_RATIO = 0.5;
 /** weight_change compares the latest weight with the earliest one 5 to 14 days before it. */
 export const WEIGHT_WINDOW = { minDays: 5, maxDays: 14 } as const;
 export const WEIGHT_BAND = { min: 1, max: 20 } as const;
@@ -119,6 +123,54 @@ async function habitLow(tx: TenantTx, now: Date): Promise<FlagUpsert[]> {
         sourceId: h.id,
         dedupeKey: `habit_low:${h.id}:${week2}`,
         evidence: { habitId: h.id, dates: [week1, week2] },
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * PRD G13: nutrition on target (G7, within the tolerance of every targeted value) on under half the days of each of
+ * the last two full weeks. Unlogged days count as off target; only clients with a target for both whole weeks count.
+ */
+async function nutritionLow(tx: TenantTx, now: Date): Promise<FlagUpsert[]> {
+  const clients = await watchedClients(tx, now);
+  const out: FlagUpsert[] = [];
+  for (const c of clients) {
+    const today = todayInZone(c.timezone, now);
+    const week2 = addDays(mondayOf(today), -7);
+    const week1 = addDays(week2, -7);
+    const end = addDays(week2, 6);
+    const targets = await tx.nutritionTarget.findMany({
+      where: { clientId: c.id, effectiveFrom: { lte: toDbDate(end) } },
+      orderBy: { effectiveFrom: 'asc' },
+      select: { effectiveFrom: true, calories: true, proteinG: true, carbsG: true, fatG: true },
+    });
+    if (targets.length === 0 || fromDbDate(targets[0]!.effectiveFrom) > week1) continue;
+    const logs = await tx.nutritionLog.findMany({
+      where: { clientId: c.id, localDate: { gte: toDbDate(week1), lte: toDbDate(end) } },
+      select: { localDate: true, calories: true, proteinG: true, carbsG: true, fatG: true },
+    });
+    const byDay = new Map(logs.map((l) => [fromDbDate(l.localDate), l]));
+    const onTargetIn = (mon: string) => {
+      let n = 0;
+      for (let i = 0; i < 7; i++) {
+        const d = addDays(mon, i);
+        const log = byDay.get(d);
+        if (!log) continue;
+        const target = [...targets].reverse().find((t) => fromDbDate(t.effectiveFrom) <= d) ?? null;
+        if (isOnTarget(target, log)) n += 1;
+      }
+      return n;
+    };
+    if ([week1, week2].every((mon) => onTargetIn(mon) / 7 < NUTRITION_LOW_RATIO)) {
+      out.push({
+        clientId: c.id,
+        ruleKey: 'nutrition_low',
+        sourceType: 'nutrition',
+        sourceId: null,
+        dedupeKey: `nutrition_low:${c.id}:${week2}`,
+        evidence: { dates: [week1, week2] },
       });
     }
   }
@@ -257,6 +309,7 @@ export async function evaluateOptInRules(tx: TenantTx, now: Date): Promise<FlagU
   if (s.enabled.has('reply_overdue') && s.replyTargetHours) {
     out.push(...(await replyOverdue(tx, now, s.replyTargetHours)));
   }
+  if (s.enabled.has('nutrition_low')) out.push(...(await nutritionLow(tx, now)));
   if (s.enabled.has('weight_change') && s.weightChangeBandPct) {
     out.push(...(await weightChange(tx, now, s.weightChangeBandPct)));
   }

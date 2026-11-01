@@ -29,6 +29,11 @@ const RULES: { key: OptInRule; label: string; help: string }[] = [
     label: 'Weight change',
     help: 'Body weight changed by more than the percentage below over about two weeks.',
   },
+  {
+    key: 'nutrition_low',
+    label: 'Nutrition off target',
+    help: 'Nutrition was on target on under half the days in each of the last two weeks (days not logged count as off).',
+  },
 ];
 
 /** Opt-in review rules (PRD I3): each adds items to the review queue when it is on. */

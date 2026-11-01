@@ -108,6 +108,62 @@ describe('opt-in review rules (PRD I3)', () => {
     expect(found[0]!.evidenceJson).toMatchObject({ dates: ['2026-10-19', '2026-10-26'] });
   });
 
+  it('nutrition low: on target on under half the days of each of the last two weeks (PRD G13)', async () => {
+    const org = await newOrg(prisma);
+    const low = await newClientWorld(prisma, org);
+    const fine = await newClientWorld(prisma, org);
+    await enable(low, ['nutrition_low']);
+    const eat = (w: ClientWorld, days: string[]) =>
+      withSystem(async (tx) => {
+        await tx.nutritionTarget.create({
+          data: {
+            organizationId: w.orgId,
+            clientId: w.clientId,
+            effectiveFrom: d('2026-10-01'),
+            calories: 2000,
+            setByUserId: w.coach.userId,
+          },
+        });
+        for (const day of days) {
+          await tx.nutritionLog.create({
+            data: {
+              organizationId: w.orgId,
+              clientId: w.clientId,
+              localDate: d(day),
+              calories: 2050,
+            },
+          });
+        }
+        // Logged but far off target: never counts as on target.
+        await tx.nutritionLog.create({
+          data: {
+            organizationId: w.orgId,
+            clientId: w.clientId,
+            localDate: d('2026-10-25'),
+            calories: 3500,
+          },
+        });
+      }, prisma);
+    await eat(low, ['2026-10-19', '2026-10-20', '2026-10-27', '2026-10-28', '2026-10-29']); // 2/7, 3/7
+    await eat(fine, [
+      '2026-10-19',
+      '2026-10-20',
+      '2026-10-21',
+      '2026-10-22',
+      '2026-10-26',
+      '2026-10-27',
+      '2026-10-28',
+      '2026-10-29',
+    ]); // 4/7, 4/7
+    await sweep(low);
+    const found = await flags(low, 'nutrition_low');
+    expect(found).toHaveLength(1);
+    expect(found[0]!.evidenceJson).toMatchObject({ dates: ['2026-10-19', '2026-10-26'] });
+    expect(await flags(fine, 'nutrition_low')).toHaveLength(0);
+    await sweep(low);
+    expect(await flags(low, 'nutrition_low')).toHaveLength(1);
+  });
+
   it('reply overdue: past the usual reply time; reading it resolves the flag', async () => {
     const w = await newClientWorld(prisma, await newOrg(prisma));
     await withSystem(
