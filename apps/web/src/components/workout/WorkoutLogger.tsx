@@ -191,6 +191,7 @@ export function WorkoutLogger({
             exerciseId: s.exerciseId,
             name: s.name,
             instructions: s.instructions,
+            cues: s.cues,
           }
         : { ...e, plannedExerciseId: e.exerciseId };
     }),
@@ -777,12 +778,19 @@ export function WorkoutLogger({
                   </CardHeader>
                   <CardContent className="flex flex-col gap-3">
                     {e.note && <p className="text-sm">{e.note}</p>}
-                    {e.instructions && (
+                    {(e.instructions || e.cues?.length > 0) && (
                       <details className="text-sm">
                         <summary className="min-h-11 cursor-pointer py-2 text-accent">
                           How to do it
                         </summary>
-                        <p className="text-secondary">{e.instructions}</p>
+                        {e.instructions && <p className="text-secondary">{e.instructions}</p>}
+                        {e.cues?.length > 0 && (
+                          <ul className="mt-1 list-disc pl-5 text-secondary">
+                            {e.cues.map((c) => (
+                              <li key={c}>{c}</li>
+                            ))}
+                          </ul>
+                        )}
                       </details>
                     )}
                     {Array.from({ length: rowCount(e) }, (_, i) => {

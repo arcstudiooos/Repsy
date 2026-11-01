@@ -446,6 +446,12 @@ model Exercise {
   instructions   String       @default("")
   /// https only, at most 500 characters.
   mediaUrl       String?      @map("media_url")
+  /// PRD C3: secondary muscles (at most 5), one side at a time, difficulty and short coaching cues (at most 6).
+  secondaryMuscles String[]   @default([]) @map("secondary_muscles")
+  unilateral     Boolean      @default(false)
+  /// beginner, intermediate or advanced; null = not set.
+  difficulty     String?
+  cues           String[]     @default([])
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
 
   organization            Organization?            @relation(fields: [organizationId], references: [id], onDelete: Restrict)

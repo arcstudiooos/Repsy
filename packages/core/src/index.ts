@@ -87,6 +87,8 @@ export {
   EQUIPMENT,
   MOVEMENT_TYPES,
   TRACKING_TYPES,
+  DIFFICULTIES,
+  type Difficulty,
   type ExerciseView,
   type TrackingType,
   type CreateExerciseInput,

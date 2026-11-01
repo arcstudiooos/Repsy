@@ -586,6 +586,10 @@ async function exercisesJson(tx: TenantTx): Promise<{ json: string; rows: number
       trackingType: true,
       instructions: true,
       mediaUrl: true,
+      secondaryMuscles: true,
+      unilateral: true,
+      difficulty: true,
+      cues: true,
     },
   });
   return {

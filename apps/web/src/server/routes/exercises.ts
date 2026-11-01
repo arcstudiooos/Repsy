@@ -34,6 +34,10 @@ const createSchema = z.object({
   trackingType: z.enum(TRACKING_TYPES),
   instructions: z.string().max(2000).optional(),
   mediaUrl: z.string().max(500).nullable().optional(),
+  secondaryMuscles: z.array(z.string().max(100)).max(10).optional(),
+  unilateral: z.boolean().optional(),
+  difficulty: z.string().max(20).nullable().optional(),
+  cues: z.array(z.string().max(300)).max(12).optional(),
 });
 
 export const exercisesPostRoute: RouteDef<typeof createSchema, true> = {

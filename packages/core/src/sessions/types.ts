@@ -36,6 +36,8 @@ export interface WorkoutVersionView {
     name: string;
     trackingType: TrackingType;
     instructions: string;
+    /** Coaching cues from the exercise (PRD C3). */
+    cues: string[];
     note: string | null;
     position: number;
     sets: SetTarget[];

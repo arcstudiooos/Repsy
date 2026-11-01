@@ -76,6 +76,7 @@ R2 builds the web-platform features in `docs/competitive/complete-platform-prd.m
 - **F7 reply toolkit (text):** saved replies fill `{first_name}`, `{workouts_done}`/`{workouts_planned}` (this week), `{weight}`, `{streak}` and `{next_workout}` from the client's data when inserted; the inbox shows the client's goals and motivation beside the conversation. Voice and video replies wait for the media decision.
 - **M3 portable export:** the owner's workspace export adds `programs.json` (every program at its current version, in the shape the program import takes) and `exercises.json` (custom exercises); every export file and format is documented in `docs/exports.md`.
 - **L1 installable portal:** a web app manifest (`/manifest.webmanifest`, start page `/portal`, standalone) with Kinetic icons (including a maskable one) and theme colour, so clients can add the portal to their home screen; offline logging comes from the existing portal service worker. A per-workspace icon from the coach's logo is not done yet.
+- **C3 exercise attributes:** custom exercises can have secondary muscles, a unilateral flag, a difficulty and up to six coaching cues; the library shows them and the logger lists the cues under "How to do it" (also in `exercises.json`). Dialogs now scroll when taller than the screen.
 
 ## What works locally (Sprint 5)
 

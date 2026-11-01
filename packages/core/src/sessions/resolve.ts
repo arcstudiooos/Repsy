@@ -43,7 +43,9 @@ export async function loadWorkoutVersionView(
     include: {
       exercises: {
         orderBy: { position: 'asc' },
-        include: { exercise: { select: { name: true, trackingType: true, instructions: true } } },
+        include: {
+          exercise: { select: { name: true, trackingType: true, instructions: true, cues: true } },
+        },
       },
     },
   });
@@ -59,6 +61,7 @@ export async function loadWorkoutVersionView(
       name: e.exercise.name,
       trackingType: e.exercise.trackingType,
       instructions: e.exercise.instructions,
+      cues: e.exercise.cues,
       note: e.note,
       position: e.position,
       sets: readStoredTargets(e.targetJson),

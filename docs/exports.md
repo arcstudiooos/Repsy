@@ -68,7 +68,9 @@ notes.
   "version": 1,
   "exercises": [
     { "id": "…", "name": "Sled push", "equipment": "Sled", "muscleGroup": "Legs", "movementType": "Push",
-      "trackingType": "distance", "instructions": "…", "mediaUrl": null }
+      "trackingType": "distance", "instructions": "…", "mediaUrl": null,
+      "secondaryMuscles": ["Glutes"], "unilateral": false, "difficulty": "intermediate",
+      "cues": ["Drive through the balls of your feet", "Keep your hips low"] }
   ]
 }
 ```

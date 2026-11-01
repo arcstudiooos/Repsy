@@ -86,6 +86,16 @@ export function NewExerciseDialog() {
           movementType: text('movementType'),
           trackingType: text('trackingType'),
           instructions: text('instructions') || undefined,
+          difficulty: text('difficulty') || null,
+          unilateral: data.get('unilateral') === 'on',
+          secondaryMuscles: text('secondaryMuscles')
+            .split(',')
+            .map((v) => v.trim())
+            .filter(Boolean),
+          cues: text('cues')
+            .split('\n')
+            .map((v) => v.trim())
+            .filter(Boolean),
         }),
       });
       if (res.ok) {
@@ -220,6 +230,56 @@ export function NewExerciseDialog() {
               maxLength={2000}
               aria-invalid={invalid('instructions')}
               aria-describedby={describedBy('instructions')}
+              className="block w-full rounded-control border border-input-border bg-surface px-3 py-2 text-base text-ink aria-invalid:border-danger"
+            />
+          </Field>
+          <Field
+            id={id('difficulty')}
+            label="Difficulty (optional)"
+            error={fieldErrors.difficulty?.[0]}
+          >
+            <select
+              id={id('difficulty')}
+              name="difficulty"
+              defaultValue=""
+              aria-invalid={invalid('difficulty')}
+              aria-describedby={describedBy('difficulty')}
+              className="block min-h-11 w-full rounded-control border border-input-border bg-surface px-3 text-base text-ink"
+            >
+              <option value="">Not set</option>
+              <option value="beginner">Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="advanced">Advanced</option>
+            </select>
+          </Field>
+          <label className="flex min-h-11 items-center gap-3 text-base">
+            <input type="checkbox" name="unilateral" className="size-5 accent-accent" />
+            One side at a time (unilateral)
+          </label>
+          <Field
+            id={id('secondaryMuscles')}
+            label="Secondary muscles (optional, comma separated)"
+            error={fieldErrors.secondaryMuscles?.[0]}
+          >
+            <input
+              id={id('secondaryMuscles')}
+              name="secondaryMuscles"
+              aria-invalid={invalid('secondaryMuscles')}
+              aria-describedby={describedBy('secondaryMuscles')}
+              className="block min-h-11 w-full rounded-control border border-input-border bg-surface px-3 text-base text-ink aria-invalid:border-danger"
+            />
+          </Field>
+          <Field
+            id={id('cues')}
+            label="Coaching cues (optional, one per line, up to 6)"
+            error={fieldErrors.cues?.[0]}
+          >
+            <textarea
+              id={id('cues')}
+              name="cues"
+              rows={3}
+              aria-invalid={invalid('cues')}
+              aria-describedby={describedBy('cues')}
               className="block w-full rounded-control border border-input-border bg-surface px-3 py-2 text-base text-ink aria-invalid:border-danger"
             />
           </Field>

@@ -163,10 +163,31 @@ export function ExerciseLibrary({
                 </span>
               </div>
               <p className="mt-1 text-sm text-secondary">
-                {[e.muscleGroup, e.equipment, e.movementType, TRACKING_LABEL[e.trackingType]].join(
-                  ' · ',
-                )}
+                {[
+                  e.muscleGroup,
+                  e.equipment,
+                  e.movementType,
+                  TRACKING_LABEL[e.trackingType],
+                  e.unilateral ? 'One side at a time' : null,
+                  e.difficulty
+                    ? e.difficulty.charAt(0).toUpperCase() + e.difficulty.slice(1)
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
               </p>
+              {e.secondaryMuscles.length > 0 && (
+                <p className="text-sm text-secondary">
+                  Also works: {e.secondaryMuscles.join(', ')}
+                </p>
+              )}
+              {e.cues.length > 0 && (
+                <ul className="mt-2 list-disc pl-5 text-sm" aria-label={`Cues for ${e.name}`}>
+                  {e.cues.map((c) => (
+                    <li key={c}>{c}</li>
+                  ))}
+                </ul>
+              )}
               {e.instructions && (
                 <details className="mt-2">
                   <summary className="inline-flex min-h-11 cursor-pointer items-center text-sm font-medium">

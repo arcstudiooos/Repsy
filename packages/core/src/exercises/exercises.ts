@@ -20,6 +20,11 @@ const LABEL_MAX = 40;
 const INSTRUCTIONS_MAX = 2000;
 const MEDIA_URL_MAX = 500;
 const QUERY_MAX = 100;
+export const DIFFICULTIES = ['beginner', 'intermediate', 'advanced'] as const;
+export type Difficulty = (typeof DIFFICULTIES)[number];
+export const CUES_MAX = 6;
+export const CUE_MAX = 120;
+export const SECONDARY_MUSCLES_MAX = 5;
 
 export interface ExerciseView {
   id: string;
@@ -30,6 +35,12 @@ export interface ExerciseView {
   trackingType: TrackingType;
   instructions: string;
   mediaUrl: string | null;
+  /** PRD C3. */
+  secondaryMuscles: string[];
+  unilateral: boolean;
+  difficulty: Difficulty | null;
+  /** Short coaching cues, shown as bullet points. */
+  cues: string[];
   /** True for the shared catalog; false for this organization's custom exercises. */
   isGlobal: boolean;
   createdAt: string;
@@ -45,6 +56,10 @@ interface ExerciseRow {
   trackingType: TrackingType;
   instructions: string;
   mediaUrl: string | null;
+  secondaryMuscles: string[];
+  unilateral: boolean;
+  difficulty: string | null;
+  cues: string[];
   createdAt: Date;
 }
 
@@ -57,6 +72,10 @@ const toView = (row: ExerciseRow): ExerciseView => ({
   trackingType: row.trackingType,
   instructions: row.instructions,
   mediaUrl: row.mediaUrl,
+  secondaryMuscles: row.secondaryMuscles,
+  unilateral: row.unilateral,
+  difficulty: (row.difficulty as Difficulty | null) ?? null,
+  cues: row.cues,
   isGlobal: row.organizationId === null,
   createdAt: row.createdAt.toISOString(),
 });
@@ -106,6 +125,23 @@ export interface CreateExerciseInput {
   trackingType: TrackingType;
   instructions?: string;
   mediaUrl?: string | null;
+  secondaryMuscles?: string[];
+  unilateral?: boolean;
+  difficulty?: string | null;
+  cues?: string[];
+}
+
+/** Trims, drops blanks and duplicates, and checks count and length (PRD C3). */
+function cleanList(field: string, values: unknown, maxItems: number, maxLen: number): string[] {
+  if (values === undefined || values === null) return [];
+  if (!Array.isArray(values) || !values.every((v) => typeof v === 'string')) {
+    throw invalid(field, 'Send a list of text.');
+  }
+  const items = [...new Set((values as string[]).map((v) => v.trim()).filter((v) => v !== ''))];
+  if (items.length > maxItems) throw invalid(field, `Add at most ${maxItems}.`);
+  if (items.some((v) => v.length > maxLen))
+    throw invalid(field, `Use at most ${maxLen} characters each.`);
+  return items;
 }
 
 /** Postgres unique violation, as surfaced through Prisma's driver adapter. */
@@ -136,6 +172,22 @@ export async function createExercise(
     trackingType: cleanTrackingType(input.trackingType),
     instructions,
     mediaUrl: cleanMediaUrl(input.mediaUrl),
+    secondaryMuscles: cleanList(
+      'secondaryMuscles',
+      input.secondaryMuscles,
+      SECONDARY_MUSCLES_MAX,
+      LABEL_MAX,
+    ),
+    unilateral: input.unilateral === true,
+    difficulty: (() => {
+      const d = input.difficulty;
+      if (d === undefined || d === null || d === '') return null;
+      if (!(DIFFICULTIES as readonly string[]).includes(d)) {
+        throw invalid('difficulty', 'Choose beginner, intermediate or advanced.');
+      }
+      return d;
+    })(),
+    cues: cleanList('cues', input.cues, CUES_MAX, CUE_MAX),
   };
 
   let row: ExerciseRow;

@@ -13,6 +13,7 @@ export interface SwapView {
   exerciseId: string;
   name: string;
   instructions: string;
+  cues: string[];
   reason: SwapReason;
   /** The planned exercise it replaced. */
   plannedName: string;
@@ -33,7 +34,7 @@ export async function swapsForSession(
       workoutVersionExerciseId: true,
       reason: true,
       createdAt: true,
-      exercise: { select: { id: true, name: true, instructions: true } },
+      exercise: { select: { id: true, name: true, instructions: true, cues: true } },
       workoutVersionExercise: { select: { exercise: { select: { name: true } } } },
     },
   });
@@ -44,6 +45,7 @@ export async function swapsForSession(
         exerciseId: r.exercise.id,
         name: r.exercise.name,
         instructions: r.exercise.instructions,
+        cues: r.exercise.cues,
         reason: r.reason as SwapReason,
         plannedName: r.workoutVersionExercise.exercise.name,
         createdAt: r.createdAt.toISOString(),
