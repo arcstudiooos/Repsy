@@ -11,6 +11,7 @@ import { exerciseBestsBefore, type ExerciseBest } from '../progress/records';
 import { getExercisePerformance, type PreviousPerformance } from './history';
 import { sessionScope, summarize, SUMMARY_SELECT } from './read';
 import { resolveSessionWorkout } from './resolve';
+import { notesForSession, type SessionNoteView } from './notes';
 import { swapsForSession, type SwapView } from './swaps';
 import type { SessionSummary, WorkoutVersionView } from './types';
 
@@ -46,6 +47,8 @@ export interface SessionDetail {
   swaps?: Record<string, SwapView>;
   /** Per planned exerciseId: the coach's alternatives (PRD C4), for the swap menu. */
   alternatives?: Record<string, AlternativeView[]>;
+  /** Notes on exercises and sets by the client and coach, oldest first (PRD D9). */
+  notes?: SessionNoteView[];
   client: { id: string; name: string; preferredUnits: Units; timezone: string };
   revisions: SetLogRevisionView[];
   /** Client actors on a completed or skipped session: when their edit window closes (`submittedAt` + 24h). */
@@ -157,6 +160,7 @@ export async function getSessionDetail(
     bests,
     swaps,
     alternatives,
+    notes: await notesForSession(tx, row.id),
     client,
     revisions,
     editableUntil,

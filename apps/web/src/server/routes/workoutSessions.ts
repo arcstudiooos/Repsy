@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  addSessionNote,
   completeSession,
   finishBodySchema,
   getClientCalendar,
@@ -171,4 +172,21 @@ export const sessionSwapDeleteRoute: RouteDef<undefined, true> = {
     await tenant((tx) => undoSwap(tx, actor, params.id ?? '', params.wveId ?? '', { requestId }));
     return new ApiResult(null, { status: 204 });
   },
+};
+
+const noteSchema = z.object({
+  workoutVersionExerciseId: z.string().max(64),
+  setIndex: z.number().int().nullable().optional(),
+  body: z.string().max(2000),
+});
+
+/** `POST /api/v1/sessions/:id/notes` (PRD D9): a note on an exercise or set, by the client or their coach. */
+export const sessionNoteRoute: RouteDef<typeof noteSchema, true> = {
+  can: 'session:log',
+  input: noteSchema,
+  handler: async ({ actor, input, params, requestId, tenant }) =>
+    new ApiResult(
+      await tenant((tx) => addSessionNote(tx, actor, params.id ?? '', input, { requestId })),
+      { status: 201 },
+    ),
 };

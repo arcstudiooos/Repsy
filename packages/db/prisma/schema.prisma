@@ -218,6 +218,7 @@ model Organization {
   exerciseAlternatives    ExerciseAlternative[]
   goals                   Goal[]
   sessionExerciseSwaps    SessionExerciseSwap[]
+  sessionNotes            SessionNote[]
   habitLogs               HabitLog[]
   clientTags              ClientTag[]
   clientTagLinks          ClientTagLink[]
@@ -588,6 +589,7 @@ model WorkoutVersionExercise {
   setLogs        SetLog[]
 
   swaps          SessionExerciseSwap[]
+  notes          SessionNote[]
 
   @@unique([workoutVersionId, position])
   /// Target of set_logs' composite tenant FK.
@@ -682,6 +684,7 @@ model WorkoutSession {
   setLogs        SetLog[]
   setLogRevisions SetLogRevision[]
   swaps          SessionExerciseSwap[]
+  notes          SessionNote[]
 
   @@unique([assignmentId, slotWeekIndex, slotDayIndex])
   /// Target of set_logs' composite tenant FK.
@@ -1459,4 +1462,29 @@ model Goal {
   @@index([clientId, status])
   @@index([organizationId])
   @@map("goals")
+}
+
+/// A note on an exercise (or one set of it) in a session, by the client or their coach (PRD D9): notes read in order
+/// under the exercise, so a coach's note is a reply. Immutable like messages (D-008 #1); erased with the client.
+/// Kept apart from set logs so offline logging (D-004) is untouched.
+model SessionNote {
+  id                       String   @id @default(uuid()) @db.Uuid
+  organizationId           String   @map("organization_id") @db.Uuid
+  sessionId                String   @map("session_id") @db.Uuid
+  workoutVersionExerciseId String   @map("workout_version_exercise_id") @db.Uuid
+  /// null = the whole exercise.
+  setIndex                 Int?     @map("set_index")
+  body                     String
+  authorUserId             String   @map("author_user_id") @db.Uuid
+  /// client or coach.
+  authorRole               String   @map("author_role")
+  createdAt                DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization           Organization           @relation(fields: [organizationId], references: [id])
+  session                WorkoutSession         @relation(fields: [sessionId, organizationId], references: [id, organizationId])
+  workoutVersionExercise WorkoutVersionExercise @relation(fields: [workoutVersionExerciseId, organizationId], references: [id, organizationId])
+
+  @@index([sessionId, createdAt])
+  @@index([organizationId])
+  @@map("session_notes")
 }

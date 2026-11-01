@@ -95,6 +95,7 @@ describe('exports (S5-2)', () => {
       'nutrition.csv',
       'sessions.csv',
       'set_logs.csv',
+      'workout_notes.csv',
     ]);
     const clientEmail = (
       await withSystem((tx) => tx.client.findUniqueOrThrow({ where: { id: w.clientId } }), prisma)
@@ -133,6 +134,7 @@ describe('exports (S5-2)', () => {
       'profile.csv',
       'sessions.csv',
       'set_logs.csv',
+      'workout_notes.csv',
     ]);
     const all = Object.values(csv).join('');
     expect(csv['messages.csv']).toContain('Hi coach');

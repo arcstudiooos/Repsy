@@ -47,6 +47,7 @@ import {
 import { FinishDialog, type FinishBody } from './FinishDialog';
 import { RestTimer } from './RestTimer';
 import { SetRow, type RowStatus } from './SetRow';
+import { ExerciseNotes } from './ExerciseNotes';
 import { SwapButton, SwapNote } from './SwapControls';
 
 type Exercise = SessionDetail['workout']['exercises'][number];
@@ -194,6 +195,10 @@ export function WorkoutLogger({
         : { ...e, plannedExerciseId: e.exerciseId };
     }),
   };
+  const notesFor = (wveId: string) =>
+    (detail.notes ?? []).filter((n) => n.workoutVersionExerciseId === wveId);
+  const addNote = (note: NonNullable<SessionDetail['notes']>[number]) =>
+    setDetail((d) => ({ ...d, notes: [...(d.notes ?? []), note] }));
   /** Any set of this exercise logged or typed: a swap is only offered before that. */
   const hasSets = (wveId: string) =>
     detail.logs.some((l) => l.workoutVersionExerciseId === wveId && !isBlank(l)) ||
@@ -708,6 +713,16 @@ export function WorkoutLogger({
                         })}
                       </ul>
                     )}
+                    <ExerciseNotes
+                      sessionId={session.id}
+                      workoutVersionExerciseId={e.id}
+                      exerciseName={e.name}
+                      setCount={Math.max(e.sets.length, sets.length)}
+                      notes={notesFor(e.id)}
+                      viewer={mode}
+                      canAdd={online || mode === 'coach'}
+                      onAdded={addNote}
+                    />
                   </CardContent>
                 </Card>
               </li>
@@ -827,6 +842,16 @@ export function WorkoutLogger({
                         Add set
                       </Button>
                     )}
+                    <ExerciseNotes
+                      sessionId={session.id}
+                      workoutVersionExerciseId={e.id}
+                      exerciseName={e.name}
+                      setCount={rowCount(e)}
+                      notes={notesFor(e.id)}
+                      viewer={mode}
+                      canAdd={online || mode === 'coach'}
+                      onAdded={addNote}
+                    />
                   </CardContent>
                 </Card>
               </section>

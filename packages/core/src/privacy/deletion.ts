@@ -180,6 +180,7 @@ export async function eraseClientData(
   await tx.setLogRevision.deleteMany({ where: ofSessions });
   await tx.setLog.deleteMany({ where: ofSessions });
   await tx.sessionExerciseSwap.deleteMany({ where: ofSessions });
+  await tx.sessionNote.deleteMany({ where: ofSessions });
   await tx.reviewFlag.deleteMany({ where: inClient });
   const messageIds = (
     await tx.message.findMany({

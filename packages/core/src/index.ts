@@ -512,3 +512,8 @@ export {
 } from './goals/goals';
 export { checkinWeekSummary, type CheckinWeekSummary } from './checkins/weekSummary';
 export { checkinResponsesCsv } from './checkins/responsesCsv';
+export {
+  addSessionNote,
+  NOTE_MAX as SESSION_NOTE_MAX,
+  type SessionNoteView,
+} from './sessions/notes';

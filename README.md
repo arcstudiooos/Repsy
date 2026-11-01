@@ -66,6 +66,7 @@ R2 builds the web-platform features in `docs/competitive/complete-platform-prd.m
 - **F8 week summary:** every check-in shows the week before as facts already logged (workouts done of planned, personal records, measurement changes, habit days, nutrition on-target days), to the coach beside the answers and to the client above the form.
 - **F12 response export:** coaches download a client's check-in answers as CSV from the Check-ins tab (one row per check-in, one column per question); the owner's workspace export already holds every client's answers.
 - **D14 client moves:** when the owner turns on "Clients can move workouts" (Settings, Review rules), a client moves an unstarted workout to another day in the same week from their calendar; each move adds a "Client moved a workout" review item for the coach.
+- **D9 workout notes:** in a started or finished workout, the client or coach adds a note on an exercise or one set; notes read in order under the exercise, so the coach can reply. Notes are immutable, erased with the client and exported.
 
 ## What works locally (Sprint 5)
 

@@ -953,6 +953,21 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+  /sessions/{id}/notes:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Sessions]
+      summary: "Add a note on an exercise (or one set) in a started or finished session (PRD D9), by the client or their coach. Body: {workoutVersionExerciseId, setIndex?: 0-19 | null, body: 1-500 chars}. Notes are immutable; session detail returns them oldest first."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '201': { $ref: '#/components/responses/Ok' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
   /sessions/{id}/swaps:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }

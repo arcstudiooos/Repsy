@@ -424,6 +424,33 @@ const GOAL_HEADER = [
   'status',
 ];
 
+async function noteRows(tx: TenantTx, clientId?: string): Promise<Rows> {
+  const rows = await tx.sessionNote.findMany({
+    where: clientId ? { session: { is: { clientId } } } : {},
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    select: {
+      sessionId: true,
+      setIndex: true,
+      body: true,
+      authorRole: true,
+      createdAt: true,
+      session: { select: { clientId: true } },
+      workoutVersionExercise: { select: { exercise: { select: { name: true } } } },
+    },
+  });
+  return rows.map((n) => [
+    n.session.clientId,
+    n.sessionId,
+    n.workoutVersionExercise.exercise.name,
+    n.setIndex === null ? null : n.setIndex + 1,
+    n.authorRole,
+    n.body,
+    n.createdAt.toISOString(),
+  ]);
+}
+
+const NOTE_HEADER = ['client_id', 'session_id', 'exercise', 'set', 'author', 'note', 'created_at'];
+
 const SWAP_HEADER = [
   'client_id',
   'session_id',
@@ -537,6 +564,7 @@ export async function buildExportFiles(
       file('nutrition.csv', NUTRITION_HEADER, await nutritionRows(tx)),
       file('exercise_swaps.csv', SWAP_HEADER, await swapRows(tx)),
       file('goals.csv', GOAL_HEADER, await goalRows(tx)),
+      file('workout_notes.csv', NOTE_HEADER, await noteRows(tx)),
     ];
   }
   const clientId = job.clientId as string;
@@ -586,6 +614,7 @@ export async function buildExportFiles(
     file('nutrition.csv', NUTRITION_HEADER, await nutritionRows(tx, clientId)),
     file('exercise_swaps.csv', SWAP_HEADER, await swapRows(tx, clientId)),
     file('goals.csv', GOAL_HEADER, await goalRows(tx, clientId)),
+    file('workout_notes.csv', NOTE_HEADER, await noteRows(tx, clientId)),
     file(
       'messages.csv',
       ['sent_at', 'from', 'body', 'read_at'],
