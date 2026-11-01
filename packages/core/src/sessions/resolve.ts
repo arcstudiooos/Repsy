@@ -1,3 +1,4 @@
+import { readBlock } from '../programs/blocks';
 import { asSection } from '../programs/sections';
 import type { TenantTx } from '@kinetic/db';
 import { DomainError } from '../errors';
@@ -73,6 +74,8 @@ export async function loadWorkoutVersionView(
       cues: e.exercise.cues,
       note: e.note,
       section: asSection(e.section),
+      groupWithPrevious: e.groupWithPrevious,
+      block: readBlock(e.blockJson),
       position: e.position,
       sets: readStoredTargets(e.targetJson),
     })),

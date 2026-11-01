@@ -1,4 +1,5 @@
 import type { TrackingType } from '../exercises/options';
+import type { BlockSpec } from '../programs/blocks';
 import type { WorkoutSection } from '../programs/sections';
 import type { SetTarget } from '../programs/targets';
 
@@ -42,6 +43,9 @@ export interface WorkoutVersionView {
     note: string | null;
     /** PRD C9. */
     section: WorkoutSection;
+    /** PRD C8. */
+    groupWithPrevious: boolean;
+    block: BlockSpec | null;
     position: number;
     sets: SetTarget[];
   }[];

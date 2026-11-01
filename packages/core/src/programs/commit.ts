@@ -7,6 +7,7 @@ import { DomainError } from '../errors';
 import { reconcileSessions } from '../assignments/reconcile';
 import { isUuid } from '../uuid';
 import { assertEditableProgram } from './drafts';
+import { blockSpecSchema, cleanBlock, type BlockSpec } from './blocks';
 import { WORKOUT_SECTIONS, type WorkoutSection } from './sections';
 import { targetSchema, type SetTarget } from './targets';
 
@@ -22,6 +23,10 @@ export type ExerciseInput = {
   note?: string;
   /** PRD C9; main when left out. */
   section?: WorkoutSection;
+  /** PRD C8: joins the block of the exercise above. */
+  groupWithPrevious?: boolean;
+  /** PRD C8: format and settings, on the first exercise of a block. */
+  block?: BlockSpec;
   sets: SetTarget[];
 };
 export type DayInput = { title: string; notes?: string; exercises: ExerciseInput[] };
@@ -31,6 +36,8 @@ const exerciseSchema = z.strictObject({
   exerciseId: z.uuid(),
   note: z.string().trim().max(NOTE_MAX).optional(),
   section: z.enum(WORKOUT_SECTIONS).optional(),
+  groupWithPrevious: z.boolean().optional(),
+  block: blockSpecSchema.optional(),
   sets: targetSchema,
 });
 const daySchema = z.strictObject({
@@ -55,6 +62,21 @@ export function parseWeeks(input: unknown): z.infer<typeof weeksSchema> {
       .map((i) => (i.path.length ? `${i.path.join('.')}: ${i.message}` : i.message));
     throw weeksInvalid(...messages);
   }
+  const blockProblems: string[] = [];
+  parsed.data.forEach((w, wi) =>
+    w.days.forEach((d, di) =>
+      d.exercises.forEach((e, ei) => {
+        const at = `${wi}.days.${di}.exercises.${ei}`;
+        if (e.groupWithPrevious && ei === 0) {
+          blockProblems.push(`${at}: The first exercise can't join a block above it.`);
+        }
+        if (e.groupWithPrevious && e.block) {
+          blockProblems.push(`${at}: Set the block on its first exercise.`);
+        }
+      }),
+    ),
+  );
+  if (blockProblems.length) throw weeksInvalid(...blockProblems.slice(0, 5));
   const counts = new Set(parsed.data.map((w) => w.days.length));
   if (counts.size !== 1) {
     throw weeksInvalid('Every week must have the same number of training days.');
@@ -84,6 +106,8 @@ interface Normalized {
     exerciseId: string;
     note: string | null;
     section?: WorkoutSection;
+    groupWithPrevious?: true;
+    block?: BlockSpec;
     sets: SetTarget[];
   }[];
 }
@@ -96,6 +120,8 @@ function normalize(day: z.infer<typeof daySchema>): Normalized {
       exerciseId: e.exerciseId.toLowerCase(),
       note: e.note ? e.note : null,
       ...(e.section && e.section !== 'main' ? { section: e.section } : {}),
+      ...(e.groupWithPrevious ? { groupWithPrevious: true as const } : {}),
+      ...(e.block ? { block: cleanBlock(e.block) } : {}),
       sets: e.sets,
     })),
   };
@@ -269,6 +295,8 @@ export async function commitProgramVersion(
             targetJson: e.sets,
             note: e.note,
             section: e.section ?? 'main',
+            groupWithPrevious: e.groupWithPrevious ?? false,
+            ...(e.block ? { blockJson: e.block } : {}),
           })),
         } as unknown as Parameters<typeof tx.workoutVersionExercise.createMany>[0]);
         id = row.id;

@@ -18,7 +18,7 @@ import { SELECT_CLASS } from '../../../exercises/labels';
 import { MoveButtons, TextField, useError, useMoveFocus, type MoveDirection } from './EditorFields';
 import { ExerciseCard } from './ExerciseCard';
 import { ExercisePicker } from './ExercisePicker';
-import { defaultSet, type EditorValues } from './editorSchema';
+import { defaultSet, type EditorValues, NO_BLOCK } from './editorSchema';
 
 export interface Slot {
   week: number;
@@ -254,6 +254,8 @@ export function DaySection({
               trackingType: e.trackingType,
               note: '',
               section: 'main',
+              groupWithPrevious: false,
+              block: NO_BLOCK,
               sets: [defaultSet(e.trackingType)],
             })
           }

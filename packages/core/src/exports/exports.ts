@@ -560,6 +560,8 @@ async function programsJson(
             trackingType: e.trackingType,
             ...(e.note ? { note: e.note } : {}),
             ...(e.section !== 'main' ? { section: e.section } : {}),
+            ...(e.groupWithPrevious ? { groupWithPrevious: true } : {}),
+            ...(e.block ? { block: e.block } : {}),
             sets: e.sets,
           })),
         })),

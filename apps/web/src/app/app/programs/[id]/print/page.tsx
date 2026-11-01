@@ -4,6 +4,7 @@ import { Fragment } from 'react';
 import { notFound } from 'next/navigation';
 import { DomainError, getProgram, getSettings, type SetTarget } from '@kinetic/core';
 import { toDisplay, type Units } from '@kinetic/core/units';
+import { blockLayout } from '@kinetic/core/workout-blocks';
 import { sectionStart } from '@kinetic/core/workout-sections';
 import { withServerTenant } from '@/server/serverActor';
 import { PrintButton } from './PrintButton';
@@ -92,7 +93,7 @@ export default async function PrintProgramPage({ params }: { params: Promise<{ i
                   </tr>
                 </thead>
                 <tbody>
-                  {d.exercises.map((e, ei) => (
+                  {d.exercises.map((e, ei, all) => (
                     <Fragment key={ei}>
                       {sectionStart(d.exercises, ei) && (
                         <tr className="border-t border-divider">
@@ -105,8 +106,20 @@ export default async function PrintProgramPage({ params }: { params: Promise<{ i
                           </th>
                         </tr>
                       )}
+                      {blockLayout(all)[ei]?.heading && (
+                        <tr className="border-t border-divider">
+                          <td colSpan={2} className="pt-2 pb-1 font-medium">
+                            {blockLayout(all)[ei]?.heading}
+                          </td>
+                        </tr>
+                      )}
                       <tr className="border-t border-divider align-top">
                         <th scope="row" className="py-1 pr-4 font-medium">
+                          {blockLayout(all)[ei]?.label && (
+                            <>
+                              <span className="mr-2">{blockLayout(all)[ei]?.label}</span>{' '}
+                            </>
+                          )}
                           {e.exerciseName}
                           {e.note && (
                             <span className="block font-normal text-secondary">{e.note}</span>

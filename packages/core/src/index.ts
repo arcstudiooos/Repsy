@@ -121,6 +121,14 @@ export {
   sectionStart,
   type WorkoutSection,
 } from './programs/sections';
+export {
+  BLOCK_FORMATS,
+  BLOCK_FORMAT_LABEL,
+  blockLayout,
+  describeBlock,
+  type BlockFormat,
+  type BlockSpec,
+} from './programs/blocks';
 export { toDisplay, fromDisplay, type Units } from './units';
 export {
   scheduleSlots,

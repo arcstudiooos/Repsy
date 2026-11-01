@@ -2,10 +2,11 @@
 
 import { Plus, Trash2 } from 'lucide-react';
 import { useId } from 'react';
-import { useFieldArray, useFormContext } from 'react-hook-form';
+import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import type { TrackingType } from '@kinetic/core/exercise-options';
 import type { Units } from '@kinetic/core/units';
 import { SECTION_LABEL, WORKOUT_SECTIONS } from '@kinetic/core/workout-sections';
+import { BLOCK_FORMATS, BLOCK_FORMAT_LABEL, type BlockFormat } from '@kinetic/core/workout-blocks';
 import { Button } from '@/components/ui/button';
 import { MoveButtons, NumberField, TextField, useError, type MoveDirection } from './EditorFields';
 import { defaultSet, type EditorValues } from './editorSchema';
@@ -34,6 +35,87 @@ function SectionField({ base }: { base: string }) {
           </option>
         ))}
       </select>
+    </div>
+  );
+}
+
+const BLOCK_HINT: Record<BlockFormat, string> = {
+  superset: 'Do the exercises in this block back to back, then rest.',
+  circuit: 'Go round every exercise in the block for the rounds.',
+  interval: 'Work and rest on a timer for the rounds.',
+  amrap: 'As many rounds as possible in the time.',
+  emom: 'Start a round every minute on the minute.',
+  for_time: 'Finish the rounds as fast as possible.',
+};
+
+/** PRD C8: join the block above, or start a block with a format and its settings. */
+function BlockFields({ base, index }: { base: string; index: number }) {
+  const { control, register } = useFormContext<EditorValues>();
+  const id = useId();
+  const joined = useWatch({ control, name: `${base}.groupWithPrevious` as never }) as unknown as
+    boolean | undefined;
+  const format = useWatch({ control, name: `${base}.block.format` as never }) as unknown as
+    BlockFormat | '' | undefined;
+  const isJoined = index > 0 && joined === true;
+  return (
+    <div className="flex flex-col gap-3">
+      {index > 0 && (
+        <label className="flex min-h-11 items-center gap-2 text-base">
+          <input
+            type="checkbox"
+            className="size-5 accent-accent"
+            {...register(`${base}.groupWithPrevious` as never)}
+          />
+          Group with the exercise above (superset or circuit)
+        </label>
+      )}
+      {!isJoined && (
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1 sm:max-w-xs">
+            <label htmlFor={id} className="text-sm font-medium">
+              Block
+            </label>
+            <select
+              id={id}
+              aria-describedby={format ? `${id}-hint` : undefined}
+              {...register(`${base}.block.format` as never)}
+              className="min-h-11 rounded-control border border-input-border bg-surface px-3 text-base text-ink"
+            >
+              <option value="">No block</option>
+              {BLOCK_FORMATS.map((f) => (
+                <option key={f} value={f}>
+                  {BLOCK_FORMAT_LABEL[f]}
+                </option>
+              ))}
+            </select>
+            {format && (
+              <p id={`${id}-hint`} className="text-sm text-secondary">
+                {BLOCK_HINT[format]}
+              </p>
+            )}
+          </div>
+          {format && (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {format !== 'amrap' && format !== 'emom' && (
+                <NumberField path={`${base}.block.rounds`} label="Rounds" step="1" />
+              )}
+              {format === 'interval' && (
+                <>
+                  <NumberField path={`${base}.block.workSec`} label="Work (s)" step="1" />
+                  <NumberField path={`${base}.block.restSec`} label="Rest (s)" step="1" />
+                </>
+              )}
+              {(format === 'amrap' || format === 'emom' || format === 'for_time') && (
+                <NumberField
+                  path={`${base}.block.minutes`}
+                  label={format === 'for_time' ? 'Time cap (min)' : 'Minutes'}
+                  step="1"
+                />
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -179,6 +261,7 @@ export function ExerciseCard({
       </div>
       <KitWarning base={base} name={name} />
       <SectionField base={base} />
+      <BlockFields base={base} index={index} />
       <TextField path={`${base}.note`} label="Exercise note" maxLength={500} multiline />
       <SetRows base={base} trackingType={trackingType} units={units} />
     </div>

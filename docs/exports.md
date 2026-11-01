@@ -70,8 +70,11 @@ notes.
 - `kind` is `template` or `client` (a client's own copy; `clientId` says whose).
 - `section` is `warmup`, `conditioning` or `cooldown` when an exercise is in that part of the workout (PRD C9); it is
   left out for the main part.
+- Blocks (PRD C8): `groupWithPrevious: true` puts an exercise in the block of the one above it; the first exercise of a
+  block may carry `block` (`format`: `superset`, `circuit`, `interval`, `amrap`, `emom` or `for_time`, with `rounds`,
+  `workSec`, `restSec` or `minutes` as the format needs). Labels such as A1 and A2 are derived from these.
 - The current version only; older versions stay in the app's version history.
-- **Re-import:** `weeks` (keeping `title`, `notes`, and per exercise `exerciseId`, `note`, `section` and `sets`) is exactly the
+- **Re-import:** `weeks` (keeping `title`, `notes`, and per exercise `exerciseId`, `note`, `section`, `groupWithPrevious`, `block` and `sets`) is exactly the
   body `POST /api/v1/programs/import` takes with a `title`, so a program can be recreated in any Kinetic workspace
   that has the same exercises. `exerciseName` and `trackingType` let another tool map exercises by name.
 - Set fields by tracking type: `reps_load` uses `reps` (and optional `loadKg`, `rpe`); `duration` uses

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { ProgramDetail, SetTarget, WeekInput } from '@kinetic/core';
 import { TRACKING_TYPES, type TrackingType } from '@kinetic/core/exercise-options';
 import { WORKOUT_SECTIONS } from '@kinetic/core/workout-sections';
+import { BLOCK_FORMATS, type BlockSpec } from '@kinetic/core/workout-blocks';
 import { fromDisplay, toDisplay, type Units } from '@kinetic/core/units';
 
 /** Mirrors the server limits in packages/core/src/programs (commit.ts, targets.ts). */
@@ -82,6 +83,55 @@ function setSchema(units: Units) {
     });
 }
 
+const wholeNumber = (min: number, max: number) =>
+  optionalNumber(min, max).refine((v) => v === undefined || Number.isInteger(v), {
+    error: 'Use a whole number.',
+  });
+
+/** PRD C8: mirrors `blockSpecSchema` (packages/core/src/programs/blocks.ts); `format: ''` is no block. */
+const blockSchema = z
+  .object({
+    format: z.union([z.literal(''), z.enum(BLOCK_FORMATS)]),
+    rounds: wholeNumber(1, 50),
+    workSec: wholeNumber(5, 3600),
+    restSec: wholeNumber(0, 3600),
+    minutes: wholeNumber(1, 120),
+  })
+  .superRefine((b, ctx) => {
+    const need = (field: 'rounds' | 'workSec' | 'restSec' | 'minutes', message: string) => {
+      if (b[field] === undefined) ctx.addIssue({ code: 'custom', path: [field], message });
+    };
+    if (b.format === 'circuit') need('rounds', 'Enter the rounds.');
+    if (b.format === 'interval') {
+      need('rounds', 'Enter the rounds.');
+      need('workSec', 'Enter the work time.');
+      need('restSec', 'Enter the rest time.');
+    }
+    if (b.format === 'amrap' || b.format === 'emom') need('minutes', 'Enter the minutes.');
+  });
+export type EditorBlock = z.infer<typeof blockSchema>;
+export const NO_BLOCK: EditorBlock = { format: '' };
+
+const BLOCK_FIELDS = {
+  superset: ['rounds'],
+  circuit: ['rounds'],
+  interval: ['rounds', 'workSec', 'restSec'],
+  amrap: ['minutes'],
+  emom: ['minutes'],
+  for_time: ['rounds', 'minutes'],
+} as const;
+
+/** The block an editor exercise sends: none while it joins the block above, only the format's own fields. */
+export function toBlockSpec(b: EditorBlock, joined: boolean): BlockSpec | undefined {
+  if (joined || b.format === '') return undefined;
+  const out: BlockSpec = { format: b.format };
+  for (const k of BLOCK_FIELDS[b.format]) {
+    const v = b[k];
+    if (v !== undefined && Number.isFinite(v)) out[k] = v;
+  }
+  return out;
+}
+
 export function buildEditorSchema(units: Units) {
   const set = setSchema(units);
   const exercise = z
@@ -91,6 +141,8 @@ export function buildEditorSchema(units: Units) {
       trackingType: z.enum(TRACKING_TYPES),
       note: z.string().max(500, 'Use at most 500 characters.'),
       section: z.enum(WORKOUT_SECTIONS),
+      groupWithPrevious: z.boolean(),
+      block: blockSchema,
       sets: z.array(set).min(1, 'Add at least one set.').max(MAX_SETS),
     })
     .superRefine((ex, ctx) => {
@@ -150,6 +202,8 @@ export function toEditorValues(program: ProgramDetail, units: Units): EditorValu
             trackingType: e.trackingType,
             note: e.note ?? '',
             section: e.section,
+            groupWithPrevious: e.groupWithPrevious,
+            block: e.block ? { ...e.block } : NO_BLOCK,
             sets: e.sets.map((s) => {
               const { loadKg, ...rest } = s;
               return loadKg === undefined
@@ -188,12 +242,19 @@ export function toWeekInputs(values: EditorValues, units: Units): WeekInput[] {
     days: w.days.map((d) => ({
       title: d.title,
       ...(d.notes ? { notes: d.notes } : {}),
-      exercises: d.exercises.map((e) => ({
-        exerciseId: e.exerciseId,
-        ...(e.note ? { note: e.note } : {}),
-        ...(e.section !== 'main' ? { section: e.section } : {}),
-        sets: e.sets.map((s) => toSetTarget(s, units)),
-      })),
+      exercises: d.exercises.map((e, i) => {
+        // A move or removal can leave the first exercise "joined": it then starts the block.
+        const joined = i > 0 && e.groupWithPrevious;
+        const block = toBlockSpec(e.block, joined);
+        return {
+          exerciseId: e.exerciseId,
+          ...(e.note ? { note: e.note } : {}),
+          ...(e.section !== 'main' ? { section: e.section } : {}),
+          ...(joined ? { groupWithPrevious: true } : {}),
+          ...(block ? { block } : {}),
+          sets: e.sets.map((s) => toSetTarget(s, units)),
+        };
+      }),
     })),
   }));
 }
@@ -228,6 +289,8 @@ export function toDraftPayload(
           trackingType: e.trackingType,
           note: e.note,
           section: e.section,
+          groupWithPrevious: e.groupWithPrevious,
+          block: e.block,
           sets: e.sets.map((s) => {
             const out: Record<string, number | string> = {};
             for (const k of [
@@ -278,6 +341,22 @@ const draftShape = z.object({
                   trackingType: z.enum(TRACKING_TYPES),
                   note: z.string().nullish(),
                   section: z.enum(WORKOUT_SECTIONS).catch('main'),
+                  groupWithPrevious: z.boolean().catch(false),
+                  block: z
+                    .object({
+                      format: z.union([z.literal(''), z.enum(BLOCK_FORMATS)]).catch(''),
+                      rounds: draftNumber,
+                      workSec: draftNumber,
+                      restSec: draftNumber,
+                      minutes: draftNumber,
+                    })
+                    .catch({
+                      format: '',
+                      rounds: undefined,
+                      workSec: undefined,
+                      restSec: undefined,
+                      minutes: undefined,
+                    }),
                   sets: z.array(
                     z.object({
                       reps: draftNumber,
@@ -326,6 +405,8 @@ export function fromDraftPayload(
           trackingType: e.trackingType,
           note: e.note ?? '',
           section: e.section,
+          groupWithPrevious: e.groupWithPrevious,
+          block: e.block,
           sets: e.sets.map((s) => {
             const out: EditorSet = {};
             for (const k of [

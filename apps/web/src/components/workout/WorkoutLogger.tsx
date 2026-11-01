@@ -1,5 +1,6 @@
 'use client';
 
+import { blockLayout } from '@kinetic/core/workout-blocks';
 import { sectionStart } from '@kinetic/core/workout-sections';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -202,6 +203,8 @@ export function WorkoutLogger({
         : { ...e, plannedExerciseId: e.exerciseId };
     }),
   };
+  // PRD C8: block headings and labels (A, B1, B2); all null on workouts without blocks.
+  const blocks = blockLayout(workout.exercises);
   const notesFor = (wveId: string) =>
     (detail.notes ?? []).filter((n) => n.workoutVersionExerciseId === wveId);
   const addNote = (note: NonNullable<SessionDetail['notes']>[number]) =>
@@ -587,9 +590,13 @@ export function WorkoutLogger({
           {workout.exercises.map((e, i) => (
             <li key={e.id}>
               <SectionLabel label={sectionStart(workout.exercises, i)} />
+              <BlockHeading text={blocks[i]?.heading ?? null} />
               <Card>
                 <CardHeader className="mb-1">
-                  <CardTitle as={titleLevel}>{e.name}</CardTitle>
+                  <CardTitle as={titleLevel}>
+                    {blocks[i]?.label && <BlockLabel label={blocks[i].label} />}
+                    {e.name}
+                  </CardTitle>
                   <CardDescription>{describeTarget(e, units)}</CardDescription>
                 </CardHeader>
                 {e.note && <CardContent className="text-sm">{e.note}</CardContent>}
@@ -692,9 +699,13 @@ export function WorkoutLogger({
             return (
               <li key={e.id}>
                 <SectionLabel label={sectionStart(workout.exercises, i)} />
+                <BlockHeading text={blocks[i]?.heading ?? null} />
                 <Card>
                   <CardHeader className="mb-2">
-                    <CardTitle as={titleLevel}>{e.name}</CardTitle>
+                    <CardTitle as={titleLevel}>
+                      {blocks[i]?.label && <BlockLabel label={blocks[i].label} />}
+                      {e.name}
+                    </CardTitle>
                     {swaps[e.id] && (
                       <SwapNote
                         swap={swaps[e.id]!}
@@ -753,10 +764,14 @@ export function WorkoutLogger({
           return (
             <li key={e.id}>
               <SectionLabel label={sectionStart(workout.exercises, i)} />
+              <BlockHeading text={blocks[i]?.heading ?? null} />
               <section aria-label={e.name}>
                 <Card>
                   <CardHeader className="mb-3">
-                    <CardTitle as={titleLevel}>{e.name}</CardTitle>
+                    <CardTitle as={titleLevel}>
+                      {blocks[i]?.label && <BlockLabel label={blocks[i].label} />}
+                      {e.name}
+                    </CardTitle>
                     {swaps[e.id] ? (
                       <SwapNote
                         swap={swaps[e.id]!}
@@ -927,5 +942,20 @@ function SectionLabel({ label }: { label: string | null }) {
   if (!label) return null;
   return (
     <p className="mb-2 text-sm font-semibold tracking-wide text-secondary uppercase">{label}</p>
+  );
+}
+
+/** Where a block starts (PRD C8): "B · Superset · 3 rounds". */
+function BlockHeading({ text }: { text: string | null }) {
+  if (!text) return null;
+  return <p className="mb-2 text-sm font-medium text-ink">{text}</p>;
+}
+
+/** The exercise's place in its block, read before its name ("B1 Barbell Bench Press"). */
+function BlockLabel({ label }: { label: string }) {
+  return (
+    <>
+      <span className="mr-1 text-accent">{label}</span>{' '}
+    </>
   );
 }

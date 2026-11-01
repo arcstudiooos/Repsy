@@ -602,6 +602,10 @@ model WorkoutVersionExercise {
   note             String?
   /// PRD C9: warmup, main, conditioning or cooldown (CHECK in migration 000051).
   section          String  @default("main")
+  /// PRD C8: joins the block of the exercise above (CHECKs in migration 000053).
+  groupWithPrevious Boolean @default(false) @map("group_with_previous")
+  /// PRD C8: the block's format and settings, on the first exercise of a block only.
+  blockJson        Json?   @map("block_json")
 
   organization   Organization   @relation(fields: [organizationId], references: [id])
   workoutVersion WorkoutVersion @relation(fields: [workoutVersionId, organizationId], references: [id, organizationId])

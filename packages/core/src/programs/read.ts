@@ -1,3 +1,4 @@
+import { readBlock, type BlockSpec } from './blocks';
 import { asSection, type WorkoutSection } from './sections';
 import { appendAudit, type TenantTx } from '@kinetic/db';
 import type { ActorContext } from '../authz/actor';
@@ -96,6 +97,9 @@ export interface ProgramDetail {
         trackingType: TrackingType;
         note: string | null;
         section: WorkoutSection;
+        /** PRD C8. */
+        groupWithPrevious: boolean;
+        block: BlockSpec | null;
         sets: SetTarget[];
       }[];
     }[];
@@ -286,6 +290,8 @@ export async function getProgram(
         trackingType: e.exercise.trackingType,
         note: e.note,
         section: asSection(e.section),
+        groupWithPrevious: e.groupWithPrevious,
+        block: readBlock(e.blockJson),
         sets: readStoredTargets(e.targetJson),
       })),
     });
