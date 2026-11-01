@@ -1,4 +1,5 @@
 import { emailOptIns, type TenantTx } from '@kinetic/db';
+import { STAFF_ROLES, type Role } from '../authz/actor';
 import type { ActorContext } from '../authz/actor';
 import { listCheckinsAwaitingReview } from '../checkins/checkins';
 import { unreadMessageCount } from '../messages/messages';
@@ -30,7 +31,7 @@ export async function queueCoachDigests(
   if (localHour(org.timezone, now) < DIGEST_HOUR) return { queued: 0 };
   const day = todayInZone(org.timezone, now);
   const coaches = await tx.membership.findMany({
-    where: { role: { in: ['owner', 'coach'] }, status: 'active' },
+    where: { role: { in: [...STAFF_ROLES] }, status: 'active' },
     select: { userId: true, role: true },
   });
   let queued = 0;
@@ -40,7 +41,7 @@ export async function queueCoachDigests(
     const actor: ActorContext = {
       userId: m.userId,
       orgId,
-      role: m.role as 'owner' | 'coach',
+      role: m.role as Role,
       isPlatformAdmin: false,
     };
     const checkins = (await listCheckinsAwaitingReview(tx, actor, { limit: 1 })).total;

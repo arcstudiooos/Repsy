@@ -1,4 +1,5 @@
 import { appendAudit, type TenantTx } from '@kinetic/db';
+import { isManager } from '../authz/actor';
 import type { ActorContext } from '../authz/actor';
 import { DomainError } from '../errors';
 import { isUuid } from '../uuid';
@@ -33,8 +34,11 @@ const invalid = (field: string, message: string) =>
   new DomainError('VALIDATION', 'Some fields are invalid.', { [field]: [message] });
 const notFound = () => new DomainError('NOT_FOUND', 'Agreement not found.');
 const ownerOnly = (actor: ActorContext) => {
-  if (actor.role !== 'owner') {
-    throw new DomainError('FORBIDDEN', 'Only the workspace owner can change agreements.');
+  if (!isManager(actor.role)) {
+    throw new DomainError(
+      'FORBIDDEN',
+      'Only the workspace owner or an admin can change agreements.',
+    );
   }
 };
 

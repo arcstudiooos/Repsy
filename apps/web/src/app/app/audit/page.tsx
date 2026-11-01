@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { AUDIT_CATEGORIES, listAuditLog, type AuditCategory } from '@kinetic/core';
+import { AUDIT_CATEGORIES, isManager, listAuditLog, type AuditCategory } from '@kinetic/core';
 import { EmptyState } from '@/components/states/EmptyState';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -34,7 +34,7 @@ export default async function AuditPage({
     : 'all';
   const cursor = first(sp.cursor);
   const result = await withServerTenant(async (tx, actor) =>
-    actor.role === 'owner' ? listAuditLog(tx, actor, { category, cursor }) : null,
+    isManager(actor.role) ? listAuditLog(tx, actor, { category, cursor }) : null,
   );
   const href = (c: AuditCategory, next?: string | null) => {
     const q = new URLSearchParams();
@@ -50,7 +50,9 @@ export default async function AuditPage({
         Who did what and when in this workspace. It never shows messages, notes or answers.
       </p>
       {!result ? (
-        <p className="text-secondary">Only the workspace owner can see the audit log.</p>
+        <p className="text-secondary">
+          Only the workspace owner or an admin can see the audit log.
+        </p>
       ) : (
         <div className="flex flex-col gap-4">
           <nav aria-label="Filter the log" className="flex flex-wrap gap-2">

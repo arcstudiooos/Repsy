@@ -1,4 +1,5 @@
 import { appendAudit, withSystem, withTenant, type PrismaClient, type TenantTx } from '@kinetic/db';
+import { STAFF_ROLES } from '../authz/actor';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';
@@ -181,7 +182,7 @@ export async function sendDueScheduledMessages(
       m.organizationId,
       async (tx) => {
         const member = await tx.membership.findFirst({
-          where: { userId: m.senderUserId, status: 'active', role: { in: ['owner', 'coach'] } },
+          where: { userId: m.senderUserId, status: 'active', role: { in: [...STAFF_ROLES] } },
           select: { role: true },
         });
         if (!member) return 'The coach is no longer in this workspace.';

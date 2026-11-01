@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { isCoachRole } from '../authz/actor';
 import { appendAudit, withSystem, type PrismaClient, type TenantTx } from '@kinetic/db';
 import type { ActorContext } from '../authz/actor';
 import { DomainError } from '../errors';
@@ -26,7 +27,7 @@ const notFound = () => new DomainError('NOT_FOUND', 'Not found.');
 const invalid = (message: string) =>
   new DomainError('VALIDATION', 'Some fields are invalid.', { file: [message] });
 
-const isCoach = (a: ActorContext) => a.role === 'owner' || a.role === 'coach';
+const isCoach = (a: ActorContext) => isCoachRole(a.role);
 
 /** Checks the bytes for `purpose` and returns them ready to store (images without metadata). */
 export function prepareUpload(

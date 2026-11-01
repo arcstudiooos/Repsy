@@ -407,7 +407,7 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
 ## D-012 — R3 rulings delegated to the builder (2026-11-01)
 
 **Status:** Accepted, under the same delegation as D-011; each can be revisited.
-**PRD refs:** B14, B20, H5, I4, I9, L7 (more added as R3 is built).
+**PRD refs:** A10, B14, B20, H5, I4, I9, L7 (more added as R3 is built).
 
 1. **Lifecycle stage (B20)** stores only the stages a coach chooses (Onboarding, Active, At renewal). Paused and
    Alumni are read from the client's status, so a stage can never contradict a pause or archiving (D-003). The first
@@ -425,3 +425,9 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
 6. **Calendar (L7)** ships the one-way ICS feed now: a private link per client (the token is the credential, only
    its hash stored; a new link replaces it), with events carrying the workout name and date only. Two-way Google and
    Outlook sync needs those providers and the K10 bookings it would sync, so it waits for them.
+7. **Team roles (A10)** turn on the team rollout the R1 notes deferred. Owner, Admin, Coach and Assistant are
+   membership roles. In code, `STAFF_ROLES` means anyone on the coaching side, `TRAINER_ROLES` excludes assistants
+   (program, client and habit writes), and `MANAGER_ROLES` is owner and admin (workspace settings, team, agreements,
+   audit log). Exporting the organization's data and handling deletion requests stay with the owner (D-010 #4).
+   Teammates join by an emailed single-use link (7 days) with an account whose verified email matches. A new person
+   signs up first (which also gives them their own workspace), then opens the link.

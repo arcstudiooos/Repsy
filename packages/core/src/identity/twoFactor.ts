@@ -1,4 +1,5 @@
 import type { TenantTx } from '@kinetic/db';
+import { isCoachRole, STAFF_ROLES } from '../authz/actor';
 import type { ActorContext } from '../authz/actor';
 
 export interface TwoFactorStatus {
@@ -14,9 +15,10 @@ export async function twoFactorStatus(tx: TenantTx, actor: ActorContext): Promis
     select: { twoFactorEnabled: true },
   });
   const enabled = user?.twoFactorEnabled ?? false;
-  if (actor.role !== 'owner') return { enabled, required: false };
+  if (!isCoachRole(actor.role)) return { enabled, required: false };
+  // A workspace with a team requires it of every staff member (PRD A8, A10).
   const coaches = await tx.membership.count({
-    where: { role: { in: ['owner', 'coach'] }, status: 'active' },
+    where: { role: { in: [...STAFF_ROLES] }, status: 'active' },
   });
   return { enabled, required: coaches > 1 };
 }

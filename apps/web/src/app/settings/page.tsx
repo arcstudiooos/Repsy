@@ -10,6 +10,7 @@ import {
   listSavedReplies,
   twoFactorStatus,
   listAgreements,
+  isManager,
 } from '@kinetic/core';
 import { AgreementsSection } from '@/components/settings/AgreementsSection';
 import { BrandingSection } from '@/components/settings/BrandingSection';
@@ -54,7 +55,8 @@ export default async function SettingsPage() {
   }));
   // A client who lands here belongs in their portal.
   if (!settings?.profile || !settings.org) redirect('/portal/profile');
-  const isOwner = actor.role === 'owner';
+  // Owners and admins run the workspace settings (PRD A10); only the owner exports its data.
+  const isOwner = isManager(actor.role);
 
   return (
     <>
@@ -75,7 +77,10 @@ export default async function SettingsPage() {
         {isOwner && <DataExportSection scope="org" initial={exports} />}
         {isOwner && (
           <p className="text-secondary">
-            Who changed what, and when:{' '}
+            <Link href="/app/team" className="text-accent underline">
+              Team
+            </Link>{' '}
+            · Who changed what, and when:{' '}
             <Link href="/app/audit" className="text-accent underline">
               Audit log
             </Link>

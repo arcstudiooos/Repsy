@@ -38,6 +38,25 @@ const TEMPLATES: Record<string, Template> = {
     const subject = `${coachName} invited you to Kinetic`.replace(/[\r\n]+/g, ' ');
     return { subject, text, html };
   },
+  // PRD A10: an invite to join a workspace's team.
+  team_invite: (payload, appBaseUrl) => {
+    const orgName = str(payload, 'orgName') ?? 'a workspace';
+    const inviter = str(payload, 'inviterName');
+    const role = str(payload, 'role') ?? 'coach';
+    const token = str(payload, 'token') ?? '';
+    const link = `${appBaseUrl.replace(/\/+$/, '')}/team/join/${encodeURIComponent(token)}`;
+    const who = inviter ? `${inviter} invited you` : 'You are invited';
+    const text =
+      `${who} to join ${orgName} on Kinetic as ${role === 'admin' ? 'an admin' : `a ${role}`}.\n\n` +
+      `Join the team: ${link}\n\n` +
+      'Sign in (or create an account) with this email address. The link works once and expires in 7 days.';
+    const html =
+      `<p>${escapeHtml(who)} to join ${escapeHtml(orgName)} on Kinetic as ${escapeHtml(role === 'admin' ? 'an admin' : `a ${role}`)}.</p>` +
+      `<p><a href="${escapeHtml(link)}">Join the team</a></p>` +
+      '<p>Sign in (or create an account) with this email address. The link works once and expires in 7 days.</p>';
+    const subject = `Join ${orgName} on Kinetic`.replace(/[\r\n]+/g, ' ');
+    return { subject, text, html };
+  },
   // PRD M13: to the support inbox; the request text is the point of this email.
   support_request: (payload) => {
     const topic = str(payload, 'topic') ?? 'question';

@@ -1,4 +1,5 @@
 import { appendAudit, type TenantTx } from '@kinetic/db';
+import { STAFF_ROLES } from '../authz/actor';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';
@@ -49,7 +50,7 @@ export interface ReviewOverview {
 /** The acting coach's own membership row in this org (owner or coach). */
 function ownMembership(tx: TenantTx, actor: ActorContext) {
   return tx.membership.findFirst({
-    where: { userId: actor.userId, role: { in: ['owner', 'coach'] }, status: 'active' },
+    where: { userId: actor.userId, role: { in: [...STAFF_ROLES] }, status: 'active' },
     orderBy: { createdAt: 'asc' },
     select: { id: true, reviewSeenAt: true },
   });

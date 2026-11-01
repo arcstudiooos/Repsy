@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { withSystem, withTenant, type PrismaClient } from '@kinetic/db';
 import { createTestDb } from '@kinetic/db/testing';
-import type { ActorContext, Role } from '../authz/actor';
+import type { ActorContext } from '../authz/actor';
 import { DomainError } from '../errors';
 import { canonicalTimezone } from '../timezone';
 import { newClientWorld, newOrg, runAs } from '../sessions/fixtures.test-helpers';
@@ -13,7 +13,7 @@ let orgId: string;
 const users: Record<'owner' | 'coach' | 'client', string> = { owner: '', coach: '', client: '' };
 let clientId: string;
 
-const actor = (role: Role): ActorContext => ({
+const actor = (role: 'owner' | 'coach' | 'client'): ActorContext => ({
   userId: users[role],
   orgId,
   role,

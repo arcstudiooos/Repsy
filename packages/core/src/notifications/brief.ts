@@ -1,4 +1,5 @@
 import { emailOptIns, type TenantTx } from '@kinetic/db';
+import { STAFF_ROLES } from '../authz/actor';
 import { enqueueEmail } from '../outbox';
 import { fromDbDate, isoWeekOf, toDbDate } from '../sessions/read';
 import { todayInZone } from '../timezone';
@@ -104,7 +105,7 @@ export async function queueWeeklyBriefs(
     return { queued: 0 };
   }
   const coaches = await tx.membership.findMany({
-    where: { role: { in: ['owner', 'coach'] }, status: 'active' },
+    where: { role: { in: [...STAFF_ROLES] }, status: 'active' },
     select: { userId: true },
   });
   let facts: WeeklyBrief | null = null;

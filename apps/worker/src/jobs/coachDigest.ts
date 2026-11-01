@@ -1,4 +1,4 @@
-import { queueCoachDigests, queueWeeklyBriefs, type Logger } from '@kinetic/core';
+import { queueCoachDigests, queueWeeklyBriefs, STAFF_ROLES, type Logger } from '@kinetic/core';
 import { withSystem, withTenant, type PrismaClient } from '@kinetic/db';
 import { defineJob, type CaptureException } from './registry';
 
@@ -24,7 +24,7 @@ export async function runCoachDigests(
     return tx.membership.findMany({
       where: {
         userId: { in: users.map((u) => u.userId) },
-        role: { in: ['owner', 'coach'] },
+        role: { in: [...STAFF_ROLES] },
         status: 'active',
       },
       distinct: ['organizationId'],

@@ -107,7 +107,8 @@ export async function deletionStatusFor(
 ): Promise<DeletionRequestView | null> {
   const id = actor.role === 'client' ? actor.clientId : clientId;
   if (!id || !isUuid(id)) return null;
-  if (actor.role === 'coach') return null;
+  // Only the owner (and the client) see deletion requests (D-010 #4).
+  if (actor.role !== 'owner' && actor.role !== 'client') return null;
   const row = await tx.deletionRequest.findFirst({
     where: { subjectClientId: id },
     orderBy: { createdAt: 'desc' },

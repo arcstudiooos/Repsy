@@ -11,6 +11,8 @@ enum MembershipRole {
   owner
   coach
   client
+  admin
+  assistant
 
   @@map("membership_role")
 }
@@ -111,6 +113,8 @@ model User {
   pushSubscriptions        PushSubscription[]
   scheduledMessages        ScheduledMessage[]
   agreementAcceptances     AgreementAcceptance[]
+  teamInvitesSent          TeamInvite[]            @relation("TeamInviter")
+  teamInvitesAccepted      TeamInvite[]            @relation("TeamInvitee")
   outboxPushes             OutboxPush[]
 
   @@map("users")
@@ -268,6 +272,7 @@ model Organization {
   portalVisits PortalVisit[]
   agreements Agreement[]
   agreementAcceptances AgreementAcceptance[]
+  teamInvites TeamInvite[]
 }
 
 model Membership {
@@ -1835,4 +1840,27 @@ model AgreementAcceptance {
   @@unique([agreementId, version, clientId])
   @@index([organizationId, clientId])
   @@map("agreement_acceptances")
+}
+
+/// PRD A10: an emailed invite to join the workspace's team as admin, coach or assistant.
+model TeamInvite {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  email          String
+  /// admin, coach or assistant.
+  role           String
+  tokenHash      String    @unique @map("token_hash")
+  invitedBy      String    @map("invited_by") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(3)
+  acceptedAt     DateTime? @map("accepted_at") @db.Timestamptz(3)
+  acceptedBy     String?   @map("accepted_by") @db.Uuid
+  revokedAt      DateTime? @map("revoked_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  inviter      User         @relation("TeamInviter", fields: [invitedBy], references: [id])
+  invitee      User?        @relation("TeamInvitee", fields: [acceptedBy], references: [id], onDelete: Restrict)
+
+  @@index([organizationId])
+  @@map("team_invites")
 }

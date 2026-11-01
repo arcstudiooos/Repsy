@@ -1,4 +1,5 @@
 import { withSystem, type PrismaClient } from '@kinetic/db';
+import { STAFF_ROLES } from '@kinetic/core';
 
 export const ONBOARDING_PATH = '/onboarding/pilot-code';
 
@@ -10,7 +11,7 @@ export function hasCoachMembership(prisma: PrismaClient | undefined, userId: str
   return withSystem(
     async (tx) =>
       (await tx.membership.count({
-        where: { userId, status: 'active', role: { in: ['owner', 'coach'] } },
+        where: { userId, status: 'active', role: { in: [...STAFF_ROLES] } },
       })) > 0,
     prisma,
   );

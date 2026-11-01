@@ -1,4 +1,5 @@
 import type { TenantTx } from '@kinetic/db';
+import { isCoachRole } from '../authz/actor';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { countActiveClients } from '../clients/clients';
@@ -53,7 +54,7 @@ export interface SettingsPatch {
   client?: { timezone?: string; preferredUnits?: Units };
 }
 
-const isCoach = (actor: ActorContext) => actor.role === 'owner' || actor.role === 'coach';
+const isCoach = (actor: ActorContext) => isCoachRole(actor.role);
 
 /** Creates the user's rows on first sight (no-op when present, safe under races). */
 async function ensureRows(tx: TenantTx, actor: ActorContext) {

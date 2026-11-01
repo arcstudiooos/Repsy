@@ -1,4 +1,5 @@
 import type { TenantTx } from '@kinetic/db';
+import { isManager } from '../authz/actor';
 import type { ActorContext } from '../authz/actor';
 import { DomainError } from '../errors';
 import { isUuid } from '../uuid';
@@ -83,8 +84,8 @@ export async function listAuditLog(
   actor: ActorContext,
   query: { category?: unknown; cursor?: string } = {},
 ): Promise<{ items: AuditEntry[]; nextCursor: string | null }> {
-  if (actor.role !== 'owner')
-    throw new DomainError('FORBIDDEN', 'Only the workspace owner can see this.');
+  if (!isManager(actor.role))
+    throw new DomainError('FORBIDDEN', 'Only the workspace owner or an admin can see this.');
   const category = (AUDIT_CATEGORIES as readonly unknown[]).includes(query.category)
     ? (query.category as AuditCategory)
     : 'all';

@@ -22,6 +22,10 @@ export {
   ROLES,
   COACH_ROLES,
   isCoachRole,
+  isManager,
+  MANAGER_ROLES,
+  STAFF_ROLES,
+  TRAINER_ROLES,
   highestRole,
   type ActorContext,
   type MembershipRef,
@@ -585,6 +589,20 @@ export {
 } from './messages/replyFacts';
 export { equipmentGuideFor, type EquipmentGuide } from './exercises/equipmentGuide';
 export { setExerciseDemo } from './exercises/demo';
+export {
+  acceptTeamInvite,
+  changeTeamRole,
+  inviteTeammate,
+  listTeam,
+  lookupTeamInvite,
+  removeTeammate,
+  revokeTeamInvite,
+  TEAM_ROLES,
+  type TeamInviteLookup,
+  type TeamInviteView,
+  type TeamMemberView,
+  type TeamRole,
+} from './team/team';
 export {
   calendarFeed,
   hasCalendarFeed,

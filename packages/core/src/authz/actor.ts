@@ -1,4 +1,5 @@
-export const ROLES = ['owner', 'coach', 'client'] as const;
+/** Most privileged first (`highestRole`). Admin and Assistant are the PRD A10 team roles (R3 team rollout). */
+export const ROLES = ['owner', 'admin', 'coach', 'assistant', 'client'] as const;
 export type Role = (typeof ROLES)[number];
 
 export interface MembershipRef {
@@ -20,9 +21,18 @@ export interface ActorContext {
   clientId?: string;
 }
 
-export const COACH_ROLES: readonly Role[] = ['owner', 'coach'];
+/** Everyone on the coaching side of a workspace (the coach shell, not the portal). */
+export const STAFF_ROLES = ['owner', 'admin', 'coach', 'assistant'] as const;
+/** Staff who run the workspace: its settings, team, agreements and audit log. */
+export const MANAGER_ROLES = ['owner', 'admin'] as const;
+/** Staff who build and assign programs and manage clients (not assistants). */
+export const TRAINER_ROLES = ['owner', 'admin', 'coach'] as const;
 
-export const isCoachRole = (role: Role): boolean => COACH_ROLES.includes(role);
+/** Kept for the coach shell: every staff role. */
+export const COACH_ROLES: readonly Role[] = STAFF_ROLES;
+
+export const isCoachRole = (role: Role): boolean => (STAFF_ROLES as readonly Role[]).includes(role);
+export const isManager = (role: Role): boolean => (MANAGER_ROLES as readonly Role[]).includes(role);
 
 /** When a user holds several roles in one org, the most privileged wins. */
 export function highestRole(roles: readonly Role[]): Role | undefined {

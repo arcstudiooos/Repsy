@@ -1,4 +1,5 @@
 import { appendAudit, withSystem, withTenant, type PrismaClient, type TenantTx } from '@kinetic/db';
+import { STAFF_ROLES, type Role } from '../authz/actor';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { cleanName, createClient } from '../clients/clients';
@@ -177,12 +178,12 @@ export async function joinWithLink(
       where: {
         userId: row.createdBy,
         organizationId: row.organizationId,
-        role: { in: ['owner', 'coach'] },
+        role: { in: [...STAFF_ROLES] },
         status: 'active',
       },
       select: { role: true },
     });
-    return member ? { ...row, role: member.role as 'owner' | 'coach' } : null;
+    return member ? { ...row, role: member.role as Role } : null;
   }, opts.prisma);
   if (!link) return 'closed';
   const actor: ActorContext = {

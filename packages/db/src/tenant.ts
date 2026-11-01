@@ -303,6 +303,8 @@ export type SystemTx = Prisma.TransactionClient;
  * - `registerCoach` / `redeemPilotCode` / `deleteUser` (web lib/register-coach.ts) and auth bootstrap (web
  *   lib/auth.ts outbox enqueue): sign-up creates the user's first organization and membership, checks/uses a pilot
  *   code (platform table), undoes a half-finished sign-up, and enqueues platform auth emails; no org exists yet.
+ * - `lookupTeamInvite` / `acceptTeamInvite` (core team/team.ts, web app/team/join, PRD A10): a teammate has no
+ *   membership yet; one invite, looked up by token hash, joined only by the signed-in account with its verified email.
  * - `calendarFeed` (core calendar/feed.ts, web app/calendar/[token], PRD L7): finds the one client whose calendar
  *   feed token hashes to the one presented (the token is the credential, as for an invite), then reads their workouts
  *   in that client's own organization scope.
