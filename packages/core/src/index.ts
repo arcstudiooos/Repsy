@@ -534,3 +534,4 @@ export {
   type ResourceView,
 } from './resources/resources';
 export { queueCoachDigests, DIGEST_HOUR } from './notifications/digest';
+export { getBranding, updateBranding, type Branding } from './branding/branding';

@@ -587,6 +587,23 @@ paths:
         '422': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
+  /org/branding:
+    get:
+      tags: [Organization]
+      summary: "Workspace branding (PRD A6): name, accent (#rrggbb or null), its hover shade and logo URL. Any member."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+    put:
+      tags: [Organization]
+      summary: "Owner only. Body: {accent?: '#rrggbb' | null (white text must reach 4.5:1), logoUrl?: https URL | null}."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
   /org/reply-expectations:
     get:
       tags: [Messages]

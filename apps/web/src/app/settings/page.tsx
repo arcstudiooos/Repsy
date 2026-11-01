@@ -1,12 +1,14 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import {
+  getBranding,
   getReplyExpectations,
   getReviewRuleSettings,
   getSettings,
   listMyExports,
   listSavedReplies,
 } from '@kinetic/core';
+import { BrandingSection } from '@/components/settings/BrandingSection';
 import { DataExportSection } from '@/components/settings/DataExportSection';
 import {
   OrganizationSection,
@@ -24,16 +26,16 @@ export const metadata: Metadata = { title: 'Settings | Kinetic' };
 
 // Access is enforced by src/proxy.ts and the coach shell in the settings layout.
 export default async function SettingsPage() {
-  const { actor, settings, exports, expectations, replies, reviewRules } = await withServerTenant(
-    async (tx, a) => ({
+  const { actor, settings, exports, expectations, replies, reviewRules, branding } =
+    await withServerTenant(async (tx, a) => ({
       actor: a,
       settings: a.role === 'client' ? null : await getSettings(tx, a),
       exports: a.role === 'owner' ? await listMyExports(tx, a) : [],
       expectations: await getReplyExpectations(tx, a),
       replies: a.role === 'client' ? [] : await listSavedReplies(tx, a),
       reviewRules: a.role === 'client' ? null : await getReviewRuleSettings(tx, a),
-    }),
-  );
+      branding: await getBranding(tx),
+    }));
   // A client who lands here belongs in their portal.
   if (!settings?.profile || !settings.org) redirect('/portal/profile');
   const isOwner = actor.role === 'owner';
@@ -44,6 +46,7 @@ export default async function SettingsPage() {
       <div className="flex max-w-2xl flex-col gap-6">
         <ProfileSection profile={settings.profile} />
         <OrganizationSection org={settings.org} canEdit={isOwner} />
+        <BrandingSection branding={branding} canEdit={isOwner} />
         <TrainingDefaultsSection graceHours={settings.org.graceHours} canEdit={isOwner} />
         <NotificationsSection notifications={settings.notifications} coach />
         <MessagingSection expectations={expectations} replies={replies} canEdit={isOwner} />

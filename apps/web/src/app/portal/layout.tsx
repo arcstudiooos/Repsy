@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { Suspense, type ReactNode } from 'react';
+import { PortalBrand } from '@/components/nav/PortalBrand';
 import { PortalNav } from '@/components/nav/PortalNav';
 import { WorkspaceSwitchLink } from '@/components/nav/WorkspaceSwitchLink';
 import { EmptyState } from '@/components/states/EmptyState';
@@ -68,7 +69,9 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
       </a>
       <header className="border-b border-divider bg-surface px-4 py-2 md:border-b-0 md:pb-0">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-2 md:px-8">
-          <p className="text-lg font-semibold">Kinetic</p>
+          <Suspense fallback={<p className="text-lg font-semibold">Kinetic</p>}>
+            <PortalBrand />
+          </Suspense>
           <Suspense fallback={null}>
             <WorkspaceSwitchLink className="text-sm" />
           </Suspense>

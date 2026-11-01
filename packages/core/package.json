@@ -28,6 +28,7 @@
     "./units": "./src/units.ts",
     "./metric-catalog": "./src/progress/metric-catalog.ts",
     "./pr": "./src/progress/pr.ts",
-    "./program-text": "./src/programs/text-import.ts"
+    "./program-text": "./src/programs/text-import.ts",
+    "./brand-color": "./src/branding/color.ts"
   }
 }

@@ -1,8 +1,10 @@
 import { z } from 'zod';
 import { appendAudit } from '@kinetic/db';
 import {
+  getBranding,
   getSettings,
   setSetupChecklistHidden,
+  updateBranding,
   updateSettings,
   type SettingsView,
 } from '@kinetic/core';
@@ -73,4 +75,22 @@ export const setupChecklistPutRoute: RouteDef<typeof setupSchema, true> = {
   input: setupSchema,
   handler: ({ actor, input, tenant }) =>
     tenant((tx) => setSetupChecklistHidden(tx, actor, input.hidden)),
+};
+
+/** `GET /api/v1/org/branding` (PRD A6): any member. */
+export const brandingGetRoute: RouteDef<undefined, true> = {
+  handler: ({ tenant }) => tenant((tx) => getBranding(tx)),
+};
+
+const brandingSchema = z.object({
+  accent: z.string().max(20).nullable().optional(),
+  logoUrl: z.string().max(2000).nullable().optional(),
+});
+
+/** `PUT /api/v1/org/branding`: owner only. */
+export const brandingPutRoute: RouteDef<typeof brandingSchema, true> = {
+  can: 'settings:org:update',
+  input: brandingSchema,
+  handler: ({ actor, input, requestId, tenant }) =>
+    tenant((tx) => updateBranding(tx, actor, input, { requestId })),
 };

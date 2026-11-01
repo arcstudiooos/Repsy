@@ -72,6 +72,7 @@ R2 builds the web-platform features in `docs/competitive/complete-platform-prd.m
 - **H6 broadcast:** from the inbox, a coach sends one message to all active clients or a tag; each client receives it privately in their own conversation and replies stay one-to-one.
 - **G5 resources:** `/app/resources` shares https links and short texts with all clients, a tag or one client; clients read theirs at `/portal/resources`. No uploads (text and links only).
 - **H14 coach digest:** coaches can turn on a daily digest email (Settings, Notifications); the worker (`coach.digest`, hourly) sends it once a day from 07:00 in the workspace's time zone with counts of check-ins to review, unread messages and open review items, and skips days with nothing to report. Never names or content.
+- **A6 branding:** the owner sets an accent colour (white text must reach 4.5:1) and an https logo in Settings; the client portal shows the workspace name, logo and accent. Printed programs and client emails already carry the workspace name.
 
 ## What works locally (Sprint 5)
 
