@@ -128,9 +128,9 @@ test.describe('messaging (S4-4)', () => {
       await add.getByLabel('Title').fill('Great week');
       await add.getByLabel('Reply').fill('Great week {first_name}! Keep it up.');
       await add.getByRole('button', { name: 'Add saved reply' }).click();
-      await expect(page.getByText('Great week {first_name}! Keep it up.')).toBeVisible({
-        timeout: 15_000,
-      });
+      // The confirmation, not the text (which is also in the field until the save lands).
+      await expect(page.getByText('Saved reply added.')).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByText('Great week {first_name}! Keep it up.')).toBeVisible();
       await expectNoAxeViolations(page);
 
       await openClientTab(page, 'Rae Reply', 'Messages');
