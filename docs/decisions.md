@@ -407,7 +407,7 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
 ## D-012 — R3 rulings delegated to the builder (2026-11-01)
 
 **Status:** Accepted, under the same delegation as D-011; each can be revisited.
-**PRD refs:** B20, H5, I4, I9 (more added as R3 is built).
+**PRD refs:** B14, B20, H5, I4, I9 (more added as R3 is built).
 
 1. **Lifecycle stage (B20)** stores only the stages a coach chooses (Onboarding, Active, At renewal). Paused and
    Alumni are read from the client's status, so a stage can never contradict a pause or archiving (D-003). The first
@@ -419,3 +419,6 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
    off by default. Portal visits keep only the local day.
 4. **The Monday brief (I9)** follows D-007 like the daily digest: counts and a link, no client names, and nothing a
    client wrote. Its own opt-in, off by default.
+5. **Agreements (B14)** gate the whole portal until accepted, like the D-007 #5 safety reminder but blocking. An
+   acceptance is evidence: insert-only (a trigger refuses UPDATE, and DELETE outside lawful erasure). Only the
+   owner publishes or edits; any text change is a new version.

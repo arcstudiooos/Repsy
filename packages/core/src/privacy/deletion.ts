@@ -178,6 +178,8 @@ export async function eraseClientData(
   // committed program history are otherwise immutable.
   await tx.$executeRaw`SELECT pg_catalog.set_config('app.lawful_erasure', 'on', true)`;
   await tx.setLogRevision.deleteMany({ where: ofSessions });
+  // PRD B14: their agreement acceptances (insert-only otherwise).
+  await tx.agreementAcceptance.deleteMany({ where: inClient });
   await tx.setLog.deleteMany({ where: ofSessions });
   await tx.sessionExerciseSwap.deleteMany({ where: ofSessions });
   await tx.sessionNote.deleteMany({ where: ofSessions });

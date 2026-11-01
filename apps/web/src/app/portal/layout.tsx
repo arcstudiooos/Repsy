@@ -10,7 +10,8 @@ import { PortalDevice } from '@/portal/offline/PortalDevice';
 import { ServiceWorker } from '@/portal/offline/ServiceWorker';
 import { getServerActorOutcome, getServerSession, withServerTenant } from '@/server/serverActor';
 import { shellRedirect } from '@/server/shellGate';
-import { recordPortalVisit } from '@kinetic/core';
+import { pendingAgreements, recordPortalVisit } from '@kinetic/core';
+import { AgreementGate } from '@/portal/AgreementGate';
 
 /**
  * Portal gate (behind src/proxy.ts, which checks session + verified email):
@@ -23,14 +24,22 @@ async function ClientGate({ children }: { children: ReactNode }) {
   if (!user) redirect('/login?next=%2Fportal');
   const target = shellRedirect('portal', await getServerActorOutcome(user));
   if (target) redirect(target);
-  const { linked, owner } = await withServerTenant(async (tx, actor) => {
+  const { linked, owner, pending, coachName } = await withServerTenant(async (tx, actor) => {
     const linked = await tx.client.findFirst({
       where: { userId: actor.userId },
       select: { id: true, status: true, timezone: true },
     });
     // PRD I4: one row per local day the client opens the portal.
     if (linked && linked.status !== 'archived') await recordPortalVisit(tx, linked);
-    return { linked, owner: { userId: actor.userId, orgId: actor.orgId } };
+    // PRD B14: terms and waivers still to accept (again, after a change).
+    const pending = linked ? await pendingAgreements(tx, { ...actor, clientId: linked.id }) : [];
+    const org = pending.length ? await tx.organization.findFirst({ select: { name: true } }) : null;
+    return {
+      linked,
+      pending,
+      coachName: org?.name ?? 'Your coach',
+      owner: { userId: actor.userId, orgId: actor.orgId },
+    };
   });
   // D-010 #4: archiving a client ends their access to this coach's organization.
   if (linked?.status === 'archived') {
@@ -58,7 +67,7 @@ async function ClientGate({ children }: { children: ReactNode }) {
       <Suspense fallback={null}>
         <NoticeBanner />
       </Suspense>
-      {children}
+      {pending.length > 0 ? <AgreementGate coachName={coachName} pending={pending} /> : children}
     </>
   );
 }

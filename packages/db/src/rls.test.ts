@@ -96,6 +96,8 @@ describe('row level security', () => {
           WHERE col.table_schema = ${schema}
             AND col.table_name = c.relname AND col.column_name = 'organization_id'))`;
     expect(tables.map((t) => t.relname).sort()).toEqual([
+      'agreement_acceptances',
+      'agreements',
       'audit_events',
       'checkin_templates',
       'checkins',
@@ -158,6 +160,8 @@ describe('row level security', () => {
     >`SELECT tablename, qual, with_check FROM pg_policies
       WHERE schemaname = ${schema} AND policyname = 'tenant_isolation'`;
     expect(policies.map((p) => p.tablename).sort()).toEqual([
+      'agreement_acceptances',
+      'agreements',
       'audit_events',
       'checkin_templates',
       'checkins',

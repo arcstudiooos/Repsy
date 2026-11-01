@@ -9,7 +9,9 @@ import {
   listMyExports,
   listSavedReplies,
   twoFactorStatus,
+  listAgreements,
 } from '@kinetic/core';
+import { AgreementsSection } from '@/components/settings/AgreementsSection';
 import { BrandingSection } from '@/components/settings/BrandingSection';
 import { DataExportSection } from '@/components/settings/DataExportSection';
 import {
@@ -29,17 +31,27 @@ export const metadata: Metadata = { title: 'Settings | Kinetic' };
 
 // Access is enforced by src/proxy.ts and the coach shell in the settings layout.
 export default async function SettingsPage() {
-  const { actor, settings, exports, expectations, replies, reviewRules, branding, twoFactor } =
-    await withServerTenant(async (tx, a) => ({
-      actor: a,
-      settings: a.role === 'client' ? null : await getSettings(tx, a),
-      exports: a.role === 'owner' ? await listMyExports(tx, a) : [],
-      expectations: await getReplyExpectations(tx, a),
-      replies: a.role === 'client' ? [] : await listSavedReplies(tx, a),
-      reviewRules: a.role === 'client' ? null : await getReviewRuleSettings(tx, a),
-      branding: await getBranding(tx),
-      twoFactor: await twoFactorStatus(tx, a),
-    }));
+  const {
+    actor,
+    settings,
+    exports,
+    expectations,
+    replies,
+    reviewRules,
+    agreements,
+    branding,
+    twoFactor,
+  } = await withServerTenant(async (tx, a) => ({
+    actor: a,
+    settings: a.role === 'client' ? null : await getSettings(tx, a),
+    exports: a.role === 'owner' ? await listMyExports(tx, a) : [],
+    expectations: await getReplyExpectations(tx, a),
+    replies: a.role === 'client' ? [] : await listSavedReplies(tx, a),
+    reviewRules: a.role === 'client' ? null : await getReviewRuleSettings(tx, a),
+    agreements: a.role === 'client' ? [] : await listAgreements(tx),
+    branding: await getBranding(tx),
+    twoFactor: await twoFactorStatus(tx, a),
+  }));
   // A client who lands here belongs in their portal.
   if (!settings?.profile || !settings.org) redirect('/portal/profile');
   const isOwner = actor.role === 'owner';
@@ -55,6 +67,7 @@ export default async function SettingsPage() {
         <NotificationsSection notifications={settings.notifications} coach />
         <MessagingSection expectations={expectations} replies={replies} canEdit={isOwner} />
         {reviewRules && <ReviewRulesSection settings={reviewRules} canEdit={isOwner} />}
+        <AgreementsSection agreements={agreements} canEdit={isOwner} />
         <PilotAccessCard
           count={settings.org.activeClientCount}
           limit={settings.org.activeClientLimit}

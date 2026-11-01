@@ -10,6 +10,7 @@ import {
   listTags,
   tagsForClients,
   getEngagement,
+  acceptancesFor,
 } from '@kinetic/core';
 import { CompliancePercent, WINDOW_LABEL } from '@/components/analytics/Compliance';
 import { EngagementCard } from '@/components/analytics/Engagement';
@@ -19,6 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { withServerTenant } from '@/server/serverActor';
 import { formatDate } from '../StatusBadge';
 import { loadClient } from './data';
+import { AgreementStatus } from './AgreementStatus';
 import { InviteControls } from './InviteControls';
 import { TagEditor } from './TagEditor';
 
@@ -37,6 +39,7 @@ export default async function ClientOverviewPage({ params }: { params: Promise<{
     habits,
     units,
     engagement,
+    agreements,
   } = await withServerTenant(async (tx, actor) => ({
     isOwner: actor.role === 'owner',
     deletion: await deletionStatusFor(tx, actor, client.id),
@@ -52,6 +55,7 @@ export default async function ClientOverviewPage({ params }: { params: Promise<{
       .map((h) => ({ id: h.id, title: h.title })),
     units: (await getSettings(tx, actor)).profile?.units ?? client.preferredUnits,
     engagement: await getEngagement(tx, actor, client.id),
+    agreements: await acceptancesFor(tx, client.id),
   }));
   const joined = client.joinedAt ? client.joinedAt.slice(0, 10) : null;
   const rows: [string, string][] = [
@@ -115,6 +119,7 @@ export default async function ClientOverviewPage({ params }: { params: Promise<{
           />
         </CardContent>
       </Card>
+      <AgreementStatus items={agreements} />
       <EngagementCard weeks={engagement} />
       {compliance && (
         <Card>

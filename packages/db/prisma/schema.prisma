@@ -110,6 +110,7 @@ model User {
   notificationPreference   NotificationPreference?
   pushSubscriptions        PushSubscription[]
   scheduledMessages        ScheduledMessage[]
+  agreementAcceptances     AgreementAcceptance[]
   outboxPushes             OutboxPush[]
 
   @@map("users")
@@ -265,6 +266,8 @@ model Organization {
   outboxPushes OutboxPush[]
   scheduledMessages ScheduledMessage[]
   portalVisits PortalVisit[]
+  agreements Agreement[]
+  agreementAcceptances AgreementAcceptance[]
 }
 
 model Membership {
@@ -386,6 +389,7 @@ model Client {
   programs        Program[]
   assignments     ProgramAssignment[]
   workoutSessions WorkoutSession[]
+  agreementAcceptances AgreementAcceptance[]
   portalVisits    PortalVisit[]
   pauses          ClientPause[]
   /// Composite FK (MATCH SIMPLE: null until a weekday is set) keeps the template in this org.
@@ -1789,4 +1793,44 @@ model PortalVisit {
   @@id([clientId, localDate])
   @@index([organizationId])
   @@map("portal_visits")
+}
+
+/// PRD B14: terms or a waiver clients accept in the portal; editing the text makes a new version.
+model Agreement {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  title          String
+  body           String
+  version        Int       @default(1)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  archivedAt     DateTime? @map("archived_at") @db.Timestamptz(3)
+
+  organization Organization          @relation(fields: [organizationId], references: [id])
+  acceptances  AgreementAcceptance[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId])
+  @@map("agreements")
+}
+
+/// PRD B14: one client's acceptance of one version; insert-only (trigger, migration 000071).
+model AgreementAcceptance {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  agreementId    String   @map("agreement_id") @db.Uuid
+  version        Int
+  clientId       String   @map("client_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  acceptedAt     DateTime @map("accepted_at") @db.Timestamptz(3)
+  ip             String?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  agreement    Agreement    @relation(fields: [agreementId, organizationId], references: [id, organizationId])
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@unique([agreementId, version, clientId])
+  @@index([organizationId, clientId])
+  @@map("agreement_acceptances")
 }

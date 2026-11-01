@@ -585,6 +585,17 @@ export {
 } from './messages/replyFacts';
 export { equipmentGuideFor, type EquipmentGuide } from './exercises/equipmentGuide';
 export { setExerciseDemo } from './exercises/demo';
+export {
+  acceptAgreement,
+  acceptancesFor,
+  archiveAgreement,
+  createAgreement,
+  listAgreements,
+  pendingAgreements,
+  updateAgreement,
+  type AcceptanceView,
+  type AgreementView,
+} from './agreements/agreements';
 export { queueWeeklyBriefs, weeklyBriefFacts, type WeeklyBrief } from './notifications/brief';
 export {
   ENGAGEMENT_WEEKS,
