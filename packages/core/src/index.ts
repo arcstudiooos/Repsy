@@ -585,6 +585,18 @@ export {
 } from './messages/replyFacts';
 export { equipmentGuideFor, type EquipmentGuide } from './exercises/equipmentGuide';
 export { setExerciseDemo } from './exercises/demo';
+export {
+  deletePushSubscription,
+  deliverPushes,
+  enqueuePush,
+  hasPushSubscription,
+  PUSH_KINDS,
+  releaseEndpoint,
+  savePushSubscription,
+  vapidAuthorization,
+  vapidKeys,
+  type PushKind,
+} from './notifications/push';
 export { twoFactorStatus, type TwoFactorStatus } from './identity/twoFactor';
 export { recordReadiness, readReadiness, type ReadinessView } from './sessions/readiness';
 export {

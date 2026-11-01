@@ -5,6 +5,7 @@ import { deletionsRunJob } from './deletionsRun';
 import { emailDeliverJob } from './emailDeliver';
 import { exportsBuildJob } from './exportsBuild';
 import { mediaPurgeJob } from './mediaPurge';
+import { pushDeliverJob } from './pushDeliver';
 import { pausesEndJob } from './pausesEnd';
 import { reviewSweepJob } from './reviewSweep';
 
@@ -19,4 +20,5 @@ export const jobs = [
   coachDigestJob,
   clientRemindersJob,
   mediaPurgeJob,
+  pushDeliverJob,
 ] as const;

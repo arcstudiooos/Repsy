@@ -5,6 +5,7 @@ import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { escapeLike } from '../clients/clients';
 import { DomainError } from '../errors';
+import { enqueuePush } from '../notifications/push';
 import { enqueueEmail } from '../outbox';
 import { isUuid } from '../uuid';
 
@@ -407,6 +408,12 @@ export async function sendMessage(
         idempotencyKey: `new-message:${row.id}`,
       });
     }
+    // PRD H11: a push to each of the recipient's devices that turned notifications on (no content).
+    await enqueuePush(tx, {
+      toUserId: recipientId,
+      kind: 'new_message',
+      idempotencyKey: `new-message:${row.id}`,
+    });
   }
   await opts.onSent?.(
     tx,

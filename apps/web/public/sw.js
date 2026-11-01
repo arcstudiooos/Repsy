@@ -224,3 +224,28 @@ self.addEventListener('fetch', (event) => {
     );
   }
 });
+
+/**
+ * PRD H11: a push carries no payload (D-011 #6), so the notice is always the same; opening it focuses the portal.
+ */
+self.addEventListener('push', (event) => {
+  event.waitUntil(
+    self.registration.showNotification('Kinetic', {
+      body: 'You have something new. Open Kinetic to see it.',
+      tag: 'kinetic',
+      icon: '/icon-192.png',
+    }),
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    (async () => {
+      const open = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      const portal = open.find((c) => new URL(c.url).pathname.startsWith('/portal'));
+      if (portal) return portal.focus();
+      return self.clients.openWindow('/portal');
+    })(),
+  );
+});

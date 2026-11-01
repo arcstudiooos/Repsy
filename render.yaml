@@ -89,3 +89,8 @@ envVarGroups:
       # HMAC key for 15-minute export download links (falls back to BETTER_AUTH_SECRET).
       - key: EXPORT_LINK_SECRET
         sync: false
+      # Web push (PRD H11): leave both empty to keep push off.
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false

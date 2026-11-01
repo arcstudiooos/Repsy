@@ -303,6 +303,9 @@ export type SystemTx = Prisma.TransactionClient;
  * - `registerCoach` / `redeemPilotCode` / `deleteUser` (web lib/register-coach.ts) and auth bootstrap (web
  *   lib/auth.ts outbox enqueue): sign-up creates the user's first organization and membership, checks/uses a pilot
  *   code (platform table), undoes a half-finished sign-up, and enqueues platform auth emails; no org exists yet.
+ * - `releaseEndpoint` (web server/routes/push.ts, PRD H11): before saving the caller's push subscription, deletes
+ *   another user's row for the same browser endpoint (a shared device). Keyed by the endpoint, an unguessable
+ *   capability URL the caller's own browser holds; it only ever removes rows, never reads them.
  *
  * Platform-admin console (S5-3): cross-organization by design, so the rule above does not hold; instead every use
  * goes through `withPlatformAdmin` (web server/platformAdmin.ts), which authorizes the authenticated user as a

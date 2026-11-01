@@ -51,6 +51,7 @@ const WITH_SYSTEM_ALLOWED: Record<string, string> = {
   'lib/register-coach.ts': 'web lib/register-coach.ts',
   'server/actor.ts': 'web server/actor.ts',
   'server/platformAdmin.ts': 'web server/platformAdmin.ts',
+  'server/routes/push.ts': 'web server/routes/push.ts',
 };
 // The platform-admin console reaches system scope only through `withPlatformAdmin`.
 const WITH_PLATFORM_ADMIN_ALLOWED: Record<string, string> = {

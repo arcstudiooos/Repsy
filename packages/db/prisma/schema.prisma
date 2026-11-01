@@ -108,6 +108,8 @@ model User {
   accounts                 Account[]
   coachProfile             CoachProfile?
   notificationPreference   NotificationPreference?
+  pushSubscriptions        PushSubscription[]
+  outboxPushes             OutboxPush[]
 
   @@map("users")
 }
@@ -259,6 +261,7 @@ model Organization {
   joinLinks JoinLink[]
   mediaFiles MediaFile[]
   progressPhotos ProgressPhoto[]
+  outboxPushes OutboxPush[]
 }
 
 model Membership {
@@ -1704,4 +1707,38 @@ model SessionMedia {
   @@index([sessionId])
   @@index([organizationId])
   @@map("session_media")
+}
+
+/// PRD H11: one device's browser push subscription (user-level, own rows only).
+model PushSubscription {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  endpoint   String    @unique
+  p256dh     String
+  auth       String
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastSentAt DateTime? @map("last_sent_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
+}
+
+/// PRD H11: a push to send; the kind only, never content (D-011 #6).
+model OutboxPush {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  toUserId       String    @map("to_user_id") @db.Uuid
+  kind           String
+  idempotencyKey String    @unique @map("idempotency_key")
+  attempts       Int       @default(0)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  sentAt         DateTime? @map("sent_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  toUser       User         @relation(fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("outbox_pushes")
 }

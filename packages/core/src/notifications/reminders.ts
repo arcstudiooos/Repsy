@@ -1,6 +1,7 @@
 import { emailOptIns, type TenantTx } from '@kinetic/db';
 import { clientsInPauseNow } from '../clients/pause';
 import { enqueueEmail } from '../outbox';
+import { enqueuePush } from './push';
 import { toDbDate } from '../sessions/read';
 import { todayInZone } from '../timezone';
 
@@ -102,6 +103,12 @@ export async function queueClientReminders(tx: TenantTx, now: Date): Promise<{ q
       if (made) {
         queued += 1;
         sentToday += 1;
+        // PRD H11: the same reminder on the client's devices with notifications on.
+        await enqueuePush(tx, {
+          toUserId: userId,
+          kind: `${r.kind}_reminder`,
+          idempotencyKey: keyOf(r.kind, c.id, day),
+        });
       }
     }
   }

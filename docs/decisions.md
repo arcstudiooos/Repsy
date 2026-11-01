@@ -397,7 +397,9 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
    with short-lived signed links. Images are re-encoded to strip EXIF and GPS. Video is stored as uploaded within the
    PRD's size and length limits; transcoding (L11 adaptive bitrate) waits for a media provider.
 6. **Web push (H11)** uses standard VAPID Web Push; it is off unless `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` are
-   set, and payloads never carry content (as emails, D-007).
+   set, and payloads never carry content (as emails, D-007). Turning notifications on for a device is the opt-in for
+   messages and replies on that device; reminder pushes follow the reminder opt-ins (H13) and share their daily cap. A
+   browser endpoint belongs to whoever subscribed it last (shared devices).
 7. **Operations features (M8, M9, M10, M13)** ship as in-app surfaces only: an incident banner the platform admin
    sets, public status, reliability and plan pages, a support form and a changelog. External monitoring and billing
    providers stay out until chosen.

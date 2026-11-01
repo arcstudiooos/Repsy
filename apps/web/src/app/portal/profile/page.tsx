@@ -8,6 +8,7 @@ import { NotificationsSection } from '@/components/settings/NotificationsSection
 import { SecuritySection } from '@/components/settings/SecuritySection';
 import { TwoFactorSection } from '@/components/settings/TwoFactorSection';
 import { SignOutButton } from '@/components/nav/SignOutButton';
+import { PushToggle } from '@/portal/PushToggle';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';
 
@@ -27,6 +28,7 @@ export default async function PortalProfile() {
       <div className="flex flex-col gap-6">
         {settings.client && <ClientPreferencesSection client={settings.client} />}
         <NotificationsSection notifications={settings.notifications} />
+        <PushToggle />
         <DataExportSection scope="client_self" initial={exports}>
           <DeletionRequestButton current={deletion} />
         </DataExportSection>

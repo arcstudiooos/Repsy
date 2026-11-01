@@ -298,10 +298,13 @@ export async function eraseClientData(
     await tx.membership.deleteMany({
       where: { userId: client.userId, organizationId: orgId, role: 'client' },
     });
+    // PRD H11: nothing more is pushed to them from this workspace.
+    await tx.outboxPush.deleteMany({ where: { toUserId: client.userId, organizationId: orgId } });
     if (othersAfter === 0) {
       await tx.session.deleteMany({ where: { userId: client.userId } });
       await tx.account.deleteMany({ where: { userId: client.userId } });
       await tx.twoFactor.deleteMany({ where: { userId: client.userId } });
+      await tx.pushSubscription.deleteMany({ where: { userId: client.userId } });
       await tx.user.update({
         where: { id: client.userId },
         data: {

@@ -123,6 +123,7 @@ describe('row level security', () => {
       'nutrition_targets',
       'organizations',
       'outbox_emails',
+      'outbox_pushes',
       'program_assignments',
       'program_drafts',
       'program_slots',
@@ -180,6 +181,7 @@ describe('row level security', () => {
       'nutrition_targets',
       'organizations',
       'outbox_emails',
+      'outbox_pushes',
       'program_assignments',
       'program_drafts',
       'program_slots',
@@ -517,11 +519,12 @@ describe('user-keyed tables (coach_profiles, notification_preferences)', () => {
         pg_get_expr(p.polqual, p.polrelid) AS qual
       FROM pg_class c JOIN pg_policy p ON p.polrelid = c.oid
       WHERE c.relnamespace = ${schema}::regnamespace
-        AND c.relname IN ('coach_profiles', 'notification_preferences')
+        AND c.relname IN ('coach_profiles', 'notification_preferences', 'push_subscriptions')
         AND p.polname = 'self_row'`;
     expect(rows.map((r) => r.relname).sort()).toEqual([
       'coach_profiles',
       'notification_preferences',
+      'push_subscriptions',
     ]);
     for (const r of rows) {
       expect(r, r.relname).toMatchObject({ relrowsecurity: true, relforcerowsecurity: true });
