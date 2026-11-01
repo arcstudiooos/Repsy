@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import {
+  buildProgram,
   expectNoAxeViolations,
   expectNoHorizontalOverflow,
   onboardClient,
@@ -46,6 +47,17 @@ test.describe('team roles and invites (PRD A10)', () => {
       await other.goto('/app/team');
       await expect(other.getByRole('list', { name: 'Team' })).toContainText(owner.name);
       await expect(other.getByRole('list', { name: 'Team' })).toContainText('Coach');
+
+      // PRD C20: the owner publishes a house template; the coach sees it but can't edit it.
+      await buildProgram(page, 'House plan', [[['bench', 'Barbell Bench Press']]]);
+      const housed = page.waitForResponse((r) => r.url().endsWith('/house') && r.ok());
+      await page.getByLabel('House template for the whole team').check();
+      await housed;
+      await other.goto('/app/programs');
+      const row = other.getByRole('link', { name: /House plan/ });
+      await expect(row).toContainText('House', { timeout: 30_000 });
+      await row.click();
+      await expect(other.getByText(/This is a house template/)).toBeVisible({ timeout: 30_000 });
 
       // PRD A13: the new coach covers the owner today; the owner's client shows under their My clients.
       const client = await onboardClient(page, request, browser, 'Cov Ered');

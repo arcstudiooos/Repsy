@@ -155,7 +155,14 @@ export default async function ProgramsPage({
                 href={`/app/programs/${p.id}/edit`}
                 className="flex min-h-11 min-w-0 flex-1 flex-col gap-1 rounded-card bg-surface p-4 shadow-card hover:bg-canvas"
               >
-                <span className="text-base font-semibold">{p.title}</span>
+                <span className="text-base font-semibold">
+                  {p.title}
+                  {p.house && (
+                    <span className="ml-2 rounded-control bg-canvas px-2 py-0.5 text-sm font-normal text-secondary">
+                      House
+                    </span>
+                  )}
+                </span>
                 <span className="text-sm text-secondary">
                   {p.versionNo === null
                     ? 'Not saved yet'

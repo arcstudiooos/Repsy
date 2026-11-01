@@ -1,4 +1,5 @@
 import type { TenantTx } from '@kinetic/db';
+import { isManager } from '../authz/actor';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';
@@ -26,13 +27,21 @@ const notFound = () => new DomainError('NOT_FOUND', 'Not found.');
 export async function assertEditableProgram(
   tx: TenantTx,
   programId: string,
+  actor?: ActorContext,
 ): Promise<{ id: string; kind: 'template' | 'client' }> {
   if (!isUuid(programId)) throw notFound();
   const program = await tx.program.findFirst({
     where: { id: programId },
-    select: { id: true, kind: true },
+    select: { id: true, kind: true, house: true },
   });
   if (!program) throw notFound();
+  // PRD C20: house templates are the owner's and admins'; coaches duplicate them to make their own.
+  if (program.house && actor && !isManager(actor.role)) {
+    throw new DomainError(
+      'FORBIDDEN',
+      'House templates are edited by the owner or an admin. Duplicate it to make your own version.',
+    );
+  }
   if (program.kind === 'client') {
     const active = await tx.programAssignment.findFirst({
       where: { programId, status: 'active' },
@@ -55,7 +64,7 @@ export async function saveDraft(
   input: { baseVersionNo: number | null; title?: string; weeks: unknown },
 ): Promise<{ updatedAt: string }> {
   assertCan(actor, 'program:write');
-  await assertEditableProgram(tx, programId);
+  await assertEditableProgram(tx, programId, actor);
 
   const { baseVersionNo, title, weeks } = input;
   if (baseVersionNo !== null && (!Number.isInteger(baseVersionNo) || baseVersionNo < 1)) {
@@ -91,7 +100,7 @@ export async function getDraft(
   programId: string,
 ): Promise<ProgramDraftView | null> {
   assertCan(actor, 'program:read');
-  await assertEditableProgram(tx, programId);
+  await assertEditableProgram(tx, programId, actor);
   const row = await tx.programDraft.findFirst({
     where: { programId },
     include: { editor: { select: { id: true, name: true } } },
@@ -114,6 +123,6 @@ export async function discardDraft(
   programId: string,
 ): Promise<void> {
   assertCan(actor, 'program:write');
-  await assertEditableProgram(tx, programId);
+  await assertEditableProgram(tx, programId, actor);
   await tx.programDraft.deleteMany({ where: { programId } });
 }

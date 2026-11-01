@@ -564,6 +564,8 @@ model Program {
   status           ProgramStatus @default(active)
   /// PRD D13: a template whose workouts clients may start as extra workouts.
   sharedWithClients Boolean      @default(false) @map("shared_with_clients")
+  /// PRD C20: a house template every coach sees; only owners and admins edit it.
+  house            Boolean       @default(false)
   createdBy        String        @map("created_by") @db.Uuid
   createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)

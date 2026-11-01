@@ -16,6 +16,7 @@ import {
   setTemplateArchived,
   type WeekInput,
   setProgramShared,
+  setProgramHouse,
 } from '@kinetic/core';
 import { ApiResult, type RouteDef } from '../api';
 
@@ -215,4 +216,16 @@ export const programSharedRoute: RouteDef<typeof sharedSchema, true> = {
     tenant((tx) =>
       setProgramShared(tx, actor, params.id ?? '', input.sharedWithClients, { requestId }),
     ),
+};
+
+const houseSchema = z.object({ house: z.boolean() });
+
+/** `PUT /api/v1/programs/:id/house` (PRD C20): publish a template to the whole team, or withdraw it. */
+export const programHouseRoute: RouteDef<typeof houseSchema, true> = {
+  can: 'program:write',
+  input: houseSchema,
+  handler: async ({ actor, input, params, requestId, tenant }) => {
+    await tenant((tx) => setProgramHouse(tx, actor, params.id, input.house, { requestId }));
+    return { house: input.house };
+  },
 };

@@ -81,6 +81,7 @@ export async function duplicateTemplate(
     weekCount: detail.versionNo === null ? null : detail.weekCount,
     updatedAt: created.updatedAt.toISOString(),
     activeClientCount: 0,
+    house: false,
   };
 }
 

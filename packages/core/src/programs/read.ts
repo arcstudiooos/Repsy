@@ -1,4 +1,5 @@
 import { readBlock, type BlockSpec } from './blocks';
+import { isManager } from '../authz/actor';
 import { asSection, type WorkoutSection } from './sections';
 import { appendAudit, type TenantTx } from '@kinetic/db';
 import type { ActorContext } from '../authz/actor';
@@ -74,6 +75,8 @@ export interface ProgramSummary {
   updatedAt: string;
   /** Distinct clients whose active assignment runs a copy of this template (0 for client copies). */
   activeClientCount: number;
+  /** PRD C20: a house template (every coach sees it; owners and admins edit it). */
+  house: boolean;
 }
 
 export interface ProgramDetail {
@@ -82,6 +85,8 @@ export interface ProgramDetail {
   kind: 'template' | 'client';
   /** PRD D13: clients may start this template's workouts as extra workouts. */
   sharedWithClients: boolean;
+  /** PRD C20. */
+  house: boolean;
   /** Null until the first commit. */
   versionNo: number | null;
   versionId: string | null;
@@ -133,6 +138,7 @@ export async function createProgram(
     weekCount: null,
     updatedAt: row.updatedAt.toISOString(),
     activeClientCount: 0,
+    house: false,
   };
 }
 
@@ -146,7 +152,7 @@ export async function renameProgram(
   assertCan(actor, 'program:write');
   // A template, or the client copy of that client's active assignment (Ruling 1); unknown ids and other orgs are
   // NOT_FOUND, any other client copy is CONFLICT. Renaming a client copy never touches the template it came from.
-  await assertEditableProgram(tx, id);
+  await assertEditableProgram(tx, id, actor);
   const { count } = await tx.program.updateMany({
     where: { id },
     data: { title: cleanTitle(title) },
@@ -165,10 +171,21 @@ export async function renameProgram(
 export async function listPrograms(
   tx: TenantTx,
   actor: ActorContext,
-  query: { kind: 'template'; cursor?: string; q?: string; status?: 'active' | 'archived' },
+  query: {
+    kind: 'template';
+    cursor?: string;
+    q?: string;
+    status?: 'active' | 'archived';
+    /** PRD C20: `house` templates only, or the actor's own. Default: everything they can see. */
+    library?: 'house' | 'mine';
+  },
 ): Promise<{ items: ProgramSummary[]; nextCursor: string | null }> {
   assertCan(actor, 'program:read');
   const and: Record<string, unknown>[] = [{ kind: query.kind, status: query.status ?? 'active' }];
+  // PRD C20: coaches and assistants see house templates and their own; owners and admins see all.
+  if (!isManager(actor.role)) and.push({ OR: [{ house: true }, { createdBy: actor.userId }] });
+  if (query.library === 'house') and.push({ house: true });
+  if (query.library === 'mine') and.push({ createdBy: actor.userId, house: false });
   if (query.q !== undefined) {
     const q = query.q.trim();
     if (q.length < 1 || q.length > TITLE_MAX) {
@@ -219,6 +236,7 @@ export async function listPrograms(
       weekCount: r.currentVersion?.weekCount ?? null,
       updatedAt: r.updatedAt.toISOString(),
       activeClientCount: clientsByTemplate.get(r.id)?.size ?? 0,
+      house: r.house,
     })),
     nextCursor: rows.length > PAGE_SIZE && last ? encodeCursor(last) : null,
   };
@@ -254,6 +272,7 @@ export async function getProgram(
     title: program.title,
     kind: program.kind,
     sharedWithClients: program.sharedWithClients,
+    house: program.house,
   };
   if (wanted === null) {
     return { ...base, versionNo: null, versionId: null, daysPerWeek: 0, weekCount: 0, weeks: [] };
@@ -304,4 +323,32 @@ export async function getProgram(
     weekCount: version.weekCount,
     weeks,
   };
+}
+
+/** PRD C20: an owner or admin publishes a template to the whole team, or takes it back. */
+export async function setProgramHouse(
+  tx: TenantTx,
+  actor: ActorContext,
+  id: unknown,
+  house: boolean,
+  opts: { requestId?: string } = {},
+): Promise<void> {
+  assertCan(actor, 'program:write');
+  if (!isManager(actor.role)) {
+    throw new DomainError('FORBIDDEN', 'Only the owner or an admin publishes house templates.');
+  }
+  if (!isUuid(id)) throw notFound();
+  const { count } = await tx.program.updateMany({
+    where: { id, kind: 'template' },
+    data: { house },
+  });
+  if (count === 0) throw notFound();
+  await appendAudit(tx, {
+    orgId: actor.orgId,
+    actorId: actor.userId,
+    objectType: 'program',
+    objectId: id,
+    action: house ? 'program.house_published' : 'program.house_withdrawn',
+    requestId: opts.requestId,
+  });
 }

@@ -113,6 +113,7 @@ export {
 export {
   createProgram,
   renameProgram,
+  setProgramHouse,
   listPrograms,
   getProgram,
   type ProgramDetail,

@@ -10,13 +10,15 @@ import {
   getSettings,
   type ProgramDetail,
   type ProgramDraftView,
+  isManager,
+  TRAINER_ROLES,
 } from '@kinetic/core';
 import type { Units } from '@kinetic/core/units';
 import { EmptyState } from '@/components/states/EmptyState';
 import { buttonVariants } from '@/components/ui/button';
 import { withServerTenant } from '@/server/serverActor';
 import { ProgramEditor, type EditorClient } from './ProgramEditor';
-import { ShareWithClients } from './ShareWithClients';
+import { HouseTemplate, ShareWithClients } from './ShareWithClients';
 
 export const metadata: Metadata = { title: 'Edit program | Kinetic' };
 
@@ -27,8 +29,11 @@ type Loaded =
       units: Units;
       draft: ProgramDraftView | null;
       client: EditorClient | null;
+      /** PRD C20: a team workspace, and whether the viewer can publish house templates. */
+      team: boolean;
+      manager: boolean;
     }
-  | { editable: false; program: ProgramDetail };
+  | { editable: false; program: ProgramDetail; reason: 'inactive' | 'house' };
 
 /**
  * Templates and the client copy of a client's active assignment open in the builder (Ruling 1). Any other client
@@ -45,7 +50,11 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
         draft = await getDraft(tx, actor, id);
       } catch (error) {
         if (error instanceof DomainError && error.code === 'CONFLICT') {
-          return { editable: false, program };
+          return { editable: false, program, reason: 'inactive' };
+        }
+        // PRD C20: a house template, opened by a coach who can't edit it.
+        if (error instanceof DomainError && error.code === 'FORBIDDEN') {
+          return { editable: false, program, reason: 'house' };
         }
         throw error;
       }
@@ -57,6 +66,11 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
         program,
         units: settings.profile?.units ?? 'kg',
         draft,
+        team:
+          (await tx.membership.count({
+            where: { status: 'active', role: { in: [...TRAINER_ROLES] } },
+          })) > 1,
+        manager: isManager(actor.role),
         client: assignee
           ? {
               id: assignee.clientId,
@@ -84,7 +98,11 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
         <h1 className="text-2xl font-semibold md:text-3xl">{loaded.program.title}</h1>
         <EmptyState
           title="This program can't be edited"
-          body="This program is no longer active for this client. Its saved versions stay available."
+          body={
+            loaded.reason === 'house'
+              ? 'This is a house template: only the owner or an admin edits it. Duplicate it from Programs to make your own version.'
+              : 'This program is no longer active for this client. Its saved versions stay available.'
+          }
           action={
             loaded.program.versionNo !== null ? (
               <Link
@@ -101,6 +119,9 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
   }
   return (
     <>
+      {loaded.program.kind === 'template' && loaded.team && loaded.manager && (
+        <HouseTemplate programId={loaded.program.id} initial={loaded.program.house} />
+      )}
       {loaded.program.kind === 'template' && (
         <ShareWithClients
           programId={loaded.program.id}

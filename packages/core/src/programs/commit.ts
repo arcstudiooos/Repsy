@@ -172,7 +172,7 @@ export async function commitProgramVersion(
     data: { updatedAt: new Date() },
   });
   if (touched.count === 0) throw new DomainError('NOT_FOUND', 'Not found.');
-  const { kind } = await assertEditableProgram(tx, programId);
+  const { kind } = await assertEditableProgram(tx, programId, actor);
 
   let assignment: { id: string; weekdays: number[] } | null = null;
   if (kind === 'client') {
