@@ -37,3 +37,9 @@ export function cacheWorkoutPage(sessionId: string): void {
 export function uncacheWorkoutPage(sessionId: string): void {
   void post({ type: 'uncache-workout', sessionId });
 }
+
+/** PRD D4: asks the worker to keep the next 7 days of workouts, so any of them opens and starts offline. */
+export function keepUpcomingWorkouts(sessionIds: string[]): void {
+  if (sessionIds.length === 0) return;
+  void post({ type: 'keep-upcoming', sessionIds });
+}

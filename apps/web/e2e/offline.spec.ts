@@ -319,21 +319,113 @@ test.describe('offline continuity (S3-3)', () => {
     }
   });
 
-  test("uncached session can't start offline", async ({ page, browser }) => {
-    const client = await coachAndClient(page, browser, 'Una Uncached');
+  test('a workout kept from the portal home opens and starts offline; the start syncs with its sets (PRD D4)', async ({
+    page,
+    browser,
+  }) => {
+    const client = await coachAndClient(page, browser, 'Una Upcoming');
     try {
-      await buildProgram(page, 'Uncached block', [[EXERCISES[0]]]);
-      await assignFromClientTab(page, 'Una Uncached', 'Uncached block');
+      await buildProgram(page, 'Upcoming block', [[EXERCISES[0]]]);
+      await assignFromClientTab(page, 'Una Upcoming', 'Upcoming block');
       const portal = client.page;
       await portal.goto('/portal');
-      await portal.getByRole('link', { name: /Start workout/ }).click();
-      await expect(portal).toHaveURL(/\/portal\/workouts\/[0-9a-f-]{36}$/, { timeout: 30_000 });
-      await expect(portal.getByRole('button', { name: 'Start workout' })).toBeEnabled();
+      const link = portal.getByRole('link', { name: /Start workout/ });
+      const href = (await link.getAttribute('href')) as string;
+      const sessionId = href.split('/').pop() as string;
+      // Online, the portal home asks the worker to keep the next 7 days of workouts.
+      await portal.waitForFunction(() => navigator.serviceWorker?.controller !== null, null, {
+        timeout: 30_000,
+      });
+      await portal.reload();
+      await expect
+        .poll(
+          () =>
+            portal.evaluate(async (path) => {
+              for (const name of await caches.keys()) {
+                if (await (await caches.open(name)).match(path)) return true;
+              }
+              return false;
+            }, href),
+          { timeout: 30_000 },
+        )
+        .toBe(true);
+
       await client.context.setOffline(true);
-      await expect(portal.getByRole('button', { name: 'Start workout' })).toBeDisabled();
+      await portal.goto(href);
+      await expect(portal.getByText("You're offline. You can still start")).toBeVisible({
+        timeout: 30_000,
+      });
+      await portal.getByRole('button', { name: 'Start workout' }).click();
+      await fillAndBlur(portal, 'Barbell Bench Press', {
+        'Set 1 reps': '5',
+        'Set 1 weight (kg)': '70',
+      });
+      await expect(status(portal, 'Saved on device')).toBeVisible({ timeout: 15_000 });
+      expect((await sessionFacts(sessionId)).state).toBe('scheduled');
+
+      // A closed page reopens offline still started, with the set.
+      await portal.close();
+      const reopened = await client.context.newPage();
+      await reopened.goto(href);
+      const row = reopened.getByRole('region', { name: 'Barbell Bench Press' });
+      await expect(row.getByLabel('Set 1 reps', { exact: true })).toHaveValue('5', {
+        timeout: 30_000,
+      });
+      await expect(row.getByLabel('Set 1 weight (kg)', { exact: true })).toHaveValue('70');
+
+      await client.context.setOffline(false);
+      await expect(status(reopened, 'Synced')).toBeVisible({ timeout: 45_000 });
+      expect(await sessionFacts(sessionId)).toMatchObject({
+        state: 'in_progress',
+        rows: 1,
+        onLocked: 1,
+      });
+    } finally {
+      await client.context.close();
+    }
+  });
+
+  test('a row typed but not saved survives a crash and reopens as typed (PRD D20)', async ({
+    page,
+    browser,
+  }) => {
+    const client = await coachAndClient(page, browser, 'Cora Crash');
+    try {
+      await buildProgram(page, 'Crash block', [[EXERCISES[0]]]);
+      await assignFromClientTab(page, 'Cora Crash', 'Crash block');
+      const portal = client.page;
+      const sessionId = await startToday(portal);
+      const url = portal.url();
+      const card = portal.getByRole('region', { name: 'Barbell Bench Press' });
+      await card.getByLabel('Set 1 reps', { exact: true }).fill('7');
+      // No blur, no save: the page is killed mid-entry.
+      await expect
+        .poll(
+          () =>
+            portal.evaluate(
+              (id) =>
+                new Promise<number>((resolve) => {
+                  const req = indexedDB.open('kinetic-offline');
+                  req.onsuccess = () => {
+                    const tx = req.result.transaction('drafts', 'readonly');
+                    const n = tx.objectStore('drafts').index('sessionId').count(id);
+                    n.onsuccess = () => resolve(n.result);
+                  };
+                }),
+              sessionId,
+            ),
+          { timeout: 15_000 },
+        )
+        .toBe(1);
+      await portal.close({ runBeforeUnload: false });
+      await client.context.setOffline(true);
+      const reopened = await client.context.newPage();
+      await reopened.goto(url);
       await expect(
-        portal.getByText("You're offline. Open this workout while online to start it."),
-      ).toBeVisible();
+        reopened
+          .getByRole('region', { name: 'Barbell Bench Press' })
+          .getByLabel('Set 1 reps', { exact: true }),
+      ).toHaveValue('7', { timeout: 30_000 });
     } finally {
       await client.context.close();
     }

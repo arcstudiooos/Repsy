@@ -46,11 +46,20 @@ export const sessionGetRoute: RouteDef<undefined, true> = {
 };
 
 /** `POST /api/v1/sessions/:id/start`: locks the workout version (D-002 #6). Idempotent. */
-export const sessionStartRoute: RouteDef<undefined, true> = {
+// PRD D4: a start queued offline names the version the device showed, and when it was tapped.
+const startSchema = z.object({
+  expectedWorkoutVersionId: z.uuid().optional(),
+  startedAt: z.iso.datetime().optional(),
+});
+
+export const sessionStartRoute: RouteDef<typeof startSchema, true> = {
   can: 'session:log',
-  handler: async ({ actor, params, requestId, tenant, track, clientHash }) => {
+  input: startSchema,
+  handler: async ({ actor, input, params, requestId, tenant, track, clientHash }) => {
     const t0 = Date.now();
-    const detail = await tenant((tx) => startSession(tx, actor, params.id ?? '', { requestId }));
+    const detail = await tenant((tx) =>
+      startSession(tx, actor, params.id ?? '', { ...input, requestId }),
+    );
     // Replays return the stored start: only a start made by this request is an event.
     if (madeNow(detail.session.startedAt, t0)) {
       track('workout_started', {

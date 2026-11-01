@@ -11,10 +11,11 @@
  */
 export const DB_NAME = 'kinetic-offline';
 // v2 (PR #2 review): adds `meta`. v1 data has no owner, so the upgrade drops it (v1 never shipped).
-const DB_VERSION = 2;
+// v3 (PRD D20): adds `drafts`, what is typed in a set row before it is saved.
+const DB_VERSION = 3;
 
-export type StoreName = 'workouts' | 'outbox' | 'rejected';
-const DATA_STORES: StoreName[] = ['workouts', 'outbox', 'rejected'];
+export type StoreName = 'workouts' | 'outbox' | 'rejected' | 'drafts';
+const DATA_STORES: StoreName[] = ['workouts', 'outbox', 'rejected', 'drafts'];
 /** The service worker's caches of a user's pages (public/sw.js). Build assets hold no user data and stay. */
 const PAGE_CACHE_PREFIX = 'kinetic-pages-';
 
@@ -33,11 +34,14 @@ function openRaw(): Promise<IDBDatabase> {
       const db = req.result;
       if (event.oldVersion < 2) {
         for (const name of Array.from(db.objectStoreNames)) db.deleteObjectStore(name);
+        db.createObjectStore('workouts', { keyPath: 'sessionId' });
+        db.createObjectStore('outbox', { keyPath: 'id' }).createIndex('sessionId', 'sessionId');
+        db.createObjectStore('rejected', { keyPath: 'id' }).createIndex('sessionId', 'sessionId');
+        db.createObjectStore('meta');
       }
-      db.createObjectStore('workouts', { keyPath: 'sessionId' });
-      db.createObjectStore('outbox', { keyPath: 'id' }).createIndex('sessionId', 'sessionId');
-      db.createObjectStore('rejected', { keyPath: 'id' }).createIndex('sessionId', 'sessionId');
-      db.createObjectStore('meta');
+      if (event.oldVersion < 3) {
+        db.createObjectStore('drafts', { keyPath: 'id' }).createIndex('sessionId', 'sessionId');
+      }
     };
     req.onsuccess = () => {
       // Another tab upgrading or deleting the database (its sign-out): let it, and reopen on the next call.
@@ -271,7 +275,7 @@ export const get = <T>(store: StoreName, key: string) =>
 export const getAll = <T>(store: StoreName) =>
   transact(store, 'readonly', (s) => s.getAll() as IDBRequest<T[]>);
 
-export const getBySession = <T>(store: 'outbox' | 'rejected', sessionId: string) =>
+export const getBySession = <T>(store: 'outbox' | 'rejected' | 'drafts', sessionId: string) =>
   transact(store, 'readonly', (s) => s.index('sessionId').getAll(sessionId) as IDBRequest<T[]>);
 
 export const put = <T>(store: StoreName, value: T) =>
@@ -299,5 +303,21 @@ export async function putInQueue<T extends { id: string }>(value: T): Promise<vo
     meta.put(seq, 'seq');
   }
   outbox.put({ ...value, seq });
+  await committed(tx);
+}
+
+/** Bookkeeping values (`meta`), e.g. when the device last checked its copies against the server (PRD D20). */
+export async function getMeta<T>(key: string): Promise<T | undefined> {
+  const db = await openDb();
+  const tx = db.transaction('meta', 'readonly');
+  const value = result(tx.objectStore('meta').get(key) as IDBRequest<T | undefined>);
+  await committed(tx);
+  return value;
+}
+
+export async function setMeta(key: string, value: unknown): Promise<void> {
+  const db = await openDb();
+  const tx = db.transaction('meta', 'readwrite');
+  tx.objectStore('meta').put(value, key);
   await committed(tx);
 }

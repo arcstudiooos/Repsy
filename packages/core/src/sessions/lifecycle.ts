@@ -103,6 +103,32 @@ interface Opts {
   requestId?: string;
 }
 
+export interface StartOpts extends Opts {
+  /** PRD D4: set by a start queued offline, with the version the device showed. */
+  expectedWorkoutVersionId?: string;
+  /** PRD D4: when the client tapped Start offline. */
+  startedAt?: string;
+}
+
+/** D-011 #3: the workout changed after the device kept it, so the offline start is refused. */
+const changedSinceCached = () =>
+  new DomainError(
+    'CONFLICT',
+    'Your coach changed this workout after it was saved on your device. Open it again online to start it.',
+  );
+
+/** How far back an offline start time is believed (PRD D4); anything else is the server's time. */
+const OFFLINE_START_MAX_MS = 7 * 24 * 3_600_000;
+
+/** The start time a device recorded offline, if it is plausible; otherwise `now`. */
+export function offlineStartedAt(startedAt: string | undefined, now: Date): Date {
+  if (!startedAt) return now;
+  const t = Date.parse(startedAt);
+  if (!Number.isFinite(t) || t > now.getTime() || now.getTime() - t > OFFLINE_START_MAX_MS)
+    return now;
+  return new Date(t);
+}
+
 /**
  * Start Workout (D-002 #6): locks the slot's current WorkoutVersion permanently and moves the session to
  * `in_progress`. Idempotent: starting an in-progress session (double tap, retry, a second tab) returns it unchanged,
@@ -112,21 +138,31 @@ export async function startSession(
   tx: TenantTx,
   actor: ActorContext,
   sessionId: string,
-  opts: Opts = {},
+  opts: StartOpts = {},
 ): Promise<SessionDetail> {
   assertCan(actor, 'session:log');
   const now = opts.now ?? new Date();
   const session = await lockSession(tx, actor, sessionId);
-  if (session.state === 'in_progress') return getSessionDetail(tx, actor, session.id, { now });
+  const expected = opts.expectedWorkoutVersionId;
+  if (session.state === 'in_progress') {
+    if (expected && session.workoutVersionId !== expected) throw changedSinceCached();
+    return getSessionDetail(tx, actor, session.id, { now });
+  }
   // A missed session may still be started late (S4-2 Ruling 4); its version was locked by the sweep.
   if (session.state !== 'scheduled' && session.state !== 'missed') throw finished();
 
   // A version already locked is never replaced (D-002 #6; the database refuses it too, migration 000019).
   const workoutVersionId =
     session.workoutVersionId ?? (await resolveSlotWorkoutVersionId(tx, session));
+  // D-011 #3: a start made offline counts only if the device showed the version this start locks.
+  if (expected && workoutVersionId !== expected) throw changedSinceCached();
   await tx.workoutSession.updateMany({
     where: { id: session.id, state: { in: ['scheduled', 'missed'] } },
-    data: { state: 'in_progress', workoutVersionId, startedAt: now },
+    data: {
+      state: 'in_progress',
+      workoutVersionId,
+      startedAt: offlineStartedAt(opts.startedAt, now),
+    },
   });
   if (session.state === 'missed') await resolveStaleMissedFlags(tx, now, session.clientId);
   await appendAudit(tx, {

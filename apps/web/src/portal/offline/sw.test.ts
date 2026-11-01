@@ -48,7 +48,11 @@ function memoryCaches() {
 }
 
 /** Loads sw.js as build `build` against `caches`, and returns its activate handler. */
-function loadWorker(build: string, caches: ReturnType<typeof memoryCaches>) {
+function loadWorker(
+  build: string,
+  caches: ReturnType<typeof memoryCaches>,
+  fetchImpl: typeof fetch = fetch,
+) {
   const handlers: Record<string, (event: unknown) => void> = {};
   const self = {
     location: new URL(`/sw.js?build=${build}`, ORIGIN),
@@ -56,8 +60,22 @@ function loadWorker(build: string, caches: ReturnType<typeof memoryCaches>) {
     skipWaiting: () => undefined,
     clients: { claim: async () => undefined },
   };
-  runInNewContext(SOURCE, { self, caches: caches.api, URL, Request, Response, fetch, Date, Set });
+  runInNewContext(SOURCE, {
+    self,
+    caches: caches.api,
+    URL,
+    Request,
+    Response,
+    fetch: fetchImpl,
+    Date,
+    Set,
+  });
   return {
+    message: async (data: unknown) => {
+      let done: Promise<unknown> = Promise.resolve();
+      handlers.message!({ data, waitUntil: (p: Promise<unknown>) => (done = p) });
+      await done;
+    },
     activate: async () => {
       let done: Promise<unknown> = Promise.resolve();
       handlers.activate!({ waitUntil: (p: Promise<unknown>) => (done = p) });
@@ -135,5 +153,23 @@ describe('portal service worker caches (PR #2 review follow-up)', () => {
     const caches = memoryCaches();
     await loadWorker('a%2F..%20b', caches).activate();
     expect([...caches.stores.keys()]).toContain('kinetic-assets-ab');
+  });
+
+  it('keeps the next workouts for offline use, fetching again only pages older than an hour (PRD D4)', async () => {
+    const caches = memoryCaches();
+    const fetched: string[] = [];
+    const fakeFetch = (async (url: string) => {
+      fetched.push(new URL(url, ORIGIN).pathname);
+      return page([], new Date());
+    }) as unknown as typeof fetch;
+    const pages = await caches.api.open('kinetic-pages-v1');
+    await pages.put(OLD_WORKOUT, page([], new Date()));
+    const worker = loadWorker('b', caches, fakeFetch);
+    await worker.message({
+      type: 'keep-upcoming',
+      sessionIds: [WORKOUT.split('/').pop(), OLD_WORKOUT.split('/').pop(), 'not-a-session'],
+    });
+    expect(fetched.sort()).toEqual(['/portal', WORKOUT]);
+    expect(caches.stores.get('kinetic-pages-v1')!.has(`${ORIGIN}${WORKOUT}`)).toBe(true);
   });
 });

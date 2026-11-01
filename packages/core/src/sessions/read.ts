@@ -235,7 +235,12 @@ export interface PortalHome {
   pause: { startLocalDate: string; resumeLocalDate: string } | null;
   /** The newest check-in not yet sent (S4-1), for the portal home card. */
   openCheckin: { id: string; title: string; dueAt: string } | null;
+  /** PRD D4: the workouts of the next 7 days (today included), kept on the device so they can start offline. */
+  upcomingSessionIds: string[];
 }
+
+/** PRD D4: how many days ahead of today the device keeps workouts. */
+export const OFFLINE_DAYS = 7;
 
 /** The portal home for the acting client (S2-1). */
 export async function getPortalHome(
@@ -303,6 +308,20 @@ export async function getPortalHome(
     orderBy: { periodLocalDate: 'desc' },
     select: { id: true, dueAt: true, template: { select: { title: true } } },
   });
+  const upcoming = await tx.workoutSession.findMany({
+    where: {
+      clientId: client.id,
+      kind: 'planned',
+      state: 'scheduled',
+      scheduledLocalDate: {
+        gte: toDbDate(today),
+        lt: new Date(toDbDate(today).getTime() + OFFLINE_DAYS * 86_400_000),
+      },
+    },
+    orderBy: order,
+    take: 14,
+    select: { id: true },
+  });
   const pause = await tx.clientPause.findFirst({
     where: { clientId: client.id, endedAt: null },
     select: { startLocalDate: true, resumeLocalDate: true },
@@ -323,5 +342,6 @@ export async function getPortalHome(
     openCheckin: checkin
       ? { id: checkin.id, title: checkin.template.title, dueAt: checkin.dueAt.toISOString() }
       : null,
+    upcomingSessionIds: upcoming.map((s) => s.id),
   };
 }

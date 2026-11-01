@@ -47,10 +47,13 @@ import { useOnline, useSyncStatus } from '@/portal/offline/useSyncStatus';
 import {
   applyLocal,
   cacheWorkout,
+  clearDraft,
   evict,
   localView,
   markFinished,
+  markStartedHere,
   newest,
+  saveDraft,
   type LocalView,
 } from '@/portal/offline/workoutCache';
 import { FinishDialog, type FinishBody } from './FinishDialog';
@@ -106,7 +109,9 @@ const SYNC_LABEL = {
   synced: 'Synced',
   not_saved: 'Not saved',
 } as const;
-const OFFLINE_START = "You're offline. Open this workout while online to start it.";
+// PRD D4: the workout is on the device (this page), so it starts offline; the start is sent once back online.
+const OFFLINE_START =
+  "You're offline. You can still start: it's saved on this device and sent when you're back online.";
 const CLOCK_BLOCKED = 'Your device clock is ahead. Fix the date and time, then tap Retry.';
 
 /** Started and not finished: logging stays open after the sweep marks it incomplete (S4-2 Ruling 4, PR #2 B-I3). */
@@ -190,7 +195,7 @@ export function WorkoutLogger({
     deviceFirst &&
     isLogging(initial.session.state) &&
     !isLogging(detail.session.state) &&
-    Boolean(sync?.rejected.some((r) => r.kind !== 'logs'));
+    Boolean(sync?.rejected.some((r) => r.kind === 'complete' || r.kind === 'skip'));
   // A swapped exercise (PRD D8) shows, and counts "last time" and PRs, as the alternative done instead.
   const swaps = detail.swaps ?? {};
   const workout = {
@@ -276,6 +281,7 @@ export function WorkoutLogger({
       // Device first: the outbox sends it (now, or once back online) and the row reads from its state.
       synced.current[key] = snapshot;
       await applyLocal(session.id, [toLogged(payload)]);
+      await clearDraft(session.id, key).catch(() => undefined);
       await enqueue({
         id: payload.clientMutationId,
         sessionId: session.id,
@@ -325,6 +331,13 @@ export function WorkoutLogger({
   const onDraftChange = (key: string, d: SetDraft) => {
     draftsRef.current = { ...draftsRef.current, [key]: d };
     setDrafts((all) => ({ ...all, [key]: d }));
+    // PRD D20: every keystroke is kept on the device, so a crash or force-quit reopens the row as typed.
+    if (deviceFirst && hasDeviceStore()) {
+      const same = synced.current[key] === JSON.stringify(d);
+      void (same ? clearDraft(session.id, key) : saveDraft(session.id, key, d)).catch(
+        () => undefined,
+      );
+    }
     // An edit not yet sent is never shown as synced.
     if (!inflight.current.has(key) && synced.current[key] !== JSON.stringify(d)) {
       const kind = synced.current[key] === undefined ? 'idle' : 'unsaved';
@@ -339,10 +352,20 @@ export function WorkoutLogger({
   function applyDeviceView(view: LocalView): void {
     const logs = newest(initial.logs, view.logs);
     const finishedHere = view.finished && isLogging(initial.session.state);
+    // PRD D4: started on this device while offline (the stored page still shows it not started).
+    const startedHere =
+      !isLogging(initial.session.state) &&
+      !view.finished &&
+      isLogging(view.detail.session.state) &&
+      view.detail.workout.workoutVersionId === initial.workout.workoutVersionId;
     setDetail((d) => ({
       ...d,
       logs: newest(d.logs, logs),
-      session: finishedHere ? { ...d.session, state: view.finished! } : d.session,
+      session: finishedHere
+        ? { ...d.session, state: view.finished! }
+        : startedHere
+          ? view.detail.session
+          : d.session,
     }));
     const next: Record<string, SetDraft> = {};
     for (const l of logs) {
@@ -357,12 +380,30 @@ export function WorkoutLogger({
       synced.current[key] = JSON.stringify(d);
       next[key] = d;
     }
-    if (Object.keys(next).length === 0) return;
-    draftsRef.current = { ...draftsRef.current, ...next };
-    setDrafts((all) => ({ ...all, ...next }));
+    // PRD D20: rows typed but not saved before the page closed come back as typed (and unsaved).
+    const typed: Record<string, SetDraft> = {};
+    for (const [key, d] of Object.entries(view.drafts)) {
+      const current = draftsRef.current[key];
+      const untouched =
+        current === undefined || next[key] !== undefined
+          ? true
+          : synced.current[key] === JSON.stringify(current);
+      if (!untouched) continue;
+      if (JSON.stringify(d) === synced.current[key]) continue;
+      typed[key] = d as SetDraft;
+    }
+    if (Object.keys(next).length === 0 && Object.keys(typed).length === 0) return;
+    draftsRef.current = { ...draftsRef.current, ...next, ...typed };
+    setDrafts((all) => ({ ...all, ...next, ...typed }));
     setStatus((s) => ({
       ...s,
       ...Object.fromEntries(Object.keys(next).map((k) => [k, { kind: 'synced' as const }])),
+      ...Object.fromEntries(
+        Object.keys(typed).map((k) => [
+          k,
+          { kind: synced.current[k] === undefined ? ('idle' as const) : ('unsaved' as const) },
+        ]),
+      ),
     }));
   }
 
@@ -404,8 +445,30 @@ export function WorkoutLogger({
     }));
   }
 
+  /** PRD D4: offline, the workout this device holds starts here; the outbox sends the start first when online. */
+  async function startOffline() {
+    if (!hasDeviceStore()) return;
+    setStarting(true);
+    const startedAt = new Date().toISOString();
+    try {
+      const started = await markStartedHere(detail, startedAt);
+      await enqueue({
+        id: crypto.randomUUID(),
+        sessionId: session.id,
+        kind: 'start',
+        body: { expectedWorkoutVersionId: detail.workout.workoutVersionId, startedAt },
+      });
+      cacheWorkoutPage(session.id);
+      setDetail(started);
+    } catch {
+      setStartError("Couldn't start on this device. Try again online.");
+    } finally {
+      setStarting(false);
+    }
+  }
+
   async function onStart() {
-    if (deviceFirst && !online) return;
+    if (deviceFirst && !online) return startOffline();
     const answered = READINESS_QUESTIONS.filter((q) => readiness[q.key] !== undefined).length;
     if (answered > 0 && answered < READINESS_QUESTIONS.length) {
       setStartError('Answer all five questions, or leave them all blank.');
@@ -649,7 +712,7 @@ export function WorkoutLogger({
             </li>
           ))}
         </ol>
-        {deviceFirst && !detail.readiness && (
+        {deviceFirst && !detail.readiness && online && (
           <ReadinessCheck value={readiness} onChange={setReadiness} />
         )}
         {startError && (
@@ -662,11 +725,7 @@ export function WorkoutLogger({
             {OFFLINE_START}
           </p>
         )}
-        <Button
-          className="min-h-14 w-full text-lg"
-          onClick={onStart}
-          disabled={starting || (deviceFirst && !online)}
-        >
+        <Button className="min-h-14 w-full text-lg" onClick={onStart} disabled={starting}>
           {starting ? 'Starting…' : 'Start workout'}
         </Button>
         <div className="mt-3 flex justify-center">

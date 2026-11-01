@@ -5,6 +5,15 @@
 import type { LoggedSet, SessionDetail, SetLogAck } from '@kinetic/core';
 import { countOutbox, del, get, getBySession, put } from './db';
 
+/** PRD D20: a set row as typed, before it is saved (kept per keystroke so a crash loses nothing). */
+export interface StoredDraft {
+  /** `${sessionId}:${rowKey}`. */
+  id: string;
+  sessionId: string;
+  row: string;
+  draft: unknown;
+}
+
 export type FinishKind = 'completed' | 'skipped';
 
 export interface CachedWorkout {
@@ -22,6 +31,8 @@ export interface LocalView {
   detail: SessionDetail;
   logs: LoggedSet[];
   finished?: FinishKind;
+  /** PRD D20: rows typed but not yet saved, by row key. */
+  drafts: Record<string, unknown>;
 }
 
 const keyOf = (l: { workoutVersionExerciseId: string; setIndex: number }) =>
@@ -112,11 +123,49 @@ export async function unmarkFinished(sessionId: string): Promise<void> {
 export async function localView(sessionId: string): Promise<LocalView | null> {
   const cached = await getCachedWorkout(sessionId);
   if (!cached) return null;
+  const drafts = await getBySession<StoredDraft>('drafts', sessionId);
   return {
     detail: cached.detail,
     logs: newest(cached.detail.logs, cached.local),
     finished: cached.finished,
+    drafts: Object.fromEntries(drafts.map((d) => [d.row, d.draft])),
   };
+}
+
+/** PRD D20: keeps what was just typed in a row (one small write per keystroke, no read first). */
+export const saveDraft = (sessionId: string, row: string, draft: unknown) =>
+  put<StoredDraft>('drafts', { id: `${sessionId}:${row}`, sessionId, row, draft });
+
+/** The row was saved (its value is in `local` and the outbox now) or put back as it was. */
+export const clearDraft = (sessionId: string, row: string) => del('drafts', `${sessionId}:${row}`);
+
+/**
+ * PRD D4: a start made offline. The device shows the workout started; the outbox sends the start (with the version
+ * shown here) before any of its sets.
+ */
+export async function markStartedHere(
+  detail: SessionDetail,
+  startedAt: string,
+): Promise<SessionDetail> {
+  const started: SessionDetail = {
+    ...detail,
+    session: { ...detail.session, state: 'in_progress', startedAt },
+  };
+  await cacheWorkout(started);
+  return started;
+}
+
+/** The server refused the offline start: the device shows the workout as not started again. */
+export async function unmarkStarted(sessionId: string): Promise<void> {
+  const cached = await getCachedWorkout(sessionId);
+  if (!cached || cached.detail.session.state !== 'in_progress') return;
+  await put<CachedWorkout>('workouts', {
+    ...cached,
+    detail: {
+      ...cached.detail,
+      session: { ...cached.detail.session, state: 'scheduled', startedAt: null },
+    },
+  });
 }
 
 /**
@@ -130,5 +179,6 @@ export async function evict(sessionId: string): Promise<boolean> {
   if (!finished || (await countOutbox(sessionId)) > 0) return false;
   if ((await getBySession('rejected', sessionId)).length > 0) return false;
   await del('workouts', sessionId);
+  for (const d of await getBySession<StoredDraft>('drafts', sessionId)) await del('drafts', d.id);
   return true;
 }

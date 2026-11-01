@@ -2,7 +2,8 @@
  * Kinetic portal service worker (S3-3, D-004). Scope /portal (the home and every page under it). Minimal:
  * - /_next/static/* is cache-first (content-hashed build assets);
  * - navigations under /portal are network-first; only /portal and the workout pages the app asked for
- *   ("cache-workout" on Start) are stored, and served from the cache when the network fails;
+ *   ("cache-workout" on Start, "keep-upcoming" for the next 7 days from the portal home, PRD D4) are stored, and
+ *   served from the cache when the network fails;
  * - RSC requests and /api/* always pass through and are never cached (writes go through the IndexedDB outbox).
  *
  * Whose pages (PR #2 review C1): stored pages are one signed-in user's, keyed by path. The worker can't check a
@@ -90,12 +91,21 @@ async function wanted(path) {
   return Boolean(await (await caches.open(PAGES)).match(path));
 }
 
+// Bumped whenever the stored pages are deleted (the session ended): a page fetched before that is never stored after.
+let pagesEpoch = 0;
+
 async function store(cacheName, url) {
+  const epoch = pagesEpoch;
   try {
     const res = await fetch(url, { credentials: 'same-origin' });
     // Only real pages: a redirect to sign-in or an error page is never kept.
     if (!res.ok || res.redirected) return;
-    if (cacheName === PAGES) await storeAssetsOf(await res.clone().text());
+    if (cacheName === PAGES) {
+      if (epoch !== pagesEpoch) return;
+      await storeAssetsOf(await res.clone().text());
+      // The session may have ended while the assets were fetched.
+      if (epoch !== pagesEpoch) return;
+    }
     await (await caches.open(cacheName)).put(url, res);
   } catch {
     // Offline: nothing to store now.
@@ -116,8 +126,31 @@ async function storeAssetsOf(html) {
   );
 }
 
+/** A stored upcoming workout is fetched again after this long (PRD D4: the coach may have changed it). */
+const REFRESH_UPCOMING_MS = 60 * 60 * 1000;
+
+/** PRD D4: keeps the next 7 days of workouts (and the portal home), refreshing pages older than an hour. */
+async function keepUpcoming(ids) {
+  const pages = await caches.open(PAGES);
+  const now = Date.now();
+  for (const id of ids) {
+    const hit = await pages.match(workoutPath(id));
+    const stored = hit ? Date.parse(hit.headers.get('date') || '') : NaN;
+    if (Number.isFinite(stored) && now - stored < REFRESH_UPCOMING_MS) continue;
+    await store(PAGES, workoutPath(id));
+  }
+  await store(PAGES, '/portal');
+}
+
 self.addEventListener('message', (event) => {
   const msg = event.data || {};
+  if (msg.type === 'keep-upcoming') {
+    const ids = (Array.isArray(msg.sessionIds) ? msg.sessionIds : [])
+      .filter((id) => typeof id === 'string' && SESSION_ID.test(id))
+      .slice(0, 14);
+    event.waitUntil(keepUpcoming(ids));
+    return;
+  }
   if (typeof msg.sessionId !== 'string' || !SESSION_ID.test(msg.sessionId)) return;
   if (msg.type === 'cache-workout') {
     const assets = (Array.isArray(msg.assets) ? msg.assets : []).filter(
@@ -176,6 +209,7 @@ self.addEventListener('fetch', (event) => {
         try {
           if (res.type === 'opaqueredirect' || res.redirected || res.status === 401) {
             // Signed out elsewhere, or the session ended: the pages kept for it go.
+            pagesEpoch += 1;
             for (const key of await caches.keys()) {
               if (key.startsWith('kinetic-pages-')) await caches.delete(key);
             }

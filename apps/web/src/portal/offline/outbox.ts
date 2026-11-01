@@ -23,16 +23,21 @@ import {
   markFinished,
   replaceLocal,
   unmarkFinished,
+  unmarkStarted,
 } from './workoutCache';
 
-export type MutationKind = 'logs' | 'complete' | 'skip';
+/** `start` (PRD D4): a workout started offline; it is always queued ahead of that session's sets. */
+export type MutationKind = 'start' | 'logs' | 'complete' | 'skip';
 
 export interface Mutation {
   /** `clientMutationId` for logs, the idempotency key for complete/skip. */
   id: string;
   sessionId: string;
   kind: MutationKind;
-  /** `{ items: SetLogPayload[] }` for logs; `{ idempotencyKey, comment? }` for complete/skip. */
+  /**
+   * `{ items: SetLogPayload[] }` for logs; `{ idempotencyKey, comment? }` for complete/skip; `{ expectedWorkoutVersionId,
+   * startedAt }` for start.
+   */
   body: unknown;
   /** Queue position, from a stored counter (`putInQueue`). */
   seq: number;
@@ -106,7 +111,7 @@ const loggedOf = (i: SetLogPayload): LoggedSet => ({
   distanceM: i.distanceM,
   clientUpdatedAt: i.clientUpdatedAt,
 });
-const isFinish = (m: { kind: MutationKind }) => m.kind !== 'logs';
+const isFinish = (m: { kind: MutationKind }) => m.kind === 'complete' || m.kind === 'skip';
 const bySeq = (a: Mutation, b: Mutation) => a.seq - b.seq;
 
 /** The bound owner's own writes for the active org: the only ones this tab may show or send. */
@@ -392,6 +397,27 @@ async function flushSession(sessionId: string, queue: Mutation[]): Promise<numbe
         }
       }
       rest = rest.slice(batch.length);
+      continue;
+    }
+
+    if (head.kind === 'start') {
+      const out = await send(sessionId, 'start', head.body);
+      if (out.type === 'retry' || out.type === 'blocked') {
+        await keep([head], out);
+        return sent;
+      }
+      if (out.type === 'reject') {
+        // D-011 #3: the workout changed since the device kept it. Nothing after the start can land: every write of
+        // the session is kept as refused (values intact), and the workout reads as not started.
+        for (const m of rest) await reject(m, out.message);
+        await unmarkStarted(sessionId);
+        return sent;
+      }
+      const detail = out.data as SessionDetail | undefined;
+      if (detail) await cacheWorkout(detail);
+      await del('outbox', head.id);
+      sent += 1;
+      rest = rest.slice(1);
       continue;
     }
 
