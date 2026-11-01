@@ -30,6 +30,13 @@ test.describe('habits and tasks (PRD G1-G3)', () => {
       await expect(list.getByText('Send a photo of your home gym')).toBeVisible({
         timeout: 15_000,
       });
+      // PRD G12: water as a habit with a daily target, from a preset.
+      await form.getByLabel('Habit (repeats)').check();
+      await form.getByRole('button', { name: 'Water' }).click();
+      await expect(form.getByLabel('Title')).toHaveValue('Drink water');
+      await expect(form.getByLabel('Target (optional)')).toHaveValue('8');
+      await form.getByRole('button', { name: 'Assign habit' }).click();
+      await expect(list.getByText('Drink water')).toBeVisible({ timeout: 15_000 });
       await expectNoAxeViolations(page);
 
       const portal = client.page;
@@ -65,9 +72,13 @@ test.describe('habits and tasks (PRD G1-G3)', () => {
       // PRD G2: the 12-week map (a table) and completion per habit.
       const map = page.getByRole('table', { name: 'Habits met per day, last 12 weeks' });
       await expect(map.getByRole('row')).toHaveCount(13);
-      await expect(map.getByRole('cell', { name: '1/1' })).toHaveCount(1);
+      // Two habits today (the walk and the water); the walk was ticked.
+      await expect(map.getByRole('cell', { name: '1/2' })).toHaveCount(1);
       await expect(
         page.getByRole('list', { name: 'Completion per habit' }).getByText('100% (1 of 1 days)'),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('list', { name: 'Completion per habit' }).getByText('0% (0 of 1 days)'),
       ).toBeVisible();
       for (const width of [375, 1440]) {
         await page.setViewportSize({ width, height: 900 });

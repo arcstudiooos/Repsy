@@ -88,6 +88,7 @@ R2 builds the web-platform features in `docs/competitive/complete-platform-prd.m
 - **H13, F9 reminders:** clients can opt in (Profile, Notifications) to emails on workout days at 07:00, when a check-in is due and not sent at 18:00, and when habits are left at 19:00 (their local time). Never 21:00-07:00, at most three a day, none while paused; each says how to turn it off. The coach digest (H14) now reads coaches' opt-ins correctly from the worker.
 - **F4 check-in frequency:** next to the check-in day, the coach picks every week, every 2 weeks or every 4 weeks; the issuer skips the weeks in between.
 - **B5 bulk actions:** select clients in the list (or all on the page) to add a tag, send a message (each in their own thread) or assign a program (each their own copy, in its own transaction). Clients who already have a program are skipped and listed with the reason, never replaced in bulk.
+- **G12 water and supplements:** the habit form has quick-start presets (water, 8 glasses a day; supplements; steps; sleep). Supplements are tracked as taken or not, with a note that Kinetic gives no dosing advice.
 
 ## What works locally (Sprint 5)
 

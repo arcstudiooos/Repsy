@@ -11,6 +11,20 @@ import { toast } from '@/components/ui/toast';
 import { createClientHabit, setHabitStatusApi } from '@/lib/habit-api';
 import { cn } from '@/lib/utils';
 
+/** PRD G12: water and supplements as ordinary habits with a daily target; never doses. */
+const HABIT_PRESETS = [
+  { label: 'Water', title: 'Drink water', daysPerWeek: 7, target: 8, unit: 'glasses' },
+  {
+    label: 'Supplements',
+    title: 'Take your supplements',
+    daysPerWeek: 7,
+    target: null,
+    unit: null,
+  },
+  { label: 'Steps', title: 'Walk 8,000 steps', daysPerWeek: 7, target: null, unit: null },
+  { label: 'Sleep', title: 'In bed by 23:00', daysPerWeek: 7, target: null, unit: null },
+] as const;
+
 const DAY_MS = 86_400_000;
 const shift = (d: string, n: number) =>
   new Date(Date.parse(`${d}T00:00:00Z`) + n * DAY_MS).toISOString().slice(0, 10);
@@ -116,6 +130,35 @@ function NewHabitForm({ clientId, today }: { clientId: string; today: string }) 
           </label>
         ))}
       </fieldset>
+      {kind === 'habit' && (
+        <div className="flex flex-col gap-1 sm:col-span-2">
+          <p id={`${id}-presets`} className="text-sm font-medium">
+            Quick start
+          </p>
+          <div role="group" aria-labelledby={`${id}-presets`} className="flex flex-wrap gap-2">
+            {HABIT_PRESETS.map((p) => (
+              <Button
+                key={p.title}
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setTitle(p.title);
+                  setDaysPerWeek(String(p.daysPerWeek));
+                  setTarget(p.target ? String(p.target) : '');
+                  setUnit(p.unit ?? '');
+                }}
+              >
+                {p.label}
+              </Button>
+            ))}
+          </div>
+          <p className="text-sm text-secondary">
+            Supplements: agree what to take with your client (and their doctor). Kinetic gives no
+            dosing advice; the habit only tracks that they took it.
+          </p>
+        </div>
+      )}
       <div className="flex flex-col gap-1 sm:col-span-2">
         <label htmlFor={`${id}-title`} className="text-sm font-medium">
           Title
