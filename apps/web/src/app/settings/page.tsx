@@ -60,6 +60,14 @@ export default async function SettingsPage() {
           limit={settings.org.activeClientLimit}
         />
         {isOwner && <DataExportSection scope="org" initial={exports} />}
+        {isOwner && (
+          <p className="text-secondary">
+            Who changed what, and when:{' '}
+            <Link href="/app/audit" className="text-accent underline">
+              Audit log
+            </Link>
+          </p>
+        )}
         <TwoFactorSection enabled={twoFactor.enabled} required={twoFactor.required} />
         <SecuritySection />
         <p className="text-secondary">

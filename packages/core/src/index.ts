@@ -586,6 +586,12 @@ export {
 export { equipmentGuideFor, type EquipmentGuide } from './exercises/equipmentGuide';
 export { setExerciseDemo } from './exercises/demo';
 export {
+  AUDIT_CATEGORIES,
+  listAuditLog,
+  type AuditCategory,
+  type AuditEntry,
+} from './audit/ownerLog';
+export {
   cancelScheduledMessage,
   listScheduledMessages,
   scheduleMessage,
