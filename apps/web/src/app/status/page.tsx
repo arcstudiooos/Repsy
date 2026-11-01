@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { connection } from 'next/server';
 import { Suspense } from 'react';
 import { readNotices, RELIABILITY_TARGETS } from '@kinetic/core';
 
@@ -25,6 +26,8 @@ export default function StatusPage() {
 }
 
 async function StatusBody() {
+  // Read at request time: the status is live, never prerendered at build.
+  await connection();
   const { open, recent } = await readNotices();
   return (
     <>
