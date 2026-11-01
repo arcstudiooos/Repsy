@@ -407,7 +407,7 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
 ## D-012 — R3 rulings delegated to the builder (2026-11-01)
 
 **Status:** Accepted, under the same delegation as D-011; each can be revisited.
-**PRD refs:** B14, B20, H5, I4, I9 (more added as R3 is built).
+**PRD refs:** B14, B20, H5, I4, I9, L7 (more added as R3 is built).
 
 1. **Lifecycle stage (B20)** stores only the stages a coach chooses (Onboarding, Active, At renewal). Paused and
    Alumni are read from the client's status, so a stage can never contradict a pause or archiving (D-003). The first
@@ -422,3 +422,6 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
 5. **Agreements (B14)** gate the whole portal until accepted, like the D-007 #5 safety reminder but blocking. An
    acceptance is evidence: insert-only (a trigger refuses UPDATE, and DELETE outside lawful erasure). Only the
    owner publishes or edits; any text change is a new version.
+6. **Calendar (L7)** ships the one-way ICS feed now: a private link per client (the token is the credential, only
+   its hash stored; a new link replaces it), with events carrying the workout name and date only. Two-way Google and
+   Outlook sync needs those providers and the K10 bookings it would sync, so it waits for them.

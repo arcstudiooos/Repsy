@@ -586,6 +586,12 @@ export {
 export { equipmentGuideFor, type EquipmentGuide } from './exercises/equipmentGuide';
 export { setExerciseDemo } from './exercises/demo';
 export {
+  calendarFeed,
+  hasCalendarFeed,
+  revokeCalendarToken,
+  rotateCalendarToken,
+} from './calendar/feed';
+export {
   acceptAgreement,
   acceptancesFor,
   archiveAgreement,

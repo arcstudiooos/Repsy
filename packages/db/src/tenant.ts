@@ -303,6 +303,9 @@ export type SystemTx = Prisma.TransactionClient;
  * - `registerCoach` / `redeemPilotCode` / `deleteUser` (web lib/register-coach.ts) and auth bootstrap (web
  *   lib/auth.ts outbox enqueue): sign-up creates the user's first organization and membership, checks/uses a pilot
  *   code (platform table), undoes a half-finished sign-up, and enqueues platform auth emails; no org exists yet.
+ * - `calendarFeed` (core calendar/feed.ts, web app/calendar/[token], PRD L7): finds the one client whose calendar
+ *   feed token hashes to the one presented (the token is the credential, as for an invite), then reads their workouts
+ *   in that client's own organization scope.
  * - `releaseEndpoint` (web server/routes/push.ts, PRD H11): before saving the caller's push subscription, deletes
  *   another user's row for the same browser endpoint (a shared device). Keyed by the endpoint, an unguessable
  *   capability URL the caller's own browser holds; it only ever removes rows, never reads them.

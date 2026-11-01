@@ -359,6 +359,8 @@ model Client {
   status         ClientStatus @default(invited)
   /// PRD B20: onboarding, active or at_renewal; paused and alumni come from `status`.
   lifecycleStage String       @default("onboarding") @map("lifecycle_stage")
+  /// PRD L7: sha256 of the private calendar feed token; null = no feed.
+  calendarTokenHash String?  @unique @map("calendar_token_hash")
   startDate      DateTime?    @map("start_date") @db.Date
   goals          String?
   /// Client context card (PRD B7), coaches only: why they came, schedule limits, equipment, preferences.
