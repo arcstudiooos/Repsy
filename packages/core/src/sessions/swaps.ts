@@ -14,6 +14,8 @@ export interface SwapView {
   name: string;
   instructions: string;
   cues: string[];
+  /** PRD D7: the alternative's demo link. */
+  mediaUrl: string | null;
   reason: SwapReason;
   /** The planned exercise it replaced. */
   plannedName: string;
@@ -34,7 +36,7 @@ export async function swapsForSession(
       workoutVersionExerciseId: true,
       reason: true,
       createdAt: true,
-      exercise: { select: { id: true, name: true, instructions: true, cues: true } },
+      exercise: { select: { id: true, name: true, instructions: true, cues: true, mediaUrl: true } },
       workoutVersionExercise: { select: { exercise: { select: { name: true } } } },
     },
   });
@@ -46,6 +48,7 @@ export async function swapsForSession(
         name: r.exercise.name,
         instructions: r.exercise.instructions,
         cues: r.exercise.cues,
+        mediaUrl: r.exercise.mediaUrl,
         reason: r.reason as SwapReason,
         plannedName: r.workoutVersionExercise.exercise.name,
         createdAt: r.createdAt.toISOString(),

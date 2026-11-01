@@ -86,6 +86,7 @@ export function NewExerciseDialog() {
           movementType: text('movementType'),
           trackingType: text('trackingType'),
           instructions: text('instructions') || undefined,
+          mediaUrl: text('mediaUrl') || undefined,
           difficulty: text('difficulty') || null,
           unilateral: data.get('unilateral') === 'on',
           secondaryMuscles: text('secondaryMuscles')
@@ -231,6 +232,22 @@ export function NewExerciseDialog() {
               aria-invalid={invalid('instructions')}
               aria-describedby={describedBy('instructions')}
               className="block w-full rounded-control border border-input-border bg-surface px-3 py-2 text-base text-ink aria-invalid:border-danger"
+            />
+          </Field>
+          <Field
+            id={id('mediaUrl')}
+            label="Demo video link (optional: YouTube, Vimeo, Instagram or an MP4)"
+            error={fieldErrors.mediaUrl?.[0]}
+          >
+            <Input
+              id={id('mediaUrl')}
+              name="mediaUrl"
+              type="url"
+              inputMode="url"
+              maxLength={500}
+              placeholder="https://"
+              aria-invalid={invalid('mediaUrl')}
+              aria-describedby={describedBy('mediaUrl')}
             />
           </Field>
           <Field

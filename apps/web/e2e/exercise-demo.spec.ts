@@ -1,0 +1,71 @@
+import { expect, test } from '@playwright/test';
+import {
+  assignFromClientTab,
+  buildProgram,
+  expectNoAxeViolations,
+  onboardClient,
+} from './helpers/journey';
+import { signUpVerifiedCoach } from './helpers/users';
+
+test.describe('exercise demo media (PRD C2, D7)', () => {
+  test.describe.configure({ timeout: 240_000 });
+
+  test('a demo link becomes a thumbnail and a one-tap video; offline the logger says so', async ({
+    page,
+    request,
+    browser,
+  }) => {
+    await signUpVerifiedCoach(page, request);
+    const client = await onboardClient(page, request, browser, 'Dax Demo');
+    // External embeds and thumbnails are not fetched in tests.
+    await page.route(/(youtube-nocookie\.com|ytimg\.com)/, (r) => r.abort());
+    await client.page.route(/(youtube-nocookie\.com|ytimg\.com)/, (r) => r.abort());
+    try {
+      await page.goto('/app/exercises');
+      await page.getByRole('button', { name: 'Add exercise' }).click();
+      const dialog = page.getByRole('dialog', { name: 'Add exercise' });
+      await dialog.getByLabel('Name').fill('Tempo Goblet Squat');
+      await dialog.getByLabel('What is tracked').selectOption('reps_load');
+      await dialog.getByLabel(/Demo video link/).fill('https://youtu.be/dQw4w9WgXcQ');
+      await dialog.getByRole('button', { name: 'Add exercise' }).click();
+      await expect(page.getByText('Tempo Goblet Squat added')).toBeVisible({ timeout: 15_000 });
+
+      await page.getByLabel('Search exercises').fill('tempo goblet');
+      const item = page
+        .getByRole('list', { name: 'Exercises' })
+        .getByRole('listitem')
+        .filter({ has: page.getByRole('heading', { name: 'Tempo Goblet Squat' }) });
+      await expect(item.locator('img')).toHaveAttribute(
+        'src',
+        'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
+        { timeout: 15_000 },
+      );
+      await item.getByRole('button', { name: 'Watch demo: Tempo Goblet Squat' }).click();
+      await expect(item.locator('iframe[title="Demo: Tempo Goblet Squat"]')).toHaveAttribute(
+        'src',
+        'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+      );
+      await expectNoAxeViolations(page);
+
+      await buildProgram(page, 'Demo block', [[['tempo goblet', 'Tempo Goblet Squat']]]);
+      await assignFromClientTab(page, 'Dax Demo', 'Demo block', 1);
+      const portal = client.page;
+      await portal.goto('/portal');
+      await portal.getByRole('link', { name: /Start workout/ }).click();
+      await portal.getByRole('button', { name: 'Start workout' }).click();
+      const card = portal.getByRole('region', { name: 'Tempo Goblet Squat' });
+      await card.getByText('How to do it').click();
+      await expect(
+        card.getByRole('button', { name: 'Watch demo: Tempo Goblet Squat' }),
+      ).toBeVisible({
+        timeout: 15_000,
+      });
+      await expectNoAxeViolations(portal);
+      await client.context.setOffline(true);
+      await expect(card.getByText('Video needs a connection.')).toBeVisible();
+      await client.context.setOffline(false);
+    } finally {
+      await client.context.close();
+    }
+  });
+});

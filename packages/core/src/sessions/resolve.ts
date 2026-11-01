@@ -54,7 +54,15 @@ export async function loadWorkoutVersionView(
       exercises: {
         orderBy: { position: 'asc' },
         include: {
-          exercise: { select: { name: true, trackingType: true, instructions: true, cues: true } },
+          exercise: {
+            select: {
+              name: true,
+              trackingType: true,
+              instructions: true,
+              cues: true,
+              mediaUrl: true,
+            },
+          },
         },
       },
     },
@@ -72,6 +80,7 @@ export async function loadWorkoutVersionView(
       trackingType: e.exercise.trackingType,
       instructions: e.exercise.instructions,
       cues: e.exercise.cues,
+      mediaUrl: e.exercise.mediaUrl,
       note: e.note,
       section: asSection(e.section),
       groupWithPrevious: e.groupWithPrevious,

@@ -1,5 +1,6 @@
 'use client';
 
+import { ExerciseDemo, MediaThumb } from '@/components/workout/ExerciseDemo';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
@@ -157,7 +158,10 @@ export function ExerciseLibrary({
           {items.map((e) => (
             <li key={e.id} className="rounded-card bg-surface p-4 shadow-card">
               <div className="flex flex-wrap items-start justify-between gap-2">
-                <h2 className="text-base font-semibold">{e.name}</h2>
+                <div className="flex min-w-0 items-center gap-3">
+                  <MediaThumb url={e.mediaUrl} />
+                  <h2 className="text-base font-semibold">{e.name}</h2>
+                </div>
                 <span className="rounded-control bg-canvas px-2 py-1 text-sm text-secondary">
                   {e.isGlobal ? 'Catalog' : 'Custom'}
                 </span>
@@ -196,6 +200,7 @@ export function ExerciseLibrary({
                   <p className="text-sm whitespace-pre-line">{e.instructions}</p>
                 </details>
               )}
+              <ExerciseDemo url={e.mediaUrl} name={e.name} />
               <AlternativesEditor exercise={e} />
             </li>
           ))}

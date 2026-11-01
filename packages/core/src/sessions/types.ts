@@ -40,6 +40,8 @@ export interface WorkoutVersionView {
     instructions: string;
     /** Coaching cues from the exercise (PRD C3). */
     cues: string[];
+    /** PRD C2, D7: the demo link (an https URL), if any. */
+    mediaUrl?: string | null;
     note: string | null;
     /** PRD C9. */
     section: WorkoutSection;

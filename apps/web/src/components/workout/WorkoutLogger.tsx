@@ -5,6 +5,7 @@ import { blockLayout } from '@kinetic/core/workout-blocks';
 import { sectionStart } from '@kinetic/core/workout-sections';
 import { READINESS_QUESTIONS } from '@kinetic/core/readiness';
 import { ReadinessCheck, type ReadinessDraft } from './ReadinessCheck';
+import { ExerciseDemo } from './ExerciseDemo';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import type { LoggedSet, SessionDetail, TrackingType, Units } from '@kinetic/core';
@@ -203,6 +204,7 @@ export function WorkoutLogger({
             name: s.name,
             instructions: s.instructions,
             cues: s.cues,
+            mediaUrl: s.mediaUrl,
           }
         : { ...e, plannedExerciseId: e.exerciseId };
     }),
@@ -843,7 +845,7 @@ export function WorkoutLogger({
                   </CardHeader>
                   <CardContent className="flex flex-col gap-3">
                     {e.note && <p className="text-sm">{e.note}</p>}
-                    {(e.instructions || e.cues?.length > 0) && (
+                    {(e.instructions || e.cues?.length > 0 || e.mediaUrl) && (
                       <details className="text-sm">
                         <summary className="min-h-11 cursor-pointer py-2 text-accent">
                           How to do it
@@ -856,6 +858,7 @@ export function WorkoutLogger({
                             ))}
                           </ul>
                         )}
+                        <ExerciseDemo url={e.mediaUrl} name={e.name} />
                       </details>
                     )}
                     {Array.from({ length: rowCount(e) }, (_, i) => {
