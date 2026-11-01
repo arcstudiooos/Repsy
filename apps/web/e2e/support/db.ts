@@ -363,3 +363,41 @@ export async function makePlatformAdmin(email: string): Promise<void> {
     await client.end();
   }
 }
+
+/**
+ * Seeds a sent check-in dated `daysAgo` days back for the client named `clientName` (admin connection), answering
+ * every 1-5 question with `scale`, yes/no with yes and text with "ok". Needs the organization's template to exist.
+ */
+export async function seedSentCheckin(
+  clientName: string,
+  daysAgo: number,
+  scale: number,
+): Promise<string> {
+  const client = new pg.Client({ connectionString: readState().adminUrl });
+  await client.connect();
+  try {
+    const { rows } = await client.query<{ id: string }>(
+      `INSERT INTO checkins (id, organization_id, client_id, template_id, period_local_date, questions_json,
+                             answers_json, submit_idempotency_key, issued_at, due_at, submitted_at, updated_at)
+       SELECT gen_random_uuid(), c.organization_id, c.id, t.id,
+              (now() AT TIME ZONE c.timezone)::date - $2::int, t.questions_json,
+              (SELECT jsonb_object_agg(q->>'id', CASE q->>'type'
+                        WHEN 'scale_1_5' THEN to_jsonb($3::int)
+                        WHEN 'yes_no' THEN 'true'::jsonb
+                        ELSE to_jsonb('ok'::text) END)
+                 FROM jsonb_array_elements(t.questions_json) q),
+              gen_random_uuid()::text,
+              now() - make_interval(days => $2::int), now() - make_interval(days => $2::int) + interval '12 hours',
+              now() - make_interval(days => $2::int) + interval '1 hour', now()
+         FROM clients c JOIN checkin_templates t ON t.organization_id = c.organization_id
+        WHERE c.name = $1
+       RETURNING id`,
+      [clientName, daysAgo, scale],
+    );
+    const id = rows[0]?.id;
+    if (!id) throw new Error(`no client ${clientName} with a check-in template`);
+    return id;
+  } finally {
+    await client.end();
+  }
+}

@@ -517,3 +517,4 @@ export {
   NOTE_MAX as SESSION_NOTE_MAX,
   type SessionNoteView,
 } from './sessions/notes';
+export { metricsAsOf, type MetricAsOf } from './progress/metricsAsOf';
