@@ -445,6 +445,10 @@ model NotificationPreference {
   marketingOptIn    Boolean  @default(false) @map("marketing_opt_in")
   /// PRD H14: coaches only; one email a day with counts of what needs them. Off by default.
   digestEmailOptIn  Boolean  @default(false) @map("digest_email_opt_in")
+  /// PRD H13, F9: clients only; reminder emails, each opt-in.
+  workoutReminderOptIn Boolean @default(false) @map("workout_reminder_opt_in")
+  checkinReminderOptIn Boolean @default(false) @map("checkin_reminder_opt_in")
+  habitReminderOptIn   Boolean @default(false) @map("habit_reminder_opt_in")
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 

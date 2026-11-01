@@ -7,6 +7,9 @@ export interface RenderedBody {
 export const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 type Payload = Record<string, unknown>;
+
+/** Every reminder says how to stop it. */
+const OFF = 'You can turn reminders off under Profile, Notifications.';
 type Template = (payload: Payload, appBaseUrl: string) => RenderedBody;
 
 const str = (payload: Payload, key: string): string | undefined =>
@@ -34,6 +37,35 @@ const TEMPLATES: Record<string, Template> = {
     // Names are user-controlled: CR/LF in a subject would allow header injection.
     const subject = `${coachName} invited you to Kinetic`.replace(/[\r\n]+/g, ' ');
     return { subject, text, html };
+  },
+  // PRD H13, F9: reminders carry a count and a link, never workout, check-in or habit content (D-007).
+  workout_reminder: (payload, appBaseUrl) => {
+    const n = typeof payload.workouts === 'number' ? payload.workouts : 1;
+    const link = `${appBaseUrl.replace(/\/+$/, '')}/portal`;
+    const what = n === 1 ? 'a workout' : `${n} workouts`;
+    return {
+      subject: 'You have a workout today',
+      text: `You have ${what} planned today.\n\nOpen Kinetic: ${link}\n\n${OFF}`,
+      html: `<p>You have ${what} planned today.</p><p><a href="${escapeHtml(link)}">Open Kinetic</a></p><p>${OFF}</p>`,
+    };
+  },
+  checkin_reminder: (_payload, appBaseUrl) => {
+    const link = `${appBaseUrl.replace(/\/+$/, '')}/portal/check-ins`;
+    return {
+      subject: 'Your check-in is due tonight',
+      text: `Your check-in is due tonight and hasn't been sent yet.\n\nFill it in: ${link}\n\n${OFF}`,
+      html: `<p>Your check-in is due tonight and hasn't been sent yet.</p><p><a href="${escapeHtml(link)}">Fill it in</a></p><p>${OFF}</p>`,
+    };
+  },
+  habit_reminder: (payload, appBaseUrl) => {
+    const n = typeof payload.habits === 'number' ? payload.habits : 1;
+    const link = `${appBaseUrl.replace(/\/+$/, '')}/portal`;
+    const what = n === 1 ? 'a habit' : `${n} habits`;
+    return {
+      subject: 'A quick habit check',
+      text: `You still have ${what} to tick today.\n\nOpen Kinetic: ${link}\n\n${OFF}`,
+      html: `<p>You still have ${what} to tick today.</p><p><a href="${escapeHtml(link)}">Open Kinetic</a></p><p>${OFF}</p>`,
+    };
   },
   // S4-1: no answers or questions in the email, only the link (D-007).
   checkin_ready: (payload, appBaseUrl) => {

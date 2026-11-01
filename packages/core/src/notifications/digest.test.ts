@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { withSystem, type PrismaClient } from '@kinetic/db';
+import { withSystem, withTenant, type PrismaClient } from '@kinetic/db';
 import { createTestDb } from '@kinetic/db/testing';
 import { getMyThread, sendMessage } from '../messages/messages';
 import { newClientWorld, newOrg, runAs } from '../sessions/fixtures.test-helpers';
@@ -71,5 +71,28 @@ describe('coach digest (PRD H14)', () => {
         queueCoachDigests(tx, org.orgId, new Date('2026-11-05T13:00:00Z')),
       ),
     ).toEqual({ queued: 0 });
+  });
+
+  it('reads the opt-in the way the worker runs: no signed-in user', async () => {
+    const org = await newOrg(prisma);
+    const w = await newClientWorld(prisma, org);
+    await withSystem(
+      (tx) =>
+        tx.notificationPreference.upsert({
+          where: { userId: org.coach.userId },
+          create: { userId: org.coach.userId, digestEmailOptIn: true },
+          update: { digestEmailOptIn: true },
+        }),
+      prisma,
+    );
+    const thread = await runAs(prisma, w.client, (tx) => getMyThread(tx, w.client));
+    await runAs(prisma, w.client, (tx) => sendMessage(tx, w.client, thread.id, { body: 'Hi' }));
+    expect(
+      await withTenant(
+        org.orgId,
+        (tx) => queueCoachDigests(tx, org.orgId, new Date('2026-11-05T13:00:00Z')),
+        prisma,
+      ),
+    ).toEqual({ queued: 1 });
   });
 });

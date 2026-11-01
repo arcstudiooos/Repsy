@@ -85,6 +85,7 @@ R2 builds the web-platform features in `docs/competitive/complete-platform-prd.m
 - **A8 two-step sign-in:** Settings (and the client's Profile) can turn on an authenticator-app code after the password, with ten one-time backup codes; sign-in then asks for a code. An owner whose workspace has more than one coach sees a banner until it is on and can't turn it off. Erasure removes it.
 - **D17 readiness check:** before Start the client can answer five 1-5 questions (sleep, energy, soreness, stress, mood; 5 is best). The 0-100 score and answers show on the session for both of them and the score in the coach's review list and `sessions.csv`.
 - **G2 habit heat map:** a client's Habits tab shows the last 12 weeks, Monday to Sunday, as a table of habits met out of habits active each day (shaded by share), and each habit's completion over those weeks scaled by its days a week.
+- **H13, F9 reminders:** clients can opt in (Profile, Notifications) to emails on workout days at 07:00, when a check-in is due and not sent at 18:00, and when habits are left at 19:00 (their local time). Never 21:00-07:00, at most three a day, none while paused; each says how to turn it off. The coach digest (H14) now reads coaches' opt-ins correctly from the worker.
 
 ## What works locally (Sprint 5)
 

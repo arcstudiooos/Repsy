@@ -16,3 +16,18 @@ describe('coach digest email (PRD H14)', () => {
     expect(r.html).toContain('Fit &#60;Co&#62;');
   });
 });
+
+describe('reminder emails (PRD H13, F9)', () => {
+  it('carry a count and a link, no content, and how to turn them off', () => {
+    const w = renderTemplate('workout_reminder', { workouts: 1 }, 'https://app.example/');
+    expect(w.subject).toBe('You have a workout today');
+    expect(w.text).toContain('https://app.example/portal');
+    expect(w.text).toContain('turn reminders off');
+    expect(renderTemplate('habit_reminder', { habits: 2 }, 'https://app.example').text).toContain(
+      'You still have 2 habits to tick today.',
+    );
+    expect(renderTemplate('checkin_reminder', {}, 'https://app.example').text).toContain(
+      'https://app.example/portal/check-ins',
+    );
+  });
+});

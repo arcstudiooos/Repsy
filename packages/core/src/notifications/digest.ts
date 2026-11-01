@@ -1,4 +1,4 @@
-import type { TenantTx } from '@kinetic/db';
+import { emailOptIns, type TenantTx } from '@kinetic/db';
 import type { ActorContext } from '../authz/actor';
 import { listCheckinsAwaitingReview } from '../checkins/checkins';
 import { unreadMessageCount } from '../messages/messages';
@@ -35,11 +35,8 @@ export async function queueCoachDigests(
   });
   let queued = 0;
   for (const m of coaches) {
-    const pref = await tx.notificationPreference.findUnique({
-      where: { userId: m.userId },
-      select: { digestEmailOptIn: true },
-    });
-    if (!pref?.digestEmailOptIn) continue;
+    // Preference rows are self-only under RLS: the worker reads the opt-in through app_email_opt_ins.
+    if (!(await emailOptIns(tx, m.userId)).digest) continue;
     const actor: ActorContext = {
       userId: m.userId,
       orgId,

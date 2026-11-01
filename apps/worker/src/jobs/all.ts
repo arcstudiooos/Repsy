@@ -1,4 +1,5 @@
 import { checkinsIssueJob } from './checkinsIssue';
+import { clientRemindersJob } from './clientReminders';
 import { coachDigestJob } from './coachDigest';
 import { deletionsRunJob } from './deletionsRun';
 import { emailDeliverJob } from './emailDeliver';
@@ -15,4 +16,5 @@ export const jobs = [
   exportsBuildJob,
   deletionsRunJob,
   coachDigestJob,
+  clientRemindersJob,
 ] as const;

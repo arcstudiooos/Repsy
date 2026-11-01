@@ -11,6 +11,9 @@ export function NotificationsSection({
     messageEmailOptIn: boolean;
     marketingOptIn: boolean;
     digestEmailOptIn?: boolean;
+    workoutReminderOptIn?: boolean;
+    checkinReminderOptIn?: boolean;
+    habitReminderOptIn?: boolean;
   };
   /** Coaches also get the daily digest choice (PRD H14). */
   coach?: boolean;
@@ -23,7 +26,13 @@ export function NotificationsSection({
         notifications: {
           messageEmailOptIn: data.get('messageEmailOptIn') === 'on',
           marketingOptIn: data.get('marketingOptIn') === 'on',
-          ...(coach ? { digestEmailOptIn: data.get('digestEmailOptIn') === 'on' } : {}),
+          ...(coach
+            ? { digestEmailOptIn: data.get('digestEmailOptIn') === 'on' }
+            : {
+                workoutReminderOptIn: data.get('workoutReminderOptIn') === 'on',
+                checkinReminderOptIn: data.get('checkinReminderOptIn') === 'on',
+                habitReminderOptIn: data.get('habitReminderOptIn') === 'on',
+              }),
         },
       })}
     >
@@ -48,6 +57,35 @@ export function NotificationsSection({
               />
               Email me a daily digest (new check-ins, unread messages, items to review)
             </label>
+          )}
+          {!coach && (
+            <fieldset className="flex flex-col">
+              <legend className="mb-1 font-medium">Reminders</legend>
+              <p className="mb-1 text-sm text-secondary">
+                Never between 21:00 and 07:00, at most three a day, and none while your program is
+                paused.
+              </p>
+              {(
+                [
+                  ['workoutReminderOptIn', 'On workout days, at 07:00'],
+                  [
+                    'checkinReminderOptIn',
+                    "When my check-in is due and I haven't sent it, at 18:00",
+                  ],
+                  ['habitReminderOptIn', "When I haven't ticked my habits, at 19:00"],
+                ] as const
+              ).map(([name, label]) => (
+                <label key={name} className="flex min-h-11 items-center gap-3 text-base">
+                  <input
+                    type="checkbox"
+                    name={name}
+                    defaultChecked={notifications[name] ?? false}
+                    className="size-5 accent-accent"
+                  />
+                  {label}
+                </label>
+              ))}
+            </fieldset>
           )}
           <label className="flex min-h-11 items-center gap-3 text-base">
             <input

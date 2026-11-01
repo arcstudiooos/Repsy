@@ -24,7 +24,14 @@ export interface SettingsView {
     activeClientLimit: number;
     activeClientCount: number;
   };
-  notifications: { messageEmailOptIn: boolean; marketingOptIn: boolean; digestEmailOptIn: boolean };
+  notifications: {
+    messageEmailOptIn: boolean;
+    marketingOptIn: boolean;
+    digestEmailOptIn: boolean;
+    workoutReminderOptIn: boolean;
+    checkinReminderOptIn: boolean;
+    habitReminderOptIn: boolean;
+  };
   /** Clients only. */
   client?: { timezone: string; preferredUnits: Units };
 }
@@ -36,6 +43,9 @@ export interface SettingsPatch {
     messageEmailOptIn?: boolean;
     marketingOptIn?: boolean;
     digestEmailOptIn?: boolean;
+    workoutReminderOptIn?: boolean;
+    checkinReminderOptIn?: boolean;
+    habitReminderOptIn?: boolean;
   };
   client?: { timezone?: string; preferredUnits?: Units };
 }
@@ -57,7 +67,14 @@ export async function getSettings(tx: TenantTx, actor: ActorContext): Promise<Se
   await ensureRows(tx, actor);
   const notifications = await tx.notificationPreference.findUniqueOrThrow({
     where: { userId: actor.userId },
-    select: { messageEmailOptIn: true, marketingOptIn: true, digestEmailOptIn: true },
+    select: {
+      messageEmailOptIn: true,
+      marketingOptIn: true,
+      digestEmailOptIn: true,
+      workoutReminderOptIn: true,
+      checkinReminderOptIn: true,
+      habitReminderOptIn: true,
+    },
   });
 
   if (!isCoach(actor)) {
@@ -95,6 +112,9 @@ interface Cleaned {
     messageEmailOptIn?: boolean;
     marketingOptIn?: boolean;
     digestEmailOptIn?: boolean;
+    workoutReminderOptIn?: boolean;
+    checkinReminderOptIn?: boolean;
+    habitReminderOptIn?: boolean;
   };
   client?: { timezone?: string; preferredUnits?: Units };
 }
@@ -213,6 +233,12 @@ export async function updateSettings(
   }
   // The digest (PRD H14) is a coach email; a client's setting is ignored.
   if (clean.notifications && !isCoach(actor)) delete clean.notifications.digestEmailOptIn;
+  // Reminders (PRD H13) are client emails; a coach's setting is ignored.
+  if (clean.notifications && isCoach(actor)) {
+    delete clean.notifications.workoutReminderOptIn;
+    delete clean.notifications.checkinReminderOptIn;
+    delete clean.notifications.habitReminderOptIn;
+  }
   if (clean.notifications && Object.keys(clean.notifications).length > 0) {
     await tx.notificationPreference.update({
       where: { userId: actor.userId },

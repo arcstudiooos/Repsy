@@ -563,6 +563,12 @@ export {
   type ResourceView,
 } from './resources/resources';
 export { queueCoachDigests, DIGEST_HOUR } from './notifications/digest';
+export {
+  queueClientReminders,
+  REMINDER_HOURS,
+  REMINDERS_PER_DAY,
+  type ReminderKind,
+} from './notifications/reminders';
 export { getBranding, updateBranding, type Branding } from './branding/branding';
 export {
   replyFacts,

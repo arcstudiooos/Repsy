@@ -82,6 +82,9 @@ describe('getSettings', () => {
       messageEmailOptIn: false,
       marketingOptIn: false,
       digestEmailOptIn: false,
+      workoutReminderOptIn: false,
+      checkinReminderOptIn: false,
+      habitReminderOptIn: false,
     });
   });
 
@@ -206,6 +209,9 @@ describe('updateSettings', () => {
       messageEmailOptIn: true,
       marketingOptIn: false,
       digestEmailOptIn: false,
+      workoutReminderOptIn: false,
+      checkinReminderOptIn: false,
+      habitReminderOptIn: false,
     });
   });
 
