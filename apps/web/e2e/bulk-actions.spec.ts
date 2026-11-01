@@ -49,7 +49,9 @@ test.describe('bulk actions (PRD B5)', () => {
 
     await bar.getByRole('button', { name: 'Assign program' }).click();
     const assign = page.getByRole('dialog', { name: 'Assign a program to 2 clients' });
-    await assign.getByLabel('Program', { exact: true }).selectOption({ label: 'Group block (1 day a week)' });
+    await assign
+      .getByLabel('Program', { exact: true })
+      .selectOption({ label: 'Group block (1 day a week)' });
     await assign.getByRole('checkbox', { name: 'Monday' }).check();
     await assign
       .getByRole('checkbox', {
