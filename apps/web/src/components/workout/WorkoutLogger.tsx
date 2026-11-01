@@ -57,6 +57,7 @@ import {
   type LocalView,
 } from '@/portal/offline/workoutCache';
 import { FinishDialog, type FinishBody } from './FinishDialog';
+import { PlateHelper } from './PlateHelper';
 import { RestTimer } from './RestTimer';
 import { SetRow, type RowStatus } from './SetRow';
 import { ExerciseNotes } from './ExerciseNotes';
@@ -992,6 +993,7 @@ export function WorkoutLogger({
                         Add set
                       </Button>
                     )}
+                    {e.trackingType === 'reps_load' && <PlateHelper name={e.name} units={units} />}
                     <ExerciseNotes
                       sessionId={session.id}
                       workoutVersionExerciseId={e.id}

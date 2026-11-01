@@ -35,6 +35,7 @@
     "./workout-blocks": "./src/programs/blocks.ts",
     "./readiness": "./src/sessions/readiness-questions.ts",
     "./habit-heatmap": "./src/habits/heatmap.ts",
-    "./exercise-media": "./src/exercises/media.ts"
+    "./exercise-media": "./src/exercises/media.ts",
+    "./plates": "./src/sessions/plates.ts"
   }
 }
