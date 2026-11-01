@@ -36,7 +36,9 @@ export async function swapsForSession(
       workoutVersionExerciseId: true,
       reason: true,
       createdAt: true,
-      exercise: { select: { id: true, name: true, instructions: true, cues: true, mediaUrl: true } },
+      exercise: {
+        select: { id: true, name: true, instructions: true, cues: true, mediaUrl: true },
+      },
       workoutVersionExercise: { select: { exercise: { select: { name: true } } } },
     },
   });
