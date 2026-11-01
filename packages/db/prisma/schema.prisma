@@ -109,6 +109,7 @@ model User {
   coachProfile             CoachProfile?
   notificationPreference   NotificationPreference?
   pushSubscriptions        PushSubscription[]
+  scheduledMessages        ScheduledMessage[]
   outboxPushes             OutboxPush[]
 
   @@map("users")
@@ -262,6 +263,7 @@ model Organization {
   mediaFiles MediaFile[]
   progressPhotos ProgressPhoto[]
   outboxPushes OutboxPush[]
+  scheduledMessages ScheduledMessage[]
 }
 
 model Membership {
@@ -968,6 +970,7 @@ model ConversationThread {
   client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
   coach        User         @relation("ThreadCoach", fields: [coachUserId], references: [id])
   messages     Message[]
+  scheduled    ScheduledMessage[]
 
   @@unique([id, organizationId])
   /// Implied by the unique client_id; required by Prisma for the one-to-one composite relation.
@@ -1741,4 +1744,27 @@ model OutboxPush {
 
   @@index([organizationId])
   @@map("outbox_pushes")
+}
+
+/// PRD H5: a message the coach wrote to send later, at a client-local time.
+model ScheduledMessage {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  threadId       String    @map("thread_id") @db.Uuid
+  senderUserId   String    @map("sender_user_id") @db.Uuid
+  body           String
+  sendAt         DateTime  @map("send_at") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  sentAt         DateTime? @map("sent_at") @db.Timestamptz(3)
+  messageId      String?   @map("message_id") @db.Uuid
+  cancelledAt    DateTime? @map("cancelled_at") @db.Timestamptz(3)
+  /// Why it could not be sent (the sender left, the thread closed).
+  failure        String?
+
+  organization Organization       @relation(fields: [organizationId], references: [id])
+  thread       ConversationThread @relation(fields: [threadId, organizationId], references: [id, organizationId])
+  sender       User               @relation(fields: [senderUserId], references: [id])
+
+  @@index([organizationId, threadId])
+  @@map("scheduled_messages")
 }

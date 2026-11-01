@@ -196,6 +196,10 @@ export async function eraseClientData(
     })
   ).map((m) => m.id);
   await tx.message.deleteMany({ where: { id: { in: messageIds } } });
+  // PRD H5: messages still waiting to go out to them, and the history of sent ones.
+  await tx.scheduledMessage.deleteMany({
+    where: { organizationId: orgId, thread: { is: { clientId } } },
+  });
   await tx.conversationThread.deleteMany({ where: inClient });
   await tx.checkin.deleteMany({ where: inClient });
   await tx.internalNote.deleteMany({ where: inClient });

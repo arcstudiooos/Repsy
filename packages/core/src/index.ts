@@ -77,7 +77,7 @@ export {
 } from './invites/invites';
 export { newInviteToken, hashInviteToken } from './invites/token';
 export { PRIVACY_NOTICE_VERSION, PRIVACY_NOTICE_TEXT } from './privacy';
-export { canonicalTimezone, isIanaTimezone, todayInZone } from './timezone';
+export { canonicalTimezone, isIanaTimezone, todayInZone, zonedTimeToUtc } from './timezone';
 export {
   getSettings,
   updateSettings,
@@ -585,6 +585,14 @@ export {
 } from './messages/replyFacts';
 export { equipmentGuideFor, type EquipmentGuide } from './exercises/equipmentGuide';
 export { setExerciseDemo } from './exercises/demo';
+export {
+  cancelScheduledMessage,
+  listScheduledMessages,
+  scheduleMessage,
+  SCHEDULED_PER_THREAD,
+  sendDueScheduledMessages,
+  type ScheduledMessageView,
+} from './messages/scheduled';
 export {
   getTrainingLoad,
   TRAINING_LOAD_WEEKS,
