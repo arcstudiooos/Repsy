@@ -18,6 +18,12 @@ const NUMERIC_TARGET_FIELDS = [
   'restSec',
   'durationSec',
   'distanceM',
+  // PRD C7.
+  'repsMax',
+  'rir',
+  'percent1rm',
+  'paceSecPerKm',
+  'hrZone',
 ] as const;
 
 /**

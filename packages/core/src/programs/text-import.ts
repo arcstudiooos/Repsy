@@ -14,6 +14,8 @@ export type ImportUnits = 'kg' | 'lb';
 
 export interface ParsedSet {
   reps?: number;
+  /** The top of a rep range ("3x8-10"). */
+  repsMax?: number;
   loadKg?: number;
   rpe?: number;
   durationSec?: number;
@@ -62,13 +64,14 @@ function toKg(value: number, unit: string | undefined, units: ImportUnits): numb
  */
 export function parsePrescription(text: string, units: ImportUnits): ParsedSet[] | null {
   const m =
-    /(\d+)\s*[x×*]\s*(\d+(?:\.\d+)?)(?:\s*[-–]\s*\d+)?\s*(s|sec|secs|seconds?|min|mins|minutes?|m|km|mi)?\b/i.exec(
+    /(\d+)\s*[x×*]\s*(\d+(?:\.\d+)?)(?:\s*[-–]\s*(\d+))?\s*(s|sec|secs|seconds?|min|mins|minutes?|m|km|mi)?\b/i.exec(
       text,
     );
   if (!m) return null;
   const sets = Number(m[1]);
   const amount = Number(m[2]);
-  const unit = m[3]?.toLowerCase();
+  const top = m[3] ? Number(m[3]) : undefined;
+  const unit = m[4]?.toLowerCase();
   if (!Number.isInteger(sets) || sets < 1 || sets > IMPORT_LIMITS.sets) return null;
   const one: ParsedSet = {};
   if (unit && /^s|^sec/.test(unit)) one.durationSec = Math.round(amount);
@@ -79,6 +82,8 @@ export function parsePrescription(text: string, units: ImportUnits): ParsedSet[]
   else {
     if (!Number.isInteger(amount)) return null;
     one.reps = amount;
+    if (top !== undefined && Number.isInteger(top) && top > amount && top <= 1000)
+      one.repsMax = top;
   }
   const rest = text.slice(m.index + m[0].length);
   const load = /(?:@|at\b)?\s*(\d+(?:\.\d+)?)\s*(kg|kgs|lb|lbs)?\b/i.exec(

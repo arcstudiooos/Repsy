@@ -5,15 +5,17 @@ import { DomainError, getProgram, getSettings, type SetTarget } from '@kinetic/c
 import { toDisplay, type Units } from '@kinetic/core/units';
 import { withServerTenant } from '@/server/serverActor';
 import { PrintButton } from './PrintButton';
+import { extraTargets, repsText } from '@/lib/target-text';
 
 export const metadata: Metadata = { title: 'Print program | Kinetic' };
 
 function describeSet(s: SetTarget, units: Units): string {
   const parts: string[] = [];
-  if (s.reps !== undefined) parts.push(`${s.reps} reps`);
+  if (s.reps !== undefined) parts.push(`${repsText(s)} reps`);
   if (s.loadKg !== undefined) parts.push(`${toDisplay(s.loadKg, units)} ${units}`);
   if (s.durationSec !== undefined) parts.push(`${s.durationSec} s`);
   if (s.distanceM !== undefined) parts.push(`${s.distanceM} m`);
+  parts.push(...extraTargets(s));
   if (s.rpe !== undefined) parts.push(`RPE ${s.rpe}`);
   if (s.tempo) parts.push(`Tempo ${s.tempo}`);
   if (s.restSec !== undefined) parts.push(`Rest ${s.restSec} s`);

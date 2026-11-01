@@ -37,27 +37,48 @@ const optionalNumber = (min: number, max: number) =>
  * is saved back unchanged instead of being re-rounded through the display conversion.
  */
 function setSchema(units: Units) {
-  return z.object({
-    reps: optionalNumber(0, 1000).refine((v) => v === undefined || Number.isInteger(v), {
-      error: 'Use a whole number.',
-    }),
-    loadKg: optionalNumber(0, maxDisplayLoad(units)),
-    exactKg: z.number().optional(),
-    rpe: optionalNumber(1, 10).refine((v) => v === undefined || Number.isInteger(v * 2), {
-      error: 'Use steps of 0.5.',
-    }),
-    restSec: optionalNumber(0, 3600).refine((v) => v === undefined || Number.isInteger(v), {
-      error: 'Use a whole number.',
-    }),
-    tempo: z
-      .string()
-      .optional()
-      .refine((v) => !v || TEMPO.test(v), { error: TEMPO_MESSAGE }),
-    durationSec: optionalNumber(1, 86400).refine((v) => v === undefined || Number.isInteger(v), {
-      error: 'Use a whole number.',
-    }),
-    distanceM: optionalNumber(0, 100000),
-  });
+  return z
+    .object({
+      reps: optionalNumber(0, 1000).refine((v) => v === undefined || Number.isInteger(v), {
+        error: 'Use a whole number.',
+      }),
+      loadKg: optionalNumber(0, maxDisplayLoad(units)),
+      exactKg: z.number().optional(),
+      rpe: optionalNumber(1, 10).refine((v) => v === undefined || Number.isInteger(v * 2), {
+        error: 'Use steps of 0.5.',
+      }),
+      restSec: optionalNumber(0, 3600).refine((v) => v === undefined || Number.isInteger(v), {
+        error: 'Use a whole number.',
+      }),
+      tempo: z
+        .string()
+        .optional()
+        .refine((v) => !v || TEMPO.test(v), { error: TEMPO_MESSAGE }),
+      durationSec: optionalNumber(1, 86400).refine((v) => v === undefined || Number.isInteger(v), {
+        error: 'Use a whole number.',
+      }),
+      distanceM: optionalNumber(0, 100000),
+      repsMax: optionalNumber(1, 1000).refine((v) => v === undefined || Number.isInteger(v), {
+        error: 'Use a whole number.',
+      }),
+      rir: optionalNumber(0, 10).refine((v) => v === undefined || Number.isInteger(v), {
+        error: 'Use a whole number.',
+      }),
+      percent1rm: optionalNumber(1, 100).refine(
+        (v) => v === undefined || Number.isInteger(v * 10),
+        { error: 'Use at most 1 decimal place.' },
+      ),
+      paceSecPerKm: optionalNumber(60, 3600).refine((v) => v === undefined || Number.isInteger(v), {
+        error: 'Use a whole number.',
+      }),
+      hrZone: optionalNumber(1, 5).refine((v) => v === undefined || Number.isInteger(v), {
+        error: 'Use a whole number.',
+      }),
+    })
+    .refine((s) => s.repsMax === undefined || s.reps === undefined || s.repsMax >= s.reps, {
+      message: 'At least the reps.',
+      path: ['repsMax'],
+    });
 }
 
 export function buildEditorSchema(units: Units) {
@@ -151,8 +172,12 @@ function toSetTarget(s: EditorSet, units: Units): SetTarget {
   if (s.tempo) out.tempo = s.tempo;
   if (s.durationSec !== undefined) out.durationSec = s.durationSec;
   if (s.distanceM !== undefined) out.distanceM = s.distanceM;
+  for (const k of EXTRA_TARGETS) if (s[k] !== undefined) out[k] = s[k];
   return out;
 }
+
+/** PRD C7 targets, copied as they are. */
+const EXTRA_TARGETS = ['repsMax', 'rir', 'percent1rm', 'paceSecPerKm', 'hrZone'] as const;
 
 /** The PATCH body's `weeks`: display units back to kg, view-only fields dropped. */
 export function toWeekInputs(values: EditorValues, units: Units): WeekInput[] {
@@ -200,7 +225,18 @@ export function toDraftPayload(
           note: e.note,
           sets: e.sets.map((s) => {
             const out: Record<string, number | string> = {};
-            for (const k of ['reps', 'rpe', 'restSec', 'durationSec', 'distanceM'] as const) {
+            for (const k of [
+              'reps',
+              'rpe',
+              'restSec',
+              'durationSec',
+              'distanceM',
+              'repsMax',
+              'rir',
+              'percent1rm',
+              'paceSecPerKm',
+              'hrZone',
+            ] as const) {
               const v = finite(s[k]);
               if (v !== undefined) out[k] = v;
             }
@@ -245,6 +281,11 @@ const draftShape = z.object({
                       tempo: z.string().nullish(),
                       durationSec: draftNumber,
                       distanceM: draftNumber,
+                      repsMax: draftNumber,
+                      rir: draftNumber,
+                      percent1rm: draftNumber,
+                      paceSecPerKm: draftNumber,
+                      hrZone: draftNumber,
                     }),
                   ),
                 }),
@@ -280,7 +321,18 @@ export function fromDraftPayload(
           note: e.note ?? '',
           sets: e.sets.map((s) => {
             const out: EditorSet = {};
-            for (const k of ['reps', 'rpe', 'restSec', 'durationSec', 'distanceM'] as const) {
+            for (const k of [
+              'reps',
+              'rpe',
+              'restSec',
+              'durationSec',
+              'distanceM',
+              'repsMax',
+              'rir',
+              'percent1rm',
+              'paceSecPerKm',
+              'hrZone',
+            ] as const) {
               if (s[k] !== undefined) out[k] = s[k];
             }
             if (s.tempo) out.tempo = s.tempo;
@@ -298,7 +350,7 @@ export function fromDraftPayload(
 
 /** Editor fields a server path can name, below `weeks.{w}.days.{d}`. */
 const FIELD_PATH =
-  /^\d+\.days\.\d+\.(?:title|notes|exercises|exercises\.\d+\.(?:note|sets|sets\.\d+\.(?:reps|loadKg|rpe|restSec|tempo|durationSec|distanceM)))$/;
+  /^\d+\.days\.\d+\.(?:title|notes|exercises|exercises\.\d+\.(?:note|sets|sets\.\d+\.(?:reps|loadKg|rpe|restSec|tempo|durationSec|distanceM|repsMax|rir|percent1rm|paceSecPerKm|hrZone)))$/;
 /** The editor's own message for a missing tracked field, by field name. */
 const REQUIRED_MESSAGE = new Map<string, string>(Object.values(REQUIRED));
 /** commit.ts reports a missing tracked field on the set: `{path}.sets.{s}: {field} is required.` */

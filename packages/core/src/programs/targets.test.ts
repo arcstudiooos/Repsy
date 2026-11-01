@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { targetSchema } from './targets';
+import { setTargetSchema, targetSchema } from './targets';
 
 const ok = (v: unknown) => targetSchema.safeParse(v).success;
 
@@ -58,5 +58,20 @@ describe('targetSchema normalization', () => {
     expect(JSON.stringify(parsed)).toBe(
       JSON.stringify(targetSchema.parse([{ reps: 5, loadKg: 0.3, distanceM: 1 }])),
     );
+  });
+});
+
+describe('full set targets (PRD C7)', () => {
+  it('accepts ranges, RIR, %1RM, pace and heart-rate zone; checks the range', () => {
+    expect(
+      setTargetSchema.safeParse({ reps: 8, repsMax: 10, rir: 2, percent1rm: 72.5 }).success,
+    ).toBe(true);
+    expect(
+      setTargetSchema.safeParse({ durationSec: 1200, paceSecPerKm: 330, hrZone: 2 }).success,
+    ).toBe(true);
+    const bad = setTargetSchema.safeParse({ reps: 10, repsMax: 8 });
+    expect(bad.success).toBe(false);
+    expect(setTargetSchema.safeParse({ hrZone: 6 }).success).toBe(false);
+    expect(setTargetSchema.safeParse({ percent1rm: 72.25 }).success).toBe(false);
   });
 });

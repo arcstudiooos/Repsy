@@ -37,7 +37,10 @@ function SetRows({
             {trackingType === 'reps_load' && (
               <>
                 <NumberField path={`${base}.sets.${i}.reps`} label="Reps" step="1" />
+                <NumberField path={`${base}.sets.${i}.repsMax`} label="Top of range" step="1" />
                 <NumberField path={`${base}.sets.${i}.loadKg`} label={`Load (${units})`} />
+                <NumberField path={`${base}.sets.${i}.percent1rm`} label="% of 1RM" step="0.5" />
+                <NumberField path={`${base}.sets.${i}.rir`} label="RIR" step="1" />
                 <NumberField path={`${base}.sets.${i}.rpe`} label="RPE" step="0.5" />
                 <TextField
                   path={`${base}.sets.${i}.tempo`}
@@ -57,6 +60,16 @@ function SetRows({
             )}
             {trackingType === 'distance' && (
               <NumberField path={`${base}.sets.${i}.distanceM`} label="Distance (m)" />
+            )}
+            {trackingType !== 'reps_load' && (
+              <>
+                <NumberField
+                  path={`${base}.sets.${i}.paceSecPerKm`}
+                  label="Pace (s per km)"
+                  step="1"
+                />
+                <NumberField path={`${base}.sets.${i}.hrZone`} label="Heart-rate zone" step="1" />
+              </>
             )}
             <NumberField path={`${base}.sets.${i}.restSec`} label="Rest (s)" step="1" />
           </div>

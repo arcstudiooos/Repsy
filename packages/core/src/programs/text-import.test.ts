@@ -8,7 +8,7 @@ describe('program text import (PRD C14)', () => {
     );
     expect(parsePrescription('5 x 5 at 225 lb', 'kg')?.[0]).toEqual({ reps: 5, loadKg: 102.058 });
     expect(parsePrescription('3x8 @ 135', 'lb')?.[0]).toEqual({ reps: 8, loadKg: 61.235 });
-    expect(parsePrescription('4 x 8-10', 'kg')).toHaveLength(4);
+    expect(parsePrescription('4 x 8-10', 'kg')).toEqual(Array(4).fill({ reps: 8, repsMax: 10 }));
     expect(parsePrescription('3x45s', 'kg')?.[0]).toEqual({ durationSec: 45 });
     expect(parsePrescription('2x1.5min', 'kg')?.[0]).toEqual({ durationSec: 90 });
     expect(parsePrescription('1x5km', 'kg')?.[0]).toEqual({ distanceM: 5000 });

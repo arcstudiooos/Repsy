@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/toast';
 import { formatSessionDate } from '@/lib/session-format';
+import { extraTargets, repsText } from '@/lib/target-text';
 import {
   draftFromTarget,
   draftFromValues,
@@ -64,7 +65,10 @@ function describeTarget(e: Exercise, units: Units): string {
       const d = draftFromTarget(t, units);
       if (e.trackingType === 'duration') return d.durationSeconds ? `${d.durationSeconds}s` : '-';
       if (e.trackingType === 'distance') return d.distanceM ? `${d.distanceM} m` : '-';
-      return d.weight ? `${d.reps || '-'} × ${d.weight} ${units}` : `${d.reps || '-'} reps`;
+      const reps = repsText(t) ?? (d.reps || '-');
+      const extra = extraTargets(t);
+      const base = d.weight ? `${reps} × ${d.weight} ${units}` : `${reps} reps`;
+      return extra.length ? `${base} (${extra.join(', ')})` : base;
     })
     .join(', ');
 }
