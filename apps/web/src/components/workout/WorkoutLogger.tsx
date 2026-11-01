@@ -6,6 +6,7 @@ import { sectionStart } from '@kinetic/core/workout-sections';
 import { READINESS_QUESTIONS } from '@kinetic/core/readiness';
 import { ReadinessCheck, type ReadinessDraft } from './ReadinessCheck';
 import { ExerciseDemo } from './ExerciseDemo';
+import { FormChecks } from './FormChecks';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import type { LoggedSet, SessionDetail, TrackingType, Units } from '@kinetic/core';
@@ -215,6 +216,11 @@ export function WorkoutLogger({
     (detail.notes ?? []).filter((n) => n.workoutVersionExerciseId === wveId);
   const addNote = (note: NonNullable<SessionDetail['notes']>[number]) =>
     setDetail((d) => ({ ...d, notes: [...(d.notes ?? []), note] }));
+  // PRD D10.
+  const videosFor = (wveId: string) =>
+    (detail.formChecks ?? []).filter((v) => v.workoutVersionExerciseId === wveId);
+  const addVideo = (v: NonNullable<SessionDetail['formChecks']>[number]) =>
+    setDetail((d) => ({ ...d, formChecks: [...(d.formChecks ?? []), v] }));
   /** Any set of this exercise logged or typed: a swap is only offered before that. */
   const hasSets = (wveId: string) =>
     detail.logs.some((l) => l.workoutVersionExerciseId === wveId && !isBlank(l)) ||
@@ -786,6 +792,15 @@ export function WorkoutLogger({
                       canAdd={online || mode === 'coach'}
                       onAdded={addNote}
                     />
+                    <FormChecks
+                      sessionId={session.id}
+                      workoutVersionExerciseId={e.id}
+                      name={e.name}
+                      videos={videosFor(e.id)}
+                      clientId={mode === 'coach' ? detail.client.id : null}
+                      canAdd={online}
+                      onAdded={addVideo}
+                    />
                   </CardContent>
                 </Card>
               </li>
@@ -927,6 +942,15 @@ export function WorkoutLogger({
                       viewer={mode}
                       canAdd={online || mode === 'coach'}
                       onAdded={addNote}
+                    />
+                    <FormChecks
+                      sessionId={session.id}
+                      workoutVersionExerciseId={e.id}
+                      name={e.name}
+                      videos={videosFor(e.id)}
+                      clientId={mode === 'coach' ? detail.client.id : null}
+                      canAdd={online}
+                      onAdded={addVideo}
                     />
                   </CardContent>
                 </Card>

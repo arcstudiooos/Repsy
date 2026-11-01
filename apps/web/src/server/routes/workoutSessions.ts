@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  addFormCheck,
   addSessionNote,
   completeSession,
   finishBodySchema,
@@ -241,4 +242,20 @@ export const sessionReadinessRoute: RouteDef<typeof readinessSchema, true> = {
   input: readinessSchema,
   handler: ({ actor, input, params, requestId, tenant }) =>
     tenant((tx) => recordReadiness(tx, actor, params.id ?? '', input, { requestId })),
+};
+
+const formCheckSchema = z.object({
+  mediaId: z.string().max(64),
+  workoutVersionExerciseId: z.string().max(64).optional(),
+});
+
+/** `POST /api/v1/sessions/:id/form-checks` (PRD D10): attach an uploaded form-check video. */
+export const sessionFormCheckRoute: RouteDef<typeof formCheckSchema, true> = {
+  can: 'session:log',
+  input: formCheckSchema,
+  handler: async ({ actor, input, params, requestId, tenant }) =>
+    new ApiResult(
+      await tenant((tx) => addFormCheck(tx, actor, params.id ?? '', input, { requestId })),
+      { status: 201 },
+    ),
 };

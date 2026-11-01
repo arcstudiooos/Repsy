@@ -25,6 +25,8 @@ export interface ReviewItem {
   readinessScore: number | null;
   /** Exercises swapped for an alternative in this session (PRD D8). */
   swapCount: number;
+  /** PRD D10: form-check videos on the session. */
+  formCheckCount: number;
 }
 
 export interface ReviewSection {
@@ -110,6 +112,14 @@ export async function getReviewOverview(
         })
       : [];
     const swapCount = new Map(swapRows.map((r) => [r.sessionId, r._count._all]));
+    const videoRows = rows.length
+      ? await tx.sessionMedia.groupBy({
+          by: ['sessionId'],
+          where: { sessionId: { in: rows.map((r) => r.id) } },
+          _count: { _all: true },
+        })
+      : [];
+    const videoCount = new Map(videoRows.map((r) => [r.sessionId, r._count._all]));
     return {
       count,
       items: summaries.map((s) => ({
@@ -124,6 +134,7 @@ export async function getReviewOverview(
         extra: s.extra,
         readinessScore: s.readinessScore,
         swapCount: swapCount.get(s.id) ?? 0,
+        formCheckCount: videoCount.get(s.id) ?? 0,
       })),
     };
   };

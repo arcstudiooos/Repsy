@@ -80,6 +80,13 @@ function Section({
                     <SessionStateBadge state={item.state} overdue={false} />
                     {item.loggedByCoach && <LoggedByCoachBadge />}
                     {item.extra && <ExtraWorkoutBadge />}
+                    {item.formCheckCount > 0 && (
+                      <span className="text-sm text-secondary">
+                        {item.formCheckCount === 1
+                          ? '1 form-check video'
+                          : `${item.formCheckCount} form-check videos`}
+                      </span>
+                    )}
                     {item.readinessScore !== null && (
                       <span className="text-sm text-secondary">
                         Readiness {item.readinessScore}/100

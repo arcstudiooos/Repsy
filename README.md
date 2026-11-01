@@ -98,6 +98,7 @@ R2 builds the web-platform features in `docs/competitive/complete-platform-prd.m
 - **C2, D7 demo media:** an exercise's demo link (YouTube, Vimeo, Instagram or an MP4) shows a thumbnail in the library and the builder's picker and opens with one tap, nothing loading before that (YouTube through youtube-nocookie.com). In the logger it sits under "How to do it" with the cues; offline it says the video needs a connection.
 - **E3, E4 progress photos:** clients (and their coaches) add front, side and back photos on a date from Progress; they are stored privately with EXIF, GPS and other metadata stripped (JPEG, PNG, WebP up to 15 MB; HEIC refused) and streamed only to the client and their coaches. Compare any two dates per pose side by side, as an overlay with an opacity slider, or with a swipe slider. Deleting a photo or erasing the client removes the files (a worker job deletes the stored objects; abandoned uploads go after a day).
 - **H2 attachments:** either side can attach a photo (JPEG, PNG, WebP, metadata stripped) or a PDF to a message, or send one on its own. Photos show inline and PDFs download; both stay private to the client and their coaches. Voice notes and video wait for a media provider.
+- **D10 form-check videos:** during or after a workout the client attaches short MP4 videos (up to 50 MB, 10 per session) to an exercise; the coach watches them on the session page, and the review queue shows how many a session has.
 
 ## What works locally (Sprint 5)
 

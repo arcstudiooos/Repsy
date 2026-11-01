@@ -1,4 +1,5 @@
 import { readReadiness, type ReadinessView } from './readiness';
+import { formChecksFor, type FormCheckView } from './formChecks';
 import type { TenantTx } from '@kinetic/db';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
@@ -56,6 +57,8 @@ export interface SessionDetail {
   editableUntil: string | null;
   /** PRD D17: the readiness check before Start, if the client answered it. */
   readiness?: ReadinessView | null;
+  /** PRD D10: form-check videos, oldest first. */
+  formChecks?: FormCheckView[];
 }
 
 const values = (json: unknown): RevisionValues => {
@@ -174,5 +177,6 @@ export async function getSessionDetail(
     revisions,
     editableUntil,
     readiness: readReadiness(row.readinessJson, row.readinessScore, row.readinessAt),
+    formChecks: await formChecksFor(tx, row.id),
   };
 }
