@@ -586,6 +586,14 @@ export {
 export { equipmentGuideFor, type EquipmentGuide } from './exercises/equipmentGuide';
 export { setExerciseDemo } from './exercises/demo';
 export {
+  LIFECYCLE_STAGES,
+  SETTABLE_STAGES,
+  STAGE_LABEL,
+  setLifecycleStage,
+  type LifecycleStage,
+  type SettableStage,
+} from './clients/stage';
+export {
   AUDIT_CATEGORIES,
   listAuditLog,
   type AuditCategory,

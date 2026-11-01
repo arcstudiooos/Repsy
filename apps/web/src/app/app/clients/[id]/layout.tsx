@@ -7,6 +7,7 @@ import { ClientTabs } from './ClientTabs';
 import { ContextCard } from './ContextCard';
 import { loadClient } from './data';
 import { PauseControls } from './PauseControls';
+import { StageSelect } from './StageSelect';
 
 export default async function ClientLayout({
   children,
@@ -24,6 +25,7 @@ export default async function ClientLayout({
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-semibold break-words md:text-3xl">{client.name}</h1>
         <StatusBadge status={client.status} />
+        <StageSelect clientId={client.id} stage={client.lifecycleStage} />
       </div>
       <div className="mb-4">
         <PauseControls client={client} />

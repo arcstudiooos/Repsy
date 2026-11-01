@@ -1,4 +1,5 @@
 import type { TenantTx } from '@kinetic/db';
+import { effectiveStage, LIFECYCLE_STAGES, stageWhere, type LifecycleStage } from './stage';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';
@@ -32,6 +33,8 @@ export interface ClientView {
   checkinEveryWeeks: number;
   /** PRD F2: the client's recurring template; null = the default. */
   checkinTemplateId: string | null;
+  /** PRD B20. */
+  lifecycleStage: LifecycleStage;
   createdAt: string;
 }
 
@@ -47,6 +50,7 @@ interface ClientRow {
   checkinWeekday: number | null;
   checkinEveryWeeks: number;
   checkinTemplateId: string | null;
+  lifecycleStage: string;
   createdAt: Date;
 }
 
@@ -94,6 +98,7 @@ export function toClientView(
     checkinWeekday: row.checkinWeekday,
     checkinEveryWeeks: row.checkinEveryWeeks,
     checkinTemplateId: row.checkinTemplateId,
+    lifecycleStage: effectiveStage(row),
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -219,11 +224,21 @@ export async function createClient(
 export async function listClients(
   tx: TenantTx,
   actor: ActorContext,
-  query: { q?: string; status?: ClientStatus; cursor?: string; tagId?: string },
+  query: {
+    q?: string;
+    status?: ClientStatus;
+    cursor?: string;
+    tagId?: string;
+    /** PRD B20. */
+    stage?: LifecycleStage;
+  },
 ): Promise<{ items: ClientView[]; nextCursor: string | null }> {
   assertCan(actor, 'client:read');
   const and: Record<string, unknown>[] = [];
   if (query.status) and.push({ status: query.status });
+  if (query.stage && (LIFECYCLE_STAGES as readonly string[]).includes(query.stage)) {
+    and.push(stageWhere(query.stage));
+  }
   if (query.tagId !== undefined) {
     if (!isUuid(query.tagId)) throw invalid('tagId', 'Use a tag id.');
     and.push({ tagLinks: { some: { tagId: query.tagId } } });

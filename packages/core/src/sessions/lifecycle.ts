@@ -1,4 +1,5 @@
 import { appendAudit, type TenantTx } from '@kinetic/db';
+import { promoteOnFirstCompletion } from '../clients/stage';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';
@@ -245,6 +246,8 @@ async function finishSession(
     requestId: opts.requestId,
   });
   await markCoachLogged(tx, actor, session, opts.requestId);
+  // PRD B20: the first completed workout ends onboarding.
+  if (kind === 'completed') await promoteOnFirstCompletion(tx, session.clientId);
   // A late finish can end a missed-workouts episode (S4-2: Rule 1 is re-evaluated).
   if (session.state === 'missed') await resolveStaleMissedFlags(tx, now, session.clientId);
   return getSessionDetail(tx, actor, session.id, { now });

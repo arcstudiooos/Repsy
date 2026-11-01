@@ -37,6 +37,7 @@
     "./habit-heatmap": "./src/habits/heatmap.ts",
     "./exercise-media": "./src/exercises/media.ts",
     "./plates": "./src/sessions/plates.ts",
-    "./checkin-conditions": "./src/checkins/conditions.ts"
+    "./checkin-conditions": "./src/checkins/conditions.ts",
+    "./client-stages": "./src/clients/stage-labels.ts"
   }
 }

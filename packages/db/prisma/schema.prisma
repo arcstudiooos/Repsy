@@ -353,6 +353,8 @@ model Client {
   /// Stored lowercased.
   email          String
   status         ClientStatus @default(invited)
+  /// PRD B20: onboarding, active or at_renewal; paused and alumni come from `status`.
+  lifecycleStage String       @default("onboarding") @map("lifecycle_stage")
   startDate      DateTime?    @map("start_date") @db.Date
   goals          String?
   /// Client context card (PRD B7), coaches only: why they came, schedule limits, equipment, preferences.

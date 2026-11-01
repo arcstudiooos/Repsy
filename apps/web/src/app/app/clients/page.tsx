@@ -10,6 +10,7 @@ import {
   type ClientCompliance,
   type TagView,
   type ClientStatus,
+  LIFECYCLE_STAGES,
 } from '@kinetic/core';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/states/EmptyState';
@@ -46,6 +47,7 @@ export default async function ClientsPage({
   const status = STATUSES.find((s) => s === statusParam);
   const cursor = first(sp.cursor);
   const tagParam = first(sp.tag);
+  const stage = LIFECYCLE_STAGES.find((s) => s === first(sp.stage));
 
   let result: Awaited<ReturnType<typeof listClients>>;
   let compliance: Record<string, ClientCompliance>;
@@ -59,7 +61,7 @@ export default async function ClientsPage({
       await withServerTenant(async (tx, actor) => {
         const all = await listTags(tx, actor);
         const tagId = all.find((t) => t.id === tagParam)?.id;
-        const list = await listClients(tx, actor, { q, status, cursor, tagId });
+        const list = await listClients(tx, actor, { q, status, cursor, tagId, stage });
         const byClient = await clientCompliance(
           tx,
           actor,
@@ -96,7 +98,8 @@ export default async function ClientsPage({
     throw error;
   }
 
-  const filtered = q !== undefined || status !== undefined || tagId !== undefined;
+  const filtered =
+    q !== undefined || status !== undefined || tagId !== undefined || stage !== undefined;
   const isEmptyRoster = result.items.length === 0 && !filtered && cursor === undefined;
 
   return (
@@ -133,6 +136,7 @@ export default async function ClientsPage({
           nextCursor={result.nextCursor}
           q={q ?? ''}
           status={status ?? ''}
+          stage={stage ?? ''}
           hasCursor={cursor !== undefined}
           templates={templates}
         />

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { appendAudit } from '@kinetic/db';
+import { setLifecycleStage } from '@kinetic/core';
 import {
   applyPause,
   createClient,
@@ -209,4 +210,17 @@ export const clientResumeRoute: RouteDef<undefined, true> = {
     });
     return new ApiResult(client, { meta: { shifted } });
   },
+};
+
+const stageSchema = z.object({ stage: z.string().max(20) });
+
+/** `PUT /api/v1/clients/:id/stage` (PRD B20): Onboarding, Active or At renewal. */
+export const clientStagePutRoute: RouteDef<typeof stageSchema, true> = {
+  can: 'client:update',
+  input: stageSchema,
+  handler: async ({ actor, input, params, requestId, tenant }) => ({
+    stage: await tenant((tx) =>
+      setLifecycleStage(tx, actor, params.id, input.stage, { requestId }),
+    ),
+  }),
 };

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { LIFECYCLE_STAGES, STAGE_LABEL } from '@kinetic/core/client-stages';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import type { ClientCompliance, ClientView, TagView } from '@kinetic/core';
@@ -17,12 +18,13 @@ const SEARCH_DEBOUNCE_MS = 300;
 
 function hrefFor(
   pathname: string,
-  params: { q?: string; status?: string; tag?: string; cursor?: string | null },
+  params: { q?: string; status?: string; tag?: string; stage?: string; cursor?: string | null },
 ): string {
   const sp = new URLSearchParams();
   if (params.q) sp.set('q', params.q);
   if (params.status) sp.set('status', params.status);
   if (params.tag) sp.set('tag', params.tag);
+  if (params.stage) sp.set('stage', params.stage);
   if (params.cursor) sp.set('cursor', params.cursor);
   const qs = sp.toString();
   return qs ? `${pathname}?${qs}` : pathname;
@@ -37,6 +39,7 @@ export function ClientsTable({
   nextCursor,
   q,
   status,
+  stage = '',
   hasCursor,
   templates = [],
 }: {
@@ -54,6 +57,8 @@ export function ClientsTable({
   nextCursor: string | null;
   q: string;
   status: string;
+  /** PRD B20: the selected lifecycle stage ('' = all). */
+  stage?: string;
   hasCursor: boolean;
 }) {
   const router = useRouter();
@@ -81,10 +86,12 @@ export function ClientsTable({
     if (search.trim() === lastPushed.current) return;
     const timer = setTimeout(() => {
       lastPushed.current = search.trim();
-      startTransition(() => router.replace(hrefFor(pathname, { q: search.trim(), status, tag })));
+      startTransition(() =>
+        router.replace(hrefFor(pathname, { q: search.trim(), status, tag, stage })),
+      );
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [search, status, tag, pathname, router]);
+  }, [search, status, tag, stage, pathname, router]);
 
   return (
     <div className={cn('flex flex-col gap-4', pending && 'opacity-70')}>
@@ -102,7 +109,7 @@ export function ClientsTable({
           value={status}
           onChange={(e) =>
             startTransition(() =>
-              router.replace(hrefFor(pathname, { q, status: e.target.value, tag })),
+              router.replace(hrefFor(pathname, { q, status: e.target.value, tag, stage })),
             )
           }
           className="min-h-11 rounded-control border border-input-border bg-surface px-3 text-base text-ink"
@@ -113,13 +120,30 @@ export function ClientsTable({
           <option value="paused">Paused</option>
           <option value="archived">Archived</option>
         </select>
+        <select
+          aria-label="Filter by stage"
+          value={stage}
+          onChange={(e) =>
+            startTransition(() =>
+              router.replace(hrefFor(pathname, { q, status, tag, stage: e.target.value })),
+            )
+          }
+          className="min-h-11 rounded-control border border-input-border bg-surface px-3 text-base text-ink"
+        >
+          <option value="">All stages</option>
+          {LIFECYCLE_STAGES.map((st) => (
+            <option key={st} value={st}>
+              {STAGE_LABEL[st]}
+            </option>
+          ))}
+        </select>
         {tags.length > 0 && (
           <select
             aria-label="Filter by tag"
             value={tag}
             onChange={(e) =>
               startTransition(() =>
-                router.replace(hrefFor(pathname, { q, status, tag: e.target.value })),
+                router.replace(hrefFor(pathname, { q, status, tag: e.target.value, stage })),
               )
             }
             className="min-h-11 rounded-control border border-input-border bg-surface px-3 text-base text-ink"
@@ -227,6 +251,9 @@ export function ClientsTable({
                     <td className="px-4 py-2 [overflow-wrap:anywhere]">{c.email}</td>
                     <td className="px-4 py-2">
                       <StatusBadge status={c.status} inviteStatus={c.inviteStatus} />
+                      <span className="mt-1 block text-sm text-secondary">
+                        {STAGE_LABEL[c.lifecycleStage]}
+                      </span>
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap">{formatDate(c.startDate)}</td>
                     {([7, 30, 90] as const).map((days) => {
@@ -262,7 +289,9 @@ export function ClientsTable({
                   </Link>
                   <StatusBadge status={c.status} inviteStatus={c.inviteStatus} />
                 </div>
-                <p className="text-sm break-all text-secondary">{c.email}</p>
+                <p className="text-sm break-all text-secondary">
+                  {c.email} · {STAGE_LABEL[c.lifecycleStage]}
+                </p>
                 {clientTags[c.id] && (
                   <p className="mt-1 flex flex-wrap gap-1">
                     {clientTags[c.id]!.map((t) => (
@@ -291,7 +320,7 @@ export function ClientsTable({
         <nav aria-label="Pagination" className="flex items-center justify-between gap-3">
           {hasCursor ? (
             <Link
-              href={hrefFor(pathname, { q, status, tag })}
+              href={hrefFor(pathname, { q, status, tag, stage })}
               className={buttonVariants({ variant: 'secondary' })}
             >
               First page
@@ -301,7 +330,7 @@ export function ClientsTable({
           )}
           {nextCursor && (
             <Link
-              href={hrefFor(pathname, { q, status, tag, cursor: nextCursor })}
+              href={hrefFor(pathname, { q, status, tag, stage, cursor: nextCursor })}
               className={buttonVariants({ variant: 'secondary' })}
             >
               Next page
