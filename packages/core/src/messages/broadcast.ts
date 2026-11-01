@@ -20,11 +20,12 @@ export interface BroadcastAudience {
 const invalid = (field: string, message: string) =>
   new DomainError('VALIDATION', 'Some fields are invalid.', { [field]: [message] });
 
-function recipientsWhere(tagId: string | null) {
+function recipientsWhere(tagId: string | null, clientIds: string[] | null = null) {
   return {
     status: { in: ['active', 'paused'] as ('active' | 'paused')[] },
     userId: { not: null },
     ...(tagId ? { tagLinks: { some: { tagId } } } : {}),
+    ...(clientIds ? { id: { in: clientIds } } : {}),
   };
 }
 
@@ -66,7 +67,8 @@ function messageKey(broadcastKey: string, clientId: string): string {
 export async function broadcastMessage(
   tx: TenantTx,
   actor: ActorContext,
-  input: { audience?: unknown; body?: unknown; idempotencyKey?: unknown },
+  /** `audience`: "all", a tag id, or "selected" with `clientIds` (PRD B5). */
+  input: { audience?: unknown; body?: unknown; idempotencyKey?: unknown; clientIds?: unknown },
   opts: { now?: Date; requestId?: string; onSent?: MessageSentHook } = {},
 ): Promise<{ sent: number }> {
   assertCan(actor, 'message:send');
@@ -77,7 +79,14 @@ export async function broadcastMessage(
   if (body.length > MESSAGE_MAX) throw invalid('body', `Use at most ${MESSAGE_MAX} characters.`);
   if (!isUuid(input.idempotencyKey)) throw invalid('idempotencyKey', 'Invalid id.');
   let tagId: string | null = null;
-  if (input.audience !== 'all') {
+  let picked: string[] | null = null;
+  if (input.audience === 'selected') {
+    const ids = input.clientIds;
+    if (!Array.isArray(ids) || ids.length === 0 || !ids.every((c) => isUuid(c))) {
+      throw invalid('clientIds', 'Pick at least one client.');
+    }
+    picked = [...new Set((ids as string[]).map((c) => c.toLowerCase()))];
+  } else if (input.audience !== 'all') {
     if (!isUuid(input.audience)) throw invalid('audience', 'Pick who to send to.');
     const tag = await tx.clientTag.findFirst({
       where: { id: input.audience },
@@ -87,7 +96,7 @@ export async function broadcastMessage(
     tagId = tag.id;
   }
   const clients = await tx.client.findMany({
-    where: recipientsWhere(tagId),
+    where: recipientsWhere(tagId, picked),
     orderBy: { name: 'asc' },
     select: { id: true },
   });
@@ -111,7 +120,10 @@ export async function broadcastMessage(
     objectType: 'organization',
     objectId: actor.orgId,
     action: 'message.broadcast',
-    metadata: { recipients: clients.length, audience: tagId ? 'tag' : 'all' },
+    metadata: {
+      recipients: clients.length,
+      audience: picked ? 'selected' : tagId ? 'tag' : 'all',
+    },
     requestId: opts.requestId,
   });
   return { sent: clients.length };

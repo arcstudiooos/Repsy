@@ -94,4 +94,32 @@ describe('broadcast (PRD H6)', () => {
       ),
     ).rejects.toMatchObject({ code: 'VALIDATION' });
   });
+
+  it('sends to selected clients only (PRD B5)', async () => {
+    const org = await newOrg(prisma);
+    const a = await newClientWorld(prisma, org);
+    const b = await newClientWorld(prisma, org);
+    expect(
+      await runAs(prisma, org.coach, (tx) =>
+        broadcastMessage(tx, org.coach, {
+          audience: 'selected',
+          clientIds: [b.clientId],
+          body: 'Just you',
+          idempotencyKey: randomUUID(),
+        }),
+      ),
+    ).toEqual({ sent: 1 });
+    expect((await messagesOf(a.clientId)).map((m) => m.body)).toEqual([]);
+    expect((await messagesOf(b.clientId)).map((m) => m.body)).toEqual(['Just you']);
+    await expect(
+      runAs(prisma, org.coach, (tx) =>
+        broadcastMessage(tx, org.coach, {
+          audience: 'selected',
+          clientIds: [],
+          body: 'x',
+          idempotencyKey: randomUUID(),
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'VALIDATION' });
+  });
 });

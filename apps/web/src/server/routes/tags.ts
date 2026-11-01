@@ -1,5 +1,12 @@
 import { z } from 'zod';
-import { createTag, deleteTag, listTags, setClientTags } from '@kinetic/core';
+import {
+  addTagToClients,
+  BULK_MAX_CLIENTS,
+  createTag,
+  deleteTag,
+  listTags,
+  setClientTags,
+} from '@kinetic/core';
 import { ApiResult, type RouteDef } from '../api';
 
 /** `GET /api/v1/tags`: the organization's client tags with counts (PRD B4). */
@@ -37,4 +44,16 @@ export const clientTagsPutRoute: RouteDef<typeof clientTagsSchema, true> = {
   input: clientTagsSchema,
   handler: ({ actor, input, params, tenant }) =>
     tenant((tx) => setClientTags(tx, actor, params.id ?? '', input.tagIds)),
+};
+
+const bulkTagSchema = z.object({
+  clientIds: z.array(z.string().min(1).max(64)).min(1).max(BULK_MAX_CLIENTS),
+});
+
+/** `POST /api/v1/tags/:id/clients` (PRD B5): adds the tag to many clients at once. */
+export const tagClientsPostRoute: RouteDef<typeof bulkTagSchema, true> = {
+  can: 'client:update',
+  input: bulkTagSchema,
+  handler: ({ actor, input, params, requestId, tenant }) =>
+    tenant((tx) => addTagToClients(tx, actor, params.id ?? '', input.clientIds, { requestId })),
 };

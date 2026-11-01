@@ -3,7 +3,14 @@ import type { PrismaClient } from '@kinetic/db';
 import { createTestDb } from '@kinetic/db/testing';
 import { newClientWorld, newOrg, runAs } from '../sessions/fixtures.test-helpers';
 import { listClients } from './clients';
-import { createTag, deleteTag, listTags, setClientTags, tagsForClients } from './tags';
+import {
+  addTagToClients,
+  createTag,
+  deleteTag,
+  listTags,
+  setClientTags,
+  tagsForClients,
+} from './tags';
 
 let prisma: PrismaClient;
 let drop: () => Promise<void>;
@@ -101,5 +108,35 @@ describe('client tags (PRD B4)', () => {
     expect(
       await fieldOf(runAs(prisma, w.client, (tx) => createTag(tx, w.client, { name: 'x' }))),
     ).toBe('FORBIDDEN:');
+  });
+
+  it('adds a tag to many clients at once, keeping their other tags (PRD B5)', async () => {
+    const org = await newOrg(prisma);
+    const a = await newClientWorld(prisma, org);
+    const b = await newClientWorld(prisma, org);
+    const keep = await runAs(prisma, org.coach, (tx) => createTag(tx, org.coach, { name: 'Keep' }));
+    const vip = await runAs(prisma, org.coach, (tx) => createTag(tx, org.coach, { name: 'VIP' }));
+    await runAs(prisma, org.coach, (tx) => setClientTags(tx, org.coach, a.clientId, [keep.id]));
+    const add = () =>
+      runAs(prisma, org.coach, (tx) =>
+        addTagToClients(tx, org.coach, vip.id, [a.clientId, b.clientId, a.clientId]),
+      );
+    expect(await add()).toEqual({ tagged: 2, skipped: 0 });
+    // Again: nothing doubles.
+    expect(await add()).toEqual({ tagged: 2, skipped: 0 });
+    const byClient = await runAs(prisma, org.coach, (tx) =>
+      tagsForClients(tx, org.coach, [a.clientId, b.clientId]),
+    );
+    expect(byClient.get(a.clientId)?.map((t) => t.name)).toEqual(['Keep', 'VIP']);
+    expect(byClient.get(b.clientId)?.map((t) => t.name)).toEqual(['VIP']);
+    expect(
+      await fieldOf(runAs(prisma, org.coach, (tx) => addTagToClients(tx, org.coach, vip.id, []))),
+    ).toBe('VALIDATION:clientIds');
+    const other = await newClientWorld(prisma, await newOrg(prisma));
+    expect(
+      await fieldOf(
+        runAs(prisma, org.coach, (tx) => addTagToClients(tx, org.coach, vip.id, [other.clientId])),
+      ),
+    ).toBe('VALIDATION:clientIds');
   });
 });

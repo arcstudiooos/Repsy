@@ -69,6 +69,7 @@ export const messagesPostRoute: RouteDef<typeof sendSchema, true> = {
 
 const broadcastSchema = z.object({
   audience: z.string().max(64),
+  clientIds: z.array(z.string().min(1).max(64)).max(200).optional(),
   body: z.string().max(8000),
   idempotencyKey: z.string().max(64),
 });

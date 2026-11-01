@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/states/EmptyState';
 import { buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { BulkActions, type BulkTemplate } from './BulkActions';
 import { formatDate, StatusBadge } from './StatusBadge';
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -37,8 +38,11 @@ export function ClientsTable({
   q,
   status,
   hasCursor,
+  templates = [],
 }: {
   items: ClientView[];
+  /** Saved templates, for bulk assign (PRD B5). */
+  templates?: BulkTemplate[];
   /** Rolling adherence per client id (PRD I5); a client with no entry shows no figures. */
   compliance: Record<string, ClientCompliance>;
   /** The workspace's tags, for the filter (PRD B4). */
@@ -57,6 +61,12 @@ export function ClientsTable({
   const [pending, startTransition] = useTransition();
   const [search, setSearch] = useState(q);
   const lastPushed = useRef(q);
+  // PRD B5: selection on this page, for bulk actions.
+  const [selected, setSelected] = useState<string[]>([]);
+  const toggle = (id: string, on: boolean) =>
+    setSelected((s) => (on ? [...new Set([...s, id])] : s.filter((x) => x !== id)));
+  const picked = items.filter((c) => selected.includes(c.id));
+  const allOnPage = items.length > 0 && items.every((c) => selected.includes(c.id));
 
   // The URL changed from outside (Clear filters, back/forward): resync the input and the
   // debounce baseline. Our own pushes set lastPushed first, so they never trigger this.
@@ -124,6 +134,15 @@ export function ClientsTable({
         )}
       </div>
 
+      {picked.length > 0 && (
+        <BulkActions
+          selected={picked.map((c) => ({ id: c.id, name: c.name }))}
+          tags={tags}
+          templates={templates}
+          onClear={() => setSelected([])}
+        />
+      )}
+
       {items.length === 0 ? (
         <EmptyState
           title="No clients match"
@@ -136,10 +155,19 @@ export function ClientsTable({
         />
       ) : (
         <>
-          <div className="hidden overflow-x-auto rounded-card bg-surface shadow-card md:block">
+          <div className="relative hidden overflow-x-auto rounded-card bg-surface shadow-card md:block">
             <table className="w-full text-left text-base">
               <thead className="border-b border-divider text-sm text-secondary">
                 <tr>
+                  <th scope="col" className="w-12 px-4 py-3 font-medium">
+                    <input
+                      type="checkbox"
+                      aria-label="Select all clients on this page"
+                      className="size-5 accent-accent"
+                      checked={allOnPage}
+                      onChange={(e) => setSelected(e.target.checked ? items.map((c) => c.id) : [])}
+                    />
+                  </th>
                   <th scope="col" className="px-4 py-3 font-medium">
                     Name
                   </th>
@@ -172,6 +200,15 @@ export function ClientsTable({
               <tbody>
                 {items.map((c) => (
                   <tr key={c.id} className="border-b border-divider last:border-0">
+                    <td className="px-4 py-2">
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${c.name}`}
+                        className="size-5 accent-accent"
+                        checked={selected.includes(c.id)}
+                        onChange={(e) => toggle(c.id, e.target.checked)}
+                      />
+                    </td>
                     <td className="px-4 py-2 whitespace-nowrap">
                       <Link
                         href={`/app/clients/${c.id}`}
@@ -210,9 +247,16 @@ export function ClientsTable({
             {items.map((c) => (
               <li key={c.id} className="rounded-card bg-surface p-4 shadow-card">
                 <div className="flex items-start justify-between gap-3">
+                  <input
+                    type="checkbox"
+                    aria-label={`Select ${c.name}`}
+                    className="mt-3 size-5 shrink-0 accent-accent"
+                    checked={selected.includes(c.id)}
+                    onChange={(e) => toggle(c.id, e.target.checked)}
+                  />
                   <Link
                     href={`/app/clients/${c.id}`}
-                    className="inline-flex min-h-11 items-center font-semibold underline-offset-2 hover:underline"
+                    className="inline-flex min-h-11 min-w-0 flex-1 items-center font-semibold underline-offset-2 hover:underline"
                   >
                     {c.name}
                   </Link>

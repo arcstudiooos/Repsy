@@ -289,6 +289,8 @@ export {
   createTag,
   deleteTag,
   setClientTags,
+  addTagToClients,
+  BULK_MAX_CLIENTS,
   tagsForClients,
   TAG_COLORS,
   TAG_NAME_MAX,

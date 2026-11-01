@@ -138,6 +138,69 @@ export async function setClientTags(
   return tags;
 }
 
+/** At most this many clients per bulk action (PRD B5). */
+export const BULK_MAX_CLIENTS = 200;
+
+/**
+ * Adds one tag to many clients at once (PRD B5): each client gets their own link; existing tags stay. Clients already
+ * at the per-client tag limit are skipped and counted.
+ */
+export async function addTagToClients(
+  tx: TenantTx,
+  actor: ActorContext,
+  tagId: unknown,
+  clientIds: unknown,
+  opts: { requestId?: string } = {},
+): Promise<{ tagged: number; skipped: number }> {
+  assertCan(actor, 'client:update');
+  if (!isUuid(tagId)) throw invalid('tagId', 'Pick a tag.');
+  if (
+    !Array.isArray(clientIds) ||
+    clientIds.length === 0 ||
+    !clientIds.every((c) => typeof c === 'string' && isUuid(c))
+  ) {
+    throw invalid('clientIds', 'Pick at least one client.');
+  }
+  const ids = [...new Set((clientIds as string[]).map((c) => c.toLowerCase()))];
+  if (ids.length > BULK_MAX_CLIENTS) {
+    throw invalid('clientIds', `Pick at most ${BULK_MAX_CLIENTS} clients at once.`);
+  }
+  const tag = await tx.clientTag.findFirst({ where: { id: tagId }, select: { id: true } });
+  if (!tag) throw invalid('tagId', 'This tag no longer exists.');
+  const clients = await tx.client.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, organizationId: true, _count: { select: { tagLinks: true } } },
+  });
+  if (clients.length !== ids.length)
+    throw invalid('clientIds', 'One of these clients was not found.');
+  const already = new Set(
+    (
+      await tx.clientTagLink.findMany({
+        where: { tagId: tag.id, clientId: { in: ids } },
+        select: { clientId: true },
+      })
+    ).map((l) => l.clientId),
+  );
+  const room = clients.filter((c) => already.has(c.id) || c._count.tagLinks < TAGS_PER_CLIENT_MAX);
+  const fresh = room.filter((c) => !already.has(c.id));
+  if (fresh.length > 0) {
+    await tx.clientTagLink.createMany({
+      data: fresh.map((c) => ({ organizationId: c.organizationId, clientId: c.id, tagId: tag.id })),
+      skipDuplicates: true,
+    });
+  }
+  await appendAudit(tx, {
+    orgId: actor.orgId,
+    actorId: actor.userId,
+    objectType: 'client_tag',
+    objectId: tag.id,
+    action: 'client_tag.bulk_added',
+    metadata: { clients: fresh.length },
+    requestId: opts.requestId,
+  });
+  return { tagged: room.length, skipped: clients.length - room.length };
+}
+
 /** Tags per client id, by name (for lists and profiles). */
 export async function tagsForClients(
   tx: TenantTx,

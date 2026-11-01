@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/states/EmptyState';
 import { ErrorState } from '@/components/states/ErrorState';
+import { loadAllTemplates } from '@/server/selectOptions';
 import { withServerTenant } from '@/server/serverActor';
 import { ClientsTable } from './ClientsTable';
 import { NewClientDialog } from './NewClientDialog';
@@ -49,25 +50,34 @@ export default async function ClientsPage({
   let tags: TagView[];
   let clientTags: Record<string, TagView[]>;
   let tagId: string | undefined;
+  let templates: { id: string; title: string; daysPerWeek: number }[];
   try {
-    ({ result, compliance, tags, clientTags, tagId } = await withServerTenant(async (tx, actor) => {
-      const all = await listTags(tx, actor);
-      const tagId = all.find((t) => t.id === tagParam)?.id;
-      const list = await listClients(tx, actor, { q, status, cursor, tagId });
-      const byClient = await clientCompliance(
-        tx,
-        actor,
-        list.items.map((c) => c.id),
-      );
-      const ids = list.items.map((c) => c.id);
-      return {
-        result: list,
-        compliance: Object.fromEntries(byClient),
-        tags: all.map(({ id, name, color }) => ({ id, name, color })),
-        clientTags: Object.fromEntries(await tagsForClients(tx, actor, ids)),
-        tagId,
-      };
-    }));
+    ({ result, compliance, tags, clientTags, tagId, templates } = await withServerTenant(
+      async (tx, actor) => {
+        const all = await listTags(tx, actor);
+        const tagId = all.find((t) => t.id === tagParam)?.id;
+        const list = await listClients(tx, actor, { q, status, cursor, tagId });
+        const byClient = await clientCompliance(
+          tx,
+          actor,
+          list.items.map((c) => c.id),
+        );
+        const ids = list.items.map((c) => c.id);
+        return {
+          result: list,
+          compliance: Object.fromEntries(byClient),
+          tags: all.map(({ id, name, color }) => ({ id, name, color })),
+          clientTags: Object.fromEntries(await tagsForClients(tx, actor, ids)),
+          tagId,
+          // PRD B5: saved templates for bulk assign.
+          templates: (await loadAllTemplates(tx, actor)).items.flatMap((p) =>
+            p.versionNo !== null && p.daysPerWeek
+              ? [{ id: p.id, title: p.title, daysPerWeek: p.daysPerWeek }]
+              : [],
+          ),
+        };
+      },
+    ));
   } catch (error) {
     // A malformed cursor in the URL is the only user-reachable validation failure.
     if (error instanceof DomainError && error.code === 'VALIDATION') {
@@ -117,6 +127,7 @@ export default async function ClientsPage({
           q={q ?? ''}
           status={status ?? ''}
           hasCursor={cursor !== undefined}
+          templates={templates}
         />
       )}
     </>
