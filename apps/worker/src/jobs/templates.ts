@@ -63,6 +63,31 @@ const TEMPLATES: Record<string, Template> = {
     const subject = `New message from ${sender}`.replace(/[\r\n]+/g, ' ');
     return { subject, text, html };
   },
+  // PRD H14: counts and a link only, never client names or content (D-007).
+  coach_digest: (payload, appBaseUrl) => {
+    const n = (k: string) => (typeof payload[k] === 'number' ? (payload[k] as number) : 0);
+    const orgName = str(payload, 'orgName');
+    const lines = [
+      [n('checkins'), 'check-in waiting for your review', 'check-ins waiting for your review'],
+      [n('unread'), 'unread client message', 'unread client messages'],
+      [n('flags'), 'item that needs review', 'items that need review'],
+    ]
+      .filter(([count]) => (count as number) > 0)
+      .map(([count, one, many]) => `${count} ${count === 1 ? one : many}`);
+    const link = `${appBaseUrl.replace(/\/+$/, '')}/app`;
+    const where = orgName ? ` in ${orgName}` : '';
+    const text =
+      `Your Kinetic day${where}:\n\n` +
+      lines.map((l) => `- ${l}`).join('\n') +
+      `\n\nOpen your dashboard: ${link}\n\n` +
+      'You get this because you turned on the daily digest in Settings.';
+    const html =
+      `<p>Your Kinetic day${escapeHtml(where)}:</p><ul>` +
+      lines.map((l) => `<li>${escapeHtml(l)}</li>`).join('') +
+      `</ul><p><a href="${escapeHtml(link)}">Open your dashboard</a></p>` +
+      '<p>You get this because you turned on the daily digest in Settings.</p>';
+    return { subject: 'Your Kinetic daily digest', text, html };
+  },
   // S5-3: the coach is told a client asked for deletion (D-010 #4). No content beyond the client's name.
   deletion_requested: (payload, appBaseUrl) => {
     const name = str(payload, 'clientName') ?? 'A client';

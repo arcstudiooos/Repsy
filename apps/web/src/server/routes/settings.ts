@@ -30,6 +30,7 @@ const patchSchema = z.object({
   notifications: z
     .object({
       messageEmailOptIn: z.boolean().optional(),
+      digestEmailOptIn: z.boolean().optional(),
       marketingOptIn: z.boolean().optional(),
     })
     .optional(),

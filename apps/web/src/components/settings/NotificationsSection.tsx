@@ -5,8 +5,15 @@ import { SectionForm } from './form';
 /** Message-email and marketing opt-ins (both off by default). Shared by the coach and portal pages. */
 export function NotificationsSection({
   notifications,
+  coach = false,
 }: {
-  notifications: { messageEmailOptIn: boolean; marketingOptIn: boolean };
+  notifications: {
+    messageEmailOptIn: boolean;
+    marketingOptIn: boolean;
+    digestEmailOptIn?: boolean;
+  };
+  /** Coaches also get the daily digest choice (PRD H14). */
+  coach?: boolean;
 }) {
   return (
     <SectionForm
@@ -16,6 +23,7 @@ export function NotificationsSection({
         notifications: {
           messageEmailOptIn: data.get('messageEmailOptIn') === 'on',
           marketingOptIn: data.get('marketingOptIn') === 'on',
+          ...(coach ? { digestEmailOptIn: data.get('digestEmailOptIn') === 'on' } : {}),
         },
       })}
     >
@@ -30,6 +38,17 @@ export function NotificationsSection({
             />
             Email me when I get a new message
           </label>
+          {coach && (
+            <label className="flex min-h-11 items-center gap-3 text-base">
+              <input
+                type="checkbox"
+                name="digestEmailOptIn"
+                defaultChecked={notifications.digestEmailOptIn ?? false}
+                className="size-5 accent-accent"
+              />
+              Email me a daily digest (new check-ins, unread messages, items to review)
+            </label>
+          )}
           <label className="flex min-h-11 items-center gap-3 text-base">
             <input
               type="checkbox"

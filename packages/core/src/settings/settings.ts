@@ -24,7 +24,7 @@ export interface SettingsView {
     activeClientLimit: number;
     activeClientCount: number;
   };
-  notifications: { messageEmailOptIn: boolean; marketingOptIn: boolean };
+  notifications: { messageEmailOptIn: boolean; marketingOptIn: boolean; digestEmailOptIn: boolean };
   /** Clients only. */
   client?: { timezone: string; preferredUnits: Units };
 }
@@ -32,7 +32,11 @@ export interface SettingsView {
 export interface SettingsPatch {
   profile?: { bio?: string | null; specialties?: string[]; units?: Units };
   org?: { name?: string; timezone?: string; graceHours?: number | null };
-  notifications?: { messageEmailOptIn?: boolean; marketingOptIn?: boolean };
+  notifications?: {
+    messageEmailOptIn?: boolean;
+    marketingOptIn?: boolean;
+    digestEmailOptIn?: boolean;
+  };
   client?: { timezone?: string; preferredUnits?: Units };
 }
 
@@ -53,7 +57,7 @@ export async function getSettings(tx: TenantTx, actor: ActorContext): Promise<Se
   await ensureRows(tx, actor);
   const notifications = await tx.notificationPreference.findUniqueOrThrow({
     where: { userId: actor.userId },
-    select: { messageEmailOptIn: true, marketingOptIn: true },
+    select: { messageEmailOptIn: true, marketingOptIn: true, digestEmailOptIn: true },
   });
 
   if (!isCoach(actor)) {
@@ -87,7 +91,11 @@ const add = (errors: Record<string, string[]>, field: string, message: string) =
 interface Cleaned {
   profile?: { bio?: string | null; specialties?: string[]; units?: Units };
   org?: { name?: string; timezone?: string; graceHours?: number };
-  notifications?: { messageEmailOptIn?: boolean; marketingOptIn?: boolean };
+  notifications?: {
+    messageEmailOptIn?: boolean;
+    marketingOptIn?: boolean;
+    digestEmailOptIn?: boolean;
+  };
   client?: { timezone?: string; preferredUnits?: Units };
 }
 
@@ -203,6 +211,8 @@ export async function updateSettings(
     await tx.organization.update({ where: { id: actor.orgId }, data: clean.org });
     changed.push(...names('org', clean.org));
   }
+  // The digest (PRD H14) is a coach email; a client's setting is ignored.
+  if (clean.notifications && !isCoach(actor)) delete clean.notifications.digestEmailOptIn;
   if (clean.notifications && Object.keys(clean.notifications).length > 0) {
     await tx.notificationPreference.update({
       where: { userId: actor.userId },

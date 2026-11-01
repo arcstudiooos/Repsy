@@ -417,6 +417,8 @@ model NotificationPreference {
   userId            String   @id @map("user_id") @db.Uuid
   messageEmailOptIn Boolean  @default(false) @map("message_email_opt_in")
   marketingOptIn    Boolean  @default(false) @map("marketing_opt_in")
+  /// PRD H14: coaches only; one email a day with counts of what needs them. Off by default.
+  digestEmailOptIn  Boolean  @default(false) @map("digest_email_opt_in")
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 

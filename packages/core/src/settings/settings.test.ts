@@ -4,6 +4,7 @@ import { createTestDb } from '@kinetic/db/testing';
 import type { ActorContext, Role } from '../authz/actor';
 import { DomainError } from '../errors';
 import { canonicalTimezone } from '../timezone';
+import { newClientWorld, newOrg, runAs } from '../sessions/fixtures.test-helpers';
 import { getSettings, updateSettings } from './settings';
 
 let prisma: PrismaClient;
@@ -77,7 +78,11 @@ describe('getSettings', () => {
   it('marketing and message prefs default off', async () => {
     const a = actor('client');
     const view = await run(a, (tx) => getSettings(tx, a));
-    expect(view.notifications).toEqual({ messageEmailOptIn: false, marketingOptIn: false });
+    expect(view.notifications).toEqual({
+      messageEmailOptIn: false,
+      marketingOptIn: false,
+      digestEmailOptIn: false,
+    });
   });
 
   it('creates the coach profile lazily with kg units; clients get no profile', async () => {
@@ -197,7 +202,11 @@ describe('updateSettings', () => {
     const view = await run(a, (tx) => getSettings(tx, a));
     expect(view.org).toMatchObject({ name: 'New name', graceHours: 36, timezone: 'Asia/Tokyo' });
     expect(view.profile).toEqual({ bio: 'Hi', specialties: ['Strength', 'Mobility'], units: 'lb' });
-    expect(view.notifications).toEqual({ messageEmailOptIn: true, marketingOptIn: false });
+    expect(view.notifications).toEqual({
+      messageEmailOptIn: true,
+      marketingOptIn: false,
+      digestEmailOptIn: false,
+    });
   });
 
   it('validates profile limits', async () => {
@@ -226,5 +235,26 @@ describe('updateSettings', () => {
       prisma,
     );
     expect(row).toMatchObject({ timezone: 'America/New_York', preferredUnits: 'lb' });
+  });
+});
+
+describe('coach digest preference (PRD H14)', () => {
+  it('a coach turns it on; a client cannot', async () => {
+    const org = await newOrg(prisma);
+    const w = await newClientWorld(prisma, org);
+    await runAs(prisma, org.coach, (tx) =>
+      updateSettings(tx, org.coach, { notifications: { digestEmailOptIn: true } }),
+    );
+    expect(
+      (await runAs(prisma, org.coach, (tx) => getSettings(tx, org.coach))).notifications
+        .digestEmailOptIn,
+    ).toBe(true);
+    await runAs(prisma, w.client, (tx) =>
+      updateSettings(tx, w.client, { notifications: { digestEmailOptIn: true } }),
+    );
+    expect(
+      (await runAs(prisma, w.client, (tx) => getSettings(tx, w.client))).notifications
+        .digestEmailOptIn,
+    ).toBe(false);
   });
 });

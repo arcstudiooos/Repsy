@@ -45,7 +45,7 @@ export default async function SettingsPage() {
         <ProfileSection profile={settings.profile} />
         <OrganizationSection org={settings.org} canEdit={isOwner} />
         <TrainingDefaultsSection graceHours={settings.org.graceHours} canEdit={isOwner} />
-        <NotificationsSection notifications={settings.notifications} />
+        <NotificationsSection notifications={settings.notifications} coach />
         <MessagingSection expectations={expectations} replies={replies} canEdit={isOwner} />
         {reviewRules && <ReviewRulesSection settings={reviewRules} canEdit={isOwner} />}
         <PilotAccessCard

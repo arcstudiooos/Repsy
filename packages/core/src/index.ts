@@ -533,3 +533,4 @@ export {
   type ResourceAudience,
   type ResourceView,
 } from './resources/resources';
+export { queueCoachDigests, DIGEST_HOUR } from './notifications/digest';
