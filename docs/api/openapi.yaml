@@ -26,6 +26,24 @@ tags:
   - name: Settings
   - name: Workouts
 paths:
+  /me/sessions:
+    get:
+      tags: [Account]
+      summary: "The caller's signed-in devices, current first (PRD A9): opaque id, device label (browser and system), sign-in and last-active times. No tokens or IP addresses."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+  /me/sessions/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    delete:
+      tags: [Account]
+      summary: "Sign out one other device. 409 for the device making the request (use sign-out)."
+      responses:
+        '204': { description: Signed out }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
   /me:
     get:
       tags: [Account]
