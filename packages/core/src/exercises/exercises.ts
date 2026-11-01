@@ -35,6 +35,8 @@ export interface ExerciseView {
   trackingType: TrackingType;
   instructions: string;
   mediaUrl: string | null;
+  /** PRD C2: an uploaded MP4 demo; shown instead of `mediaUrl` when set. */
+  demoMediaId: string | null;
   /** PRD C3. */
   secondaryMuscles: string[];
   unilateral: boolean;
@@ -56,6 +58,7 @@ interface ExerciseRow {
   trackingType: TrackingType;
   instructions: string;
   mediaUrl: string | null;
+  demoMediaId: string | null;
   secondaryMuscles: string[];
   unilateral: boolean;
   difficulty: string | null;
@@ -72,6 +75,7 @@ const toView = (row: ExerciseRow): ExerciseView => ({
   trackingType: row.trackingType,
   instructions: row.instructions,
   mediaUrl: row.mediaUrl,
+  demoMediaId: row.demoMediaId,
   secondaryMuscles: row.secondaryMuscles,
   unilateral: row.unilateral,
   difficulty: (row.difficulty as Difficulty | null) ?? null,

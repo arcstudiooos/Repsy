@@ -1,4 +1,5 @@
 import { readBlock } from '../programs/blocks';
+import { demoUrlOf } from '../exercises/media';
 import { asSection } from '../programs/sections';
 import type { TenantTx } from '@kinetic/db';
 import { DomainError } from '../errors';
@@ -61,6 +62,7 @@ export async function loadWorkoutVersionView(
               instructions: true,
               cues: true,
               mediaUrl: true,
+              demoMediaId: true,
             },
           },
         },
@@ -80,7 +82,7 @@ export async function loadWorkoutVersionView(
       trackingType: e.exercise.trackingType,
       instructions: e.exercise.instructions,
       cues: e.exercise.cues,
-      mediaUrl: e.exercise.mediaUrl,
+      mediaUrl: demoUrlOf(e.exercise),
       note: e.note,
       section: asSection(e.section),
       groupWithPrevious: e.groupWithPrevious,

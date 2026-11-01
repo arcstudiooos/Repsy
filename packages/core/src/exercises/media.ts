@@ -10,9 +10,18 @@ export type ExerciseMedia =
   | { kind: 'link'; href: string };
 
 const YT_ID = /^[A-Za-z0-9_-]{11}$/;
+const UPLOADED = /^\/api\/v1\/media\/[0-9a-f-]{36}$/i;
+
+/** Where an uploaded demo video (PRD C2) is streamed from. */
+export const uploadedMediaPath = (mediaId: string) => `/api/v1/media/${mediaId}`;
+
+/** The demo to show: an uploaded video wins over a link. */
+export const demoUrlOf = (e: { mediaUrl: string | null; demoMediaId?: string | null }) =>
+  e.demoMediaId ? uploadedMediaPath(e.demoMediaId) : e.mediaUrl;
 
 export function parseExerciseMedia(url: string | null | undefined): ExerciseMedia | null {
   if (!url) return null;
+  if (UPLOADED.test(url)) return { kind: 'video', src: url };
   let u: URL;
   try {
     u = new URL(url);

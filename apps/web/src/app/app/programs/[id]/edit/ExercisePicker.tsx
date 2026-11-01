@@ -1,6 +1,7 @@
 'use client';
 
 import { MediaThumb } from '@/components/workout/ExerciseDemo';
+import { demoUrlOf } from '@kinetic/core/exercise-media';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ExerciseView } from '@kinetic/core';
 import { Button } from '@/components/ui/button';
@@ -136,7 +137,7 @@ export function PickerBody({
             key={e.id}
             className="flex flex-wrap items-center justify-between gap-2 rounded-control border border-divider p-3"
           >
-            <MediaThumb url={e.mediaUrl} />
+            <MediaThumb url={demoUrlOf(e)} />
             <div className="min-w-0 flex-1">
               <p className="text-base font-medium">{e.name}</p>
               <p className="text-sm text-secondary">

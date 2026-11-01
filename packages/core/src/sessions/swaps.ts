@@ -1,4 +1,5 @@
 import { appendAudit, type Prisma, type TenantTx } from '@kinetic/db';
+import { demoUrlOf } from '../exercises/media';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';
@@ -37,7 +38,14 @@ export async function swapsForSession(
       reason: true,
       createdAt: true,
       exercise: {
-        select: { id: true, name: true, instructions: true, cues: true, mediaUrl: true },
+        select: {
+          id: true,
+          name: true,
+          instructions: true,
+          cues: true,
+          mediaUrl: true,
+          demoMediaId: true,
+        },
       },
       workoutVersionExercise: { select: { exercise: { select: { name: true } } } },
     },
@@ -50,7 +58,7 @@ export async function swapsForSession(
         name: r.exercise.name,
         instructions: r.exercise.instructions,
         cues: r.exercise.cues,
-        mediaUrl: r.exercise.mediaUrl,
+        mediaUrl: demoUrlOf(r.exercise),
         reason: r.reason as SwapReason,
         plannedName: r.workoutVersionExercise.exercise.name,
         createdAt: r.createdAt.toISOString(),

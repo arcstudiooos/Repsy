@@ -68,4 +68,45 @@ test.describe('exercise demo media (PRD C2, D7)', () => {
       await client.context.close();
     }
   });
+
+  test('a coach uploads their own MP4 demo for a custom exercise, then removes it', async ({
+    page,
+    request,
+  }) => {
+    await signUpVerifiedCoach(page, request);
+    await page.goto('/app/exercises');
+    await page.getByRole('button', { name: 'Add exercise' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Add exercise' });
+    await dialog.getByLabel('Name').fill('Banded Hip Hinge');
+    await dialog.getByLabel('What is tracked').selectOption('reps_load');
+    await dialog.getByRole('button', { name: 'Add exercise' }).click();
+    await expect(page.getByText('Banded Hip Hinge added')).toBeVisible({ timeout: 15_000 });
+    await page.goto('/app/exercises?q=banded+hip');
+    const item = page
+      .getByRole('list', { name: 'Exercises' })
+      .getByRole('listitem')
+      .filter({ has: page.getByRole('heading', { name: 'Banded Hip Hinge' }) });
+    await item.getByLabel('Upload a demo video for Banded Hip Hinge').setInputFiles({
+      name: 'hinge.mp4',
+      mimeType: 'video/mp4',
+      buffer: Buffer.concat([
+        Buffer.from('\0\0\0\x18ftypisom\0\0\x02\0isomiso2', 'latin1'),
+        Buffer.alloc(64),
+      ]),
+    });
+    await item.getByRole('button', { name: 'Watch demo: Banded Hip Hinge' }).click({
+      timeout: 30_000,
+    });
+    const src = await item.locator('video').getAttribute('src');
+    expect(src).toMatch(/^\/api\/v1\/media\/[0-9a-f-]{36}$/);
+    expect((await page.request.get(src!)).headers()['content-type']).toBe('video/mp4');
+    await page.goto('/app/exercises?q=banded+hip');
+    await expectNoAxeViolations(page);
+
+    await item.getByRole('button', { name: 'Remove video for Banded Hip Hinge' }).click();
+    await expect(item.getByLabel('Upload a demo video for Banded Hip Hinge')).toBeAttached({
+      timeout: 15_000,
+    });
+    await expect(item.getByRole('button', { name: 'Watch demo: Banded Hip Hinge' })).toHaveCount(0);
+  });
 });

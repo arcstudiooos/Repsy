@@ -4,6 +4,7 @@ import {
   listAlternatives,
   searchExercises,
   setAlternatives,
+  setExerciseDemo,
   TRACKING_TYPES,
 } from '@kinetic/core';
 import { ApiResult, type RouteDef } from '../api';
@@ -66,4 +67,14 @@ export const exerciseAlternativesPutRoute: RouteDef<typeof alternativesSchema, t
     tenant((tx) =>
       setAlternatives(tx, actor, params.id ?? '', input.alternativeIds, { requestId }),
     ),
+};
+
+const demoSchema = z.object({ mediaId: z.string().max(64).nullable() });
+
+/** `PUT /api/v1/exercises/:id/demo` (PRD C2): attach an uploaded MP4 demo, or `null` to remove it. */
+export const exerciseDemoPutRoute: RouteDef<typeof demoSchema, true> = {
+  can: 'exercise:create',
+  input: demoSchema,
+  handler: ({ actor, input, params, requestId, tenant }) =>
+    tenant((tx) => setExerciseDemo(tx, actor, params.id ?? '', input.mediaId, { requestId })),
 };

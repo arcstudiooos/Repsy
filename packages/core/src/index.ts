@@ -584,6 +584,7 @@ export {
   type ReplyPlaceholder,
 } from './messages/replyFacts';
 export { equipmentGuideFor, type EquipmentGuide } from './exercises/equipmentGuide';
+export { setExerciseDemo } from './exercises/demo';
 export { twoFactorStatus, type TwoFactorStatus } from './identity/twoFactor';
 export { recordReadiness, readReadiness, type ReadinessView } from './sessions/readiness';
 export {

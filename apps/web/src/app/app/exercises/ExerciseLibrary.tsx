@@ -5,12 +5,14 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import type { ExerciseView } from '@kinetic/core';
+import { demoUrlOf } from '@kinetic/core/exercise-media';
 import { EQUIPMENT, MUSCLE_GROUPS, TRACKING_TYPES } from '@kinetic/core/exercise-options';
 import { EmptyState } from '@/components/states/EmptyState';
 import { buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { AlternativesEditor } from './AlternativesEditor';
+import { DemoUpload } from './DemoUpload';
 import { SELECT_CLASS, TRACKING_LABEL } from './labels';
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -159,7 +161,7 @@ export function ExerciseLibrary({
             <li key={e.id} className="rounded-card bg-surface p-4 shadow-card">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-3">
-                  <MediaThumb url={e.mediaUrl} />
+                  <MediaThumb url={demoUrlOf(e)} />
                   <h2 className="text-base font-semibold">{e.name}</h2>
                 </div>
                 <span className="rounded-control bg-canvas px-2 py-1 text-sm text-secondary">
@@ -200,7 +202,8 @@ export function ExerciseLibrary({
                   <p className="text-sm whitespace-pre-line">{e.instructions}</p>
                 </details>
               )}
-              <ExerciseDemo url={e.mediaUrl} name={e.name} />
+              <ExerciseDemo url={demoUrlOf(e)} name={e.name} />
+              {!e.isGlobal && <DemoUpload exercise={e} />}
               <AlternativesEditor exercise={e} />
             </li>
           ))}
