@@ -28,6 +28,7 @@ export function Field(props: {
   hint?: string;
   defaultValue?: string;
   minLength?: number;
+  inputMode?: 'numeric' | 'text';
 }) {
   const { label, name, error, hint, ...rest } = props;
   const describedBy = [hint && `${name}-hint`, error && `${name}-error`].filter(Boolean).join(' ');

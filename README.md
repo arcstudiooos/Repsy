@@ -82,6 +82,7 @@ R2 builds the web-platform features in `docs/competitive/complete-platform-prd.m
 - **C9 workout sections:** each exercise in a workout can sit in the warm-up, main, conditioning or cool-down part; the builder has a Section picker, the logger, print and version views show section headings, and pasted programs read "Warm-up:" style lines inside a day.
 - **D13 extra workouts:** a client can log an unplanned workout from Workouts or Today ("Log an extra workout"): one of the workouts a coach shares (a template's "Share with clients as extra workouts" box), or exercises they pick from the library. It is marked Extra, shows in history, records and review, and never counts toward adherence, compliance or weekly totals. One can be open at a time.
 - **C8 blocks:** in the builder an exercise can be grouped with the one above it, and the first exercise of a block can set its format (superset, circuit, intervals with work and rest, AMRAP, EMOM, for time) with rounds, times or minutes. The logger, print and version views label exercises A, B1, B2 and show the block, such as "B · Superset · 3 rounds". Workouts without blocks look as before.
+- **A8 two-step sign-in:** Settings (and the client's Profile) can turn on an authenticator-app code after the password, with ten one-time backup codes; sign-in then asks for a code. An owner whose workspace has more than one coach sees a banner until it is on and can't turn it off. Erasure removes it.
 
 ## What works locally (Sprint 5)
 

@@ -3,6 +3,7 @@ import { betterAuth } from 'better-auth';
 import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { haveIBeenPwned } from 'better-auth/plugins/haveibeenpwned';
+import { twoFactor } from 'better-auth/plugins/two-factor';
 import { enqueuePlatformEmail, logger } from '@kinetic/core';
 import {
   authPrisma as defaultAuthPrisma,
@@ -163,7 +164,11 @@ export function createAuth(options: CreateAuthOptions = {}) {
         }
       }),
     },
-    plugins: breachedPasswordCheckEnabled(env) ? [haveIBeenPwned()] : [],
+    plugins: [
+      ...(breachedPasswordCheckEnabled(env) ? [haveIBeenPwned()] : []),
+      // PRD A8: an authenticator app code (or a one-time backup code) after the password.
+      twoFactor({ issuer: 'Kinetic' }),
+    ],
     databaseHooks: {
       session: {
         create: {

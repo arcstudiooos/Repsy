@@ -16,6 +16,7 @@ import { createNote } from '../history/notes';
 import { reviseSetLogs } from '../logging/revise';
 import { upsertSetLogs } from '../logging/upsertSetLogs';
 import { getMyThread, sendMessage } from '../messages/messages';
+import { startExtraWorkout } from '../sessions/extra';
 import { completeSession, startSession } from '../sessions/lifecycle';
 import {
   commitClientCopyVersion,
@@ -421,5 +422,33 @@ describe('admin console (S5-3)', () => {
       tx.auditEvent.findMany({ where: { objectId: w.userId, action: 'support.account_lookup' } }),
     );
     expect(audits.map((a) => [a.organizationId, a.actorId])).toEqual([[w.orgId, adminId]]);
+  });
+
+  it('erases blank extra workouts the client named and their two-step sign-in (PRD D13, A8)', async () => {
+    const org = await newOrg(prisma);
+    const w = await newClientWorld(prisma, org);
+    await runAs(prisma, w.client, (tx) =>
+      startExtraWorkout(
+        tx,
+        w.client,
+        {
+          exerciseIds: ['e0000000-0000-4000-8000-000000000001'],
+          title: 'Physio after knee surgery',
+        },
+        { now: NOW },
+      ),
+    );
+    await sys(async (tx) => {
+      await tx.twoFactor.create({ data: { userId: w.userId, secret: 's', backupCodes: 'b' } });
+      await tx.user.update({ where: { id: w.userId }, data: { twoFactorEnabled: true } });
+    });
+    const id = await verifiedRequest(w);
+    expect((await sys((tx) => eraseClientData(tx, id, NOW))).status).toBe('done');
+    const left = await sys(async (tx) => ({
+      titled: await tx.workoutVersion.count({ where: { title: 'Physio after knee surgery' } }),
+      twoFactors: await tx.twoFactor.count({ where: { userId: w.userId } }),
+      enabled: (await tx.user.findUniqueOrThrow({ where: { id: w.userId } })).twoFactorEnabled,
+    }));
+    expect(left).toEqual({ titled: 0, twoFactors: 0, enabled: false });
   });
 });

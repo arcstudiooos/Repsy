@@ -1,11 +1,12 @@
 import { redirect } from 'next/navigation';
 import { Suspense, type ReactNode } from 'react';
-import { isCoachRole } from '@kinetic/core';
+import Link from 'next/link';
+import { isCoachRole, twoFactorStatus } from '@kinetic/core';
 import { CoachNav } from '@/components/nav/CoachNav';
 import { PathBreadcrumbs } from '@/components/nav/PathBreadcrumbs';
 import { WorkspaceSwitchLink } from '@/components/nav/WorkspaceSwitchLink';
 import { LoadingState } from '@/components/states/LoadingState';
-import { getServerActorOutcome, getServerSession } from '@/server/serverActor';
+import { getServerActorOutcome, getServerSession, withServerTenant } from '@/server/serverActor';
 import { shellRedirect } from '@/server/shellGate';
 
 /**
@@ -28,7 +29,34 @@ async function MembershipGate({
   if (!memberships.some((m) => isCoachRole(m.role))) redirect(noMembershipPath);
   const target = shellRedirect('coach', await getServerActorOutcome(user));
   if (target) redirect(target);
-  return children;
+  return (
+    <>
+      <Suspense fallback={null}>
+        <TwoFactorRequiredBanner />
+      </Suspense>
+      {children}
+    </>
+  );
+}
+
+/** PRD A8: an owner of a workspace with more than one coach is asked to turn on two-step sign-in. */
+async function TwoFactorRequiredBanner() {
+  const status = await withServerTenant((tx, actor) => twoFactorStatus(tx, actor)).catch(
+    () => null,
+  );
+  if (!status?.required || status.enabled) return null;
+  return (
+    <div role="status" className="mb-6 rounded-card bg-surface p-4 shadow-card ring-1 ring-warning">
+      <p className="font-medium">Turn on two-step sign-in</p>
+      <p className="text-sm text-secondary">
+        Your workspace has more than one coach, so the owner account needs a code from an
+        authenticator app at sign-in.{' '}
+        <Link href="/settings" className="text-accent underline">
+          Set it up in Settings
+        </Link>
+      </p>
+    </div>
+  );
 }
 
 /**

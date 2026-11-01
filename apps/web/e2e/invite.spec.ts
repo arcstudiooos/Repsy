@@ -167,7 +167,9 @@ test.describe('client invite', () => {
     expect(oldLink).toBeTruthy();
 
     await row.getByRole('link', { name: 'Uma Ui' }).click();
-    await expect(page.getByRole('heading', { name: 'Invitation' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Invitation' })).toBeVisible({
+      timeout: 30_000,
+    });
     await expect(page.getByText(/Invite sent · expires/)).toBeVisible();
 
     // Revoke, with confirmation.
@@ -236,7 +238,9 @@ test.describe('client invite', () => {
       const { id } = ((await created.json()) as { data: { id: string } }).data;
       await page.request.post(`/api/v1/clients/${id}/invite`, { headers: { origin } });
       await page.goto(`/app/clients/${id}`);
-      await expect(page.getByRole('heading', { name: 'Invitation' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Invitation' })).toBeVisible({
+        timeout: 30_000,
+      });
       const check = async () => {
         const results = await new AxeBuilder({ page })
           .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])

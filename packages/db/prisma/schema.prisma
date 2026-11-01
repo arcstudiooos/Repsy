@@ -63,10 +63,13 @@ model User {
   emailVerified   Boolean   @default(false) @map("email_verified")
   isPlatformAdmin Boolean   @default(false) @map("is_platform_admin")
   lastLoginAt     DateTime? @map("last_login_at") @db.Timestamptz(3)
+  /// PRD A8: two-step sign-in is on (Better Auth two-factor plugin).
+  twoFactorEnabled Boolean  @default(false) @map("two_factor_enabled")
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   ownedOrganizations       Organization[]
+  twoFactors               TwoFactor[]
   memberships              Membership[]
   createdPilotCodes        PilotCode[]             @relation("PilotCodeCreatedBy")
   usedPilotCodes           PilotCode[]             @relation("PilotCodeUsedBy")
@@ -121,6 +124,23 @@ model Session {
 
   @@index([userId])
   @@map("sessions")
+}
+
+/// PRD A8: a user's authenticator secret and backup codes (encrypted by Better Auth). Auth pool only, like accounts.
+model TwoFactor {
+  id                      String    @id @default(uuid()) @db.Uuid
+  secret                  String
+  backupCodes             String    @map("backup_codes")
+  userId                  String    @map("user_id") @db.Uuid
+  verified                Boolean?  @default(true)
+  failedVerificationCount Int?      @default(0) @map("failed_verification_count")
+  lockedUntil             DateTime? @map("locked_until") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([secret])
+  @@map("two_factors")
 }
 
 model Account {

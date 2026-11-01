@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
-import { deletionStatusFor, getSettings, listMyExports } from '@kinetic/core';
+import { deletionStatusFor, getSettings, listMyExports, twoFactorStatus } from '@kinetic/core';
 import { DeletionRequestButton } from '@/components/settings/DeletionRequestButton';
 import { DataExportSection } from '@/components/settings/DataExportSection';
 import { ClientPreferencesSection } from '@/components/settings/ClientSections';
 import { NotificationsSection } from '@/components/settings/NotificationsSection';
 import { SecuritySection } from '@/components/settings/SecuritySection';
+import { TwoFactorSection } from '@/components/settings/TwoFactorSection';
 import { SignOutButton } from '@/components/nav/SignOutButton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';
@@ -13,10 +14,11 @@ export const metadata: Metadata = { title: 'Profile | Kinetic' };
 
 // Access is enforced by src/proxy.ts and the portal layout's client gate.
 export default async function PortalProfile() {
-  const { settings, exports, deletion } = await withServerTenant(async (tx, actor) => ({
+  const { settings, exports, deletion, twoFactor } = await withServerTenant(async (tx, actor) => ({
     settings: await getSettings(tx, actor),
     exports: await listMyExports(tx, actor),
     deletion: await deletionStatusFor(tx, actor),
+    twoFactor: await twoFactorStatus(tx, actor),
   }));
   return (
     <>
@@ -27,6 +29,7 @@ export default async function PortalProfile() {
         <DataExportSection scope="client_self" initial={exports}>
           <DeletionRequestButton current={deletion} />
         </DataExportSection>
+        <TwoFactorSection enabled={twoFactor.enabled} required={false} />
         <SecuritySection />
         <Card>
           <CardHeader>

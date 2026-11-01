@@ -571,3 +571,4 @@ export {
   type ReplyPlaceholder,
 } from './messages/replyFacts';
 export { equipmentGuideFor, type EquipmentGuide } from './exercises/equipmentGuide';
+export { twoFactorStatus, type TwoFactorStatus } from './identity/twoFactor';

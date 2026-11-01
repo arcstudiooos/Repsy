@@ -206,9 +206,17 @@ export async function eraseClientData(
     (i) => i.id,
   );
   await tx.clientInvite.deleteMany({ where: inClient });
+  // Blank extra workouts (PRD D13) are built by the client and may carry a title they typed.
+  const extraVersionIds = (
+    await tx.workoutSession.findMany({
+      where: { ...inClient, kind: 'extra', workoutVersionId: { not: null } },
+      select: { workoutVersionId: true },
+    })
+  ).flatMap((r) => (r.workoutVersionId ? [r.workoutVersionId] : []));
   await tx.workoutSession.deleteMany({ where: inClient });
   await tx.programAssignment.deleteMany({ where: inClient });
   await eraseProgramCopies(tx, orgId, clientId);
+  await eraseUnusedWorkoutVersions(tx, extraVersionIds);
   await tx.supportAccessGrant.deleteMany({ where: inClient });
 
   // Emails addressed to the client, or naming them (C-I2): invites (to their address), check-in and message
@@ -286,6 +294,7 @@ export async function eraseClientData(
     if (othersAfter === 0) {
       await tx.session.deleteMany({ where: { userId: client.userId } });
       await tx.account.deleteMany({ where: { userId: client.userId } });
+      await tx.twoFactor.deleteMany({ where: { userId: client.userId } });
       await tx.user.update({
         where: { id: client.userId },
         data: {
@@ -293,6 +302,7 @@ export async function eraseClientData(
           email: `deleted-${client.userId}@deleted.invalid`,
           image: null,
           emailVerified: false,
+          twoFactorEnabled: false,
         },
       });
     }
@@ -349,17 +359,18 @@ async function eraseProgramCopies(tx: SystemTx, orgId: string, clientId: string)
     where: { organizationId: orgId, programVersionId: { in: versionIds } },
   });
   await tx.programVersion.deleteMany({ where: { id: { in: versionIds } } });
-  // Still used by a template or another client's copy (slots), or by another session: kept.
+  await eraseUnusedWorkoutVersions(tx, workoutVersionIds);
+  await tx.program.deleteMany({ where: { id: { in: programIds } } });
+}
+
+/** Deletes those of `ids` no template, copy (slots) or remaining session uses. Run with app.lawful_erasure on. */
+async function eraseUnusedWorkoutVersions(tx: SystemTx, ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
   const unused = await tx.workoutVersion.findMany({
-    where: {
-      id: { in: workoutVersionIds },
-      slots: { none: {} },
-      workoutSessions: { none: {} },
-    },
+    where: { id: { in: [...new Set(ids)] }, slots: { none: {} }, workoutSessions: { none: {} } },
     select: { id: true },
   });
   const unusedIds = unused.map((w) => w.id);
   await tx.workoutVersionExercise.deleteMany({ where: { workoutVersionId: { in: unusedIds } } });
   await tx.workoutVersion.deleteMany({ where: { id: { in: unusedIds } } });
-  await tx.program.deleteMany({ where: { id: { in: programIds } } });
 }

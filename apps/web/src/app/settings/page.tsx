@@ -7,6 +7,7 @@ import {
   getSettings,
   listMyExports,
   listSavedReplies,
+  twoFactorStatus,
 } from '@kinetic/core';
 import { BrandingSection } from '@/components/settings/BrandingSection';
 import { DataExportSection } from '@/components/settings/DataExportSection';
@@ -20,13 +21,14 @@ import { NotificationsSection } from '@/components/settings/NotificationsSection
 import { ReviewRulesSection } from '@/components/settings/ReviewRulesSection';
 import { PilotAccessCard } from '@/components/settings/PilotAccessCard';
 import { SecuritySection } from '@/components/settings/SecuritySection';
+import { TwoFactorSection } from '@/components/settings/TwoFactorSection';
 import { withServerTenant } from '@/server/serverActor';
 
 export const metadata: Metadata = { title: 'Settings | Kinetic' };
 
 // Access is enforced by src/proxy.ts and the coach shell in the settings layout.
 export default async function SettingsPage() {
-  const { actor, settings, exports, expectations, replies, reviewRules, branding } =
+  const { actor, settings, exports, expectations, replies, reviewRules, branding, twoFactor } =
     await withServerTenant(async (tx, a) => ({
       actor: a,
       settings: a.role === 'client' ? null : await getSettings(tx, a),
@@ -35,6 +37,7 @@ export default async function SettingsPage() {
       replies: a.role === 'client' ? [] : await listSavedReplies(tx, a),
       reviewRules: a.role === 'client' ? null : await getReviewRuleSettings(tx, a),
       branding: await getBranding(tx),
+      twoFactor: await twoFactorStatus(tx, a),
     }));
   // A client who lands here belongs in their portal.
   if (!settings?.profile || !settings.org) redirect('/portal/profile');
@@ -56,6 +59,7 @@ export default async function SettingsPage() {
           limit={settings.org.activeClientLimit}
         />
         {isOwner && <DataExportSection scope="org" initial={exports} />}
+        <TwoFactorSection enabled={twoFactor.enabled} required={twoFactor.required} />
         <SecuritySection />
       </div>
     </>
