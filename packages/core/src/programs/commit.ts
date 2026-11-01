@@ -7,6 +7,7 @@ import { DomainError } from '../errors';
 import { reconcileSessions } from '../assignments/reconcile';
 import { isUuid } from '../uuid';
 import { assertEditableProgram } from './drafts';
+import { WORKOUT_SECTIONS, type WorkoutSection } from './sections';
 import { targetSchema, type SetTarget } from './targets';
 
 export const MAX_WEEKS = 104;
@@ -16,13 +17,20 @@ export const TITLE_MAX = 120;
 const NOTES_MAX = 2000;
 const NOTE_MAX = 500;
 
-export type ExerciseInput = { exerciseId: string; note?: string; sets: SetTarget[] };
+export type ExerciseInput = {
+  exerciseId: string;
+  note?: string;
+  /** PRD C9; main when left out. */
+  section?: WorkoutSection;
+  sets: SetTarget[];
+};
 export type DayInput = { title: string; notes?: string; exercises: ExerciseInput[] };
 export type WeekInput = { days: DayInput[] };
 
 const exerciseSchema = z.strictObject({
   exerciseId: z.uuid(),
   note: z.string().trim().max(NOTE_MAX).optional(),
+  section: z.enum(WORKOUT_SECTIONS).optional(),
   sets: targetSchema,
 });
 const daySchema = z.strictObject({
@@ -71,7 +79,13 @@ function canonical(value: Json): string {
 interface Normalized {
   title: string;
   notes: string;
-  exercises: { exerciseId: string; note: string | null; sets: SetTarget[] }[];
+  /** `section` only when not main, so workouts saved before sections keep their hash. */
+  exercises: {
+    exerciseId: string;
+    note: string | null;
+    section?: WorkoutSection;
+    sets: SetTarget[];
+  }[];
 }
 
 function normalize(day: z.infer<typeof daySchema>): Normalized {
@@ -81,6 +95,7 @@ function normalize(day: z.infer<typeof daySchema>): Normalized {
     exercises: day.exercises.map((e) => ({
       exerciseId: e.exerciseId.toLowerCase(),
       note: e.note ? e.note : null,
+      ...(e.section && e.section !== 'main' ? { section: e.section } : {}),
       sets: e.sets,
     })),
   };
@@ -253,6 +268,7 @@ export async function commitProgramVersion(
             position,
             targetJson: e.sets,
             note: e.note,
+            section: e.section ?? 'main',
           })),
         } as unknown as Parameters<typeof tx.workoutVersionExercise.createMany>[0]);
         id = row.id;

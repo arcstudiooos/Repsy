@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { Fragment } from 'react';
 import { notFound } from 'next/navigation';
 import { DomainError, getProgram, getSettings, type SetTarget } from '@kinetic/core';
 import { toDisplay, type Units } from '@kinetic/core/units';
+import { sectionStart } from '@kinetic/core/workout-sections';
 import { withServerTenant } from '@/server/serverActor';
 import { PrintButton } from './PrintButton';
 import { extraTargets, repsText } from '@/lib/target-text';
@@ -91,21 +93,34 @@ export default async function PrintProgramPage({ params }: { params: Promise<{ i
                 </thead>
                 <tbody>
                   {d.exercises.map((e, ei) => (
-                    <tr key={ei} className="border-t border-divider align-top">
-                      <th scope="row" className="py-1 pr-4 font-medium">
-                        {e.exerciseName}
-                        {e.note && (
-                          <span className="block font-normal text-secondary">{e.note}</span>
-                        )}
-                      </th>
-                      <td className="py-1">
-                        <ol className="list-inside list-decimal">
-                          {e.sets.map((s, si) => (
-                            <li key={si}>{describeSet(s, units)}</li>
-                          ))}
-                        </ol>
-                      </td>
-                    </tr>
+                    <Fragment key={ei}>
+                      {sectionStart(d.exercises, ei) && (
+                        <tr className="border-t border-divider">
+                          <th
+                            scope="colgroup"
+                            colSpan={2}
+                            className="pt-2 pb-1 text-left font-semibold"
+                          >
+                            {sectionStart(d.exercises, ei)}
+                          </th>
+                        </tr>
+                      )}
+                      <tr className="border-t border-divider align-top">
+                        <th scope="row" className="py-1 pr-4 font-medium">
+                          {e.exerciseName}
+                          {e.note && (
+                            <span className="block font-normal text-secondary">{e.note}</span>
+                          )}
+                        </th>
+                        <td className="py-1">
+                          <ol className="list-inside list-decimal">
+                            {e.sets.map((s, si) => (
+                              <li key={si}>{describeSet(s, units)}</li>
+                            ))}
+                          </ol>
+                        </td>
+                      </tr>
+                    </Fragment>
                   ))}
                 </tbody>
               </table>

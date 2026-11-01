@@ -5,6 +5,7 @@ import { DomainError, getProgram, getSettings, type SetTarget } from '@kinetic/c
 import { toDisplay, type Units } from '@kinetic/core/units';
 import { withServerTenant } from '@/server/serverActor';
 import { extraTargets, repsText } from '@/lib/target-text';
+import { sectionStart } from '@kinetic/core/workout-sections';
 
 export const metadata: Metadata = { title: 'Program version | Kinetic' };
 
@@ -86,6 +87,11 @@ export default async function ProgramVersionPage({
               <ul className="flex flex-col gap-3">
                 {day.exercises.map((e, i) => (
                   <li key={i} className="flex min-w-0 flex-col gap-1">
+                    {sectionStart(day.exercises, i) && (
+                      <span className="text-sm font-semibold text-secondary uppercase">
+                        {sectionStart(day.exercises, i)}
+                      </span>
+                    )}
                     <span className="font-medium break-words">{e.exerciseName}</span>
                     {e.note && <span className="text-sm break-words text-secondary">{e.note}</span>}
                     <ol className="flex flex-col gap-0.5 text-sm">

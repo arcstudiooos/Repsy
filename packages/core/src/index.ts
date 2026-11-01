@@ -115,6 +115,12 @@ export {
   type SetTarget,
   type WorkoutTargets,
 } from './programs/targets';
+export {
+  WORKOUT_SECTIONS,
+  SECTION_LABEL,
+  sectionStart,
+  type WorkoutSection,
+} from './programs/sections';
 export { toDisplay, fromDisplay, type Units } from './units';
 export {
   scheduleSlots,

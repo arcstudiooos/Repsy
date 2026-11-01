@@ -1,4 +1,5 @@
 import type { TrackingType } from '../exercises/options';
+import type { WorkoutSection } from '../programs/sections';
 import type { SetTarget } from '../programs/targets';
 
 export const SESSION_STATES = [
@@ -39,6 +40,8 @@ export interface WorkoutVersionView {
     /** Coaching cues from the exercise (PRD C3). */
     cues: string[];
     note: string | null;
+    /** PRD C9. */
+    section: WorkoutSection;
     position: number;
     sets: SetTarget[];
   }[];

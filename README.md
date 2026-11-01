@@ -79,6 +79,7 @@ R2 builds the web-platform features in `docs/competitive/complete-platform-prd.m
 - **C3 exercise attributes:** custom exercises can have secondary muscles, a unilateral flag, a difficulty and up to six coaching cues; the library shows them and the logger lists the cues under "How to do it" (also in `exercises.json`). Dialogs now scroll when taller than the screen.
 - **C7 set targets:** besides reps, load, RPE, tempo and rest, a set can have a rep range (top of range), RIR and % of 1RM, and timed or distance sets a pace and heart-rate zone; the logger, print and version views show them, and program text import keeps the top of "3x8-10".
 - **B13 equipment profile:** the client context records where a client trains and the equipment they have; when the builder edits that client's program it flags exercises needing other equipment and offers one-click swaps to the coach's alternatives that fit.
+- **C9 workout sections:** each exercise in a workout can sit in the warm-up, main, conditioning or cool-down part; the builder has a Section picker, the logger, print and version views show section headings, and pasted programs read "Warm-up:" style lines inside a day.
 
 ## What works locally (Sprint 5)
 

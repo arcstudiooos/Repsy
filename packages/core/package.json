@@ -30,6 +30,7 @@
     "./pr": "./src/progress/pr.ts",
     "./program-text": "./src/programs/text-import.ts",
     "./brand-color": "./src/branding/color.ts",
-    "./reply-fill": "./src/messages/fill.ts"
+    "./reply-fill": "./src/messages/fill.ts",
+    "./workout-sections": "./src/programs/sections.ts"
   }
 }

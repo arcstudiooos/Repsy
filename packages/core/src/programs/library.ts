@@ -50,6 +50,7 @@ export async function duplicateTemplate(
         exercises: d.exercises.map((e) => ({
           exerciseId: e.exerciseId,
           ...(e.note ? { note: e.note } : {}),
+          ...(e.section !== 'main' ? { section: e.section } : {}),
           sets: e.sets,
         })),
       })),

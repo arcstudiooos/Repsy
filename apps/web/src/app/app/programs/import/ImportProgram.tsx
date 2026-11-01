@@ -104,6 +104,7 @@ export function ImportProgram({ defaultUnits }: { defaultUnits: ImportUnits }) {
               .map((l) => ({
                 exerciseId: choice[l.name]!,
                 ...(l.note ? { note: l.note } : {}),
+                ...(l.section ? { section: l.section } : {}),
                 sets: l.sets.map((s) => ({ ...s })),
               })),
           }))

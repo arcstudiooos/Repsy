@@ -253,6 +253,7 @@ export function DaySection({
               exerciseName: e.name,
               trackingType: e.trackingType,
               note: '',
+              section: 'main',
               sets: [defaultSet(e.trackingType)],
             })
           }

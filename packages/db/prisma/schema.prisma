@@ -598,6 +598,8 @@ model WorkoutVersionExercise {
   /// Zod-validated set targets (targetSchema).
   targetJson       Json    @map("target_json")
   note             String?
+  /// PRD C9: warmup, main, conditioning or cooldown (CHECK in migration 000051).
+  section          String  @default("main")
 
   organization   Organization   @relation(fields: [organizationId], references: [id])
   workoutVersion WorkoutVersion @relation(fields: [workoutVersionId, organizationId], references: [id, organizationId])

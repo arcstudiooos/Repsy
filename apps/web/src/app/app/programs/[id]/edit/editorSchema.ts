@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { ProgramDetail, SetTarget, WeekInput } from '@kinetic/core';
 import { TRACKING_TYPES, type TrackingType } from '@kinetic/core/exercise-options';
+import { WORKOUT_SECTIONS } from '@kinetic/core/workout-sections';
 import { fromDisplay, toDisplay, type Units } from '@kinetic/core/units';
 
 /** Mirrors the server limits in packages/core/src/programs (commit.ts, targets.ts). */
@@ -89,6 +90,7 @@ export function buildEditorSchema(units: Units) {
       exerciseName: z.string(),
       trackingType: z.enum(TRACKING_TYPES),
       note: z.string().max(500, 'Use at most 500 characters.'),
+      section: z.enum(WORKOUT_SECTIONS),
       sets: z.array(set).min(1, 'Add at least one set.').max(MAX_SETS),
     })
     .superRefine((ex, ctx) => {
@@ -147,6 +149,7 @@ export function toEditorValues(program: ProgramDetail, units: Units): EditorValu
             exerciseName: e.exerciseName,
             trackingType: e.trackingType,
             note: e.note ?? '',
+            section: e.section,
             sets: e.sets.map((s) => {
               const { loadKg, ...rest } = s;
               return loadKg === undefined
@@ -188,6 +191,7 @@ export function toWeekInputs(values: EditorValues, units: Units): WeekInput[] {
       exercises: d.exercises.map((e) => ({
         exerciseId: e.exerciseId,
         ...(e.note ? { note: e.note } : {}),
+        ...(e.section !== 'main' ? { section: e.section } : {}),
         sets: e.sets.map((s) => toSetTarget(s, units)),
       })),
     })),
@@ -223,6 +227,7 @@ export function toDraftPayload(
           exerciseName: e.exerciseName,
           trackingType: e.trackingType,
           note: e.note,
+          section: e.section,
           sets: e.sets.map((s) => {
             const out: Record<string, number | string> = {};
             for (const k of [
@@ -272,6 +277,7 @@ const draftShape = z.object({
                   exerciseName: z.string(),
                   trackingType: z.enum(TRACKING_TYPES),
                   note: z.string().nullish(),
+                  section: z.enum(WORKOUT_SECTIONS).catch('main'),
                   sets: z.array(
                     z.object({
                       reps: draftNumber,
@@ -319,6 +325,7 @@ export function fromDraftPayload(
           exerciseName: e.exerciseName,
           trackingType: e.trackingType,
           note: e.note ?? '',
+          section: e.section,
           sets: e.sets.map((s) => {
             const out: EditorSet = {};
             for (const k of [

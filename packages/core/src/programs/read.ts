@@ -1,3 +1,4 @@
+import { asSection, type WorkoutSection } from './sections';
 import { appendAudit, type TenantTx } from '@kinetic/db';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
@@ -92,6 +93,7 @@ export interface ProgramDetail {
         exerciseName: string;
         trackingType: TrackingType;
         note: string | null;
+        section: WorkoutSection;
         sets: SetTarget[];
       }[];
     }[];
@@ -276,6 +278,7 @@ export async function getProgram(
         exerciseName: e.exercise.name,
         trackingType: e.exercise.trackingType,
         note: e.note,
+        section: asSection(e.section),
         sets: readStoredTargets(e.targetJson),
       })),
     });

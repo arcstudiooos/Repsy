@@ -1,5 +1,6 @@
 'use client';
 
+import { sectionStart } from '@kinetic/core/workout-sections';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import type { LoggedSet, SessionDetail, TrackingType, Units } from '@kinetic/core';
@@ -581,8 +582,9 @@ export function WorkoutLogger({
       <>
         {header}
         <ol className="mb-6 flex flex-col gap-3">
-          {workout.exercises.map((e) => (
+          {workout.exercises.map((e, i) => (
             <li key={e.id}>
+              <SectionLabel label={sectionStart(workout.exercises, i)} />
               <Card>
                 <CardHeader className="mb-1">
                   <CardTitle as={titleLevel}>{e.name}</CardTitle>
@@ -681,12 +683,13 @@ export function WorkoutLogger({
           </Card>
         )}
         <ol className="flex flex-col gap-3">
-          {workout.exercises.map((e) => {
+          {workout.exercises.map((e, i) => {
             const sets = detail.logs.filter(
               (l) => l.workoutVersionExerciseId === e.id && !isBlank(l),
             );
             return (
               <li key={e.id}>
+                <SectionLabel label={sectionStart(workout.exercises, i)} />
                 <Card>
                   <CardHeader className="mb-2">
                     <CardTitle as={titleLevel}>{e.name}</CardTitle>
@@ -743,10 +746,11 @@ export function WorkoutLogger({
       {header}
       {syncPanel}
       <ol className="flex flex-col gap-4">
-        {workout.exercises.map((e) => {
+        {workout.exercises.map((e, i) => {
           const prev = detail.previous[e.exerciseId];
           return (
             <li key={e.id}>
+              <SectionLabel label={sectionStart(workout.exercises, i)} />
               <section aria-label={e.name}>
                 <Card>
                   <CardHeader className="mb-3">
@@ -915,3 +919,11 @@ function PrBadge() {
 
 const isBlankDraft = (d: SetDraft | undefined) =>
   !d || Object.values(d).every((v) => v === '' || v === undefined || v === null);
+
+/** Where a workout section starts (PRD C9): "Warm-up", "Conditioning"... */
+function SectionLabel({ label }: { label: string | null }) {
+  if (!label) return null;
+  return (
+    <p className="mb-2 text-sm font-semibold tracking-wide text-secondary uppercase">{label}</p>
+  );
+}

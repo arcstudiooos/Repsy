@@ -8,20 +8,20 @@ instants ISO 8601 UTC.
 
 ## Workspace export (owner)
 
-| File | One row per | Notes |
-| --- | --- | --- |
-| `clients.csv` | client | name, email, status, time zone, units, start date |
-| `sessions.csv` | planned workout | state, dates, logged by coach |
-| `set_logs.csv` | logged set | reps, weight, RPE, duration, distance |
-| `checkins.csv` | answered question | one row per question of each sent check-in |
-| `metrics.csv` | measurement | canonical units |
-| `habits.csv` | habit tick | |
-| `nutrition.csv` | logged day | calories and macros |
-| `exercise_swaps.csv` | swap (PRD D8) | planned exercise, the one done instead, reason |
-| `goals.csv` | goal (PRD B18) | start and target in canonical units |
-| `workout_notes.csv` | note on a workout (PRD D9) | author role and text |
-| `programs.json` | — | every program, see below |
-| `exercises.json` | — | the workspace's own exercises, see below |
+| File                 | One row per                | Notes                                             |
+| -------------------- | -------------------------- | ------------------------------------------------- |
+| `clients.csv`        | client                     | name, email, status, time zone, units, start date |
+| `sessions.csv`       | planned workout            | state, dates, logged by coach                     |
+| `set_logs.csv`       | logged set                 | reps, weight, RPE, duration, distance             |
+| `checkins.csv`       | answered question          | one row per question of each sent check-in        |
+| `metrics.csv`        | measurement                | canonical units                                   |
+| `habits.csv`         | habit tick                 |                                                   |
+| `nutrition.csv`      | logged day                 | calories and macros                               |
+| `exercise_swaps.csv` | swap (PRD D8)              | planned exercise, the one done instead, reason    |
+| `goals.csv`          | goal (PRD B18)             | start and target in canonical units               |
+| `workout_notes.csv`  | note on a workout (PRD D9) | author role and text                              |
+| `programs.json`      | —                          | every program, see below                          |
+| `exercises.json`     | —                          | the workspace's own exercises, see below          |
 
 ## Client export (the client themselves)
 
@@ -36,16 +36,31 @@ notes.
   "version": 1,
   "programs": [
     {
-      "id": "…", "title": "Strength block", "kind": "template", "clientId": null, "status": "active",
-      "versionNo": 3, "createdAt": "2026-10-01T09:00:00.000Z",
+      "id": "…",
+      "title": "Strength block",
+      "kind": "template",
+      "clientId": null,
+      "status": "active",
+      "versionNo": 3,
+      "createdAt": "2026-10-01T09:00:00.000Z",
       "weeks": [
-        { "days": [
-          { "title": "Day 1: Upper", "notes": "…",
-            "exercises": [
-              { "exerciseId": "…", "exerciseName": "Barbell Bench Press", "trackingType": "reps_load",
-                "note": "…", "sets": [{ "reps": 8, "loadKg": 60, "rpe": 8, "restSec": 90, "tempo": "3010" }] }
-            ] }
-        ] }
+        {
+          "days": [
+            {
+              "title": "Day 1: Upper",
+              "notes": "…",
+              "exercises": [
+                {
+                  "exerciseId": "…",
+                  "exerciseName": "Barbell Bench Press",
+                  "trackingType": "reps_load",
+                  "note": "…",
+                  "sets": [{ "reps": 8, "loadKg": 60, "rpe": 8, "restSec": 90, "tempo": "3010" }]
+                }
+              ]
+            }
+          ]
+        }
       ]
     }
   ]
@@ -53,8 +68,10 @@ notes.
 ```
 
 - `kind` is `template` or `client` (a client's own copy; `clientId` says whose).
+- `section` is `warmup`, `conditioning` or `cooldown` when an exercise is in that part of the workout (PRD C9); it is
+  left out for the main part.
 - The current version only; older versions stay in the app's version history.
-- **Re-import:** `weeks` (keeping `title`, `notes`, and per exercise `exerciseId`, `note` and `sets`) is exactly the
+- **Re-import:** `weeks` (keeping `title`, `notes`, and per exercise `exerciseId`, `note`, `section` and `sets`) is exactly the
   body `POST /api/v1/programs/import` takes with a `title`, so a program can be recreated in any Kinetic workspace
   that has the same exercises. `exerciseName` and `trackingType` let another tool map exercises by name.
 - Set fields by tracking type: `reps_load` uses `reps` (and optional `loadKg`, `rpe`); `duration` uses
@@ -67,10 +84,20 @@ notes.
   "format": "kinetic-exercises",
   "version": 1,
   "exercises": [
-    { "id": "…", "name": "Sled push", "equipment": "Sled", "muscleGroup": "Legs", "movementType": "Push",
-      "trackingType": "distance", "instructions": "…", "mediaUrl": null,
-      "secondaryMuscles": ["Glutes"], "unilateral": false, "difficulty": "intermediate",
-      "cues": ["Drive through the balls of your feet", "Keep your hips low"] }
+    {
+      "id": "…",
+      "name": "Sled push",
+      "equipment": "Sled",
+      "muscleGroup": "Legs",
+      "movementType": "Push",
+      "trackingType": "distance",
+      "instructions": "…",
+      "mediaUrl": null,
+      "secondaryMuscles": ["Glutes"],
+      "unilateral": false,
+      "difficulty": "intermediate",
+      "cues": ["Drive through the balls of your feet", "Keep your hips low"]
+    }
   ]
 }
 ```

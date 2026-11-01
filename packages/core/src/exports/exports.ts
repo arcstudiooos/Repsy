@@ -556,6 +556,7 @@ async function programsJson(
             exerciseName: e.exerciseName,
             trackingType: e.trackingType,
             ...(e.note ? { note: e.note } : {}),
+            ...(e.section !== 'main' ? { section: e.section } : {}),
             sets: e.sets,
           })),
         })),

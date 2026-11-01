@@ -7,8 +7,12 @@
  *   Bench press 3x8 @ 60kg RPE 8
  *   Plank 3x45s
  *   Run 1x5km
+ * Inside a day, "Warm-up:", "Main:", "Conditioning:" and "Cool-down:" lines put the exercises after them in that
+ * section (PRD C9).
  * Spreadsheet (tab or comma separated, with a header row): Week?, Day, Exercise, Sets, Reps, Load, RPE, Notes?.
  */
+
+import type { WorkoutSection } from './sections';
 
 export type ImportUnits = 'kg' | 'lb';
 
@@ -30,6 +34,8 @@ export interface ParsedLine {
   name: string;
   sets: ParsedSet[];
   note?: string;
+  /** PRD C9; main when left out. */
+  section?: WorkoutSection;
   /** Why the line could not be read; the line is left out until fixed. */
   error?: string;
 }
@@ -50,6 +56,17 @@ const round3 = (v: number) => Math.round(v * 1000) / 1000;
 export const IMPORT_LIMITS = { weeks: 104, days: 7, exercises: 30, sets: 20 } as const;
 
 const WEEK = /^week\s*(\d+)\b[:.\-\s]*(.*)$/i;
+const SECTION = /^(warm[\s-]?up|main|conditioning|cool[\s-]?down)\s*:?$/i;
+const sectionOf = (word: string): WorkoutSection => {
+  const w = word.toLowerCase().replace(/[\s-]/g, '');
+  return w === 'warmup'
+    ? 'warmup'
+    : w === 'cooldown'
+      ? 'cooldown'
+      : w === 'conditioning'
+        ? 'conditioning'
+        : 'main';
+};
 const DAY =
   /^(day\s*\d+|mon(day)?|tue(s(day)?)?|wed(nesday)?|thu(rs(day)?)?|fri(day)?|sat(urday)?|sun(day)?)\b\s*[:.\-–]?\s*(.*)$/i;
 
@@ -121,6 +138,7 @@ export function parseProgramText(text: string, units: ImportUnits = 'kg'): Parse
   const weeks: { days: ParsedDay[] }[] = [];
   let week: { days: ParsedDay[] } | null = null;
   let day: ParsedDay | null = null;
+  let section: WorkoutSection = 'main';
   const ensureWeek = () => {
     if (!week) {
       week = { days: [] };
@@ -144,6 +162,13 @@ export function parseProgramText(text: string, units: ImportUnits = 'kg'): Parse
       week = { days: [] };
       weeks.push(week);
       day = null;
+      section = 'main';
+      return;
+    }
+    // Inside a day it starts a section; before any day it names the day, as it always did.
+    const sec = day ? SECTION.exec(raw) : null;
+    if (sec) {
+      section = sectionOf(sec[1]!);
       return;
     }
     const dy = DAY.exec(raw);
@@ -156,15 +181,19 @@ export function parseProgramText(text: string, units: ImportUnits = 'kg'): Parse
       };
       day.title = day.title.charAt(0).toUpperCase() + day.title.slice(1);
       w.days.push(day);
+      section = 'main';
       return;
     }
     if (/:$/.test(raw) && !/\d\s*[x×*]\s*\d/.test(raw)) {
       const w = ensureWeek();
       day = { title: raw.slice(0, -1).trim().slice(0, 120), lines: [] };
       w.days.push(day);
+      section = 'main';
       return;
     }
-    ensureDay().lines.push(parseExerciseLine(raw, i + 1, units));
+    const parsed = parseExerciseLine(raw, i + 1, units);
+    if (section !== 'main') parsed.section = section;
+    ensureDay().lines.push(parsed);
   });
   return finish(weeks);
 }

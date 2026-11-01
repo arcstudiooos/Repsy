@@ -5,6 +5,7 @@ import { useId } from 'react';
 import { useFieldArray, useFormContext } from 'react-hook-form';
 import type { TrackingType } from '@kinetic/core/exercise-options';
 import type { Units } from '@kinetic/core/units';
+import { SECTION_LABEL, WORKOUT_SECTIONS } from '@kinetic/core/workout-sections';
 import { Button } from '@/components/ui/button';
 import { MoveButtons, NumberField, TextField, useError, type MoveDirection } from './EditorFields';
 import { defaultSet, type EditorValues } from './editorSchema';
@@ -12,6 +13,30 @@ import { KitWarning } from './EquipmentGuide';
 
 /** Tempo is typed as four characters; stored upper-case so "31x1" matches the server pattern. */
 const tempoValue = (v: unknown) => (typeof v === 'string' ? v.trim().toUpperCase() : v);
+
+/** PRD C9: where the exercise sits in the workout. */
+function SectionField({ base }: { base: string }) {
+  const { register } = useFormContext<EditorValues>();
+  const id = useId();
+  return (
+    <div className="flex flex-col gap-1 sm:max-w-xs">
+      <label htmlFor={id} className="text-sm font-medium">
+        Section
+      </label>
+      <select
+        id={id}
+        {...register(`${base}.section` as never)}
+        className="min-h-11 rounded-control border border-input-border bg-surface px-3 text-base text-ink"
+      >
+        {WORKOUT_SECTIONS.map((s) => (
+          <option key={s} value={s}>
+            {SECTION_LABEL[s]}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
 
 function SetRows({
   base,
@@ -153,6 +178,7 @@ export function ExerciseCard({
         </Button>
       </div>
       <KitWarning base={base} name={name} />
+      <SectionField base={base} />
       <TextField path={`${base}.note`} label="Exercise note" maxLength={500} multiline />
       <SetRows base={base} trackingType={trackingType} units={units} />
     </div>
