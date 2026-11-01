@@ -24,7 +24,8 @@ const DAY_MS = 86_400_000;
 /** D-010 #3: issued at 06:00 client-local on the weekday. */
 export const ISSUE_HOUR = 6;
 /** Ruling 2: no second check-in within this many days of the last one (a weekday change applies next period). */
-const MIN_GAP_DAYS = 6;
+/** PRD F4: how often a client's check-in comes, in weeks. */
+export const CHECKIN_EVERY_WEEKS = [1, 2, 4] as const;
 const DRAFT_MAX_BYTES = 64 * 1024;
 const LIST_MAX = 52;
 
@@ -201,14 +202,17 @@ export async function updateCheckinTemplate(
   return toTemplateView(row);
 }
 
-/** Sets (1-7, ISO) or clears (null) the weekday a client's check-in is issued on. Applies from the next period. */
+/**
+ * Sets (1-7, ISO) or clears (null) the weekday a client's check-in is issued on, and how often (PRD F4: every 1, 2 or
+ * 4 weeks; left as it is when not given). Applies from the next period.
+ */
 export async function setCheckinWeekday(
   tx: TenantTx,
   actor: ActorContext,
   clientId: string,
   weekday: unknown,
-  opts: { requestId?: string } = {},
-): Promise<{ checkinWeekday: number | null }> {
+  opts: { requestId?: string; everyWeeks?: unknown } = {},
+): Promise<{ checkinWeekday: number | null; checkinEveryWeeks: number }> {
   assertCan(actor, 'client:update');
   if (!isUuid(clientId)) throw notFound();
   if (
@@ -217,12 +221,17 @@ export async function setCheckinWeekday(
   ) {
     throw invalid('checkinWeekday', 'Pick a day of the week.');
   }
+  const every = opts.everyWeeks;
+  if (every !== undefined && !(CHECKIN_EVERY_WEEKS as readonly unknown[]).includes(every)) {
+    throw invalid('checkinEveryWeeks', 'Pick every week, every 2 weeks or every 4 weeks.');
+  }
   const template = await ensureTemplate(tx);
   const res = await tx.client.updateMany({
     where: { id: clientId },
     data: {
       checkinWeekday: weekday as number | null,
       checkinTemplateId: weekday === null ? null : template.id,
+      ...(every !== undefined ? { checkinEveryWeeks: every as number } : {}),
     },
   });
   if (res.count === 0) throw notFound();
@@ -232,10 +241,23 @@ export async function setCheckinWeekday(
     objectType: 'client',
     objectId: clientId,
     action: 'client.checkin_schedule_updated',
-    metadata: weekday === null ? { cleared: true } : { checkinWeekday: weekday as number },
+    metadata:
+      weekday === null
+        ? { cleared: true }
+        : {
+            checkinWeekday: weekday as number,
+            ...(every !== undefined ? { checkinEveryWeeks: every as number } : {}),
+          },
     requestId: opts.requestId,
   });
-  return { checkinWeekday: weekday as number | null };
+  const after = await tx.client.findFirst({
+    where: { id: clientId },
+    select: { checkinEveryWeeks: true },
+  });
+  return {
+    checkinWeekday: weekday as number | null,
+    checkinEveryWeeks: after?.checkinEveryWeeks ?? 1,
+  };
 }
 
 /** A client actor sees their own check-ins; a coach names the client. Unknown or other clients are 404. */
@@ -426,6 +448,7 @@ export async function issueDueCheckins(tx: TenantTx, now: Date): Promise<{ issue
       userId: true,
       timezone: true,
       checkinWeekday: true,
+      checkinEveryWeeks: true,
       checkinTemplateId: true,
       coach: { select: { name: true } },
     },
@@ -441,7 +464,11 @@ export async function issueDueCheckins(tx: TenantTx, now: Date): Promise<{ issue
     const recent = await tx.checkin.findFirst({
       where: {
         clientId: c.id,
-        periodLocalDate: { gte: toDbDate(addDays(today, -MIN_GAP_DAYS)), lte: toDbDate(today) },
+        // A day short of the interval, so a weekday change never issues two in one period (PRD F4).
+        periodLocalDate: {
+          gte: toDbDate(addDays(today, -(7 * c.checkinEveryWeeks - 1))),
+          lte: toDbDate(today),
+        },
       },
       select: { id: true },
     });

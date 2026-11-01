@@ -26,6 +26,12 @@ test.describe('weekly check-ins (S4-1)', () => {
       await page.getByLabel('Check-in day').selectOption({ label: todayWeekday() });
       await page.getByRole('button', { name: 'Save day' }).click();
       await expect(page.getByText('Check-in day saved')).toBeVisible({ timeout: 15_000 });
+      // PRD F4: how often; the first one still comes today.
+      await page.getByLabel('How often').selectOption({ label: 'Every 2 weeks' });
+      await page.getByRole('button', { name: 'Save day' }).click();
+      await expect(page.getByText('Check-in day saved').first()).toBeVisible({ timeout: 15_000 });
+      await page.reload();
+      await expect(page.getByLabel('How often')).toHaveValue('2', { timeout: 30_000 });
       await expectNoAxeViolations(page);
       const clientCheckins = page.url();
 

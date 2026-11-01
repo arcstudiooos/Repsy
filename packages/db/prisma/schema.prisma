@@ -357,6 +357,8 @@ model Client {
   consentAt      DateTime?    @map("consent_at") @db.Timestamptz(3)
   /// ISO weekday (1 = Monday ... 7 = Sunday) the weekly check-in is issued on; null = no check-ins (S4-1).
   checkinWeekday    Int?      @map("checkin_weekday")
+  /// PRD F4: 1, 2 or 4 (CHECK in migration 000057).
+  checkinEveryWeeks Int @default(1) @map("checkin_every_weeks") @db.SmallInt
   checkinTemplateId String?   @map("checkin_template_id") @db.Uuid
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)

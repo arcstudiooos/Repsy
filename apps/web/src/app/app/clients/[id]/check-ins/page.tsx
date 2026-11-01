@@ -73,6 +73,7 @@ export default async function ClientCheckinsPage({ params }: { params: Promise<{
           <CheckinSchedule
             clientId={client.id}
             weekday={client.checkinWeekday}
+            everyWeeks={client.checkinEveryWeeks}
             disabled={client.status === 'archived'}
           />
           {items.some(({ checkin }) => checkin.submittedAt) && (

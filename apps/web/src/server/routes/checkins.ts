@@ -34,7 +34,10 @@ export const checkinTemplatePatchRoute: RouteDef<typeof templateSchema, true> = 
     tenant((tx) => updateCheckinTemplate(tx, actor, input, { requestId })),
 };
 
-const weekdaySchema = z.object({ checkinWeekday: z.number().int().nullable() });
+const weekdaySchema = z.object({
+  checkinWeekday: z.number().int().nullable(),
+  checkinEveryWeeks: z.number().int().optional(),
+});
 
 /** `PUT /api/v1/clients/:id/checkin-schedule`: the client's check-in weekday (null = none). */
 export const clientCheckinSchedulePutRoute: RouteDef<typeof weekdaySchema, true> = {
@@ -42,7 +45,10 @@ export const clientCheckinSchedulePutRoute: RouteDef<typeof weekdaySchema, true>
   input: weekdaySchema,
   handler: ({ actor, input, params, requestId, tenant }) =>
     tenant((tx) =>
-      setCheckinWeekday(tx, actor, params.id ?? '', input.checkinWeekday, { requestId }),
+      setCheckinWeekday(tx, actor, params.id ?? '', input.checkinWeekday, {
+        requestId,
+        everyWeeks: input.checkinEveryWeeks,
+      }),
     ),
 };
 

@@ -28,6 +28,8 @@ export interface ClientView {
   pause: PauseView | null;
   /** ISO weekday of the weekly check-in (S4-1); null = no check-ins. */
   checkinWeekday: number | null;
+  /** PRD F4: every 1, 2 or 4 weeks. */
+  checkinEveryWeeks: number;
   createdAt: string;
 }
 
@@ -41,6 +43,7 @@ interface ClientRow {
   timezone: string;
   preferredUnits: 'kg' | 'lb';
   checkinWeekday: number | null;
+  checkinEveryWeeks: number;
   createdAt: Date;
 }
 
@@ -86,6 +89,7 @@ export function toClientView(
     joinedAt: invite.acceptedAt ? invite.acceptedAt.toISOString() : null,
     pause: pause ? toPauseView(pause) : null,
     checkinWeekday: row.checkinWeekday,
+    checkinEveryWeeks: row.checkinEveryWeeks,
     createdAt: row.createdAt.toISOString(),
   };
 }

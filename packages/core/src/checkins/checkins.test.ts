@@ -84,6 +84,33 @@ describe('issueDueCheckins', () => {
     expect(await emailsOf(w)).toBe(1);
   });
 
+  it('every 2 or 4 weeks (PRD F4): skips the weeks in between; bad values are refused', async () => {
+    const w = await world();
+    await runAs(prisma, w.coach, (tx) =>
+      setCheckinWeekday(tx, w.coach, w.clientId, WEDNESDAY, { everyWeeks: 2 }),
+    );
+    const wednesday = (weeks: number) =>
+      new Date(new Date('2026-11-04T13:00:00Z').getTime() + weeks * 7 * 86_400_000);
+    expect((await issue(w, wednesday(0))).issued).toBe(1);
+    expect((await issue(w, wednesday(1))).issued).toBe(0);
+    expect((await issue(w, wednesday(2))).issued).toBe(1);
+    expect((await checkinsOf(w)).map((c) => c.periodLocalDate.toISOString().slice(0, 10))).toEqual([
+      '2026-11-04',
+      '2026-11-18',
+    ]);
+    // Leaving it out keeps the frequency.
+    expect(
+      await runAs(prisma, w.coach, (tx) => setCheckinWeekday(tx, w.coach, w.clientId, WEDNESDAY)),
+    ).toEqual({ checkinWeekday: WEDNESDAY, checkinEveryWeeks: 2 });
+    expect(
+      await codeOf(
+        runAs(prisma, w.coach, (tx) =>
+          setCheckinWeekday(tx, w.coach, w.clientId, WEDNESDAY, { everyWeeks: 3 }),
+        ),
+      ),
+    ).toBe('VALIDATION');
+  });
+
   it('before 06:00 local → none; other weekdays → none', async () => {
     const w = await world();
     expect((await issue(w, new Date('2026-11-04T10:59:00Z'))).issued).toBe(0);

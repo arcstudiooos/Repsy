@@ -8,26 +8,35 @@ import { setCheckinWeekday } from '@/lib/checkin-api';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-/** The client's check-in weekday (S4-1). A change applies from the next check-in. */
+const EVERY = [
+  [1, 'Every week'],
+  [2, 'Every 2 weeks'],
+  [4, 'Every 4 weeks'],
+] as const;
+
+/** The client's check-in weekday (S4-1) and how often (PRD F4). A change applies from the next check-in. */
 export function CheckinSchedule({
   clientId,
   weekday,
+  everyWeeks = 1,
   disabled,
 }: {
   clientId: string;
   weekday: number | null;
+  everyWeeks?: number;
   disabled?: boolean;
 }) {
   const router = useRouter();
   const id = useId();
   const [value, setValue] = useState(weekday === null ? '' : String(weekday));
+  const [every, setEvery] = useState(everyWeeks);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function save() {
     setBusy(true);
     setError(null);
-    const res = await setCheckinWeekday(clientId, value === '' ? null : Number(value));
+    const res = await setCheckinWeekday(clientId, value === '' ? null : Number(value), every);
     setBusy(false);
     if (res.ok) {
       toast.success(value === '' ? 'Weekly check-ins turned off' : 'Check-in day saved');
@@ -57,10 +66,34 @@ export function CheckinSchedule({
             </option>
           ))}
         </select>
+        {value !== '' && (
+          <>
+            <label htmlFor={`${id}-every`} className="sr-only">
+              How often
+            </label>
+            <select
+              id={`${id}-every`}
+              value={every}
+              disabled={disabled}
+              onChange={(e) => setEvery(Number(e.target.value))}
+              className="block min-h-11 rounded-control border border-input-border bg-surface px-3 text-base text-ink"
+            >
+              {EVERY.map(([n, label]) => (
+                <option key={n} value={n}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
         <Button
           variant="secondary"
           onClick={() => void save()}
-          disabled={busy || disabled || value === (weekday === null ? '' : String(weekday))}
+          disabled={
+            busy ||
+            disabled ||
+            (value === (weekday === null ? '' : String(weekday)) && every === everyWeeks)
+          }
         >
           Save day
         </Button>

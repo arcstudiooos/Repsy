@@ -49,12 +49,17 @@ export const saveCheckinDraft = (id: string, answers: CheckinAnswers) =>
 export const submitCheckin = (id: string, answers: CheckinAnswers, idempotencyKey: string) =>
   call<CheckinView>('POST', `/api/v1/checkins/${enc(id)}/submit`, { answers, idempotencyKey });
 
-export const setCheckinWeekday = (clientId: string, checkinWeekday: number | null) =>
-  call<{ checkinWeekday: number | null }>(
+export const setCheckinWeekday = (
+  clientId: string,
+  checkinWeekday: number | null,
+  checkinEveryWeeks?: number,
+) =>
+  call<{ checkinWeekday: number | null; checkinEveryWeeks: number }>(
     'PUT',
     `/api/v1/clients/${enc(clientId)}/checkin-schedule`,
     {
       checkinWeekday,
+      ...(checkinEveryWeeks !== undefined ? { checkinEveryWeeks } : {}),
     },
   );
 
