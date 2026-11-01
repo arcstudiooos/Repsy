@@ -524,3 +524,12 @@ export {
   BROADCAST_MAX_RECIPIENTS,
   type BroadcastAudience,
 } from './messages/broadcast';
+export {
+  listResources,
+  createResource,
+  archiveResource,
+  RESOURCE_BODY_MAX,
+  RESOURCE_TITLE_MAX,
+  type ResourceAudience,
+  type ResourceView,
+} from './resources/resources';

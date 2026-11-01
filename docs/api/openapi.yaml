@@ -1159,6 +1159,34 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+  /resources:
+    get:
+      tags: [Resources]
+      summary: "The resource library (PRD G5): coaches see every active resource and who it is shared with; a client sees those shared with all clients, one of their tags, or them."
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Resources]
+      summary: "Coaches share a link (https) and/or text. Body: {title, url?, body?, audience: all|tag|client, tagId?, clientId?}."
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '201': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+  /resources/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    delete:
+      tags: [Resources]
+      summary: "Remove a resource from everyone's library (archived)."
+      responses:
+        '204': { description: Removed }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
   /review:
     get:
       tags: [Review]

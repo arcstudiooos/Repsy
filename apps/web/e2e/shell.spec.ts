@@ -59,7 +59,16 @@ test.describe('app shells', () => {
       await expect(nav.getByRole('link')).toHaveText(
         mobile
           ? ['Home', 'Clients', 'Review', 'Messages', 'More']
-          : ['Overview', 'Clients', 'Programs', 'Review', 'Messages', 'Analytics', 'Settings'],
+          : [
+              'Overview',
+              'Clients',
+              'Programs',
+              'Review',
+              'Messages',
+              'Analytics',
+              'Resources',
+              'Settings',
+            ],
       );
       await expect(nav.getByRole('link', { name: mobile ? 'Home' : 'Overview' })).toHaveAttribute(
         'aria-current',

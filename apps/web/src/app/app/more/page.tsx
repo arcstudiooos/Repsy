@@ -9,6 +9,7 @@ const links = [
   { label: 'Programs', href: '/app/programs' },
   { label: 'Check-in questions', href: '/app/check-ins' },
   { label: 'Analytics', href: '/app/analytics' },
+  { label: 'Resources', href: '/app/resources' },
   { label: 'Settings', href: '/settings' },
 ];
 

@@ -1,4 +1,5 @@
 import {
+  BookOpen,
   ChartColumn,
   ClipboardCheck,
   Dumbbell,
@@ -29,6 +30,7 @@ export const coachDesktopItems: NavItem[] = [
   { label: 'Review', href: '/app/review', icon: ClipboardCheck },
   { label: 'Messages', href: '/app/messages', icon: MessageSquare },
   { label: 'Analytics', href: '/app/analytics', icon: ChartColumn },
+  { label: 'Resources', href: '/app/resources', icon: BookOpen },
 ];
 export const coachSettingsItem: NavItem = { label: 'Settings', href: '/settings', icon: Settings };
 

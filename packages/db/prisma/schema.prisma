@@ -219,6 +219,7 @@ model Organization {
   goals                   Goal[]
   sessionExerciseSwaps    SessionExerciseSwap[]
   sessionNotes            SessionNote[]
+  resources               Resource[]
   habitLogs               HabitLog[]
   clientTags              ClientTag[]
   clientTagLinks          ClientTagLink[]
@@ -355,6 +356,7 @@ model Client {
   metricEntryRevisions MetricEntryRevision[]
   habits          Habit[]
   goalRecords     Goal[]
+  resources       Resource[]
   habitLogs       HabitLog[]
   tagLinks        ClientTagLink[]
   nutritionTargets NutritionTarget[]
@@ -1160,6 +1162,7 @@ model ClientTag {
 
   organization Organization    @relation(fields: [organizationId], references: [id])
   links        ClientTagLink[]
+  resources    Resource[]
 
   /// Target of client_tag_links' composite tenant FK.
   @@unique([id, organizationId])
@@ -1487,4 +1490,30 @@ model SessionNote {
   @@index([sessionId, createdAt])
   @@index([organizationId])
   @@map("session_notes")
+}
+
+/// A link or short text the coach shares (PRD G5) with all clients, one tag, or one client. Links are https only;
+/// no file or video uploads (D-008 #1).
+model Resource {
+  id              String    @id @default(uuid()) @db.Uuid
+  organizationId  String    @map("organization_id") @db.Uuid
+  title           String
+  /// https only, at most 500 characters; or null for a text-only resource.
+  url             String?
+  body            String?
+  /// all, tag or client.
+  audience        String
+  tagId           String?   @map("tag_id") @db.Uuid
+  clientId        String?   @map("client_id") @db.Uuid
+  createdByUserId String    @map("created_by_user_id") @db.Uuid
+  archivedAt      DateTime? @map("archived_at") @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  tag          ClientTag?   @relation(fields: [tagId, organizationId], references: [id, organizationId])
+  client       Client?      @relation(fields: [clientId, organizationId], references: [id, organizationId])
+
+  @@index([organizationId, archivedAt])
+  @@map("resources")
 }

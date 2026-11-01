@@ -121,6 +121,12 @@ export default async function PortalHome() {
         )}
 
         <Link
+          href="/portal/resources"
+          className={cn(buttonVariants({ variant: 'secondary' }), 'min-h-12 w-full')}
+        >
+          Resources from your coach
+        </Link>
+        <Link
           href="/portal/calendar"
           className={cn(buttonVariants({ variant: 'secondary' }), 'min-h-12 w-full')}
         >

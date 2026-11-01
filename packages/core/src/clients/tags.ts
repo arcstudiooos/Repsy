@@ -84,6 +84,8 @@ export async function deleteTag(
   const tag = await tx.clientTag.findFirst({ where: { id }, select: { id: true } });
   if (!tag) throw notFound();
   await tx.clientTagLink.deleteMany({ where: { tagId: tag.id } });
+  // Resources shared with this tag only (PRD G5) go with it.
+  await tx.resource.deleteMany({ where: { tagId: tag.id } });
   await tx.clientTag.delete({ where: { id: tag.id } });
   await appendAudit(tx, {
     orgId: actor.orgId,
