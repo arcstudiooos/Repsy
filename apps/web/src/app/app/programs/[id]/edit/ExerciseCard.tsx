@@ -8,6 +8,7 @@ import type { Units } from '@kinetic/core/units';
 import { Button } from '@/components/ui/button';
 import { MoveButtons, NumberField, TextField, useError, type MoveDirection } from './EditorFields';
 import { defaultSet, type EditorValues } from './editorSchema';
+import { KitWarning } from './EquipmentGuide';
 
 /** Tempo is typed as four characters; stored upper-case so "31x1" matches the server pattern. */
 const tempoValue = (v: unknown) => (typeof v === 'string' ? v.trim().toUpperCase() : v);
@@ -151,6 +152,7 @@ export function ExerciseCard({
           Remove
         </Button>
       </div>
+      <KitWarning base={base} name={name} />
       <TextField path={`${base}.note`} label="Exercise note" maxLength={500} multiline />
       <SetRows base={base} trackingType={trackingType} units={units} />
     </div>

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useId, useState } from 'react';
 import { Pin } from 'lucide-react';
 import type { ClientContext } from '@kinetic/core';
+import { EQUIPMENT } from '@kinetic/core/exercise-options';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -26,6 +27,14 @@ const FIELDS = [
 ] as const;
 type Field = (typeof FIELDS)[number][0];
 
+/** PRD B13. */
+const LOCATION_LABEL = {
+  home: 'Home',
+  commercial_gym: 'Commercial gym',
+  outdoors: 'Outdoors',
+  other: 'Somewhere else',
+} as const;
+
 function EditContext({ context }: { context: ClientContext }) {
   const router = useRouter();
   const id = useId();
@@ -37,6 +46,8 @@ function EditContext({ context }: { context: ClientContext }) {
     equipmentNotes: context.equipmentNotes ?? '',
     preferences: context.preferences ?? '',
   }));
+  const [location, setLocation] = useState(context.trainingLocation ?? '');
+  const [kit, setKit] = useState<string[]>(context.equipment);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   return (
@@ -59,7 +70,11 @@ function EditContext({ context }: { context: ClientContext }) {
           onSubmit={async (e) => {
             e.preventDefault();
             setBusy(true);
-            const res = await updateContext(context.clientId, values);
+            const res = await updateContext(context.clientId, {
+              ...values,
+              trainingLocation: location || null,
+              equipment: kit,
+            });
             setBusy(false);
             if (!res.ok) {
               const next: Record<string, string> = {};
@@ -97,6 +112,45 @@ function EditContext({ context }: { context: ClientContext }) {
               )}
             </div>
           ))}
+          <div className="flex flex-col gap-1">
+            <label htmlFor={`${id}-location`} className="text-sm font-medium">
+              Trains at
+            </label>
+            <select
+              id={`${id}-location`}
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              className="min-h-11 rounded-control border border-input-border bg-surface px-3 text-base"
+            >
+              <option value="">Not recorded</option>
+              {Object.entries(LOCATION_LABEL).map(([k, v]) => (
+                <option key={k} value={k}>
+                  {v}
+                </option>
+              ))}
+            </select>
+          </div>
+          <fieldset className="flex flex-col gap-1">
+            <legend className="mb-1 text-sm font-medium">
+              Equipment they have (the builder warns about anything else)
+            </legend>
+            <div className="grid grid-cols-2 gap-x-4">
+              {EQUIPMENT.filter((e) => e !== 'Other').map((e) => (
+                <label key={e} className="flex min-h-11 items-center gap-2 text-base">
+                  <input
+                    type="checkbox"
+                    className="size-5 accent-accent"
+                    checked={kit.includes(e)}
+                    onChange={(ev) =>
+                      setKit((k) => (ev.target.checked ? [...k, e] : k.filter((x) => x !== e)))
+                    }
+                  />
+                  {e}
+                </label>
+              ))}
+            </div>
+            {errors.equipment && <p className="text-sm text-danger">{errors.equipment}</p>}
+          </fieldset>
           <DialogFooter>
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
               Cancel
@@ -116,7 +170,8 @@ function EditContext({ context }: { context: ClientContext }) {
  */
 export function ContextCard({ context }: { context: ClientContext }) {
   const filled = FIELDS.filter(([key]) => context[key]);
-  const empty = filled.length === 0 && context.pinnedNotes.length === 0;
+  const hasKit = context.trainingLocation !== null || context.equipment.length > 0;
+  const empty = filled.length === 0 && context.pinnedNotes.length === 0 && !hasKit;
   return (
     <section
       aria-labelledby="context-heading"
@@ -144,6 +199,18 @@ export function ContextCard({ context }: { context: ClientContext }) {
                 </div>
               ))}
             </dl>
+          )}
+          {hasKit && (
+            <p className="text-sm">
+              <span className="text-secondary">Trains at </span>
+              {context.trainingLocation ? LOCATION_LABEL[context.trainingLocation] : 'not recorded'}
+              {context.equipment.length > 0 && (
+                <>
+                  <span className="text-secondary"> · Kit: </span>
+                  {context.equipment.join(', ')}
+                </>
+              )}
+            </p>
           )}
           {context.pinnedNotes.length > 0 && (
             <ul aria-label="Pinned notes" className="flex flex-col gap-1 text-sm">

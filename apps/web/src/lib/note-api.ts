@@ -34,5 +34,5 @@ export const pinNote = (noteId: string, pinned: boolean) =>
   call<ClientContext>('PUT', `/api/v1/notes/${enc(noteId)}/pin`, { pinned });
 
 /** Updates the client context card fields given (PRD B7). */
-export const updateContext = (clientId: string, body: Record<string, string>) =>
+export const updateContext = (clientId: string, body: Record<string, string | string[] | null>) =>
   call<ClientContext>('PATCH', `/api/v1/clients/${enc(clientId)}/context`, body);

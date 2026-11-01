@@ -11,6 +11,8 @@ export interface AlternativeView {
   exerciseId: string;
   name: string;
   trackingType: string;
+  /** The equipment it needs (PRD B13 swaps). */
+  equipment: string;
 }
 
 const notFound = () => new DomainError('NOT_FOUND', 'Not found.');
@@ -29,7 +31,7 @@ export async function alternativesFor(
     orderBy: [{ exerciseId: 'asc' }, { position: 'asc' }],
     select: {
       exerciseId: true,
-      alternative: { select: { id: true, name: true, trackingType: true } },
+      alternative: { select: { id: true, name: true, trackingType: true, equipment: true } },
     },
   });
   const out: Record<string, AlternativeView[]> = {};
@@ -38,6 +40,7 @@ export async function alternativesFor(
       exerciseId: r.alternative.id,
       name: r.alternative.name,
       trackingType: r.alternative.trackingType,
+      equipment: r.alternative.equipment,
     });
   }
   return out;

@@ -326,6 +326,9 @@ model Client {
   motivation     String?
   scheduleNotes  String?      @map("schedule_notes")
   equipmentNotes String?      @map("equipment_notes")
+  /// PRD B13: where the client trains (home, commercial_gym, outdoors, other) and the kit they have (EQUIPMENT labels).
+  trainingLocation  String?   @map("training_location")
+  equipment         String[]  @default([])
   preferences    String?
   /// IANA zone; defaults to the organization timezone at creation.
   timezone       String

@@ -15,6 +15,8 @@ const patchSchema = z.object({
   scheduleNotes: z.string().max(5000).nullable().optional(),
   equipmentNotes: z.string().max(5000).nullable().optional(),
   preferences: z.string().max(5000).nullable().optional(),
+  trainingLocation: z.string().max(40).nullable().optional(),
+  equipment: z.array(z.string().max(40)).max(20).optional(),
 });
 
 /** `PATCH /api/v1/clients/:id/context`: update the fields given (core validates lengths). */

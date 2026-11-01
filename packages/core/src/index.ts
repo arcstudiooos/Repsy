@@ -295,6 +295,8 @@ export {
   updateClientContext,
   setNotePinned,
   CONTEXT_FIELD_MAX,
+  TRAINING_LOCATIONS,
+  type TrainingLocation,
   PINNED_NOTES_MAX,
   type ClientContext,
   type ClientContextInput,
@@ -545,3 +547,4 @@ export {
   REPLY_PLACEHOLDERS,
   type ReplyPlaceholder,
 } from './messages/replyFacts';
+export { equipmentGuideFor, type EquipmentGuide } from './exercises/equipmentGuide';

@@ -5,7 +5,7 @@ import { Minus, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { FormProvider, useFieldArray, useForm, useWatch, type FieldErrors } from 'react-hook-form';
-import type { ProgramDetail, ProgramDraftView } from '@kinetic/core';
+import type { EquipmentGuide, ProgramDetail, ProgramDraftView } from '@kinetic/core';
 import type { Units } from '@kinetic/core/units';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,6 +38,7 @@ import { ReplaceExerciseDialog } from './ReplaceExerciseDialog';
 import { SaveBar } from './SaveBar';
 import { clearLocalDraft, readLocalDraft, useDraftAutosave } from './useDraftAutosave';
 import { WeekSection } from './WeekSection';
+import { EquipmentGuideContext } from './EquipmentGuide';
 
 const INVALID = 'Some fields need attention. Fix them and save again.';
 
@@ -60,6 +61,8 @@ const D001 =
 export interface EditorClient {
   id: string;
   name: string;
+  /** PRD B13: their kit and the swaps that fit, when a kit is recorded. */
+  guide?: EquipmentGuide | null;
 }
 
 export function ProgramEditor({
@@ -333,239 +336,248 @@ export function ProgramEditor({
 
   return (
     <FormProvider {...form}>
-      <div className="flex min-w-0 flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
-        <form onSubmit={handleSubmit(onSubmit, onInvalid)} noValidate className="min-w-0">
-          {/* Locked while saving: an edit typed mid-save would be overwritten by the server response. */}
-          <fieldset disabled={locked} className="m-0 flex min-w-0 flex-col gap-6 border-0 p-0">
-            <div className="flex flex-col gap-2">
-              <Link
-                href={client ? `/app/clients/${client.id}/program` : '/app/programs'}
-                className="text-sm font-medium text-accent underline"
-              >
-                {client ? `Back to ${client.name}` : 'Back to programs'}
-              </Link>
-              <h1 className="text-2xl font-semibold md:text-3xl">
-                {client ? `Edit ${client.name}'s program` : 'Edit program'}
-              </h1>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-secondary">
-                <span>{versionNo !== null ? `Version ${versionNo}` : 'Not saved yet'}</span>
-                {versionNo !== null && (
-                  <Link
-                    href={`/app/programs/${program.id}/history`}
-                    className="font-medium text-accent underline"
-                  >
-                    Version history
-                  </Link>
-                )}
-                {versionNo !== null && (
-                  <Link
-                    href={`/app/programs/${program.id}/print`}
-                    className="font-medium text-accent underline"
-                  >
-                    Print
-                  </Link>
-                )}
+      <EquipmentGuideContext.Provider value={client?.guide ?? null}>
+        <div className="flex min-w-0 flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+          <form onSubmit={handleSubmit(onSubmit, onInvalid)} noValidate className="min-w-0">
+            {/* Locked while saving: an edit typed mid-save would be overwritten by the server response. */}
+            <fieldset disabled={locked} className="m-0 flex min-w-0 flex-col gap-6 border-0 p-0">
+              <div className="flex flex-col gap-2">
+                <Link
+                  href={client ? `/app/clients/${client.id}/program` : '/app/programs'}
+                  className="text-sm font-medium text-accent underline"
+                >
+                  {client ? `Back to ${client.name}` : 'Back to programs'}
+                </Link>
+                <h1 className="text-2xl font-semibold md:text-3xl">
+                  {client ? `Edit ${client.name}'s program` : 'Edit program'}
+                </h1>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-secondary">
+                  <span>{versionNo !== null ? `Version ${versionNo}` : 'Not saved yet'}</span>
+                  {versionNo !== null && (
+                    <Link
+                      href={`/app/programs/${program.id}/history`}
+                      className="font-medium text-accent underline"
+                    >
+                      Version history
+                    </Link>
+                  )}
+                  {versionNo !== null && (
+                    <Link
+                      href={`/app/programs/${program.id}/print`}
+                      className="font-medium text-accent underline"
+                    >
+                      Print
+                    </Link>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {restored && (
-              <div className="flex flex-wrap items-center gap-3 rounded-card bg-surface p-4 shadow-card">
-                <p className="min-w-0 flex-1 text-sm">Restored your unsaved draft.</p>
-                <Button type="button" variant="ghost" size="sm" onClick={() => setRestored(false)}>
-                  Dismiss
-                </Button>
-              </div>
-            )}
+              {restored && (
+                <div className="flex flex-wrap items-center gap-3 rounded-card bg-surface p-4 shadow-card">
+                  <p className="min-w-0 flex-1 text-sm">Restored your unsaved draft.</p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setRestored(false)}
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+              )}
 
-            {conflictVersion !== null && (
-              <ConflictNotice
-                versionNo={conflictVersion}
-                onReloadLatest={reloadLatest}
-                onKeepDraft={keepDraft}
-              />
-            )}
-
-            {formError && (
-              <p
-                role="alert"
-                className="rounded-card border border-danger bg-surface p-4 text-sm text-danger"
-              >
-                {formError}
-              </p>
-            )}
-
-            <div className="flex flex-col gap-4 rounded-card bg-surface p-4 shadow-card md:flex-row md:items-end">
-              <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <label htmlFor={titleId} className="text-sm font-medium">
-                  Program title
-                </label>
-                <Input
-                  id={titleId}
-                  maxLength={120}
-                  aria-invalid={titleError ? true : undefined}
-                  aria-describedby={titleError ? `${titleId}-error` : undefined}
-                  {...register('title')}
+              {conflictVersion !== null && (
+                <ConflictNotice
+                  versionNo={conflictVersion}
+                  onReloadLatest={reloadLatest}
+                  onKeepDraft={keepDraft}
                 />
-                {titleError && (
-                  <p id={`${titleId}-error`} className="text-sm text-danger">
-                    {titleError}
-                  </p>
+              )}
+
+              {formError && (
+                <p
+                  role="alert"
+                  className="rounded-card border border-danger bg-surface p-4 text-sm text-danger"
+                >
+                  {formError}
+                </p>
+              )}
+
+              <div className="flex flex-col gap-4 rounded-card bg-surface p-4 shadow-card md:flex-row md:items-end">
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <label htmlFor={titleId} className="text-sm font-medium">
+                    Program title
+                  </label>
+                  <Input
+                    id={titleId}
+                    maxLength={120}
+                    aria-invalid={titleError ? true : undefined}
+                    aria-describedby={titleError ? `${titleId}-error` : undefined}
+                    {...register('title')}
+                  />
+                  {titleError && (
+                    <p id={`${titleId}-error`} className="text-sm text-danger">
+                      {titleError}
+                    </p>
+                  )}
+                </div>
+                {client ? (
+                  // Ruling 2: a client copy keeps one training day per scheduled weekday.
+                  <div className="flex flex-col gap-0.5">
+                    <p className="text-base font-medium">
+                      {daysPerWeek} {daysPerWeek === 1 ? 'day' : 'days'} per week
+                    </p>
+                    <p className="text-sm text-secondary">
+                      Matches the client&apos;s training days.
+                    </p>
+                  </div>
+                ) : (
+                  <div role="group" aria-label="Days per week" className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="icon"
+                      aria-label="Fewer days"
+                      disabled={daysPerWeek <= 1}
+                      onClick={fewerDays}
+                    >
+                      <Minus aria-hidden className="size-5" />
+                    </Button>
+                    <output className="min-w-28 text-center text-base font-medium">
+                      {daysPerWeek} {daysPerWeek === 1 ? 'day' : 'days'} per week
+                    </output>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="icon"
+                      aria-label="More days"
+                      disabled={daysPerWeek >= MAX_DAYS}
+                      onClick={() => setDays(daysPerWeek + 1)}
+                    >
+                      <Plus aria-hidden className="size-5" />
+                    </Button>
+                  </div>
                 )}
               </div>
-              {client ? (
-                // Ruling 2: a client copy keeps one training day per scheduled weekday.
-                <div className="flex flex-col gap-0.5">
-                  <p className="text-base font-medium">
-                    {daysPerWeek} {daysPerWeek === 1 ? 'day' : 'days'} per week
-                  </p>
-                  <p className="text-sm text-secondary">Matches the client&apos;s training days.</p>
-                </div>
-              ) : (
-                <div role="group" aria-label="Days per week" className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="icon"
-                    aria-label="Fewer days"
-                    disabled={daysPerWeek <= 1}
-                    onClick={fewerDays}
-                  >
-                    <Minus aria-hidden className="size-5" />
-                  </Button>
-                  <output className="min-w-28 text-center text-base font-medium">
-                    {daysPerWeek} {daysPerWeek === 1 ? 'day' : 'days'} per week
-                  </output>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="icon"
-                    aria-label="More days"
-                    disabled={daysPerWeek >= MAX_DAYS}
-                    onClick={() => setDays(daysPerWeek + 1)}
-                  >
-                    <Plus aria-hidden className="size-5" />
-                  </Button>
-                </div>
-              )}
-            </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <ReplaceExerciseDialog onReplace={(next) => weeks.replace(next)} />
-              {weeks.fields.length > 8 && (
-                <div className="flex items-center gap-2">
-                  <label htmlFor="jump-to-week" className="text-sm font-medium">
-                    Go to week
-                  </label>
-                  <select
-                    id="jump-to-week"
-                    value={activeWeek}
-                    onChange={(e) => setActiveWeek(e.target.value)}
-                    className="min-h-11 rounded-control border border-input-border bg-surface px-3 text-base text-ink"
-                  >
-                    {weeks.fields.map((f, w) => (
-                      <option key={f.id} value={String(w)}>
-                        Week {w + 1}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-            <Tabs value={activeWeek} onValueChange={setActiveWeek}>
-              <TabsList ref={tabList} aria-label="Weeks" className="min-w-0">
+              <div className="flex flex-wrap items-center gap-3">
+                <ReplaceExerciseDialog onReplace={(next) => weeks.replace(next)} />
+                {weeks.fields.length > 8 && (
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="jump-to-week" className="text-sm font-medium">
+                      Go to week
+                    </label>
+                    <select
+                      id="jump-to-week"
+                      value={activeWeek}
+                      onChange={(e) => setActiveWeek(e.target.value)}
+                      className="min-h-11 rounded-control border border-input-border bg-surface px-3 text-base text-ink"
+                    >
+                      {weeks.fields.map((f, w) => (
+                        <option key={f.id} value={String(w)}>
+                          Week {w + 1}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+              <Tabs value={activeWeek} onValueChange={setActiveWeek}>
+                <TabsList ref={tabList} aria-label="Weeks" className="min-w-0">
+                  {weeks.fields.map((f, w) => (
+                    <TabsTrigger key={f.id} value={String(w)}>
+                      Week {w + 1}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
                 {weeks.fields.map((f, w) => (
-                  <TabsTrigger key={f.id} value={String(w)}>
-                    Week {w + 1}
-                  </TabsTrigger>
+                  <TabsContent key={f.id} value={String(w)}>
+                    <WeekSection
+                      week={w}
+                      weekCount={weeks.fields.length}
+                      units={units}
+                      onDuplicate={() => duplicateWeek(w)}
+                      onRemove={() => removeWeek(w)}
+                      onCopyToOtherWeek={copyToOtherWeek}
+                    />
+                  </TabsContent>
                 ))}
-              </TabsList>
-              {weeks.fields.map((f, w) => (
-                <TabsContent key={f.id} value={String(w)}>
-                  <WeekSection
-                    week={w}
-                    weekCount={weeks.fields.length}
-                    units={units}
-                    onDuplicate={() => duplicateWeek(w)}
-                    onRemove={() => removeWeek(w)}
-                    onCopyToOtherWeek={copyToOtherWeek}
-                  />
-                </TabsContent>
-              ))}
-            </Tabs>
+              </Tabs>
 
-            <SaveBar status={autosave.status} dirty={dirty} saving={locked} savedAs={savedAs} />
-          </fieldset>
-        </form>
+              <SaveBar status={autosave.status} dirty={dirty} saving={locked} savedAs={savedAs} />
+            </fieldset>
+          </form>
 
-        {client && (
-          <PerformanceRail
-            clientId={client.id}
-            clientName={client.name}
-            exercises={exercises}
-            units={units}
-          />
-        )}
-      </div>
+          {client && (
+            <PerformanceRail
+              clientId={client.id}
+              clientName={client.name}
+              exercises={exercises}
+              units={units}
+            />
+          )}
+        </div>
 
-      <Dialog open={confirmFewer} onOpenChange={setConfirmFewer}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Remove day {daysPerWeek} from every week?</DialogTitle>
-            <DialogDescription>Its exercises will be lost.</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button type="button" variant="secondary" onClick={() => setConfirmFewer(false)}>
-              Keep day
-            </Button>
-            <Button
-              type="button"
-              variant="danger"
-              onClick={() => {
-                setConfirmFewer(false);
-                setDays(daysPerWeek - 1);
-              }}
-            >
-              Remove day
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {client && (
-        <Dialog
-          open={confirmValues !== null}
-          onOpenChange={(open) => {
-            if (!open && !saving) setConfirmValues(null);
-          }}
-        >
+        <Dialog open={confirmFewer} onOpenChange={setConfirmFewer}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Save changes to {client.name}&apos;s program?</DialogTitle>
-              <DialogDescription>{D001}</DialogDescription>
+              <DialogTitle>Remove day {daysPerWeek} from every week?</DialogTitle>
+              <DialogDescription>Its exercises will be lost.</DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={saving}
-                onClick={() => setConfirmValues(null)}
-              >
-                Keep editing
+              <Button type="button" variant="secondary" onClick={() => setConfirmFewer(false)}>
+                Keep day
               </Button>
               <Button
                 type="button"
-                disabled={saving}
-                onClick={async () => {
-                  if (confirmValues) await commit(confirmValues);
-                  setConfirmValues(null);
+                variant="danger"
+                onClick={() => {
+                  setConfirmFewer(false);
+                  setDays(daysPerWeek - 1);
                 }}
               >
-                {saving ? 'Saving...' : 'Save changes'}
+                Remove day
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      )}
+
+        {client && (
+          <Dialog
+            open={confirmValues !== null}
+            onOpenChange={(open) => {
+              if (!open && !saving) setConfirmValues(null);
+            }}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Save changes to {client.name}&apos;s program?</DialogTitle>
+                <DialogDescription>{D001}</DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={saving}
+                  onClick={() => setConfirmValues(null)}
+                >
+                  Keep editing
+                </Button>
+                <Button
+                  type="button"
+                  disabled={saving}
+                  onClick={async () => {
+                    if (confirmValues) await commit(confirmValues);
+                    setConfirmValues(null);
+                  }}
+                >
+                  {saving ? 'Saving...' : 'Save changes'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+      </EquipmentGuideContext.Provider>
     </FormProvider>
   );
 }

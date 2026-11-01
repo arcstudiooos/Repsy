@@ -41,3 +41,12 @@ export const MOVEMENT_TYPES = [
   'Isolation',
   'Cardio',
 ] as const;
+
+/**
+ * PRD B13: true when an exercise needs equipment the client's kit lacks. Bodyweight and "Other" never warn, and an
+ * empty kit (not recorded) never warns.
+ */
+export function outsideKit(equipment: string, kit: readonly string[]): boolean {
+  if (kit.length === 0 || equipment === 'Bodyweight' || equipment === 'Other') return false;
+  return !kit.includes(equipment);
+}

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
   DomainError,
+  equipmentGuideFor,
   getDraft,
   getProgram,
   getProgramAssignee,
@@ -55,7 +56,20 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
         program,
         units: settings.profile?.units ?? 'kg',
         draft,
-        client: assignee ? { id: assignee.clientId, name: assignee.clientName } : null,
+        client: assignee
+          ? {
+              id: assignee.clientId,
+              name: assignee.clientName,
+              guide: await equipmentGuideFor(
+                tx,
+                actor,
+                assignee.clientId,
+                program.weeks.flatMap((w) =>
+                  w.days.flatMap((d) => d.exercises.map((e) => e.exerciseId)),
+                ),
+              ),
+            }
+          : null,
       };
     });
   } catch (error) {

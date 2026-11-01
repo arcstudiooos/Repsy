@@ -127,7 +127,12 @@ export function AlternativesEditor({ exercise }: { exercise: ExerciseView }) {
               }
               const ok = await save([
                 ...list,
-                { exerciseId: picked.id, name: picked.name, trackingType: picked.trackingType },
+                {
+                  exerciseId: picked.id,
+                  name: picked.name,
+                  trackingType: picked.trackingType,
+                  equipment: picked.equipment,
+                },
               ]);
               if (ok) setPicking(false);
             }}

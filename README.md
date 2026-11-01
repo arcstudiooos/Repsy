@@ -78,6 +78,7 @@ R2 builds the web-platform features in `docs/competitive/complete-platform-prd.m
 - **L1 installable portal:** a web app manifest (`/manifest.webmanifest`, start page `/portal`, standalone) with Kinetic icons (including a maskable one) and theme colour, so clients can add the portal to their home screen; offline logging comes from the existing portal service worker. A per-workspace icon from the coach's logo is not done yet.
 - **C3 exercise attributes:** custom exercises can have secondary muscles, a unilateral flag, a difficulty and up to six coaching cues; the library shows them and the logger lists the cues under "How to do it" (also in `exercises.json`). Dialogs now scroll when taller than the screen.
 - **C7 set targets:** besides reps, load, RPE, tempo and rest, a set can have a rep range (top of range), RIR and % of 1RM, and timed or distance sets a pace and heart-rate zone; the logger, print and version views show them, and program text import keeps the top of "3x8-10".
+- **B13 equipment profile:** the client context records where a client trains and the equipment they have; when the builder edits that client's program it flags exercises needing other equipment and offers one-click swaps to the coach's alternatives that fit.
 
 ## What works locally (Sprint 5)
 

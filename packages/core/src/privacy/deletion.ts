@@ -267,6 +267,8 @@ export async function eraseClientData(
       motivation: null,
       scheduleNotes: null,
       equipmentNotes: null,
+      equipment: [],
+      trainingLocation: null,
       preferences: null,
       startDate: null,
       userId: null,

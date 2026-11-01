@@ -3,11 +3,15 @@ import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';
 import { isUuid } from '../uuid';
+import { EQUIPMENT } from '../exercises/options';
 import { GOALS_MAX } from './clients';
 
 export const CONTEXT_FIELD_MAX = 1000;
 export const PINNED_NOTES_MAX = 3;
 const FIELDS = ['motivation', 'scheduleNotes', 'equipmentNotes', 'preferences'] as const;
+/** PRD B13. */
+export const TRAINING_LOCATIONS = ['home', 'commercial_gym', 'outdoors', 'other'] as const;
+export type TrainingLocation = (typeof TRAINING_LOCATIONS)[number];
 type ContextField = (typeof FIELDS)[number];
 
 export interface ClientContext {
@@ -17,11 +21,16 @@ export interface ClientContext {
   scheduleNotes: string | null;
   equipmentNotes: string | null;
   preferences: string | null;
+  /** PRD B13: where they train, and the kit they have (empty = not recorded). */
+  trainingLocation: TrainingLocation | null;
+  equipment: string[];
   /** Up to 3 notes pinned to the card, most recently pinned first. */
   pinnedNotes: { id: string; body: string; authorName: string; pinnedAt: string }[];
 }
 
-export type ClientContextInput = Partial<Record<ContextField | 'goals', unknown>>;
+export type ClientContextInput = Partial<
+  Record<ContextField | 'goals' | 'trainingLocation' | 'equipment', unknown>
+>;
 
 const notFound = () => new DomainError('NOT_FOUND', 'Not found.');
 const invalid = (field: string, message: string) =>
@@ -47,6 +56,8 @@ export async function getClientContext(
       scheduleNotes: true,
       equipmentNotes: true,
       preferences: true,
+      trainingLocation: true,
+      equipment: true,
     },
   });
   if (!c) throw notFound();
@@ -63,6 +74,8 @@ export async function getClientContext(
     scheduleNotes: c.scheduleNotes,
     equipmentNotes: c.equipmentNotes,
     preferences: c.preferences,
+    trainingLocation: (c.trainingLocation as TrainingLocation | null) ?? null,
+    equipment: c.equipment,
     pinnedNotes: pinned.map((n) => ({
       id: n.id,
       body: n.body,
@@ -85,7 +98,22 @@ export async function updateClientContext(
   if (!isUuid(clientId)) throw notFound();
   const exists = await tx.client.findFirst({ where: { id: clientId }, select: { id: true } });
   if (!exists) throw notFound();
-  const data: Record<string, string | null> = {};
+  const data: Record<string, string | string[] | null> = {};
+  if (input.trainingLocation !== undefined) {
+    const v = input.trainingLocation;
+    if (v === null || v === '') data.trainingLocation = null;
+    else if ((TRAINING_LOCATIONS as readonly unknown[]).includes(v))
+      data.trainingLocation = v as string;
+    else throw invalid('trainingLocation', 'Pick where they train.');
+  }
+  if (input.equipment !== undefined) {
+    const v = input.equipment;
+    if (!Array.isArray(v) || !v.every((x) => (EQUIPMENT as readonly unknown[]).includes(x))) {
+      throw invalid('equipment', 'Pick from the equipment list.');
+    }
+    // In the list's order, once each.
+    data.equipment = EQUIPMENT.filter((e) => (v as unknown[]).includes(e));
+  }
   for (const field of ['goals', ...FIELDS] as const) {
     const v = input[field];
     if (v === undefined) continue;
