@@ -1,5 +1,6 @@
 'use client';
 
+import { useSearchParams } from 'next/navigation';
 import { useId, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { call } from '@/lib/checkin-api';
@@ -10,11 +11,24 @@ const TOPICS = [
   ['idea', 'An idea or request'],
   ['billing', 'Plan or billing'],
   ['privacy', 'Privacy or my data'],
+  ['migration', 'Move my clients and programs to Kinetic'],
 ] as const;
+type Topic = (typeof TOPICS)[number][0];
 
 /** PRD M13: a message to support, answered by email. */
-export function SupportForm({ responseTarget }: { responseTarget: string }) {
+export function SupportForm({
+  responseTarget,
+  coach = false,
+}: {
+  responseTarget: string;
+  /** PRD M4: coaches can ask for the free concierge migration. */
+  coach?: boolean;
+}) {
   const id = useId();
+  const asked = useSearchParams().get('topic');
+  const topics = TOPICS.filter(([v]) => coach || v !== 'migration');
+  const initial: Topic = topics.some(([v]) => v === asked) ? (asked as Topic) : 'question';
+  const [topic, setTopic] = useState<Topic>(initial);
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,10 +65,11 @@ export function SupportForm({ responseTarget }: { responseTarget: string }) {
       <select
         id={`${id}-topic`}
         name="topic"
-        defaultValue="question"
+        value={topic}
+        onChange={(e) => setTopic(e.target.value as Topic)}
         className="block min-h-11 rounded-control border border-input-border bg-surface px-3 text-base text-ink"
       >
-        {TOPICS.map(([v, l]) => (
+        {topics.map(([v, l]) => (
           <option key={v} value={v}>
             {l}
           </option>
@@ -68,6 +83,11 @@ export function SupportForm({ responseTarget }: { responseTarget: string }) {
         name="message"
         rows={6}
         maxLength={5000}
+        placeholder={
+          topic === 'migration'
+            ? 'Which app are you moving from, and about how many clients and programs? We move them for you, free, for paying workspaces.'
+            : undefined
+        }
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-err` : undefined}
         className="rounded-control border border-input-border bg-surface px-3 py-2 text-base"

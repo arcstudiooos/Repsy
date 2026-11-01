@@ -52,4 +52,20 @@ describe('parseRoster', () => {
     expect(parseRoster('  \n').error).toBe('The file is empty.');
     expect(parseRoster('Name,Email\n').error).toMatch(/no clients/);
   });
+
+  it('uses the columns the coach chose (PRD M4)', () => {
+    const csv = 'Athlete Name,Contact,Notes\nAna Silva,ana@x.test,10k\n';
+    const auto = parseRoster(csv);
+    expect(auto.error).toMatch(/No email column/);
+    expect(auto.headers).toEqual(['Athlete Name', 'Contact', 'Notes']);
+    const r = parseRoster(csv, { email: 1, goals: 2 });
+    expect(r.error).toBeNull();
+    expect(r.rows).toEqual([{ name: 'Ana Silva', email: 'ana@x.test', goals: '10k' }]);
+    expect(r.columns).toMatchObject({ name: 'Athlete Name', email: 'Contact', goals: 'Notes' });
+    // "Not in this file" drops an auto-matched column.
+    expect(parseRoster(csv, { email: 1, name: 0, goals: null }).rows[0]).toEqual({
+      name: 'Ana Silva',
+      email: 'ana@x.test',
+    });
+  });
 });

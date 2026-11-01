@@ -189,6 +189,18 @@ export function ImportProgram({ defaultUnits }: { defaultUnits: ImportUnits }) {
           }
           className="w-full rounded-control border border-input-border bg-surface p-3 font-mono text-sm"
         />
+        <p className="mt-2 text-sm text-secondary">
+          A spreadsheet works too: paste its rows with a header (Week, Day, Exercise, Sets, Reps,
+          Load, RPE, Notes).{' '}
+          <a href="/templates/kinetic-program.csv" download className="text-accent underline">
+            Download a sheet template
+          </a>
+          , or{' '}
+          <Link href="/app/support?topic=migration" className="text-accent underline">
+            ask us to move your programs for you
+          </Link>
+          .
+        </p>
         {error && (
           <p role="alert" className="mt-2 text-danger">
             {error}

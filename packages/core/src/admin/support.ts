@@ -6,7 +6,15 @@ import { enqueueEmail } from '../outbox';
 /** PRD M13: in-app support, answered by email. The published first-response target. */
 export const SUPPORT_RESPONSE_TARGET =
   'We reply within 4 business hours on paid plans, and within 1 business day otherwise.';
-export const SUPPORT_TOPICS = ['question', 'problem', 'idea', 'billing', 'privacy'] as const;
+/** `migration` (PRD M4): a coach asks for the free concierge move from another platform. */
+export const SUPPORT_TOPICS = [
+  'question',
+  'problem',
+  'idea',
+  'billing',
+  'privacy',
+  'migration',
+] as const;
 
 const invalid = (field: string, message: string) =>
   new DomainError('VALIDATION', 'Some fields are invalid.', { [field]: [message] });
@@ -21,7 +29,10 @@ export async function requestSupport(
   input: { topic?: unknown; message?: unknown },
   opts: { to: string; requestId?: string; now?: Date },
 ): Promise<{ received: true }> {
-  if (!(SUPPORT_TOPICS as readonly unknown[]).includes(input.topic)) {
+  if (
+    !(SUPPORT_TOPICS as readonly unknown[]).includes(input.topic) ||
+    (input.topic === 'migration' && actor.role === 'client')
+  ) {
     throw invalid('topic', 'Pick a topic.');
   }
   const message = typeof input.message === 'string' ? input.message.trim() : '';

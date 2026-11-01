@@ -76,4 +76,35 @@ test.describe('client import from CSV (PRD B17)', () => {
       page.getByRole('alert').filter({ hasText: 'No email column found' }),
     ).toBeVisible();
   });
+
+  test('a coach matches columns by hand, and can ask for a concierge migration (PRD M4)', async ({
+    page,
+    request,
+  }) => {
+    await signUpVerifiedCoach(page, request);
+    const tag = Date.now().toString(36);
+    await page.goto('/app/clients/import');
+    const template = await page.request.get(
+      (await page.getByRole('link', { name: 'Download a CSV template' }).getAttribute('href'))!,
+    );
+    expect(await template.text()).toMatch(/^Name,Email,Goals,Time zone,Units/);
+    await page
+      .getByLabel('Or paste it here')
+      .fill(`Client,Contact\nAna Map,ana-${tag}@example.test`);
+    await page.getByRole('button', { name: 'Check file' }).click();
+    await expect(page.getByRole('alert').filter({ hasText: 'Choose it below' })).toBeVisible();
+    await page.getByLabel('Email', { exact: true }).selectOption({ label: 'Contact' });
+    await page.getByRole('button', { name: 'Check file' }).click();
+    await expect(page.getByRole('status')).toContainText('1 ready to import.', {
+      timeout: 15_000,
+    });
+    await expectNoAxeViolations(page);
+
+    await page.goto('/app/clients/import');
+    await page.getByRole('link', { name: /move your clients and programs/ }).click();
+    await expect(page.getByLabel('Topic')).toHaveValue('migration', { timeout: 30_000 });
+    await page.getByLabel('Message').fill('Moving 40 clients from another app.');
+    await page.getByRole('button', { name: /Send/ }).click();
+    await expect(page.getByText('Thanks, we have your message')).toBeVisible({ timeout: 15_000 });
+  });
 });

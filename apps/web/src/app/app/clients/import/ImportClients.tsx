@@ -6,7 +6,7 @@ import { useId, useState, type ChangeEvent } from 'react';
 import type { ImportResult } from '@kinetic/core';
 import { Button } from '@/components/ui/button';
 import { call } from '@/lib/checkin-api';
-import { parseRoster, type RosterRow } from '@/lib/csv-import';
+import { parseRoster, type ColumnMapping, type RosterRow } from '@/lib/csv-import';
 
 const MAX_ROWS = 500;
 const MAX_FILE_BYTES = 1_048_576;
@@ -30,6 +30,10 @@ export function ImportClients() {
   const [done, setDone] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // PRD M4: the file's headers, and the coach's own choice of column per field.
+  const [headers, setHeaders] = useState<string[]>([]);
+  const [mapping, setMapping] = useState<ColumnMapping>({});
+  const mapId = useId();
 
   function reset() {
     setRows(null);
@@ -46,12 +50,16 @@ export function ImportClients() {
       setError('That file is over 1 MB. Split it into smaller files.');
       return;
     }
+    setHeaders([]);
+    setMapping({});
     setText(await file.text());
   }
 
   async function check() {
     reset();
-    const parsed = parseRoster(text);
+    const parsed = parseRoster(text, mapping);
+    setHeaders(parsed.headers);
+    setColumns(parsed.columns);
     if (parsed.error) {
       setError(parsed.error);
       return;
@@ -120,6 +128,8 @@ export function ImportClients() {
           value={text}
           onChange={(e) => {
             setText(e.target.value);
+            setHeaders([]);
+            setMapping({});
             reset();
           }}
           rows={8}
@@ -127,10 +137,57 @@ export function ImportClients() {
           placeholder={'Name,Email,Goals\nAna Silva,ana@example.com,Run a 10k'}
           className="w-full rounded-control border border-input-border bg-surface p-3 font-mono text-sm"
         />
+        <p className="mt-2 text-sm text-secondary">
+          Exported from another app? Most columns are matched by name.{' '}
+          <a href="/templates/kinetic-clients.csv" download className="text-accent underline">
+            Download a CSV template
+          </a>
+          , or{' '}
+          <Link href="/app/support?topic=migration" className="text-accent underline">
+            ask us to move your clients and programs for you
+          </Link>
+          .
+        </p>
         {error && (
           <p role="alert" className="mt-2 text-danger">
             {error}
           </p>
+        )}
+        {headers.length > 0 && (
+          <fieldset className="mt-4 rounded-card border border-divider p-3">
+            <legend className="px-1 text-sm font-medium">Match your columns</legend>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {(Object.keys(FIELD_LABEL) as (keyof typeof FIELD_LABEL)[]).map((f) => {
+                const current = mapping[f] ?? headers.indexOf(columns[f] ?? '');
+                return (
+                  <div key={f} className="flex flex-col gap-1">
+                    <label htmlFor={`${mapId}-${f}`} className="text-sm">
+                      {FIELD_LABEL[f]}
+                      {f === 'name' || f === 'email' ? '' : ' (optional)'}
+                    </label>
+                    <select
+                      id={`${mapId}-${f}`}
+                      value={mapping[f] === null || current < 0 ? '' : String(current)}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setMapping((m) => ({ ...m, [f]: v === '' ? null : Number(v) }));
+                        setPreview(null);
+                        setRows(null);
+                      }}
+                      className="block min-h-11 rounded-control border border-input-border bg-surface px-3 text-base text-ink"
+                    >
+                      <option value="">Not in this file</option>
+                      {headers.map((h, i) => (
+                        <option key={`${i}-${h}`} value={i}>
+                          {h || `Column ${i + 1}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              })}
+            </div>
+          </fieldset>
         )}
         <div className="mt-4 flex flex-wrap gap-3">
           <Button onClick={check} disabled={busy || text.trim() === ''}>

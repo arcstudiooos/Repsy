@@ -1,9 +1,10 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { SUPPORT_RESPONSE_TARGET } from '@kinetic/core';
 import { SupportForm } from './SupportForm';
 
 /** PRD M13: help, the status page and the changelog in one place. */
-export function SupportPage() {
+export function SupportPage({ coach = false }: { coach?: boolean }) {
   return (
     <>
       <h1 className="mb-2 text-2xl font-semibold md:text-3xl">Help and support</h1>
@@ -18,7 +19,9 @@ export function SupportPage() {
         </Link>
       </p>
       <div className="max-w-2xl">
-        <SupportForm responseTarget={SUPPORT_RESPONSE_TARGET} />
+        <Suspense>
+          <SupportForm responseTarget={SUPPORT_RESPONSE_TARGET} coach={coach} />
+        </Suspense>
       </div>
     </>
   );
