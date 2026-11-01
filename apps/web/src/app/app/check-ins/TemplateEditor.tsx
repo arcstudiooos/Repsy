@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/toast';
 import { call } from '@/lib/checkin-api';
+import { ConditionEditor } from './ConditionEditor';
 import type { ContextField } from '@kinetic/core';
 import { BODY_METRICS, type BodyMetric } from '@kinetic/core/metric-catalog';
 
@@ -229,6 +230,14 @@ export function TemplateEditor({ template }: { template: CheckinTemplateView }) 
                       </p>
                     </div>
                   )}
+                  <ConditionEditor
+                    index={i}
+                    questions={questions}
+                    value={q.showIf}
+                    onChange={(showIf) => update(i, { showIf })}
+                    error={errors[`questions.${i}.showIf`]}
+                    uid={`${uid}-${q.id}`}
+                  />
                   <div className="flex flex-wrap gap-2">
                     <Button
                       variant="secondary"

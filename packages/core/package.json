@@ -36,6 +36,7 @@
     "./readiness": "./src/sessions/readiness-questions.ts",
     "./habit-heatmap": "./src/habits/heatmap.ts",
     "./exercise-media": "./src/exercises/media.ts",
-    "./plates": "./src/sessions/plates.ts"
+    "./plates": "./src/sessions/plates.ts",
+    "./checkin-conditions": "./src/checkins/conditions.ts"
   }
 }

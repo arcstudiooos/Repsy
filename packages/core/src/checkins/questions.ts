@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { DomainError } from '../errors';
 import { isBodyMetric, metricDef, type BodyMetric } from '../progress/metric-catalog';
+import { CONDITION_OPS, OPS_FOR, shownQuestionIds, type QuestionCondition } from './conditions';
 
 /**
  * D-008 #9: the three question types of R1, plus PRD F3 (R2): long text, a number with a unit, single and multiple
@@ -33,6 +34,8 @@ export interface CheckinQuestion {
   metric?: BodyMetric;
   /** Intake forms (PRD B12), text answers: the context card field the answer fills. */
   contextField?: ContextField;
+  /** PRD F11: shown only when an earlier answer matches. */
+  showIf?: QuestionCondition;
 }
 
 /** The client context card fields an intake answer can fill (PRD B12). */
@@ -94,6 +97,13 @@ const question = z
       .optional(),
     metric: z.string().optional(),
     contextField: z.enum(CONTEXT_FIELDS).optional(),
+    showIf: z
+      .object({
+        questionId: z.string().max(40),
+        op: z.enum(CONDITION_OPS),
+        value: z.union([z.number().finite(), z.string().max(OPTION_MAX), z.boolean()]),
+      })
+      .optional(),
   })
   .superRefine((q, ctx) => {
     if (q.type === 'single_choice' || q.type === 'multi_choice') {
@@ -120,13 +130,44 @@ const question = z
     ...((q.type === 'short_text' || q.type === 'long_text') && q.contextField
       ? { contextField: q.contextField }
       : {}),
+    ...(q.showIf ? { showIf: q.showIf } : {}),
   }));
+
+/** PRD F11: a condition names an earlier question, with a comparison and value that fit its type. */
+function checkCondition(
+  qs: { id: string; type: string; options?: string[]; showIf?: QuestionCondition }[],
+  i: number,
+): string | null {
+  const c = qs[i]!.showIf;
+  if (!c) return null;
+  const subject = qs.slice(0, i).find((q) => q.id === c.questionId);
+  if (!subject) return 'Pick an earlier question.';
+  if (!(OPS_FOR[subject.type] ?? []).includes(c.op))
+    return 'That question can’t be compared this way.';
+  switch (subject.type) {
+    case 'yes_no':
+      return typeof c.value === 'boolean' ? null : 'Pick yes or no.';
+    case 'single_choice':
+    case 'multi_choice':
+      return typeof c.value === 'string' && (subject.options ?? []).includes(c.value)
+        ? null
+        : 'Pick one of its options.';
+    default:
+      return typeof c.value === 'number' ? null : 'Enter a number.';
+  }
+}
 
 export const questionsSchema = z
   .array(question)
   .min(1, 'Add at least one question.')
   .max(MAX_QUESTIONS, `Use at most ${MAX_QUESTIONS} questions.`)
-  .refine((qs) => new Set(qs.map((q) => q.id)).size === qs.length, 'Question ids must be unique.');
+  .refine((qs) => new Set(qs.map((q) => q.id)).size === qs.length, 'Question ids must be unique.')
+  .superRefine((qs, ctx) => {
+    qs.forEach((_, i) => {
+      const message = checkCondition(qs, i);
+      if (message) ctx.addIssue({ code: 'custom', path: [i, 'showIf'], message });
+    });
+  });
 
 const fieldErrorsOf = (error: z.ZodError, prefix: string): Record<string, string[]> => {
   const out: Record<string, string[]> = {};
@@ -192,6 +233,9 @@ export function parseAnswers(
   }
   if (Object.keys(errors).length > 0)
     throw new DomainError('VALIDATION', 'Some fields are invalid.', errors);
+  // PRD F11: answers to questions the client wasn't shown are dropped.
+  const shown = shownQuestionIds(questions, out);
+  for (const id of Object.keys(out)) if (!shown.has(id)) delete out[id];
   return out;
 }
 

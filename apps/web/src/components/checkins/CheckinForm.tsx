@@ -8,6 +8,7 @@ import {
   metricToCanonical,
   metricUnit,
 } from '@kinetic/core/metric-catalog';
+import { shownQuestionIds } from '@kinetic/core/checkin-conditions';
 import type { Units } from '@kinetic/core/units';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -353,16 +354,19 @@ export function CheckinForm({
       }}
     >
       <p className="text-secondary">Every question is optional. Your answers save as you go.</p>
-      {checkin.questions.map((q) => (
-        <QuestionField
-          key={q.id}
-          q={q}
-          value={answers[q.id]}
-          error={errors[q.id] || undefined}
-          units={units}
-          onChange={(v) => change(q.id, v)}
-        />
-      ))}
+      {/* PRD F11: a follow-up appears once the answer it depends on matches. */}
+      {checkin.questions
+        .filter((q) => shownQuestionIds(checkin.questions, answers).has(q.id))
+        .map((q) => (
+          <QuestionField
+            key={q.id}
+            q={q}
+            value={answers[q.id]}
+            error={errors[q.id] || undefined}
+            units={units}
+            onChange={(v) => change(q.id, v)}
+          />
+        ))}
       <p role="status" className="min-h-6 text-sm text-secondary">
         {SAVE_LABEL[save]}
       </p>
