@@ -202,6 +202,8 @@ export {
   listMyExports,
   exportFileFor,
   buildExportFiles,
+  contentTypeOf,
+  PORTABLE_FORMAT_VERSION,
   claimExport,
   completeExport,
   failExport,

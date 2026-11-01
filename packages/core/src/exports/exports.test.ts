@@ -4,6 +4,8 @@ import { createTestDb } from '@kinetic/db/testing';
 import { DomainError } from '../errors';
 import { createNote } from '../history/notes';
 import { getMyThread, sendMessage } from '../messages/messages';
+import { createProgramFromImport } from '../programs/import';
+import { getProgram } from '../programs/read';
 import {
   newClientWorld,
   newOrg,
@@ -89,10 +91,12 @@ describe('exports (S5-2)', () => {
       'checkins.csv',
       'clients.csv',
       'exercise_swaps.csv',
+      'exercises.json',
       'goals.csv',
       'habits.csv',
       'metrics.csv',
       'nutrition.csv',
+      'programs.json',
       'sessions.csv',
       'set_logs.csv',
       'workout_notes.csv',
@@ -254,5 +258,40 @@ describe('toCsv', () => {
         ],
       ),
     ).toBe('a,b\r\n"x,y","say ""hi"""\r\n\'=SUM(A1),3\r\n,true\r\n"line\nbreak",-2\r\n');
+  });
+});
+
+describe('portable programs export (PRD M3)', () => {
+  it('programs.json round-trips through the program import', async () => {
+    const w = await newClientWorld(prisma, await newOrg(prisma));
+    const { csv } = await exportFor(w, 'coach');
+    const doc = JSON.parse(csv['programs.json']!) as {
+      format: string;
+      version: number;
+      programs: { title: string; kind: string; weeks: { days: unknown[] }[] }[];
+    };
+    expect(doc).toMatchObject({ format: 'kinetic-programs', version: 1 });
+    expect(doc.programs.map((p) => p.kind).sort()).toEqual(['client', 'template']);
+    const template = doc.programs.find((p) => p.kind === 'template')!;
+    const weeks = template.weeks.map((wk) => ({
+      days: (
+        wk.days as { title: string; exercises: { exerciseId: string; sets: unknown[] }[] }[]
+      ).map((d) => ({
+        title: d.title,
+        exercises: d.exercises.map((e) => ({ exerciseId: e.exerciseId, sets: e.sets })),
+      })),
+    }));
+    const { id } = await runAs(prisma, w.coach, (tx) =>
+      createProgramFromImport(tx, w.coach, {
+        title: `${template.title} (copy)`,
+        weeks: weeks as never,
+      }),
+    );
+    const copy = await runAs(prisma, w.coach, (tx) => getProgram(tx, w.coach, id));
+    expect(copy.weekCount).toBe(template.weeks.length);
+    expect(JSON.parse(csv['exercises.json']!)).toMatchObject({
+      format: 'kinetic-exercises',
+      exercises: [],
+    });
   });
 });

@@ -1,6 +1,12 @@
 import { join } from 'node:path';
 import { z } from 'zod';
-import { exportFileFor, listMyExports, requestExport, DomainError } from '@kinetic/core';
+import {
+  contentTypeOf,
+  exportFileFor,
+  listMyExports,
+  requestExport,
+  DomainError,
+} from '@kinetic/core';
 import { createStorage, type StoragePort } from '@kinetic/storage';
 import { ApiResult, type RouteDef } from '../api';
 import { signExportLink, verifyExportLink } from '../exportLinks';
@@ -99,7 +105,7 @@ export const exportFileRoute: RouteDef<typeof fileSchema, true> = {
     return new Response(new Uint8Array(body), {
       status: 200,
       headers: {
-        'content-type': 'text/csv; charset=utf-8',
+        'content-type': contentTypeOf(file.name),
         'content-disposition': `attachment; filename="${file.name}"`,
         'cache-control': 'no-store',
       },

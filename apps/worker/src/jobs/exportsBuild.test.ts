@@ -53,10 +53,12 @@ describe('buildExports', () => {
       'checkins.csv',
       'clients.csv',
       'exercise_swaps.csv',
+      'exercises.json',
       'goals.csv',
       'habits.csv',
       'metrics.csv',
       'nutrition.csv',
+      'programs.json',
       'sessions.csv',
       'set_logs.csv',
       'workout_notes.csv',
@@ -100,7 +102,7 @@ describe('purgeExpiredExports (PR #2 review D-I4)', () => {
     // Later than the other tests' exports, which this first purge removes.
     const built = new Date('2027-01-04T12:00:00Z');
     await buildExports(prisma, storage, built);
-    expect(await readdir(join(dir, 'exports', orgId, jobId, 'a1'))).toHaveLength(10);
+    expect(await readdir(join(dir, 'exports', orgId, jobId, 'a1'))).toHaveLength(12);
     await purgeExpiredExports(prisma, storage, built);
 
     // Not expired yet: nothing happens.

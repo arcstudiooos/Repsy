@@ -7,6 +7,7 @@ import { fromDbDate } from '../sessions/read';
 import { isUuid } from '../uuid';
 import { toCsv, type CsvValue } from './csv';
 import { canonicalUnit, metricDef } from '../progress/metric-catalog';
+import { getProgram } from '../programs/read';
 
 const DAY_MS = 86_400_000;
 /** Downloads are offered for this long after an export is built. */
@@ -508,6 +509,95 @@ const CHECKIN_HEADER = [
  * The CSVs of one export (Ruling 3). Organization: clients, sessions, set logs, check-ins, body metrics, habits. Client:
  * their profile, sessions, set logs, check-ins, body metrics, habits and their own conversation. Internal notes are never exported to a client.
  */
+/** The stored and downloaded type of an export file, by its extension. */
+export const contentTypeOf = (name: string) =>
+  name.endsWith('.json') ? 'application/json; charset=utf-8' : 'text/csv; charset=utf-8';
+
+/** Version of the documented JSON export formats (docs/exports.md, PRD M3). */
+export const PORTABLE_FORMAT_VERSION = 1;
+
+/**
+ * Every program (templates and client copies) at its current version, as JSON (PRD M3). Each program's `weeks`
+ * has the shape `POST /api/v1/programs/import` takes, so it re-imports into Kinetic; exercise names come alongside
+ * ids so another tool can map them.
+ */
+async function programsJson(
+  tx: TenantTx,
+  requestedBy: string,
+): Promise<{ json: string; rows: number }> {
+  const org = await tx.organization.findFirst({ select: { id: true } });
+  const actor: ActorContext = {
+    userId: requestedBy,
+    orgId: org?.id ?? '',
+    role: 'owner',
+    isPlatformAdmin: false,
+  };
+  const rows = await tx.program.findMany({
+    orderBy: [{ kind: 'asc' }, { createdAt: 'asc' }],
+    select: { id: true, clientId: true, status: true, createdAt: true },
+  });
+  const programs = [];
+  for (const r of rows) {
+    const p = await getProgram(tx, actor, r.id);
+    programs.push({
+      id: p.id,
+      title: p.title,
+      kind: p.kind,
+      clientId: r.clientId,
+      status: r.status,
+      versionNo: p.versionNo,
+      createdAt: r.createdAt.toISOString(),
+      weeks: p.weeks.map((w) => ({
+        days: w.days.map((d) => ({
+          title: d.title,
+          ...(d.notes ? { notes: d.notes } : {}),
+          exercises: d.exercises.map((e) => ({
+            exerciseId: e.exerciseId,
+            exerciseName: e.exerciseName,
+            trackingType: e.trackingType,
+            ...(e.note ? { note: e.note } : {}),
+            sets: e.sets,
+          })),
+        })),
+      })),
+    });
+  }
+  return {
+    json: JSON.stringify(
+      { format: 'kinetic-programs', version: PORTABLE_FORMAT_VERSION, programs },
+      null,
+      2,
+    ),
+    rows: programs.length,
+  };
+}
+
+/** The workspace's own (custom) exercises as JSON (PRD M3); catalog exercises are the same everywhere. */
+async function exercisesJson(tx: TenantTx): Promise<{ json: string; rows: number }> {
+  const rows = await tx.exercise.findMany({
+    where: { organizationId: { not: null } },
+    orderBy: [{ name: 'asc' }, { id: 'asc' }],
+    select: {
+      id: true,
+      name: true,
+      equipment: true,
+      muscleGroup: true,
+      movementType: true,
+      trackingType: true,
+      instructions: true,
+      mediaUrl: true,
+    },
+  });
+  return {
+    json: JSON.stringify(
+      { format: 'kinetic-exercises', version: PORTABLE_FORMAT_VERSION, exercises: rows },
+      null,
+      2,
+    ),
+    rows: rows.length,
+  };
+}
+
 export async function buildExportFiles(
   tx: TenantTx,
   job: { scope: ExportScope; clientId: string | null; requestedBy: string },
@@ -532,7 +622,11 @@ export async function buildExportFiles(
       },
     });
     const { sessions, sets } = await sessionRows(tx);
+    const programs = await programsJson(tx, job.requestedBy);
+    const exercises = await exercisesJson(tx);
     return [
+      { name: 'programs.json', csv: programs.json, rows: programs.rows },
+      { name: 'exercises.json', csv: exercises.json, rows: exercises.rows },
       file(
         'clients.csv',
         [
@@ -705,7 +799,7 @@ export async function completeExport(
     const recorded: ExportFile[] = [];
     for (const f of files) {
       const key = `${prefix}/${f.name}`;
-      await storage.put(key, f.csv, 'text/csv; charset=utf-8');
+      await storage.put(key, f.csv, contentTypeOf(f.name));
       written.push(key);
       recorded.push({ name: f.name, key, rows: f.rows });
     }
