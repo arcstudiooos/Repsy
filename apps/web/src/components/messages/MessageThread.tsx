@@ -63,6 +63,35 @@ export function MessageThread({
   const [error, setError] = useState<string | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [about, setAbout] = useState<MessageAnchor | null>(initialAnchor);
+  // PRD H2: an uploaded photo or PDF waiting to be sent.
+  const [file, setFile] = useState<{ id: string; name: string } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  async function attach(f: File) {
+    setUploading(true);
+    setError(null);
+    const qs = new URLSearchParams({
+      purpose: 'message',
+      ...(links?.mode === 'coach' ? { clientId: links.clientId } : {}),
+    });
+    const res = await fetch(`/api/v1/media?${qs}`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'content-type': 'application/octet-stream' },
+      body: f,
+    }).catch(() => null);
+    const json = (await res?.json().catch(() => null)) as {
+      data?: { id: string };
+      error?: { message?: string; fieldErrors?: Record<string, string[]> };
+    } | null;
+    setUploading(false);
+    if (res?.ok && json?.data) setFile({ id: json.data.id, name: f.name });
+    else
+      setError(
+        json?.error?.fieldErrors?.file?.[0] ??
+          json?.error?.message ??
+          "The file couldn't be attached.",
+      );
+  }
   const hrefOf = (a: MessageAnchor): string | null => {
     if (!links) return null;
     if (links.mode === 'portal') {
@@ -110,7 +139,7 @@ export function MessageThread({
 
   async function send() {
     const text = body.trim();
-    if (!text) {
+    if (!text && !file) {
       setError('Write a message.');
       return;
     }
@@ -122,12 +151,14 @@ export function MessageThread({
       text,
       key,
       about ? { type: about.type, id: about.id } : undefined,
+      file?.id,
     );
     setSending(false);
     if (res.ok) {
       setMessages((m) => merge(m, [res.data]));
       setBody('');
       setAbout(null);
+      setFile(null);
       setKey(crypto.randomUUID());
       requestAnimationFrame(() => bottom.current?.scrollIntoView({ block: 'end' }));
     } else {
@@ -165,6 +196,7 @@ export function MessageThread({
                 {m.anchor && <AnchorChip anchor={m.anchor} href={hrefOf(m.anchor)} />}
                 <span className="sr-only">{m.mine ? 'You' : m.senderName}: </span>
                 {m.body}
+                {m.attachment && <Attachment a={m.attachment} />}
               </div>
               <p className="text-xs text-secondary">
                 {m.mine ? 'You' : m.senderName} ·{' '}
@@ -209,6 +241,36 @@ export function MessageThread({
                   </option>
                 ))}
               </select>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-accent underline has-focus-visible:outline-2 has-focus-visible:outline-accent">
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                className="sr-only"
+                disabled={uploading}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = '';
+                  if (f) void attach(f);
+                }}
+              />
+              {uploading ? 'Attaching…' : 'Attach a photo or PDF'}
+            </label>
+            {file && (
+              <>
+                <span className="font-medium break-all">Attached: {file.name}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  aria-label={`Remove attachment ${file.name}`}
+                  onClick={() => setFile(null)}
+                >
+                  Remove
+                </Button>
+              </>
             )}
           </div>
           {about && (
@@ -273,5 +335,23 @@ function AnchorChip({ anchor, href }: { anchor: MessageAnchor; href: string | nu
         <span className={cls}>Re: {anchor.label}</span>
       )}
     </span>
+  );
+}
+
+/** PRD H2: a photo shows inline (opens full size); a PDF is a download link. */
+function Attachment({ a }: { a: { mediaId: string; contentType: string } }) {
+  const href = `/api/v1/media/${a.mediaId}`;
+  if (a.contentType === 'application/pdf') {
+    return (
+      <a href={href} className="mt-1 block text-accent underline">
+        PDF attachment
+      </a>
+    );
+  }
+  return (
+    <a href={href} target="_blank" rel="noopener" className="mt-1 block">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={href} alt="Photo attachment" loading="lazy" className="max-h-64 rounded-control" />
+    </a>
   );
 }

@@ -49,6 +49,8 @@ const sendSchema = z.object({
   clientMessageId: z.string().max(64).optional(),
   // PRD H3: validated against the thread's client by core.
   anchor: z.object({ type: z.string().max(16), id: z.string().max(64) }).optional(),
+  // PRD H2: an uploaded file (purpose message) for this thread's client.
+  attachmentMediaId: z.string().max(64).optional(),
 });
 
 /** `POST /api/v1/threads/:id/messages`. Idempotent on `clientMessageId`. */

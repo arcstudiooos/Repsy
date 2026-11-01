@@ -1,4 +1,5 @@
 import { anchorOf, resolveAnchor, type MessageAnchor } from './anchors';
+import { ownMedia } from '../media/media';
 import { appendAudit, wantsMessageEmail, type TenantTx } from '@kinetic/db';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
@@ -27,6 +28,8 @@ export interface MessageView {
   readAt: string | null;
   /** PRD H3: the workout or check-in it is about, if any. */
   anchor?: MessageAnchor | null;
+  /** PRD H2: an image or PDF sent with it. */
+  attachment?: { mediaId: string; contentType: string } | null;
 }
 
 export interface ThreadSummary {
@@ -239,6 +242,7 @@ export async function listMessages(
       anchorType: true,
       anchorId: true,
       anchorLabel: true,
+      attachment: { select: { id: true, contentType: true } },
       sender: { select: { name: true } },
     },
   });
@@ -255,6 +259,7 @@ export async function listMessages(
       createdAt: m.createdAt.toISOString(),
       readAt: m.readAt?.toISOString() ?? null,
       anchor: anchorOf(m),
+      attachment: attachmentOf(m.attachment),
     })),
     nextCursor: rows.length > MESSAGE_PAGE_SIZE && last ? encode(last) : null,
   };
@@ -276,7 +281,12 @@ export async function sendMessage(
   actor: ActorContext,
   threadId: string,
   /** `anchor` (PRD H3): `{ type: 'session' | 'checkin', id }` of this thread's client. */
-  input: { body?: unknown; clientMessageId?: unknown; anchor?: unknown },
+  input: {
+    body?: unknown;
+    clientMessageId?: unknown;
+    anchor?: unknown;
+    attachmentMediaId?: unknown;
+  },
   opts: { now?: Date; requestId?: string; onSent?: MessageSentHook } = {},
 ): Promise<MessageView> {
   assertCan(actor, 'message:send');
@@ -285,7 +295,9 @@ export async function sendMessage(
     throw new DomainError('CONFLICT', 'This conversation is closed.');
   }
   const body = typeof input.body === 'string' ? input.body.trim() : '';
-  if (body.length < 1) throw invalid('body', 'Write a message.');
+  const attaching = input.attachmentMediaId !== undefined && input.attachmentMediaId !== null;
+  // PRD H2: a photo or PDF may go on its own.
+  if (body.length < 1 && !attaching) throw invalid('body', 'Write a message.');
   if (body.length > MESSAGE_MAX) throw invalid('body', `Use at most ${MESSAGE_MAX} characters.`);
   const key = input.clientMessageId;
   if (key !== undefined && (typeof key !== 'string' || !isUuid(key))) {
@@ -311,6 +323,7 @@ export async function sendMessage(
     anchorType: true,
     anchorId: true,
     anchorLabel: true,
+    attachment: { select: { id: true, contentType: true } },
     sender: { select: { name: true } },
   } as const;
   if (typeof key === 'string') {
@@ -326,6 +339,7 @@ export async function sendMessage(
         createdAt: existing.createdAt.toISOString(),
         readAt: existing.readAt?.toISOString() ?? null,
         anchor: anchorOf(existing),
+        attachment: attachmentOf(existing.attachment),
       };
     }
   }
@@ -336,6 +350,17 @@ export async function sendMessage(
     clientMessageId: typeof key === 'string' ? key : null,
     createdAt: now,
     ...(anchor ? { anchorType: anchor.type, anchorId: anchor.id, anchorLabel: anchor.label } : {}),
+    ...(attaching
+      ? {
+          attachmentMediaId: await ownMedia(
+            tx,
+            actor,
+            input.attachmentMediaId,
+            'message',
+            thread.clientId,
+          ),
+        }
+      : {}),
   };
   let row;
   if (typeof key === 'string') {
@@ -354,6 +379,7 @@ export async function sendMessage(
         createdAt: row.createdAt.toISOString(),
         readAt: row.readAt?.toISOString() ?? null,
         anchor: anchorOf(row),
+        attachment: attachmentOf(row.attachment),
       };
     }
   } else {
@@ -397,6 +423,7 @@ export async function sendMessage(
     createdAt: row.createdAt.toISOString(),
     readAt: null,
     anchor: anchorOf(row),
+    attachment: attachmentOf(row.attachment),
   };
 }
 
@@ -454,3 +481,6 @@ export async function searchMessages(
     createdAt: m.createdAt.toISOString(),
   }));
 }
+
+const attachmentOf = (a: { id: string; contentType: string } | null | undefined) =>
+  a ? { mediaId: a.id, contentType: a.contentType } : null;

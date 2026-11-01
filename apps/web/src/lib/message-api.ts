@@ -37,9 +37,11 @@ export const postMessage = (
   body: string,
   clientMessageId: string,
   anchor?: { type: string; id: string },
+  attachmentMediaId?: string,
 ) =>
   call<MessageView>('POST', `/api/v1/threads/${enc(threadId)}/messages`, {
     body,
     clientMessageId,
     ...(anchor ? { anchor } : {}),
+    ...(attachmentMediaId ? { attachmentMediaId } : {}),
   });
