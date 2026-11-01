@@ -27,7 +27,7 @@ export async function redeemPilotCodeAction(
   const fieldErrors: Record<string, string> = {};
   if (!orgName) fieldErrors.orgName = 'Enter your business name.';
   if (!validTimezone(timezone)) fieldErrors.timezone = 'Choose a valid time zone.';
-  if (!pilotCode) fieldErrors.pilotCode = 'Enter your pilot code.';
+  // PRD A4: no code starts a trial.
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
 
   try {

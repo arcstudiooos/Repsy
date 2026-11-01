@@ -32,7 +32,13 @@ export function SignupForm() {
           hint="For example Europe/London."
           error={errors.timezone}
         />
-        <Field label="Pilot code" name="pilotCode" error={errors.pilotCode} />
+        <Field
+          label="Pilot code (optional)"
+          name="pilotCode"
+          required={false}
+          hint="No code? You get a free 14-day trial for up to 3 clients."
+          error={errors.pilotCode}
+        />
         <button type="submit" className={buttonClass} disabled={pending}>
           {pending ? 'Creating account' : 'Create account'}
         </button>

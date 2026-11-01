@@ -29,8 +29,9 @@ export function Field(props: {
   defaultValue?: string;
   minLength?: number;
   inputMode?: 'numeric' | 'text';
+  required?: boolean;
 }) {
-  const { label, name, error, hint, ...rest } = props;
+  const { label, name, error, hint, required = true, ...rest } = props;
   const describedBy = [hint && `${name}-hint`, error && `${name}-error`].filter(Boolean).join(' ');
   return (
     <div className="mb-4">
@@ -40,7 +41,7 @@ export function Field(props: {
       <input
         id={name}
         name={name}
-        required
+        required={required}
         className={inputClass}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy || undefined}

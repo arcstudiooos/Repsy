@@ -88,7 +88,7 @@ export async function registerCoach(
   if (!email) fieldErrors.email = 'Enter your email.';
   if (!orgName) fieldErrors.orgName = 'Enter your business name.';
   if (!validTimezone(timezone)) fieldErrors.timezone = 'Choose a valid time zone.';
-  if (!pilotCode) fieldErrors.pilotCode = 'Enter your pilot code.';
+  // PRD A4: no code is a self-serve trial.
   if (Object.keys(fieldErrors).length > 0) return { ok: false, fieldErrors };
 
   try {
@@ -98,7 +98,7 @@ export async function registerCoach(
     throw error;
   }
 
-  if (!(await pilotCodeUsable(prisma, pilotCode))) {
+  if (pilotCode && !(await pilotCodeUsable(prisma, pilotCode))) {
     return { ok: false, fieldErrors: { pilotCode: CODE_INVALID } };
   }
 

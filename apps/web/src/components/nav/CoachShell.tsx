@@ -34,8 +34,40 @@ async function MembershipGate({
       <Suspense fallback={null}>
         <TwoFactorRequiredBanner />
       </Suspense>
+      <Suspense fallback={null}>
+        <TrialBanner />
+      </Suspense>
       {children}
     </>
+  );
+}
+
+/** PRD A4: days left in a self-serve trial, or that it ended (clients and data are kept). */
+async function TrialBanner() {
+  const org = await withServerTenant((tx, actor) =>
+    tx.organization.findFirst({
+      where: { id: actor.orgId },
+      select: { trialEndsAt: true, activeClientLimit: true },
+    }),
+  ).catch(() => null);
+  if (!org?.trialEndsAt) return null;
+  const left = Math.ceil((org.trialEndsAt.getTime() - Date.now()) / 86_400_000);
+  return (
+    <div role="status" className="mb-6 rounded-card bg-surface p-4 shadow-card ring-1 ring-accent">
+      <p className="font-medium">
+        {left > 0
+          ? `Free trial: ${left} ${left === 1 ? 'day' : 'days'} left`
+          : 'Your free trial has ended'}
+      </p>
+      <p className="text-sm text-secondary">
+        {left > 0
+          ? `Up to ${org.activeClientLimit} active clients during the trial.`
+          : 'Your clients and data are kept. Adding new clients needs a plan.'}{' '}
+        <Link href="/plan" className="text-accent underline">
+          See the plan
+        </Link>
+      </p>
+    </div>
   );
 }
 

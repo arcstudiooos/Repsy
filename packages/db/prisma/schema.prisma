@@ -194,6 +194,8 @@ model Organization {
   ownerUserId       String   @map("owner_user_id") @db.Uuid
   graceHours        Int      @default(24) @map("grace_hours")
   activeClientLimit Int      @default(30) @map("active_client_limit")
+  /// PRD A4: set only for plan "trial" (CHECK in migration 000061).
+  trialEndsAt       DateTime? @map("trial_ends_at") @db.Timestamptz(3)
   /// Reply expectations shown to clients (PRD H16): usual reply time in hours and office hours, both optional.
   replyTargetHours  Int?     @map("reply_target_hours")
   officeHours       String?  @map("office_hours")

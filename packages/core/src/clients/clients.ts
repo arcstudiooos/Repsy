@@ -124,7 +124,7 @@ export function lockOrganization(tx: TenantTx, actor: ActorContext) {
   return tx.organization.update({
     where: { id: actor.orgId },
     data: { updatedAt: new Date() },
-    select: { timezone: true, activeClientLimit: true },
+    select: { timezone: true, activeClientLimit: true, trialEndsAt: true },
   });
 }
 
@@ -190,6 +190,13 @@ export async function createClient(
   const goals = cleanGoals(input.goals);
 
   const org = await lockOrganization(tx, actor);
+  // PRD A4: an ended trial keeps its clients but takes no new ones.
+  if (org.trialEndsAt && org.trialEndsAt <= new Date()) {
+    throw new DomainError(
+      'TRIAL_ENDED',
+      'Your free trial has ended. Your clients and data are kept; contact us to continue.',
+    );
+  }
   await assertUnderLimit(tx, org.activeClientLimit);
   if (await tx.client.findFirst({ where: { email }, select: { id: true } })) {
     throw new DomainError('EMAIL_TAKEN', 'A client with this email already exists.');

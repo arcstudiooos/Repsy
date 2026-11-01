@@ -16,7 +16,13 @@ export function PilotCodeForm() {
       </p>
       <form action={action}>
         {errors.form && <FormMessage tone="error">{errors.form}</FormMessage>}
-        <Field label="Pilot code" name="pilotCode" error={errors.pilotCode} />
+        <Field
+          label="Pilot code (optional)"
+          name="pilotCode"
+          required={false}
+          hint="No code? You get a free 14-day trial for up to 3 clients."
+          error={errors.pilotCode}
+        />
         <Field label="Business name" name="orgName" error={errors.orgName} />
         <Field
           label="Time zone"

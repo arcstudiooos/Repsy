@@ -29,7 +29,12 @@ export {
 } from './authz/actor';
 export { can, assertCan, type Action } from './authz/policies';
 export { enforceAttemptLimit, ATTEMPT_LIMIT, ATTEMPT_WINDOW_MS } from './identity/rateLimit';
-export { signupCoach, type SignupCoachInput } from './identity/signupCoach';
+export {
+  signupCoach,
+  TRIAL_CLIENT_LIMIT,
+  TRIAL_DAYS,
+  type SignupCoachInput,
+} from './identity/signupCoach';
 export { generatePilotCode, hashPilotCode, normalizePilotCode } from './identity/pilotCode';
 export { createLogger, logger, type Logger } from './log';
 export { UUID, isUuid } from './uuid';

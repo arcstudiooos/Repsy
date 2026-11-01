@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { withSystem, type PrismaClient } from '@kinetic/db';
+import { withSystem, withTenant, type PrismaClient } from '@kinetic/db';
+import { createClient } from '../clients/clients';
 import { createTestDb } from '@kinetic/db/testing';
 import { DomainError } from '../errors';
 import { hashPilotCode } from './pilotCode';
@@ -112,5 +113,48 @@ describe('signupCoach', () => {
 
   it('a code cannot be redeemed twice', async () => {
     await expect(signup('GOOD-CODE')).rejects.toMatchObject({ code: 'PILOT_CODE_INVALID' });
+  });
+});
+
+describe('self-serve trial (PRD A4)', () => {
+  it('a blank code makes a 14-day trial for 3 clients; an ended trial takes no new clients', async () => {
+    const user = await withSystem(
+      (tx) => tx.user.create({ data: { email: 'trial@example.test', name: 'T' } }),
+      prisma,
+    );
+    const { orgId } = await withSystem(
+      (tx) =>
+        signupCoach(tx, {
+          userId: user.id,
+          pilotCode: '',
+          orgName: 'Trial Gym',
+          timezone: 'Europe/London',
+        }),
+      prisma,
+    );
+    const org = await withSystem(
+      (tx) => tx.organization.findUniqueOrThrow({ where: { id: orgId } }),
+      prisma,
+    );
+    expect(org).toMatchObject({ plan: 'trial', activeClientLimit: 3 });
+    const days = (org.trialEndsAt!.getTime() - Date.now()) / day;
+    expect(days).toBeGreaterThan(13.9);
+    expect(days).toBeLessThanOrEqual(14);
+
+    const coach = { userId: user.id, orgId, role: 'owner' as const, isPlatformAdmin: false };
+    const add = (email: string) =>
+      withTenant(orgId, (tx) => createClient(tx, coach, { name: 'C', email }), prisma, {
+        userId: user.id,
+      });
+    await add('one@example.test');
+    await withSystem(
+      (tx) =>
+        tx.organization.update({
+          where: { id: orgId },
+          data: { trialEndsAt: new Date(Date.now() - 1000) },
+        }),
+      prisma,
+    );
+    await expect(add('two@example.test')).rejects.toMatchObject({ code: 'TRIAL_ENDED' });
   });
 });
