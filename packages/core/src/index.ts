@@ -586,6 +586,12 @@ export {
 export { equipmentGuideFor, type EquipmentGuide } from './exercises/equipmentGuide';
 export { setExerciseDemo } from './exercises/demo';
 export {
+  getTrainingLoad,
+  TRAINING_LOAD_WEEKS,
+  type TrainingLoad,
+  type TrainingLoadWeek,
+} from './progress/trainingLoad';
+export {
   deletePushSubscription,
   deliverPushes,
   enqueuePush,

@@ -49,6 +49,10 @@ test.describe('progress: body metrics, personal records, exercise history (PRD E
       await expect(row.getByText('66.7 kg')).toBeVisible();
       await expect(row.getByText('estimated 1RM')).toBeVisible();
       await expect(row.getByText('50 kg × 10')).toBeVisible();
+      // PRD E8: this week's load: 1 workout, 1 set, 500 kg.
+      const weeks = page.getByRole('table', { name: 'By week (last 8)' });
+      await expect(weeks.getByRole('row').nth(1)).toContainText(/1\s*1\s*500/);
+      await expect(page.getByRole('table', { name: /Sets by muscle group/ })).toContainText('1');
       await expectNoAxeViolations(page);
 
       // Client: the same record, then the exercise's history.

@@ -76,7 +76,7 @@ const round1 = (n: number) => Math.round(n * 10) / 10;
  * The client whose progress the actor may read: a client reads only their own record; a coach reads any client in
  * their organization (the tenant scope hides other organizations, which reads as NOT_FOUND).
  */
-async function resolveClientId(
+export async function resolveClientId(
   tx: TenantTx,
   actor: ActorContext,
   clientId: string,

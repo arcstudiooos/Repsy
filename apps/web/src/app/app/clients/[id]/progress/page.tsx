@@ -8,10 +8,12 @@ import {
   listMetrics,
   todayInZone,
   listProgressPhotos,
+  getTrainingLoad,
 } from '@kinetic/core';
 import { MetricsPanel } from '@/components/progress/MetricsPanel';
 import { ExerciseProgress, RecordsList } from '@/components/progress/Progress';
 import { ProgressPhotos } from '@/components/progress/ProgressPhotos';
+import { TrainingLoad } from '@/components/progress/TrainingLoad';
 import { withServerTenant } from '@/server/serverActor';
 import { loadClient } from '../data';
 
@@ -38,6 +40,7 @@ export default async function ClientProgressPage({
     data = await withServerTenant(async (tx, actor) => ({
       metrics: exerciseId === undefined ? await listMetrics(tx, actor, client.id) : null,
       records: await getPersonalRecords(tx, actor, client.id),
+      load: exerciseId === undefined ? await getTrainingLoad(tx, actor, client.id) : null,
       photos: exerciseId === undefined ? await listProgressPhotos(tx, actor, client.id) : [],
       history:
         exerciseId !== undefined
@@ -48,7 +51,7 @@ export default async function ClientProgressPage({
     if (error instanceof DomainError && error.code === 'NOT_FOUND') notFound();
     throw error;
   }
-  const { metrics, records, history, photos } = data;
+  const { metrics, records, history, photos, load } = data;
 
   if (history) {
     return (
@@ -68,6 +71,7 @@ export default async function ClientProgressPage({
   return (
     <div className="flex flex-col gap-8">
       {metrics && <MetricsPanel clientId={client.id} view={metrics} isCoach />}
+      {load && <TrainingLoad load={load} units={units} />}
       <ProgressPhotos
         clientId={client.id}
         photos={photos}

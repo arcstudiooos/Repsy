@@ -9,11 +9,13 @@ import {
   listMetrics,
   todayInZone,
   listProgressPhotos,
+  getTrainingLoad,
 } from '@kinetic/core';
 import { GoalsPanel } from '@/components/goals/GoalsPanel';
 import { MetricsPanel } from '@/components/progress/MetricsPanel';
 import { ExerciseProgress, RecordsList } from '@/components/progress/Progress';
 import { ProgressPhotos } from '@/components/progress/ProgressPhotos';
+import { TrainingLoad } from '@/components/progress/TrainingLoad';
 import { withPortalTenant } from '@/server/serverActor';
 
 export const metadata: Metadata = { title: 'Progress | Kinetic' };
@@ -43,6 +45,7 @@ export default async function PortalProgressPage({
         metrics: exerciseId === undefined ? await listMetrics(tx, actor, clientId) : null,
         goals: exerciseId === undefined ? await listGoals(tx, actor, clientId) : [],
         records: await getPersonalRecords(tx, actor, clientId),
+        load: exerciseId === undefined ? await getTrainingLoad(tx, actor, clientId) : null,
         photos: exerciseId === undefined ? await listProgressPhotos(tx, actor) : [],
         history:
           exerciseId !== undefined
@@ -54,7 +57,7 @@ export default async function PortalProgressPage({
     if (error instanceof DomainError && error.code === 'NOT_FOUND') notFound();
     throw error;
   }
-  const { clientId, units, today, metrics, goals, records, history, photos } = data;
+  const { clientId, units, today, metrics, goals, records, history, photos, load } = data;
 
   return (
     <>
@@ -75,6 +78,7 @@ export default async function PortalProgressPage({
             <GoalsPanel clientId={clientId} goals={goals} units={units} canEdit={false} />
           )}
           {metrics && <MetricsPanel clientId={clientId} view={metrics} isCoach={false} />}
+          {load && <TrainingLoad load={load} units={units} />}
           <ProgressPhotos clientId={null} photos={photos} today={today} />
           <section aria-labelledby="records-heading" className="flex flex-col gap-4">
             <h2 id="records-heading" className="text-lg font-semibold">
