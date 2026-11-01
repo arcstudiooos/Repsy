@@ -30,6 +30,8 @@ export interface ClientView {
   checkinWeekday: number | null;
   /** PRD F4: every 1, 2 or 4 weeks. */
   checkinEveryWeeks: number;
+  /** PRD F2: the client's recurring template; null = the default. */
+  checkinTemplateId: string | null;
   createdAt: string;
 }
 
@@ -44,6 +46,7 @@ interface ClientRow {
   preferredUnits: 'kg' | 'lb';
   checkinWeekday: number | null;
   checkinEveryWeeks: number;
+  checkinTemplateId: string | null;
   createdAt: Date;
 }
 
@@ -90,6 +93,7 @@ export function toClientView(
     pause: pause ? toPauseView(pause) : null,
     checkinWeekday: row.checkinWeekday,
     checkinEveryWeeks: row.checkinEveryWeeks,
+    checkinTemplateId: row.checkinTemplateId,
     createdAt: row.createdAt.toISOString(),
   };
 }

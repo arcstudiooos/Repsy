@@ -315,9 +315,9 @@ export async function issueCheckinNow(clientName: string): Promise<string> {
          SELECT gen_random_uuid(), c.organization_id, c.id, t.id,
                 (now() AT TIME ZONE c.timezone)::date, t.questions_json,
                 now(), now() + interval '12 hours', now()
-           FROM clients c JOIN checkin_templates t ON t.organization_id = c.organization_id
+           FROM clients c JOIN checkin_templates t ON t.organization_id = c.organization_id AND t.is_default
           WHERE c.name = $1
-         ON CONFLICT (client_id, period_local_date) DO NOTHING
+         ON CONFLICT (client_id, period_local_date) WHERE kind = 'checkin' DO NOTHING
          RETURNING id
        )
        SELECT id FROM issued
@@ -389,7 +389,7 @@ export async function seedSentCheckin(
               gen_random_uuid()::text,
               now() - make_interval(days => $2::int), now() - make_interval(days => $2::int) + interval '12 hours',
               now() - make_interval(days => $2::int) + interval '1 hour', now()
-         FROM clients c JOIN checkin_templates t ON t.organization_id = c.organization_id
+         FROM clients c JOIN checkin_templates t ON t.organization_id = c.organization_id AND t.is_default
         WHERE c.name = $1
        RETURNING id`,
       [clientName, daysAgo, scale],

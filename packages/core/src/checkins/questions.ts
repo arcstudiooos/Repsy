@@ -31,7 +31,19 @@ export interface CheckinQuestion {
   options?: string[];
   /** `metric`: the E1 body metric the answer records (weight, waist...). */
   metric?: BodyMetric;
+  /** Intake forms (PRD B12), text answers: the context card field the answer fills. */
+  contextField?: ContextField;
 }
+
+/** The client context card fields an intake answer can fill (PRD B12). */
+export const CONTEXT_FIELDS = [
+  'goals',
+  'motivation',
+  'scheduleNotes',
+  'equipmentNotes',
+  'preferences',
+] as const;
+export type ContextField = (typeof CONTEXT_FIELDS)[number];
 
 /** `multi_choice` answers are the chosen options; `metric` answers are in canonical units (kg, cm...). */
 export type CheckinAnswer = number | string | boolean | string[];
@@ -81,6 +93,7 @@ const question = z
       .max(OPTIONS_MAX, `Use at most ${OPTIONS_MAX} options.`)
       .optional(),
     metric: z.string().optional(),
+    contextField: z.enum(CONTEXT_FIELDS).optional(),
   })
   .superRefine((q, ctx) => {
     if (q.type === 'single_choice' || q.type === 'multi_choice') {
@@ -104,6 +117,9 @@ const question = z
     ...(q.type === 'number' && q.unit ? { unit: q.unit } : {}),
     ...(q.type === 'single_choice' || q.type === 'multi_choice' ? { options: q.options } : {}),
     ...(q.type === 'metric' ? { metric: q.metric as BodyMetric } : {}),
+    ...((q.type === 'short_text' || q.type === 'long_text') && q.contextField
+      ? { contextField: q.contextField }
+      : {}),
   }));
 
 export const questionsSchema = z
@@ -121,7 +137,8 @@ const fieldErrorsOf = (error: z.ZodError, prefix: string): Record<string, string
   return out;
 };
 
-export function parseQuestions(input: unknown): CheckinQuestion[] {
+/** `kind` other than intake drops context fields (only intake answers fill the context card). */
+export function parseQuestions(input: unknown, kind: string = 'checkin'): CheckinQuestion[] {
   const res = questionsSchema.safeParse(input);
   if (!res.success) {
     throw new DomainError(
@@ -130,7 +147,13 @@ export function parseQuestions(input: unknown): CheckinQuestion[] {
       fieldErrorsOf(res.error, 'questions'),
     );
   }
-  return res.data as CheckinQuestion[];
+  const qs = res.data as CheckinQuestion[];
+  if (kind === 'intake') return qs;
+  return qs.map((q) => {
+    const rest = { ...q };
+    delete rest.contextField;
+    return rest;
+  });
 }
 
 /** Reads a stored question list leniently (a malformed row yields no questions rather than a crash). */

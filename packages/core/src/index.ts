@@ -603,3 +603,14 @@ export {
   JOIN_LINK_MAX_USES,
   type JoinLinkView,
 } from './invites/joinLinks';
+export {
+  createCheckinTemplate,
+  getCheckinTemplateById,
+  listCheckinTemplates,
+  sendForm,
+  updateCheckinTemplateById,
+  FORM_DAYS,
+  TEMPLATE_KINDS,
+  type TemplateKind,
+} from './checkins/checkins';
+export { CONTEXT_FIELDS, type ContextField } from './checkins/questions';

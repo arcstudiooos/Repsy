@@ -4,6 +4,7 @@ import {
   checkinStreak,
   checkinWeekSummary,
   getSettings,
+  listCheckinTemplates,
   listCheckins,
   metricsAsOf,
 } from '@kinetic/core';
@@ -14,6 +15,7 @@ import { withServerTenant } from '@/server/serverActor';
 import { formatDate } from '../../StatusBadge';
 import { loadClient } from '../data';
 import { CheckinSchedule } from './CheckinSchedule';
+import { SendForm } from './SendForm';
 import { CheckinCompare, type CompareCheckin } from '@/components/checkins/CheckinCompare';
 import { WeekSummary } from '@/components/checkins/WeekSummary';
 import { MarkReviewedButton } from './MarkReviewedButton';
@@ -30,30 +32,33 @@ const WITH_ACTIVITY = 12;
 
 export default async function ClientCheckinsPage({ params }: { params: Promise<{ id: string }> }) {
   const client = await loadClient((await params).id);
-  const { items, streak, units, metricsAt } = await withServerTenant(async (tx, actor) => {
-    const checkins = await listCheckins(tx, actor, { clientId: client.id });
-    const out = [];
-    for (const [i, c] of checkins.entries()) {
-      out.push({
-        checkin: c,
-        activity:
-          i < WITH_ACTIVITY
-            ? await checkinWeekSummary(tx, actor, client.id, c.periodLocalDate)
-            : null,
-      });
-    }
-    return {
-      items: out,
-      streak: await checkinStreak(tx, actor, { clientId: client.id }),
-      units: (await getSettings(tx, actor)).profile?.units ?? client.preferredUnits,
-      metricsAt: await metricsAsOf(
-        tx,
-        actor,
-        client.id,
-        checkins.filter((c) => c.answers).map((c) => c.periodLocalDate),
-      ),
-    };
-  });
+  const { items, streak, units, metricsAt, templates } = await withServerTenant(
+    async (tx, actor) => {
+      const checkins = await listCheckins(tx, actor, { clientId: client.id });
+      const out = [];
+      for (const [i, c] of checkins.entries()) {
+        out.push({
+          checkin: c,
+          activity:
+            i < WITH_ACTIVITY
+              ? await checkinWeekSummary(tx, actor, client.id, c.periodLocalDate)
+              : null,
+        });
+      }
+      return {
+        items: out,
+        streak: await checkinStreak(tx, actor, { clientId: client.id }),
+        templates: await listCheckinTemplates(tx, actor),
+        units: (await getSettings(tx, actor)).profile?.units ?? client.preferredUnits,
+        metricsAt: await metricsAsOf(
+          tx,
+          actor,
+          client.id,
+          checkins.filter((c) => c.answers).map((c) => c.periodLocalDate),
+        ),
+      };
+    },
+  );
   // Sent check-ins, newest first, for comparing with any earlier one (PRD F6).
   const sent: CompareCheckin[] = items
     .filter(({ checkin }) => checkin.answers)
@@ -74,8 +79,20 @@ export default async function ClientCheckinsPage({ params }: { params: Promise<{
             clientId={client.id}
             weekday={client.checkinWeekday}
             everyWeeks={client.checkinEveryWeeks}
+            templateId={client.checkinTemplateId}
+            templates={templates
+              .filter((t) => t.kind === 'checkin')
+              .map((t) => ({ id: t.id, title: t.title, isDefault: t.isDefault }))}
             disabled={client.status === 'archived'}
           />
+          {client.status !== 'archived' && (
+            <SendForm
+              clientId={client.id}
+              forms={templates
+                .filter((t) => t.kind !== 'checkin')
+                .map((t) => ({ id: t.id, title: t.title }))}
+            />
+          )}
           {items.some(({ checkin }) => checkin.submittedAt) && (
             <a
               href={`/api/v1/clients/${client.id}/checkins.csv`}
@@ -110,7 +127,11 @@ export default async function ClientCheckinsPage({ params }: { params: Promise<{
             <li key={c.id}>
               <Card>
                 <CardHeader>
-                  <CardTitle as="h3">Week of {formatDate(c.periodLocalDate)}</CardTitle>
+                  <CardTitle as="h3">
+                    {c.kind === 'checkin'
+                      ? `Week of ${formatDate(c.periodLocalDate)}`
+                      : `${c.title} · sent ${formatDate(c.periodLocalDate)}`}
+                  </CardTitle>
                   <CardDescription>
                     {c.title} · {STATUS[c.status]}
                     {c.reviewedAt && ` · Reviewed ${formatDate(c.reviewedAt.slice(0, 10))}`}

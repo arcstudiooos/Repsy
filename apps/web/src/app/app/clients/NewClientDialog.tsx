@@ -59,7 +59,12 @@ function Field({
   );
 }
 
-export function NewClientDialog() {
+export function NewClientDialog({
+  intakeForms = [],
+}: {
+  /** PRD B12: intake forms the coach can send with the invite. */
+  intakeForms?: { id: string; title: string }[];
+} = {}) {
   const router = useRouter();
   const uid = useId();
   const [open, setOpen] = useState(false);
@@ -92,6 +97,16 @@ export function NewClientDialog() {
         const created = (await res.json()) as { data: { id: string; name: string } };
         const wantInvite = data.get('sendInvite') === 'on';
         const invited = wantInvite ? await sendInvite(created.data.id) : null;
+        const intake = String(data.get('intake') ?? '');
+        // PRD B12: waits in the client's portal until they join.
+        if (intake) {
+          await fetch(`/api/v1/clients/${created.data.id}/forms`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ templateId: intake }),
+          }).catch(() => null);
+        }
         setOpen(false);
         if (invited && !invited.ok) {
           toast.error(
@@ -177,6 +192,23 @@ export function NewClientDialog() {
               className="block w-full rounded-control border border-input-border bg-surface px-3 py-2 text-base text-ink aria-invalid:border-danger"
             />
           </Field>
+          {intakeForms.length > 0 && (
+            <Field id={`${uid}-intake`} label="Intake form (optional)">
+              <select
+                id={`${uid}-intake`}
+                name="intake"
+                defaultValue=""
+                className="block min-h-11 rounded-control border border-input-border bg-surface px-3 text-base text-ink"
+              >
+                <option value="">None</option>
+                {intakeForms.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.title}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
           <label className="flex min-h-11 items-center gap-3 text-base">
             <input
               type="checkbox"

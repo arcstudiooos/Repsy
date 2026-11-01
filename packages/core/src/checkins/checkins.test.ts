@@ -23,6 +23,10 @@ import {
   submitCheckin,
   updateCheckinTemplate,
   weekActivityBefore,
+  createCheckinTemplate,
+  listCheckinTemplates,
+  sendForm,
+  updateCheckinTemplateById,
 } from './checkins';
 import { onCheckinSubmittedRules } from '../review/rules';
 import { SEEDED_QUESTIONS } from './questions';
@@ -518,5 +522,106 @@ describe('question types (PRD F3)', () => {
     );
     expect(entry?.measuredOn.toISOString().slice(0, 10)).toBe('2026-11-04');
     expect(Number(entry?.value.toString())).toBe(81.4);
+  });
+});
+
+describe('form library and intake (PRD F2, B12)', () => {
+  const Q = (label: string, extra: Record<string, unknown> = {}) => [
+    { id: 'q1', type: 'short_text', label, optional: true, ...extra },
+  ];
+
+  it('issues each client their own recurring template; forms never block a check-in', async () => {
+    const w = await world(null);
+    const mine = await runAs(prisma, w.coach, (tx) =>
+      createCheckinTemplate(tx, w.coach, {
+        title: 'Strength check',
+        kind: 'checkin',
+        questions: Q('Lifts?'),
+      }),
+    );
+    await runAs(prisma, w.coach, (tx) =>
+      setCheckinWeekday(tx, w.coach, w.clientId, WEDNESDAY, { templateId: mine.id }),
+    );
+    const form = await runAs(prisma, w.coach, (tx) =>
+      createCheckinTemplate(tx, w.coach, {
+        title: 'Injury history',
+        kind: 'form',
+        questions: Q('Any injuries?'),
+      }),
+    );
+    const sent = await runAs(prisma, w.coach, (tx) =>
+      sendForm(tx, w.coach, w.clientId, form.id, { now: NOW }),
+    );
+    expect(sent).toMatchObject({ kind: 'form', title: 'Injury history', status: 'open' });
+    // A form isn't a check-in: it can't be scheduled, and today's check-in still goes out.
+    expect(
+      await codeOf(runAs(prisma, w.coach, (tx) => sendForm(tx, w.coach, w.clientId, mine.id))),
+    ).toBe('VALIDATION');
+    expect((await issue(w)).issued).toBe(1);
+    const list = await runAs(prisma, w.client, (tx) => listCheckins(tx, w.client));
+    expect(list.map((c) => [c.kind, c.title, c.questions[0]?.label])).toEqual(
+      expect.arrayContaining([
+        ['checkin', 'Strength check', 'Lifts?'],
+        ['form', 'Injury history', 'Any injuries?'],
+      ]),
+    );
+    // Archiving the client's template sends them back to the default; the default can't be archived.
+    await runAs(prisma, w.coach, (tx) =>
+      updateCheckinTemplateById(tx, w.coach, mine.id, { archived: true }),
+    );
+    const templates = await runAs(prisma, w.coach, (tx) => listCheckinTemplates(tx, w.coach));
+    expect(templates.map((t) => t.title)).not.toContain('Strength check');
+    const def = templates.find((t) => t.isDefault)!;
+    expect(
+      await codeOf(
+        runAs(prisma, w.coach, (tx) =>
+          updateCheckinTemplateById(tx, w.coach, def.id, { archived: true }),
+        ),
+      ),
+    ).toBe('VALIDATION');
+  });
+
+  it('intake answers fill the context card', async () => {
+    const w = await world(null);
+    const intake = await runAs(prisma, w.coach, (tx) =>
+      createCheckinTemplate(tx, w.coach, {
+        title: 'Welcome',
+        kind: 'intake',
+        questions: [
+          { id: 'goal', type: 'long_text', label: 'Your goal', contextField: 'goals' },
+          { id: 'kit', type: 'short_text', label: 'Your kit', contextField: 'equipmentNotes' },
+        ],
+      }),
+    );
+    expect(intake.questions[0]).toMatchObject({ contextField: 'goals' });
+    // Only intake templates keep the mapping.
+    const plain = await runAs(prisma, w.coach, (tx) =>
+      createCheckinTemplate(tx, w.coach, {
+        title: 'Plain',
+        kind: 'form',
+        questions: Q('x', { contextField: 'goals' }),
+      }),
+    );
+    expect(plain.questions[0]).not.toHaveProperty('contextField');
+    const sent = await runAs(prisma, w.coach, (tx) =>
+      sendForm(tx, w.coach, w.clientId, intake.id, { now: NOW }),
+    );
+    await runAs(prisma, w.client, (tx) =>
+      submitCheckin(
+        tx,
+        w.client,
+        sent.id,
+        {
+          answers: { goal: 'Run a 10k', kit: 'Dumbbells at home' },
+          idempotencyKey: 'key-intake-1',
+        },
+        { now: NOW },
+      ),
+    );
+    const client = await withSystem(
+      (tx) => tx.client.findUniqueOrThrow({ where: { id: w.clientId } }),
+      prisma,
+    );
+    expect(client).toMatchObject({ goals: 'Run a 10k', equipmentNotes: 'Dumbbells at home' });
   });
 });

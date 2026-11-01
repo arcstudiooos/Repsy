@@ -19,24 +19,36 @@ export function CheckinSchedule({
   clientId,
   weekday,
   everyWeeks = 1,
+  templateId = null,
+  templates = [],
   disabled,
 }: {
   clientId: string;
   weekday: number | null;
   everyWeeks?: number;
+  /** PRD F2: the client's recurring template (null = the default) and the choices. */
+  templateId?: string | null;
+  templates?: { id: string; title: string; isDefault: boolean }[];
   disabled?: boolean;
 }) {
   const router = useRouter();
   const id = useId();
   const [value, setValue] = useState(weekday === null ? '' : String(weekday));
   const [every, setEvery] = useState(everyWeeks);
+  const initialTemplate = templateId ?? templates.find((t) => t.isDefault)?.id ?? '';
+  const [tpl, setTpl] = useState(initialTemplate);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function save() {
     setBusy(true);
     setError(null);
-    const res = await setCheckinWeekday(clientId, value === '' ? null : Number(value), every);
+    const res = await setCheckinWeekday(
+      clientId,
+      value === '' ? null : Number(value),
+      every,
+      templates.length > 1 && tpl ? tpl : undefined,
+    );
     setBusy(false);
     if (res.ok) {
       toast.success(value === '' ? 'Weekly check-ins turned off' : 'Check-in day saved');
@@ -66,6 +78,26 @@ export function CheckinSchedule({
             </option>
           ))}
         </select>
+        {value !== '' && templates.length > 1 && (
+          <>
+            <label htmlFor={`${id}-tpl`} className="sr-only">
+              Check-in questions
+            </label>
+            <select
+              id={`${id}-tpl`}
+              value={tpl}
+              disabled={disabled}
+              onChange={(e) => setTpl(e.target.value)}
+              className="block min-h-11 rounded-control border border-input-border bg-surface px-3 text-base text-ink"
+            >
+              {templates.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.title}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
         {value !== '' && (
           <>
             <label htmlFor={`${id}-every`} className="sr-only">
@@ -92,7 +124,9 @@ export function CheckinSchedule({
           disabled={
             busy ||
             disabled ||
-            (value === (weekday === null ? '' : String(weekday)) && every === everyWeeks)
+            (value === (weekday === null ? '' : String(weekday)) &&
+              every === everyWeeks &&
+              tpl === initialTemplate)
           }
         >
           Save day

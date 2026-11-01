@@ -53,6 +53,7 @@ export const setCheckinWeekday = (
   clientId: string,
   checkinWeekday: number | null,
   checkinEveryWeeks?: number,
+  checkinTemplateId?: string,
 ) =>
   call<{ checkinWeekday: number | null; checkinEveryWeeks: number }>(
     'PUT',
@@ -60,6 +61,7 @@ export const setCheckinWeekday = (
     {
       checkinWeekday,
       ...(checkinEveryWeeks !== undefined ? { checkinEveryWeeks } : {}),
+      ...(checkinTemplateId !== undefined ? { checkinTemplateId } : {}),
     },
   );
 

@@ -38,6 +38,17 @@ const TEMPLATES: Record<string, Template> = {
     const subject = `${coachName} invited you to Kinetic`.replace(/[\r\n]+/g, ' ');
     return { subject, text, html };
   },
+  // PRD F2: a one-off form from the coach; never its questions (D-007).
+  form_ready: (payload, appBaseUrl) => {
+    const coachName = str(payload, 'coachName') ?? 'Your coach';
+    const id = str(payload, 'checkinId') ?? '';
+    const link = `${appBaseUrl.replace(/\/+$/, '')}/portal/check-ins/${encodeURIComponent(id)}`;
+    return {
+      subject: `${coachName} sent you a form`.replace(/[\r\n]+/g, ' '),
+      text: `${coachName} sent you a form to fill in.\n\nOpen it: ${link}\n\nEvery question is optional.`,
+      html: `<p>${escapeHtml(coachName)} sent you a form to fill in.</p><p><a href="${escapeHtml(link)}">Open it</a></p><p>Every question is optional.</p>`,
+    };
+  },
   // PRD H13, F9: reminders carry a count and a link, never workout, check-in or habit content (D-007).
   workout_reminder: (payload, appBaseUrl) => {
     const n = typeof payload.workouts === 'number' ? payload.workouts : 1;

@@ -54,7 +54,7 @@ export default async function PortalCheckins() {
                   <Link
                     href={`/portal/check-ins/${c.id}`}
                     className="inline-flex min-h-11 items-center text-accent underline underline-offset-4"
-                    aria-label={`${c.status === 'submitted' ? 'View' : 'Fill in'} check-in of ${formatSessionDate(c.periodLocalDate, today)}`}
+                    aria-label={`${c.status === 'submitted' ? 'View' : 'Fill in'} ${c.title}, ${formatSessionDate(c.periodLocalDate, today)}`}
                   >
                     {c.status === 'submitted' ? 'View' : 'Fill in'}
                   </Link>

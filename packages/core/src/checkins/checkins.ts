@@ -20,6 +20,7 @@ import {
   TITLE_MAX,
   type CheckinAnswers,
   type CheckinQuestion,
+  type ContextField,
 } from './questions';
 
 const DAY_MS = 86_400_000;
@@ -39,13 +40,24 @@ const addDays = (localDate: string, days: number): string =>
   fromDbDate(new Date(toDbDate(localDate).getTime() + days * DAY_MS));
 const isoWeekday = (localDate: string): number => toDbDate(localDate).getUTCDay() || 7;
 
+/** PRD F2: recurring check-in, one-off form, or intake form (PRD B12). */
+export const TEMPLATE_KINDS = ['checkin', 'form', 'intake'] as const;
+export type TemplateKind = (typeof TEMPLATE_KINDS)[number];
+
 export interface CheckinTemplateView {
   id: string;
   title: string;
   questions: CheckinQuestion[];
   isSeeded: boolean;
   updatedAt: string;
+  kind: TemplateKind;
+  /** The workspace's default recurring check-in (every client without their own template gets it). */
+  isDefault: boolean;
+  archived: boolean;
 }
+
+/** Days a one-off or intake form stays open after it is sent. */
+export const FORM_DAYS = 7;
 
 export type CheckinStatus = 'open' | 'overdue' | 'submitted';
 
@@ -53,6 +65,8 @@ export interface CheckinView {
   id: string;
   clientId: string;
   title: string;
+  /** PRD F2. */
+  kind: TemplateKind;
   periodLocalDate: string;
   issuedAt: string;
   dueAt: string;
@@ -88,6 +102,7 @@ interface CheckinRow {
   questionsJson: Prisma.JsonValue;
   answersJson: Prisma.JsonValue | null;
   draftJson: Prisma.JsonValue | null;
+  kind: string;
   template: { title: string };
 }
 
@@ -102,6 +117,7 @@ const CHECKIN_SELECT = {
   questionsJson: true,
   answersJson: true,
   draftJson: true,
+  kind: true,
   template: { select: { title: true } },
 } as const;
 
@@ -113,6 +129,7 @@ function toView(row: CheckinRow, actor: ActorContext, now: Date): CheckinView {
     id: row.id,
     clientId: row.clientId,
     title: row.template.title,
+    kind: asKind(row.kind),
     periodLocalDate: fromDbDate(row.periodLocalDate),
     issuedAt: row.issuedAt.toISOString(),
     dueAt: row.dueAt.toISOString(),
@@ -126,12 +143,18 @@ function toView(row: CheckinRow, actor: ActorContext, now: Date): CheckinView {
   };
 }
 
+const asKind = (k: string): TemplateKind =>
+  (TEMPLATE_KINDS as readonly string[]).includes(k) ? (k as TemplateKind) : 'checkin';
+
 function toTemplateView(row: {
   id: string;
   title: string;
   questionsJson: Prisma.JsonValue;
   isSeeded: boolean;
   updatedAt: Date;
+  kind: string;
+  isDefault: boolean;
+  archivedAt: Date | null;
 }): CheckinTemplateView {
   return {
     id: row.id,
@@ -139,12 +162,15 @@ function toTemplateView(row: {
     questions: readQuestions(row.questionsJson),
     isSeeded: row.isSeeded,
     updatedAt: row.updatedAt.toISOString(),
+    kind: asKind(row.kind),
+    isDefault: row.isDefault,
+    archived: row.archivedAt !== null,
   };
 }
 
-/** The organization's template (Ruling 1), created from the seeded questions on first use. */
+/** The organization's default check-in template (Ruling 1), created from the seeded questions on first use. */
 async function ensureTemplate(tx: TenantTx) {
-  const existing = await tx.checkinTemplate.findFirst({});
+  const existing = await tx.checkinTemplate.findFirst({ where: { isDefault: true } });
   if (existing) return existing;
   await tx.checkinTemplate.createMany({
     data: [
@@ -152,12 +178,198 @@ async function ensureTemplate(tx: TenantTx) {
         title: SEEDED_TITLE,
         questionsJson: SEEDED_QUESTIONS as unknown as Prisma.InputJsonValue,
         isSeeded: true,
+        isDefault: true,
+        kind: 'checkin',
       } as Prisma.CheckinTemplateCreateManyInput,
     ],
-    // The unique organization_id makes a concurrent first read create one row.
+    // The partial unique index on the default makes a concurrent first read create one row.
     skipDuplicates: true,
   });
-  return tx.checkinTemplate.findFirstOrThrow({});
+  return tx.checkinTemplate.findFirstOrThrow({ where: { isDefault: true } });
+}
+
+const cleanTitle = (title: unknown): string => {
+  const t = typeof title === 'string' ? title.trim() : '';
+  if (t.length < 1 || t.length > TITLE_MAX)
+    throw invalid('title', `Use 1-${TITLE_MAX} characters.`);
+  return t;
+};
+
+/** PRD F2: every template (the default first, then by title); archived ones only on request. */
+export async function listCheckinTemplates(
+  tx: TenantTx,
+  actor: ActorContext,
+  opts: { includeArchived?: boolean } = {},
+): Promise<CheckinTemplateView[]> {
+  assertCan(actor, 'checkin:manage');
+  await ensureTemplate(tx);
+  const rows = await tx.checkinTemplate.findMany({
+    where: opts.includeArchived ? {} : { archivedAt: null },
+    orderBy: [{ isDefault: 'desc' }, { title: 'asc' }, { id: 'asc' }],
+  });
+  return rows.map(toTemplateView);
+}
+
+export async function getCheckinTemplateById(
+  tx: TenantTx,
+  actor: ActorContext,
+  id: unknown,
+): Promise<CheckinTemplateView> {
+  assertCan(actor, 'checkin:manage');
+  if (!isUuid(id)) throw notFound();
+  const row = await tx.checkinTemplate.findFirst({ where: { id } });
+  if (!row) throw notFound();
+  return toTemplateView(row);
+}
+
+/** PRD F2: a new template of any kind. */
+export async function createCheckinTemplate(
+  tx: TenantTx,
+  actor: ActorContext,
+  input: { title?: unknown; kind?: unknown; questions?: unknown },
+  opts: { requestId?: string } = {},
+): Promise<CheckinTemplateView> {
+  assertCan(actor, 'checkin:manage');
+  if (!(TEMPLATE_KINDS as readonly unknown[]).includes(input.kind)) {
+    throw invalid('kind', 'Pick check-in, form or intake.');
+  }
+  const kind = input.kind as TemplateKind;
+  const row = await tx.checkinTemplate.create({
+    data: {
+      title: cleanTitle(input.title),
+      kind,
+      questionsJson: parseQuestions(input.questions, kind) as unknown as Prisma.InputJsonValue,
+      isSeeded: false,
+    },
+  } as Parameters<typeof tx.checkinTemplate.create>[0]);
+  await appendAudit(tx, {
+    orgId: actor.orgId,
+    actorId: actor.userId,
+    objectType: 'checkin_template',
+    objectId: row.id,
+    action: 'checkin_template.created',
+    metadata: { kind },
+    requestId: opts.requestId,
+  });
+  return toTemplateView(row);
+}
+
+/** Edits any template; issued check-ins and forms keep the questions they were sent with. */
+export async function updateCheckinTemplateById(
+  tx: TenantTx,
+  actor: ActorContext,
+  id: unknown,
+  input: { title?: unknown; questions?: unknown; archived?: unknown },
+  opts: { requestId?: string } = {},
+): Promise<CheckinTemplateView> {
+  assertCan(actor, 'checkin:manage');
+  if (!isUuid(id)) throw notFound();
+  const current = await tx.checkinTemplate.findFirst({ where: { id } });
+  if (!current) throw notFound();
+  const data: Prisma.CheckinTemplateUpdateInput = {};
+  if (input.title !== undefined) data.title = cleanTitle(input.title);
+  if (input.questions !== undefined) {
+    data.questionsJson = parseQuestions(
+      input.questions,
+      asKind(current.kind),
+    ) as unknown as Prisma.InputJsonValue;
+  }
+  if (input.archived !== undefined) {
+    if (typeof input.archived !== 'boolean') throw invalid('archived', 'Use true or false.');
+    if (input.archived && current.isDefault) {
+      throw invalid('archived', 'The default check-in can be edited but not archived.');
+    }
+    data.archivedAt = input.archived ? new Date() : null;
+  }
+  if (Object.keys(data).length === 0) return toTemplateView(current);
+  const row = await tx.checkinTemplate.update({
+    where: { id: current.id },
+    data: { ...data, isSeeded: false },
+  });
+  if (input.archived === true) {
+    // Clients on an archived recurring template fall back to the default.
+    await tx.client.updateMany({
+      where: { checkinTemplateId: current.id },
+      data: { checkinTemplateId: null },
+    });
+  }
+  await appendAudit(tx, {
+    orgId: actor.orgId,
+    actorId: actor.userId,
+    objectType: 'checkin_template',
+    objectId: row.id,
+    action: input.archived === true ? 'checkin_template.archived' : 'checkin_template.updated',
+    requestId: opts.requestId,
+  });
+  return toTemplateView(row);
+}
+
+/**
+ * PRD F2, B12: sends a one-off form (or an intake form) to a client: open for FORM_DAYS days from now, in their own
+ * list next to their check-ins. Clients who have joined get an email; an intake sent with an invite waits for them.
+ */
+export async function sendForm(
+  tx: TenantTx,
+  actor: ActorContext,
+  clientId: unknown,
+  templateId: unknown,
+  opts: { now?: Date; requestId?: string } = {},
+): Promise<CheckinView> {
+  assertCan(actor, 'checkin:manage');
+  if (!isUuid(clientId) || !isUuid(templateId)) throw notFound();
+  const now = opts.now ?? new Date();
+  const client = await tx.client.findFirst({
+    where: { id: clientId },
+    select: {
+      id: true,
+      userId: true,
+      status: true,
+      timezone: true,
+      coach: { select: { name: true } },
+    },
+  });
+  if (!client) throw notFound();
+  if (client.status === 'archived') throw new DomainError('CONFLICT', 'This client is archived.');
+  const template = await tx.checkinTemplate.findFirst({
+    where: { id: templateId, archivedAt: null, kind: { in: ['form', 'intake'] } },
+  });
+  if (!template) throw invalid('templateId', 'Pick a form.');
+  const today = todayInZone(client.timezone, now);
+  const row = await tx.checkin.create({
+    data: {
+      clientId: client.id,
+      templateId: template.id,
+      kind: template.kind,
+      periodLocalDate: toDbDate(today),
+      questionsJson: template.questionsJson as Prisma.InputJsonValue,
+      issuedAt: now,
+      dueAt: localDayBounds(addDays(today, FORM_DAYS), client.timezone).dueAtUtc,
+    },
+    select: CHECKIN_SELECT,
+  } as unknown as Parameters<typeof tx.checkin.create>[0]);
+  const created = row as unknown as CheckinRow;
+  if (client.userId) {
+    await enqueueEmail(tx, {
+      kind: 'form_ready',
+      toUserId: client.userId,
+      templateKey: 'form_ready',
+      payload: {
+        coachName: (client.coach as { name: string } | null)?.name ?? 'Your coach',
+        checkinId: created.id,
+      },
+      idempotencyKey: `form-ready:${created.id}`,
+    });
+  }
+  await appendAudit(tx, {
+    orgId: actor.orgId,
+    actorId: actor.userId,
+    objectType: 'checkin',
+    objectId: created.id,
+    action: 'form.sent',
+    metadata: { clientId: client.id, kind: template.kind },
+    requestId: opts.requestId,
+  });
+  return toView(created, actor, now);
 }
 
 export async function getCheckinTemplate(
@@ -213,7 +425,7 @@ export async function setCheckinWeekday(
   actor: ActorContext,
   clientId: string,
   weekday: unknown,
-  opts: { requestId?: string; everyWeeks?: unknown } = {},
+  opts: { requestId?: string; everyWeeks?: unknown; templateId?: unknown } = {},
 ): Promise<{ checkinWeekday: number | null; checkinEveryWeeks: number }> {
   assertCan(actor, 'client:update');
   if (!isUuid(clientId)) throw notFound();
@@ -227,7 +439,17 @@ export async function setCheckinWeekday(
   if (every !== undefined && !(CHECKIN_EVERY_WEEKS as readonly unknown[]).includes(every)) {
     throw invalid('checkinEveryWeeks', 'Pick every week, every 2 weeks or every 4 weeks.');
   }
-  const template = await ensureTemplate(tx);
+  let template = await ensureTemplate(tx);
+  // PRD F2: the client's own recurring template (null or left out: the default).
+  if (opts.templateId !== undefined && opts.templateId !== null) {
+    const own = isUuid(opts.templateId)
+      ? await tx.checkinTemplate.findFirst({
+          where: { id: opts.templateId, kind: 'checkin', archivedAt: null },
+        })
+      : null;
+    if (!own) throw invalid('checkinTemplateId', 'Pick a check-in template.');
+    template = own;
+  }
   const res = await tx.client.updateMany({
     where: { id: clientId },
     data: {
@@ -396,6 +618,7 @@ export async function submitCheckin(
     requestId: opts.requestId,
   });
   await recordMetricAnswers(tx, actor, row, answers, now);
+  if (row.kind === 'intake') await fillContextFromIntake(tx, row, answers);
   await opts.onSubmitted?.(tx, { id: row.id, clientId: row.clientId }, now);
   return toView(row, actor, now);
 }
@@ -498,6 +721,24 @@ export async function issueDueCheckins(tx: TenantTx, now: Date): Promise<{ issue
   });
   if (clients.length === 0) return { issued: 0 };
   const template = await ensureTemplate(tx);
+  // PRD F2: each client's own recurring template, unless it was archived.
+  const own = new Map(
+    (
+      await tx.checkinTemplate.findMany({
+        where: {
+          id: {
+            in: [
+              ...new Set(
+                clients.flatMap((c) => (c.checkinTemplateId ? [c.checkinTemplateId] : [])),
+              ),
+            ],
+          },
+          kind: 'checkin',
+          archivedAt: null,
+        },
+      })
+    ).map((t) => [t.id, t]),
+  );
   let issued = 0;
   for (const c of clients) {
     const today = todayInZone(c.timezone, now);
@@ -507,6 +748,7 @@ export async function issueDueCheckins(tx: TenantTx, now: Date): Promise<{ issue
     const recent = await tx.checkin.findFirst({
       where: {
         clientId: c.id,
+        kind: 'checkin',
         // A day short of the interval, so a weekday change never issues two in one period (PRD F4).
         periodLocalDate: {
           gte: toDbDate(addDays(today, -(7 * c.checkinEveryWeeks - 1))),
@@ -520,9 +762,10 @@ export async function issueDueCheckins(tx: TenantTx, now: Date): Promise<{ issue
       data: [
         {
           clientId: c.id,
-          templateId: c.checkinTemplateId ?? template.id,
+          templateId: (c.checkinTemplateId && own.get(c.checkinTemplateId)?.id) || template.id,
           periodLocalDate: toDbDate(today),
-          questionsJson: template.questionsJson as Prisma.InputJsonValue,
+          questionsJson: ((c.checkinTemplateId && own.get(c.checkinTemplateId)) || template)
+            .questionsJson as Prisma.InputJsonValue,
           issuedAt,
           dueAt: localDayBounds(today, c.timezone).dueAtUtc,
         } as Prisma.CheckinCreateManyInput,
@@ -607,7 +850,8 @@ export async function checkinStreak(
   const now = opts.now ?? new Date();
   const grace = await graceMs(tx);
   const rows = await tx.checkin.findMany({
-    where: scope,
+    // One-off and intake forms (PRD F2) don't make or break a streak.
+    where: { ...scope, kind: 'checkin' },
     orderBy: { periodLocalDate: 'desc' },
     take: LIST_MAX,
     select: { dueAt: true, submittedAt: true },
@@ -673,4 +917,46 @@ export async function listCheckinsAwaitingReview(
       submittedAt: (r.submittedAt as Date).toISOString(),
     })),
   };
+}
+
+const CONTEXT_MAX: Record<ContextField, number> = {
+  goals: 2000,
+  motivation: 1000,
+  scheduleNotes: 1000,
+  equipmentNotes: 1000,
+  preferences: 1000,
+};
+
+/**
+ * PRD B12: an intake answer to a question tied to a context field fills it on the client's context card (appended
+ * after anything the coach already wrote, within the field's limit).
+ */
+async function fillContextFromIntake(
+  tx: TenantTx,
+  row: { clientId: string; questionsJson: unknown },
+  answers: CheckinAnswers,
+): Promise<void> {
+  const mapped = readQuestions(row.questionsJson).filter(
+    (q) => q.contextField && typeof answers[q.id] === 'string',
+  );
+  if (mapped.length === 0) return;
+  const client = await tx.client.findFirst({
+    where: { id: row.clientId },
+    select: {
+      goals: true,
+      motivation: true,
+      scheduleNotes: true,
+      equipmentNotes: true,
+      preferences: true,
+    },
+  });
+  if (!client) return;
+  const data: Partial<Record<ContextField, string>> = {};
+  for (const q of mapped) {
+    const field = q.contextField!;
+    const before = data[field] ?? client[field] ?? '';
+    const add = String(answers[q.id]);
+    data[field] = (before ? `${before}\n\n${add}` : add).slice(0, CONTEXT_MAX[field]);
+  }
+  await tx.client.update({ where: { id: row.clientId }, data });
 }

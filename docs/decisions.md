@@ -374,3 +374,30 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
 - **Credentials are never committed to Git or written in documentation.** Only `.env.example` with placeholders (PRD §15.2).
 - Separate `staging` and `production` environments. Previews use synthetic seed data only.
 - _Builder call:_ email transport is Resend behind an email adapter. In local development and CI, a console/file adapter is used, so no provider account is needed to run tests.
+
+## D-011 — R2 rulings delegated to the builder (2026-11-01)
+
+**Status:** Accepted. The owner delegated these calls ("Go ahead and build. Do the right thing."); each can be revisited.
+**PRD refs:** A4, B3, C2, D4, D7, D10, D13, D20, E3, E4, F2, H2, H11, L11, M8-M10, M13.
+
+1. **Extra workouts (D13)** extend D-002: a `workout_session` of kind `extra` has no assignment or slot and its workout
+   version is fixed when it starts. Extra sessions count toward history and records, never adherence (D-008 #4 rules
+   apply to planned sessions only).
+2. **Form library (F2)** extends D-010 #3: templates have a kind (`checkin`, `form`, `intake`); one default check-in
+   template per organization stays unique. Generation stays idempotent: unique `(client_id, period_local_date)` now
+   applies to recurring check-ins only (a partial index), so one-off and intake forms never block or duplicate one.
+3. **Offline start (D4) and crash recovery (D20)** extend D-004. The next 7 days of a client's workouts are kept on
+   the device with their exercise text and cues. Starting one offline records the start in the outbox with the cached
+   workout version; the server accepts it only if that version is still the one the session would lock (D-002 #5,
+   #6), otherwise the client is asked to reopen it online. Every edit in the logger is saved to the device as it is
+   typed. Shared-device rules (D-004 residual) apply unchanged.
+4. **Self-serve trial (A4)** runs next to pilot codes rather than replacing them: a sign-up without a code gets a
+   14-day trial with up to 3 active clients. Pilot codes keep their limits. General availability can retire codes.
+5. **Uploads (C2, D7, D10, E3, E4, H2, L11)** use the existing private object storage (the exports bucket, D-010 #4)
+   with short-lived signed links. Images are re-encoded to strip EXIF and GPS. Video is stored as uploaded within the
+   PRD's size and length limits; transcoding (L11 adaptive bitrate) waits for a media provider.
+6. **Web push (H11)** uses standard VAPID Web Push; it is off unless `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` are
+   set, and payloads never carry content (as emails, D-007).
+7. **Operations features (M8, M9, M10, M13)** ship as in-app surfaces only: an incident banner the platform admin
+   sets, public status, reliability and plan pages, a support form and a changelog. External monitoring and billing
+   providers stay out until chosen.

@@ -879,12 +879,17 @@ model ClientPause {
 
 /// The organization's weekly check-in template (S4-1, D-008 #9, Ruling 1: one per organization), created from the
 /// seeded questions on first use and editable by the coach. `questionsJson` is validated by core (`questionsSchema`).
+/// PRD F2: kind checkin, form or intake. One default check-in template per organization (partial unique index
+/// checkin_templates_one_default_per_org, migration 000060).
 model CheckinTemplate {
   id             String   @id @default(uuid()) @db.Uuid
-  organizationId String   @unique @map("organization_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
   title          String
   questionsJson  Json     @map("questions_json")
   isSeeded       Boolean  @default(true) @map("is_seeded")
+  kind           String   @default("checkin")
+  isDefault      Boolean  @default(false) @map("is_default")
+  archivedAt     DateTime? @map("archived_at") @db.Timestamptz(3)
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -893,6 +898,7 @@ model CheckinTemplate {
   checkins     Checkin[]
 
   @@unique([id, organizationId])
+  @@index([organizationId, kind])
   @@map("checkin_templates")
 }
 
@@ -908,6 +914,8 @@ model Checkin {
   issuedAt             DateTime  @map("issued_at") @db.Timestamptz(3)
   dueAt                DateTime  @map("due_at") @db.Timestamptz(3)
   submittedAt          DateTime? @map("submitted_at") @db.Timestamptz(3)
+  /// PRD F2: checkin (recurring), form (one-off) or intake (PRD B12).
+  kind                 String    @default("checkin")
   answersJson          Json?     @map("answers_json")
   draftJson            Json?     @map("draft_json")
   draftUpdatedAt       DateTime? @map("draft_updated_at") @db.Timestamptz(3)
@@ -923,7 +931,8 @@ model Checkin {
   template     CheckinTemplate @relation(fields: [templateId, organizationId], references: [id, organizationId])
   reviewedBy   User?           @relation("CheckinReviewer", fields: [reviewedByUserId], references: [id])
 
-  @@unique([clientId, periodLocalDate])
+  /// One recurring check-in per client per day: partial unique index checkins_one_checkin_per_client_day (000060).
+  @@index([clientId, periodLocalDate])
   @@unique([id, organizationId])
   @@index([organizationId, dueAt])
   @@index([organizationId, submittedAt])

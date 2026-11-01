@@ -4,6 +4,7 @@ import {
   clientCompliance,
   DomainError,
   listClients,
+  listCheckinTemplates,
   listTags,
   tagsForClients,
   type ClientCompliance,
@@ -52,9 +53,10 @@ export default async function ClientsPage({
   let clientTags: Record<string, TagView[]>;
   let tagId: string | undefined;
   let templates: { id: string; title: string; daysPerWeek: number }[];
+  let intakeForms: { id: string; title: string }[];
   try {
-    ({ result, compliance, tags, clientTags, tagId, templates } = await withServerTenant(
-      async (tx, actor) => {
+    ({ result, compliance, tags, clientTags, tagId, templates, intakeForms } =
+      await withServerTenant(async (tx, actor) => {
         const all = await listTags(tx, actor);
         const tagId = all.find((t) => t.id === tagParam)?.id;
         const list = await listClients(tx, actor, { q, status, cursor, tagId });
@@ -70,6 +72,9 @@ export default async function ClientsPage({
           tags: all.map(({ id, name, color }) => ({ id, name, color })),
           clientTags: Object.fromEntries(await tagsForClients(tx, actor, ids)),
           tagId,
+          intakeForms: (await listCheckinTemplates(tx, actor))
+            .filter((t) => t.kind === 'intake')
+            .map((t) => ({ id: t.id, title: t.title })),
           // PRD B5: saved templates for bulk assign.
           templates: (await loadAllTemplates(tx, actor)).items.flatMap((p) =>
             p.versionNo !== null && p.daysPerWeek
@@ -77,8 +82,7 @@ export default async function ClientsPage({
               : [],
           ),
         };
-      },
-    ));
+      }));
   } catch (error) {
     // A malformed cursor in the URL is the only user-reachable validation failure.
     if (error instanceof DomainError && error.code === 'VALIDATION') {
@@ -103,7 +107,7 @@ export default async function ClientsPage({
           <div className="flex flex-wrap gap-3">
             <ImportLink />
             <JoinLinkDialog />
-            <NewClientDialog />
+            <NewClientDialog intakeForms={intakeForms} />
           </div>
         )}
       </div>
@@ -113,7 +117,7 @@ export default async function ClientsPage({
           body="Invite a client by email. They will get a link to set up their account. Moving from another app? Import your roster from a CSV file."
           action={
             <div className="flex flex-wrap justify-center gap-3">
-              <NewClientDialog />
+              <NewClientDialog intakeForms={intakeForms} />
               <JoinLinkDialog />
               <ImportLink />
             </div>

@@ -10,6 +10,11 @@ import {
   submitCheckin,
   updateCheckinTemplate,
   weekActivityBefore,
+  createCheckinTemplate,
+  getCheckinTemplateById,
+  listCheckinTemplates,
+  sendForm,
+  updateCheckinTemplateById,
 } from '@kinetic/core';
 import { ApiResult, type RouteDef } from '../api';
 import { onCheckinSubmitted } from '../reviewHooks';
@@ -37,6 +42,7 @@ export const checkinTemplatePatchRoute: RouteDef<typeof templateSchema, true> = 
 const weekdaySchema = z.object({
   checkinWeekday: z.number().int().nullable(),
   checkinEveryWeeks: z.number().int().optional(),
+  checkinTemplateId: z.string().max(64).nullable().optional(),
 });
 
 /** `PUT /api/v1/clients/:id/checkin-schedule`: the client's check-in weekday (null = none). */
@@ -48,6 +54,7 @@ export const clientCheckinSchedulePutRoute: RouteDef<typeof weekdaySchema, true>
       setCheckinWeekday(tx, actor, params.id ?? '', input.checkinWeekday, {
         requestId,
         everyWeeks: input.checkinEveryWeeks,
+        templateId: input.checkinTemplateId,
       }),
     ),
 };
@@ -138,4 +145,55 @@ export const checkinResponsesCsvRoute: RouteDef<undefined, true> = {
       },
     });
   },
+};
+
+/** `GET /api/v1/checkin-templates` (PRD F2): the form library. */
+export const checkinTemplatesListRoute: RouteDef<undefined, true> = {
+  can: 'checkin:manage',
+  handler: ({ actor, tenant }) => tenant((tx) => listCheckinTemplates(tx, actor)),
+};
+
+const newTemplateSchema = z.object({
+  title: z.string().max(200),
+  kind: z.string().max(16),
+  questions: z.array(z.unknown()).max(50),
+});
+
+/** `POST /api/v1/checkin-templates`: a new check-in, form or intake template. */
+export const checkinTemplatesPostRoute: RouteDef<typeof newTemplateSchema, true> = {
+  can: 'checkin:manage',
+  input: newTemplateSchema,
+  handler: async ({ actor, input, requestId, tenant }) =>
+    new ApiResult(await tenant((tx) => createCheckinTemplate(tx, actor, input, { requestId })), {
+      status: 201,
+    }),
+};
+
+export const checkinTemplateByIdGetRoute: RouteDef<undefined, true> = {
+  can: 'checkin:manage',
+  handler: ({ actor, params, tenant }) =>
+    tenant((tx) => getCheckinTemplateById(tx, actor, params.id ?? '')),
+};
+
+const editTemplateSchema = templateSchema.extend({ archived: z.boolean().optional() });
+
+/** `PATCH /api/v1/checkin-templates/:id`: edit or archive (not the default). */
+export const checkinTemplateByIdPatchRoute: RouteDef<typeof editTemplateSchema, true> = {
+  can: 'checkin:manage',
+  input: editTemplateSchema,
+  handler: ({ actor, input, params, requestId, tenant }) =>
+    tenant((tx) => updateCheckinTemplateById(tx, actor, params.id ?? '', input, { requestId })),
+};
+
+const sendFormSchema = z.object({ templateId: z.string().max(64) });
+
+/** `POST /api/v1/clients/:id/forms` (PRD F2, B12): send a one-off or intake form. */
+export const clientFormPostRoute: RouteDef<typeof sendFormSchema, true> = {
+  can: 'checkin:manage',
+  input: sendFormSchema,
+  handler: async ({ actor, input, params, requestId, tenant }) =>
+    new ApiResult(
+      await tenant((tx) => sendForm(tx, actor, params.id ?? '', input.templateId, { requestId })),
+      { status: 201 },
+    ),
 };

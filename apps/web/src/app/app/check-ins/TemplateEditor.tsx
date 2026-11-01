@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/toast';
-import { updateCheckinTemplate } from '@/lib/checkin-api';
+import { call } from '@/lib/checkin-api';
+import type { ContextField } from '@kinetic/core';
 import { BODY_METRICS, type BodyMetric } from '@kinetic/core/metric-catalog';
 
 const TYPE_LABEL: Record<QuestionType, string> = {
@@ -50,12 +51,16 @@ export function TemplateEditor({ template }: { template: CheckinTemplateView }) 
     setErrors({});
     setFormError(null);
     // Blank option lines are only there while typing.
-    const res = await updateCheckinTemplate({
-      title,
-      questions: questions.map((q) =>
-        q.options ? { ...q, options: q.options.map((o) => o.trim()).filter(Boolean) } : q,
-      ),
-    });
+    const res = await call<CheckinTemplateView>(
+      'PATCH',
+      `/api/v1/checkin-templates/${template.id}`,
+      {
+        title,
+        questions: questions.map((q) =>
+          q.options ? { ...q, options: q.options.map((o) => o.trim()).filter(Boolean) } : q,
+        ),
+      },
+    );
     setBusy(false);
     if (res.ok) {
       toast.success('Check-in questions saved');
@@ -138,6 +143,32 @@ export function TemplateEditor({ template }: { template: CheckinTemplateView }) 
                       ))}
                     </select>
                   </div>
+                  {template.kind === 'intake' &&
+                    (q.type === 'short_text' || q.type === 'long_text') && (
+                      <div className="flex flex-col gap-1 sm:max-w-xs">
+                        <label htmlFor={`${uid}-${q.id}-ctx`} className="text-sm font-medium">
+                          Question {i + 1} fills the context card
+                        </label>
+                        <select
+                          id={`${uid}-${q.id}-ctx`}
+                          value={q.contextField ?? ''}
+                          onChange={(e) =>
+                            update(i, {
+                              contextField: (e.target.value || undefined) as
+                                ContextField | undefined,
+                            })
+                          }
+                          className="block min-h-11 rounded-control border border-input-border bg-surface px-3 text-base text-ink"
+                        >
+                          <option value="">No</option>
+                          <option value="goals">Goals</option>
+                          <option value="motivation">Why they came</option>
+                          <option value="scheduleNotes">Schedule</option>
+                          <option value="equipmentNotes">Equipment</option>
+                          <option value="preferences">Preferences</option>
+                        </select>
+                      </div>
+                    )}
                   {q.type === 'number' && (
                     <div className="flex flex-col gap-1 sm:max-w-xs">
                       <label htmlFor={`${uid}-${q.id}-unit`} className="text-sm font-medium">
@@ -254,6 +285,27 @@ export function TemplateEditor({ template }: { template: CheckinTemplateView }) 
         <Button type="submit" disabled={busy}>
           Save questions
         </Button>
+        {!template.isDefault && (
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              const res = await call('PATCH', `/api/v1/checkin-templates/${template.id}`, {
+                archived: true,
+              });
+              setBusy(false);
+              if (res.ok) {
+                toast.success('Template archived');
+                router.push('/app/check-ins');
+                router.refresh();
+              } else toast.error(res.message);
+            }}
+          >
+            Archive template
+          </Button>
+        )}
       </div>
       {formError && (
         <p role="alert" className="text-danger">

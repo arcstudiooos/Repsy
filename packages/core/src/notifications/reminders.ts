@@ -64,6 +64,7 @@ export async function queueClientReminders(tx: TenantTx, now: Date): Promise<{ q
       const open = await tx.checkin.count({
         where: {
           clientId: c.id,
+          kind: 'checkin',
           periodLocalDate: toDbDate(day),
           submittedAt: null,
           dueAt: { gt: now },
