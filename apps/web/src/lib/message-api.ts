@@ -32,5 +32,14 @@ export async function fetchMessages(
   }
 }
 
-export const postMessage = (threadId: string, body: string, clientMessageId: string) =>
-  call<MessageView>('POST', `/api/v1/threads/${enc(threadId)}/messages`, { body, clientMessageId });
+export const postMessage = (
+  threadId: string,
+  body: string,
+  clientMessageId: string,
+  anchor?: { type: string; id: string },
+) =>
+  call<MessageView>('POST', `/api/v1/threads/${enc(threadId)}/messages`, {
+    body,
+    clientMessageId,
+    ...(anchor ? { anchor } : {}),
+  });

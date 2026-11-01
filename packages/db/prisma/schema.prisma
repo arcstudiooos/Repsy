@@ -961,6 +961,10 @@ model Message {
   clientMessageId String?   @map("client_message_id") @db.Uuid
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   readAt          DateTime? @map("read_at") @db.Timestamptz(3)
+  /// PRD H3: what the message is about (session or checkin), with its label at send time (CHECK in 000058).
+  anchorType      String?   @map("anchor_type")
+  anchorId        String?   @map("anchor_id") @db.Uuid
+  anchorLabel     String?   @map("anchor_label")
 
   organization Organization       @relation(fields: [organizationId], references: [id])
   thread       ConversationThread @relation(fields: [threadId, organizationId], references: [id, organizationId])

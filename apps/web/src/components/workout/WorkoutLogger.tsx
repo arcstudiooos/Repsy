@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { blockLayout } from '@kinetic/core/workout-blocks';
 import { sectionStart } from '@kinetic/core/workout-sections';
 import { READINESS_QUESTIONS } from '@kinetic/core/readiness';
@@ -602,6 +603,18 @@ export function WorkoutLogger({
         </p>
       )}
       {workout.notes && <p className="text-secondary">{workout.notes}</p>}
+      <Link
+        href={
+          mode === 'coach'
+            ? `/app/clients/${detail.client.id}/messages?re=session:${session.id}`
+            : `/portal/messages?re=session:${session.id}`
+        }
+        className="inline-flex min-h-11 items-center self-start text-sm text-accent underline underline-offset-4"
+      >
+        {mode === 'coach'
+          ? `Message ${detail.client.name} about this workout`
+          : 'Message your coach about this workout'}
+      </Link>
     </div>
   );
 

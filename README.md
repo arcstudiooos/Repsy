@@ -89,6 +89,7 @@ R2 builds the web-platform features in `docs/competitive/complete-platform-prd.m
 - **F4 check-in frequency:** next to the check-in day, the coach picks every week, every 2 weeks or every 4 weeks; the issuer skips the weeks in between.
 - **B5 bulk actions:** select clients in the list (or all on the page) to add a tag, send a message (each in their own thread) or assign a program (each their own copy, in its own transaction). Clients who already have a program are skipped and listed with the reason, never replaced in bulk.
 - **G12 water and supplements:** the habit form has quick-start presets (water, 8 glasses a day; supplements; steps; sleep). Supplements are tracked as taken or not, with a note that Kinetic gives no dosing advice.
+- **H3 anchored messages:** from a workout (client or coach) or a check-in, "Message about this" opens the conversation with a removable "Re: Upper A, Tue 3 Nov" chip; the sent message keeps the chip, linking each side to that workout or check-in. Only the thread's own client's items can be referenced.
 
 ## What works locally (Sprint 5)
 

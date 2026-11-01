@@ -587,3 +587,9 @@ export {
   type ReadinessAnswers,
   type ReadinessKey,
 } from './sessions/readiness-questions';
+export {
+  parseAnchorRef,
+  resolveAnchor,
+  type AnchorType,
+  type MessageAnchor,
+} from './messages/anchors';

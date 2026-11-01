@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+import type { MessageAnchor } from '@kinetic/core';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { fillPlaceholders } from '@kinetic/core/reply-fill';
 import type { MessageView, SavedReplyView } from '@kinetic/core';
@@ -34,7 +36,13 @@ export function MessageThread({
   initialCursor,
   savedReplies,
   replyFacts,
+  anchor: initialAnchor = null,
+  links,
 }: {
+  /** PRD H3: what the next message is about (from a "Message about this" link), removable. */
+  anchor?: MessageAnchor | null;
+  /** Where an anchor chip links: the client's portal, or a coach's view of this client. */
+  links?: { mode: 'portal' } | { mode: 'coach'; clientId: string };
   threadId: string;
   canPost: boolean;
   /** The other person's name, for the empty state. */
@@ -54,6 +62,16 @@ export function MessageThread({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
+  const [about, setAbout] = useState<MessageAnchor | null>(initialAnchor);
+  const hrefOf = (a: MessageAnchor): string | null => {
+    if (!links) return null;
+    if (links.mode === 'portal') {
+      return a.type === 'session' ? `/portal/workouts/${a.id}` : `/portal/check-ins/${a.id}`;
+    }
+    return a.type === 'session'
+      ? `/app/clients/${links.clientId}/sessions/${a.id}`
+      : `/app/clients/${links.clientId}/check-ins`;
+  };
   const bottom = useRef<HTMLLIElement>(null);
 
   const refresh = useCallback(async () => {
@@ -99,15 +117,21 @@ export function MessageThread({
     setSending(true);
     setError(null);
     // The same key on a retry: a resend after a lost response stores one message.
-    const res = await postMessage(threadId, text, key);
+    const res = await postMessage(
+      threadId,
+      text,
+      key,
+      about ? { type: about.type, id: about.id } : undefined,
+    );
     setSending(false);
     if (res.ok) {
       setMessages((m) => merge(m, [res.data]));
       setBody('');
+      setAbout(null);
       setKey(crypto.randomUUID());
       requestAnimationFrame(() => bottom.current?.scrollIntoView({ block: 'end' }));
     } else {
-      setError(res.fieldErrors?.body?.[0] ?? res.message);
+      setError(res.fieldErrors?.body?.[0] ?? res.fieldErrors?.anchor?.[0] ?? res.message);
     }
   }
 
@@ -138,6 +162,7 @@ export function MessageThread({
                   m.mine ? 'border-accent bg-surface' : 'border-input-border bg-canvas',
                 )}
               >
+                {m.anchor && <AnchorChip anchor={m.anchor} href={hrefOf(m.anchor)} />}
                 <span className="sr-only">{m.mine ? 'You' : m.senderName}: </span>
                 {m.body}
               </div>
@@ -186,6 +211,22 @@ export function MessageThread({
               </select>
             )}
           </div>
+          {about && (
+            <p className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="rounded-control bg-canvas px-2 py-1 font-medium">
+                Re: {about.label}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label={`Remove Re: ${about.label}`}
+                onClick={() => setAbout(null)}
+              >
+                Remove
+              </Button>
+            </p>
+          )}
           <textarea
             id={id}
             rows={3}
@@ -216,5 +257,21 @@ export function MessageThread({
         </p>
       )}
     </div>
+  );
+}
+
+/** PRD H3: "Re: Upper A, Tue 3 Nov", linking to the workout or check-in. */
+function AnchorChip({ anchor, href }: { anchor: MessageAnchor; href: string | null }) {
+  const cls = 'mb-1 inline-block rounded-control bg-canvas px-2 py-0.5 text-xs font-medium';
+  return (
+    <span className="block">
+      {href ? (
+        <Link href={href} className={`${cls} text-accent underline`}>
+          Re: {anchor.label}
+        </Link>
+      ) : (
+        <span className={cls}>Re: {anchor.label}</span>
+      )}
+    </span>
   );
 }

@@ -1,25 +1,44 @@
 import type { Metadata } from 'next';
-import { getMyThread, getReplyExpectations, listMessages } from '@kinetic/core';
+import {
+  getMyThread,
+  getReplyExpectations,
+  listMessages,
+  parseAnchorRef,
+  resolveAnchor,
+  type MessageAnchor,
+} from '@kinetic/core';
 import { MessageThread } from '@/components/messages/MessageThread';
 import { withPortalTenant } from '@/server/serverActor';
 
 export const metadata: Metadata = { title: 'Messages | Kinetic' };
 
 // Access is enforced by src/proxy.ts and the portal layout's client gate; core scopes to this client's thread.
-export default async function PortalMessages() {
-  const { thread, page, coachName, expectations } = await withPortalTenant(async (tx, actor) => {
-    const t = await getMyThread(tx, actor);
-    const client = await tx.client.findFirst({
-      where: { id: actor.clientId },
-      select: { coach: { select: { name: true } } },
-    });
-    return {
-      thread: t,
-      page: await listMessages(tx, actor, t.id),
-      coachName: (client?.coach as { name: string } | null)?.name ?? 'your coach',
-      expectations: await getReplyExpectations(tx, actor),
-    };
-  });
+export default async function PortalMessages({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const re = parseAnchorRef((await searchParams).re);
+  const { thread, page, coachName, expectations, anchor } = await withPortalTenant(
+    async (tx, actor) => {
+      const t = await getMyThread(tx, actor);
+      const client = await tx.client.findFirst({
+        where: { id: actor.clientId },
+        select: { coach: { select: { name: true } } },
+      });
+      return {
+        thread: t,
+        page: await listMessages(tx, actor, t.id),
+        coachName: (client?.coach as { name: string } | null)?.name ?? 'your coach',
+        expectations: await getReplyExpectations(tx, actor),
+        // PRD H3: "Message about this" from a workout or check-in; anything not theirs is dropped.
+        anchor:
+          re && actor.clientId
+            ? await resolveAnchor(tx, actor.clientId, re).catch((): MessageAnchor | null => null)
+            : null,
+      };
+    },
+  );
   return (
     <>
       <h1 className="mb-2 text-2xl font-semibold md:text-3xl">Messages</h1>
@@ -46,6 +65,8 @@ export default async function PortalMessages() {
         otherName={coachName}
         initial={page.items}
         initialCursor={page.nextCursor}
+        anchor={anchor}
+        links={{ mode: 'portal' }}
       />
     </>
   );

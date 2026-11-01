@@ -49,6 +49,12 @@ export default async function PortalCheckin({ params }: { params: Promise<{ id: 
         </p>
       </div>
       <CheckinFormLoader initial={checkin} />
+      <Link
+        href={`/portal/messages?re=checkin:${checkin.id}`}
+        className="mt-4 inline-flex min-h-11 items-center text-accent underline underline-offset-4"
+      >
+        Message your coach about this check-in
+      </Link>
     </>
   );
 }

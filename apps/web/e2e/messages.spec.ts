@@ -26,6 +26,8 @@ test.describe('messaging (S4-4)', () => {
       await expect(mine.getByText('Great session on Monday!')).toBeVisible({ timeout: 15_000 });
       await expect(mine.getByText(/· Sent$/)).toBeVisible();
       await expectNoAxeViolations(page);
+      // Leave the thread: while it is on screen its poll reads new replies, which would race the inbox check below.
+      await page.goto('/app');
 
       const portal = client.page;
       await portal.goto('/portal/messages');

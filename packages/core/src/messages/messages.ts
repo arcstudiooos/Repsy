@@ -1,3 +1,4 @@
+import { anchorOf, resolveAnchor, type MessageAnchor } from './anchors';
 import { appendAudit, wantsMessageEmail, type TenantTx } from '@kinetic/db';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
@@ -24,6 +25,8 @@ export interface MessageView {
   body: string;
   createdAt: string;
   readAt: string | null;
+  /** PRD H3: the workout or check-in it is about, if any. */
+  anchor?: MessageAnchor | null;
 }
 
 export interface ThreadSummary {
@@ -233,6 +236,9 @@ export async function listMessages(
       body: true,
       createdAt: true,
       readAt: true,
+      anchorType: true,
+      anchorId: true,
+      anchorLabel: true,
       sender: { select: { name: true } },
     },
   });
@@ -248,6 +254,7 @@ export async function listMessages(
       body: m.body,
       createdAt: m.createdAt.toISOString(),
       readAt: m.readAt?.toISOString() ?? null,
+      anchor: anchorOf(m),
     })),
     nextCursor: rows.length > MESSAGE_PAGE_SIZE && last ? encode(last) : null,
   };
@@ -268,7 +275,8 @@ export async function sendMessage(
   tx: TenantTx,
   actor: ActorContext,
   threadId: string,
-  input: { body?: unknown; clientMessageId?: unknown },
+  /** `anchor` (PRD H3): `{ type: 'session' | 'checkin', id }` of this thread's client. */
+  input: { body?: unknown; clientMessageId?: unknown; anchor?: unknown },
   opts: { now?: Date; requestId?: string; onSent?: MessageSentHook } = {},
 ): Promise<MessageView> {
   assertCan(actor, 'message:send');
@@ -284,6 +292,15 @@ export async function sendMessage(
     throw invalid('clientMessageId', 'Invalid id.');
   }
   const now = opts.now ?? new Date();
+  const anchor =
+    input.anchor === undefined || input.anchor === null
+      ? null
+      : await resolveAnchor(
+          tx,
+          thread.clientId,
+          input.anchor as { type?: unknown; id?: unknown },
+          now,
+        );
   const select = {
     id: true,
     threadId: true,
@@ -291,6 +308,9 @@ export async function sendMessage(
     body: true,
     createdAt: true,
     readAt: true,
+    anchorType: true,
+    anchorId: true,
+    anchorLabel: true,
     sender: { select: { name: true } },
   } as const;
   if (typeof key === 'string') {
@@ -305,6 +325,7 @@ export async function sendMessage(
         mine: existing.senderUserId === actor.userId,
         createdAt: existing.createdAt.toISOString(),
         readAt: existing.readAt?.toISOString() ?? null,
+        anchor: anchorOf(existing),
       };
     }
   }
@@ -314,6 +335,7 @@ export async function sendMessage(
     body,
     clientMessageId: typeof key === 'string' ? key : null,
     createdAt: now,
+    ...(anchor ? { anchorType: anchor.type, anchorId: anchor.id, anchorLabel: anchor.label } : {}),
   };
   let row;
   if (typeof key === 'string') {
@@ -331,6 +353,7 @@ export async function sendMessage(
         mine: row.senderUserId === actor.userId,
         createdAt: row.createdAt.toISOString(),
         readAt: row.readAt?.toISOString() ?? null,
+        anchor: anchorOf(row),
       };
     }
   } else {
@@ -373,6 +396,7 @@ export async function sendMessage(
     body: row.body,
     createdAt: row.createdAt.toISOString(),
     readAt: null,
+    anchor: anchorOf(row),
   };
 }
 

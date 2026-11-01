@@ -115,11 +115,19 @@ export default async function ClientCheckinsPage({ params }: { params: Promise<{
                     {c.title} · {STATUS[c.status]}
                     {c.reviewedAt && ` · Reviewed ${formatDate(c.reviewedAt.slice(0, 10))}`}
                   </CardDescription>
-                  {c.status === 'submitted' && !c.reviewedAt && (
-                    <div className="mt-2">
+                  <div className="mt-2 flex flex-wrap items-center gap-3">
+                    {c.status === 'submitted' && !c.reviewedAt && (
                       <MarkReviewedButton id={c.id} label={formatDate(c.periodLocalDate)} />
-                    </div>
-                  )}
+                    )}
+                    {c.status === 'submitted' && (
+                      <Link
+                        href={`/app/clients/${client.id}/messages?re=checkin:${c.id}`}
+                        className="inline-flex min-h-11 items-center text-sm text-accent underline underline-offset-4"
+                      >
+                        Reply about the week of {formatDate(c.periodLocalDate)}
+                      </Link>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent className="grid gap-6 md:grid-cols-[2fr_1fr]">
                   {c.answers ? (

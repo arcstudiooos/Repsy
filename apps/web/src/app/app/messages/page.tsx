@@ -213,6 +213,7 @@ export default async function MessagesPage({
                   initialCursor={open.page.nextCursor}
                   savedReplies={replies}
                   replyFacts={open.facts}
+                  links={{ mode: 'coach', clientId: open.thread.clientId }}
                 />
               </>
             ) : (
