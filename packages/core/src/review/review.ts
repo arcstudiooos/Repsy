@@ -21,6 +21,8 @@ export interface ReviewItem {
   loggedByCoach: boolean;
   /** PRD D13: an extra workout the client logged unplanned. */
   extra: boolean;
+  /** PRD D17: readiness before Start (0-100), if answered. */
+  readinessScore: number | null;
   /** Exercises swapped for an alternative in this session (PRD D8). */
   swapCount: number;
 }
@@ -120,6 +122,7 @@ export async function getReviewOverview(
         completedAt: s.completedAt,
         loggedByCoach: s.loggedByCoach,
         extra: s.extra,
+        readinessScore: s.readinessScore,
         swapCount: swapCount.get(s.id) ?? 0,
       })),
     };

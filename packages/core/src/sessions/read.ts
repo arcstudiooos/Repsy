@@ -30,6 +30,7 @@ export const SUMMARY_SELECT = {
   slotWeekIndex: true,
   slotDayIndex: true,
   kind: true,
+  readinessScore: true,
   scheduledLocalDate: true,
   dueAt: true,
   state: true,
@@ -47,6 +48,7 @@ export interface SummaryRow {
   slotWeekIndex: number | null;
   slotDayIndex: number | null;
   kind: string;
+  readinessScore: number | null;
   scheduledLocalDate: Date;
   dueAt: Date;
   state: SessionState;
@@ -128,6 +130,7 @@ export async function summarize(
       completedAt: r.completedAt?.toISOString() ?? null,
       overdue: open && r.dueAt < now,
       extra: r.kind === 'extra',
+      readinessScore: r.readinessScore,
     };
   });
 }

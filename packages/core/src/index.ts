@@ -572,3 +572,10 @@ export {
 } from './messages/replyFacts';
 export { equipmentGuideFor, type EquipmentGuide } from './exercises/equipmentGuide';
 export { twoFactorStatus, type TwoFactorStatus } from './identity/twoFactor';
+export { recordReadiness, readReadiness, type ReadinessView } from './sessions/readiness';
+export {
+  READINESS_QUESTIONS,
+  readinessScore,
+  type ReadinessAnswers,
+  type ReadinessKey,
+} from './sessions/readiness-questions';

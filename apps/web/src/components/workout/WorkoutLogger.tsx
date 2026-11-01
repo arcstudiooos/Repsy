@@ -2,6 +2,8 @@
 
 import { blockLayout } from '@kinetic/core/workout-blocks';
 import { sectionStart } from '@kinetic/core/workout-sections';
+import { READINESS_QUESTIONS } from '@kinetic/core/readiness';
+import { ReadinessCheck, type ReadinessDraft } from './ReadinessCheck';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import type { LoggedSet, SessionDetail, TrackingType, Units } from '@kinetic/core';
@@ -26,7 +28,7 @@ import {
   valuesFromDraft,
   type SetDraft,
 } from '@/lib/set-entry';
-import { saveSets, startWorkout, type SetLogPayload } from '@/lib/workout-api';
+import { saveReadiness, saveSets, startWorkout, type SetLogPayload } from '@/lib/workout-api';
 import { hasDeviceStore } from '@/portal/offline/db';
 import {
   cancelFinish,
@@ -147,6 +149,7 @@ export function WorkoutLogger({
   const [detail, setDetail] = useState(initial);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
+  const [readiness, setReadiness] = useState<ReadinessDraft>({});
 
   const logged = new Map(
     detail.logs.map((l) => [rowKey(l.workoutVersionExerciseId, l.setIndex), l]),
@@ -394,8 +397,21 @@ export function WorkoutLogger({
 
   async function onStart() {
     if (deviceFirst && !online) return;
+    const answered = READINESS_QUESTIONS.filter((q) => readiness[q.key] !== undefined).length;
+    if (answered > 0 && answered < READINESS_QUESTIONS.length) {
+      setStartError('Answer all five questions, or leave them all blank.');
+      return;
+    }
     setStarting(true);
     setStartError(null);
+    if (answered > 0) {
+      const saved = await saveReadiness(session.id, readiness as Record<string, number>);
+      if (!saved.ok) {
+        setStarting(false);
+        setStartError(saved.message);
+        return;
+      }
+    }
     const res = await startWorkout(session.id);
     setStarting(false);
     if (res.ok) {
@@ -577,6 +593,14 @@ export function WorkoutLogger({
           You&apos;re logging for {detail.client.name}.
         </p>
       )}
+      {detail.readiness && (
+        <p className="text-sm text-secondary">
+          Readiness {detail.readiness.score}/100 ·{' '}
+          {READINESS_QUESTIONS.map((q) => `${q.label} ${detail.readiness!.answers[q.key]}`).join(
+            ' · ',
+          )}
+        </p>
+      )}
       {workout.notes && <p className="text-secondary">{workout.notes}</p>}
     </div>
   );
@@ -604,6 +628,9 @@ export function WorkoutLogger({
             </li>
           ))}
         </ol>
+        {deviceFirst && !detail.readiness && (
+          <ReadinessCheck value={readiness} onChange={setReadiness} />
+        )}
         {startError && (
           <p role="alert" className="mb-3 text-danger">
             {startError}

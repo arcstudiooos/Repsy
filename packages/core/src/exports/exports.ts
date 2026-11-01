@@ -222,6 +222,7 @@ async function sessionRows(
       loggedByUserId: true,
       comment: true,
       kind: true,
+      readinessScore: true,
       workoutVersion: { select: { title: true } },
       setLogs: {
         orderBy: [{ workoutVersionExerciseId: 'asc' }, { setIndex: 'asc' }],
@@ -251,6 +252,7 @@ async function sessionRows(
       s.loggedByUserId !== null,
       s.comment,
       s.kind,
+      s.readinessScore,
     ]),
     sets: sessions.flatMap((s) =>
       s.setLogs.map((l) => [
@@ -486,6 +488,7 @@ const SESSION_HEADER = [
   'logged_by_coach',
   'comment',
   'kind',
+  'readiness_score',
 ];
 const SET_HEADER = [
   'session_id',

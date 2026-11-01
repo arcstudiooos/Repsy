@@ -80,6 +80,11 @@ function Section({
                     <SessionStateBadge state={item.state} overdue={false} />
                     {item.loggedByCoach && <LoggedByCoachBadge />}
                     {item.extra && <ExtraWorkoutBadge />}
+                    {item.readinessScore !== null && (
+                      <span className="text-sm text-secondary">
+                        Readiness {item.readinessScore}/100
+                      </span>
+                    )}
                     {item.swapCount > 0 && (
                       <span className="rounded-full bg-canvas px-2 py-0.5 text-sm text-secondary">
                         {item.swapCount === 1

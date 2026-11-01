@@ -61,6 +61,19 @@ test.describe('habits and tasks (PRD G1-G3)', () => {
       await expect(list.getByText(/1 this week/)).toBeVisible({ timeout: 15_000 });
       await expect(list.getByText('Done', { exact: true })).toBeVisible();
       await expect(list.getByText('Done on 1 of the last 84 days.')).toBeVisible();
+
+      // PRD G2: the 12-week map (a table) and completion per habit.
+      const map = page.getByRole('table', { name: 'Habits met per day, last 12 weeks' });
+      await expect(map.getByRole('row')).toHaveCount(13);
+      await expect(map.getByRole('cell', { name: '1/1' })).toHaveCount(1);
+      await expect(
+        page.getByRole('list', { name: 'Completion per habit' }).getByText('100% (1 of 1 days)'),
+      ).toBeVisible();
+      for (const width of [375, 1440]) {
+        await page.setViewportSize({ width, height: 900 });
+        await expectNoHorizontalOverflow(page);
+        await expectNoAxeViolations(page);
+      }
     } finally {
       await client.context.close();
     }

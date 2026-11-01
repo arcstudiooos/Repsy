@@ -720,6 +720,10 @@ model WorkoutSession {
   comment            String?
   loggedByUserId     String?      @map("logged_by_user_id") @db.Uuid
   pauseOffsetDays    Int          @default(0) @map("pause_offset_days")
+  /// PRD D17: the optional readiness answers before Start (1-5 each, 5 = best) and their 0-100 score.
+  readinessJson      Json?        @map("readiness_json")
+  readinessScore     Int?         @map("readiness_score") @db.SmallInt
+  readinessAt        DateTime?    @map("readiness_at") @db.Timestamptz(3)
   createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
 
   organization   Organization      @relation(fields: [organizationId], references: [id])

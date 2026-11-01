@@ -68,4 +68,6 @@ export interface SessionSummary {
   overdue: boolean;
   /** PRD D13: logged unplanned by the client; counts toward history, not adherence. */
   extra: boolean;
+  /** PRD D17: the 0-100 readiness score the client gave before Start, if they answered. */
+  readinessScore: number | null;
 }

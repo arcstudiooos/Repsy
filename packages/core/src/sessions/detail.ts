@@ -1,3 +1,4 @@
+import { readReadiness, type ReadinessView } from './readiness';
 import type { TenantTx } from '@kinetic/db';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
@@ -53,6 +54,8 @@ export interface SessionDetail {
   revisions: SetLogRevisionView[];
   /** Client actors on a completed or skipped session: when their edit window closes (`submittedAt` + 24h). */
   editableUntil: string | null;
+  /** PRD D17: the readiness check before Start, if the client answered it. */
+  readiness?: ReadinessView | null;
 }
 
 const values = (json: unknown): RevisionValues => {
@@ -80,7 +83,13 @@ export async function getSessionDetail(
   const row = await tx.workoutSession.findFirst({
     // Cancelled sessions are never shown (D-002 #7).
     where: { id: sessionId, ...sessionScope(actor), state: { not: 'cancelled' } },
-    select: { ...SUMMARY_SELECT, comment: true, submittedAt: true },
+    select: {
+      ...SUMMARY_SELECT,
+      comment: true,
+      submittedAt: true,
+      readinessJson: true,
+      readinessAt: true,
+    },
   });
   if (!row) throw notFound();
   const [summary] = await summarize(tx, [row], now);
@@ -164,5 +173,6 @@ export async function getSessionDetail(
     client,
     revisions,
     editableUntil,
+    readiness: readReadiness(row.readinessJson, row.readinessScore, row.readinessAt),
   };
 }

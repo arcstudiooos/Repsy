@@ -7,6 +7,7 @@ import {
   getSessionDetail,
   listSessions,
   listSharedWorkouts,
+  recordReadiness,
   searchExtraExercises,
   startExtraWorkout,
   rescheduleSession,
@@ -224,4 +225,20 @@ export const extraWorkoutExercisesRoute: RouteDef<typeof extraExercisesSchema, t
   input: extraExercisesSchema,
   handler: async ({ actor, input, tenant }) =>
     tenant((tx) => searchExtraExercises(tx, actor, input.q)),
+};
+
+const readinessSchema = z.object({
+  sleep: z.number(),
+  energy: z.number(),
+  soreness: z.number(),
+  stress: z.number(),
+  mood: z.number(),
+});
+
+/** `POST /api/v1/sessions/:id/readiness`: the client's optional check before Start (PRD D17). */
+export const sessionReadinessRoute: RouteDef<typeof readinessSchema, true> = {
+  can: 'session:log',
+  input: readinessSchema,
+  handler: ({ actor, input, params, requestId, tenant }) =>
+    tenant((tx) => recordReadiness(tx, actor, params.id ?? '', input, { requestId })),
 };

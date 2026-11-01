@@ -51,6 +51,10 @@ const post = <T>(sessionId: string, action: string, body: unknown) =>
 
 export const startWorkout = (sessionId: string) => post<SessionDetail>(sessionId, 'start', {});
 
+/** PRD D17: the optional readiness answers, sent just before Start. */
+export const saveReadiness = (sessionId: string, answers: Record<string, number>) =>
+  post<{ score: number }>(sessionId, 'readiness', answers);
+
 export interface SetLogPayload {
   workoutVersionExerciseId: string;
   setIndex: number;
