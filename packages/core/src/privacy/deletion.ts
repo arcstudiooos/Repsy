@@ -189,6 +189,8 @@ export async function eraseClientData(
     data: { erasedAt: now },
   });
   await tx.reviewFlag.deleteMany({ where: inClient });
+  // PRD I4: the days they opened the portal.
+  await tx.portalVisit.deleteMany({ where: inClient });
   const messageIds = (
     await tx.message.findMany({
       where: { organizationId: orgId, thread: { is: { clientId } } },

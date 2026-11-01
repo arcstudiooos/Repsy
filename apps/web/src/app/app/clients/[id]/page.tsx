@@ -9,8 +9,10 @@ import {
   listHabits,
   listTags,
   tagsForClients,
+  getEngagement,
 } from '@kinetic/core';
 import { CompliancePercent, WINDOW_LABEL } from '@/components/analytics/Compliance';
+import { EngagementCard } from '@/components/analytics/Engagement';
 import { GoalsPanel } from '@/components/goals/GoalsPanel';
 import { DeletionRequestButton } from '@/components/settings/DeletionRequestButton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,22 +26,33 @@ export const metadata: Metadata = { title: 'Client | Kinetic' };
 
 export default async function ClientOverviewPage({ params }: { params: Promise<{ id: string }> }) {
   const client = await loadClient((await params).id);
-  const { isOwner, deletion, compliance, allTags, clientTags, goals, lifts, habits, units } =
-    await withServerTenant(async (tx, actor) => ({
-      isOwner: actor.role === 'owner',
-      deletion: await deletionStatusFor(tx, actor, client.id),
-      compliance: (await clientCompliance(tx, actor, [client.id])).get(client.id) ?? null,
-      allTags: await listTags(tx, actor),
-      clientTags: (await tagsForClients(tx, actor, [client.id])).get(client.id) ?? [],
-      goals: await listGoals(tx, actor, client.id),
-      lifts: (await getPersonalRecords(tx, actor, client.id))
-        .filter((r) => r.trackingType === 'reps_load')
-        .map((r) => ({ id: r.exerciseId, name: r.name })),
-      habits: (await listHabits(tx, actor, client.id)).habits
-        .filter((h) => h.status === 'active')
-        .map((h) => ({ id: h.id, title: h.title })),
-      units: (await getSettings(tx, actor)).profile?.units ?? client.preferredUnits,
-    }));
+  const {
+    isOwner,
+    deletion,
+    compliance,
+    allTags,
+    clientTags,
+    goals,
+    lifts,
+    habits,
+    units,
+    engagement,
+  } = await withServerTenant(async (tx, actor) => ({
+    isOwner: actor.role === 'owner',
+    deletion: await deletionStatusFor(tx, actor, client.id),
+    compliance: (await clientCompliance(tx, actor, [client.id])).get(client.id) ?? null,
+    allTags: await listTags(tx, actor),
+    clientTags: (await tagsForClients(tx, actor, [client.id])).get(client.id) ?? [],
+    goals: await listGoals(tx, actor, client.id),
+    lifts: (await getPersonalRecords(tx, actor, client.id))
+      .filter((r) => r.trackingType === 'reps_load')
+      .map((r) => ({ id: r.exerciseId, name: r.name })),
+    habits: (await listHabits(tx, actor, client.id)).habits
+      .filter((h) => h.status === 'active')
+      .map((h) => ({ id: h.id, title: h.title })),
+    units: (await getSettings(tx, actor)).profile?.units ?? client.preferredUnits,
+    engagement: await getEngagement(tx, actor, client.id),
+  }));
   const joined = client.joinedAt ? client.joinedAt.slice(0, 10) : null;
   const rows: [string, string][] = [
     ['Email', client.email],
@@ -102,6 +115,7 @@ export default async function ClientOverviewPage({ params }: { params: Promise<{
           />
         </CardContent>
       </Card>
+      <EngagementCard weeks={engagement} />
       {compliance && (
         <Card>
           <CardHeader>

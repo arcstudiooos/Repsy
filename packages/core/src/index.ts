@@ -586,6 +586,12 @@ export {
 export { equipmentGuideFor, type EquipmentGuide } from './exercises/equipmentGuide';
 export { setExerciseDemo } from './exercises/demo';
 export {
+  ENGAGEMENT_WEEKS,
+  getEngagement,
+  recordPortalVisit,
+  type EngagementWeek,
+} from './progress/engagement';
+export {
   LIFECYCLE_STAGES,
   SETTABLE_STAGES,
   STAGE_LABEL,

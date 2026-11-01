@@ -264,6 +264,7 @@ model Organization {
   progressPhotos ProgressPhoto[]
   outboxPushes OutboxPush[]
   scheduledMessages ScheduledMessage[]
+  portalVisits PortalVisit[]
 }
 
 model Membership {
@@ -385,6 +386,7 @@ model Client {
   programs        Program[]
   assignments     ProgramAssignment[]
   workoutSessions WorkoutSession[]
+  portalVisits    PortalVisit[]
   pauses          ClientPause[]
   /// Composite FK (MATCH SIMPLE: null until a weekday is set) keeps the template in this org.
   checkinTemplate CheckinTemplate?    @relation(fields: [checkinTemplateId, organizationId], references: [id, organizationId], onDelete: Restrict)
@@ -1023,6 +1025,7 @@ enum ReviewRule {
   weight_change
   workout_moved
   nutrition_low
+  engagement_drop
 
   @@map("review_rule")
 }
@@ -1770,4 +1773,18 @@ model ScheduledMessage {
 
   @@index([organizationId, threadId])
   @@map("scheduled_messages")
+}
+
+/// PRD I4: a day the client opened the portal (their local date); nothing about what they looked at.
+model PortalVisit {
+  organizationId String   @map("organization_id") @db.Uuid
+  clientId       String   @map("client_id") @db.Uuid
+  localDate      DateTime @map("local_date") @db.Date
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@id([clientId, localDate])
+  @@index([organizationId])
+  @@map("portal_visits")
 }

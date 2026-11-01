@@ -18,7 +18,8 @@ export type RuleKey =
   | 'reply_overdue'
   | 'weight_change'
   | 'workout_moved'
-  | 'nutrition_low';
+  | 'nutrition_low'
+  | 'engagement_drop';
 
 /** The rule text shown with every flag (F10, §10). Copy is "Needs review", never "At risk". */
 export const RULE_TEXT: Record<RuleKey, string> = {
@@ -33,6 +34,7 @@ export const RULE_TEXT: Record<RuleKey, string> = {
   weight_change: 'Body weight changed more than your set band in about 2 weeks',
   workout_moved: 'Client moved a workout to another day',
   nutrition_low: 'Nutrition on target on under half the days for 2 weeks',
+  engagement_drop: 'Engagement score dropped 30 points or more last week',
 };
 
 export const AUTO_RESOLVED = 'Resolved automatically';
@@ -48,7 +50,8 @@ export interface FlagUpsert {
     | 'habit'
     | 'assignment'
     | 'metric'
-    | 'nutrition';
+    | 'nutrition'
+    | 'client';
   sourceId: string | null;
   dedupeKey: string;
   /** Rule text, dates and source ids only: never names, answers or message bodies. */

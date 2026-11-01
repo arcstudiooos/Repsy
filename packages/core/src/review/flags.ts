@@ -70,6 +70,8 @@ function hrefOf(row: FlagRow): string {
       return `${base}/progress`;
     case 'nutrition_low':
       return `${base}/nutrition`;
+    case 'engagement_drop':
+      return base;
     case 'workout_moved':
       return `${base}/calendar`;
     case 'message_unread':

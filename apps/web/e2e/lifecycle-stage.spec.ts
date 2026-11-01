@@ -17,6 +17,9 @@ test.describe('client lifecycle stage (PRD B20)', () => {
       await page.getByRole('link', { name: 'Ren Ewal' }).first().click();
       const stage = page.getByLabel('Stage', { exact: true });
       await expect(stage).toHaveValue('onboarding', { timeout: 30_000 });
+      // PRD I4: the client opened the portal while onboarding, so this week has a visit day.
+      const thisWeek = page.getByRole('row', { name: /so far/ });
+      await expect(thisWeek.getByRole('cell').last()).toHaveText('33%');
       const saved = page.waitForResponse((r) => r.url().endsWith('/stage') && r.ok());
       await stage.selectOption({ label: 'At renewal' });
       await saved;

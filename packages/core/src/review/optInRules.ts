@@ -4,6 +4,7 @@ import { assertCan } from '../authz/policies';
 import { clientsInPauseNow } from '../clients/pause';
 import { DomainError } from '../errors';
 import { isOnTarget } from '../nutrition/nutrition';
+import { engagementDropped, weeklyEngagement } from '../progress/engagement';
 import { fromDbDate, toDbDate } from '../sessions/read';
 import { todayInZone } from '../timezone';
 import type { FlagUpsert } from './rules';
@@ -18,6 +19,7 @@ export const OPT_IN_RULES = [
   'reply_overdue',
   'weight_change',
   'nutrition_low',
+  'engagement_drop',
 ] as const;
 export type OptInRule = (typeof OPT_IN_RULES)[number];
 
@@ -177,6 +179,24 @@ async function nutritionLow(tx: TenantTx, now: Date): Promise<FlagUpsert[]> {
   return out;
 }
 
+/** PRD I4: the weekly engagement score dropped (see `engagementDropped`). */
+async function engagementDrop(tx: TenantTx, now: Date): Promise<FlagUpsert[]> {
+  const out: FlagUpsert[] = [];
+  for (const c of await watchedClients(tx, now)) {
+    const drop = engagementDropped(await weeklyEngagement(tx, c.id, { now, weeks: 5 }));
+    if (!drop) continue;
+    out.push({
+      clientId: c.id,
+      ruleKey: 'engagement_drop',
+      sourceType: 'client',
+      sourceId: c.id,
+      dedupeKey: `engagement_drop:${c.id}:${drop.week}`,
+      evidence: { dates: [drop.week], score: drop.score, before: drop.before },
+    });
+  }
+  return out;
+}
+
 /** The client's last open workout is within the next 7 days and nothing is planned after it. */
 async function programEnding(tx: TenantTx, now: Date): Promise<FlagUpsert[]> {
   const clients = await watchedClients(tx, now);
@@ -310,6 +330,7 @@ export async function evaluateOptInRules(tx: TenantTx, now: Date): Promise<FlagU
     out.push(...(await replyOverdue(tx, now, s.replyTargetHours)));
   }
   if (s.enabled.has('nutrition_low')) out.push(...(await nutritionLow(tx, now)));
+  if (s.enabled.has('engagement_drop')) out.push(...(await engagementDrop(tx, now)));
   if (s.enabled.has('weight_change') && s.weightChangeBandPct) {
     out.push(...(await weightChange(tx, now, s.weightChangeBandPct)));
   }

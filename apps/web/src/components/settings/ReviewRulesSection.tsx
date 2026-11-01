@@ -34,6 +34,11 @@ const RULES: { key: OptInRule; label: string; help: string }[] = [
     label: 'Nutrition off target',
     help: 'Nutrition was on target on under half the days in each of the last two weeks (days not logged count as off).',
   },
+  {
+    key: 'engagement_drop',
+    label: 'Engagement dropped',
+    help: "Last week's engagement score was 30 or more points under the three weeks before it.",
+  },
 ];
 
 /** Opt-in review rules (PRD I3): each adds items to the review queue when it is on. */
