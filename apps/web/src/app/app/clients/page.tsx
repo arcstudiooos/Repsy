@@ -16,6 +16,7 @@ import { ErrorState } from '@/components/states/ErrorState';
 import { loadAllTemplates } from '@/server/selectOptions';
 import { withServerTenant } from '@/server/serverActor';
 import { ClientsTable } from './ClientsTable';
+import { JoinLinkDialog } from './JoinLinkDialog';
 import { NewClientDialog } from './NewClientDialog';
 
 export const metadata: Metadata = { title: 'Clients | Kinetic' };
@@ -101,6 +102,7 @@ export default async function ClientsPage({
         {!isEmptyRoster && (
           <div className="flex flex-wrap gap-3">
             <ImportLink />
+            <JoinLinkDialog />
             <NewClientDialog />
           </div>
         )}
@@ -112,6 +114,7 @@ export default async function ClientsPage({
           action={
             <div className="flex flex-wrap justify-center gap-3">
               <NewClientDialog />
+              <JoinLinkDialog />
               <ImportLink />
             </div>
           }

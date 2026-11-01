@@ -91,6 +91,7 @@ R2 builds the web-platform features in `docs/competitive/complete-platform-prd.m
 - **G12 water and supplements:** the habit form has quick-start presets (water, 8 glasses a day; supplements; steps; sleep). Supplements are tracked as taken or not, with a note that Kinetic gives no dosing advice.
 - **H3 anchored messages:** from a workout (client or coach) or a check-in, "Message about this" opens the conversation with a removable "Re: Upper A, Tue 3 Nov" chip; the sent message keeps the chip, linking each side to that workout or check-in. Only the thread's own client's items can be referenced.
 - **F3 question types:** check-in questions can also be long text, a number with a unit, pick one, pick any, a date, or a body measurement. A body measurement is typed in the client's units, and sending the check-in records it in their progress on the check-in's date. Photo and video questions wait for uploads.
+- **B3 sign-up link:** Clients, Invite link makes a reusable link (up to 10-100 sign-ups, 30 days, shown once) that can be turned off. A person who opens it gives their name and email and gets the usual single-use invite, so verification, consent and the client limit apply as before; an email already on the roster gets the same reply and nothing is sent. Rate limited per address. No QR code yet.
 
 ## What works locally (Sprint 5)
 

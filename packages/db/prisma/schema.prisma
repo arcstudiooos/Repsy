@@ -69,6 +69,7 @@ model User {
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   ownedOrganizations       Organization[]
+  createdJoinLinks         JoinLink[]              @relation("JoinLinkCreator")
   twoFactors               TwoFactor[]
   memberships              Membership[]
   createdPilotCodes        PilotCode[]             @relation("PilotCodeCreatedBy")
@@ -251,6 +252,7 @@ model Organization {
   savedReplies            SavedReply[]
 
   @@map("organizations")
+  joinLinks JoinLink[]
 }
 
 model Membership {
@@ -1576,4 +1578,23 @@ model Resource {
 
   @@index([organizationId, archivedAt])
   @@map("resources")
+}
+
+/// PRD B3: a reusable sign-up link for a workspace (RLS tenant_isolation; CHECK in migration 000059).
+model JoinLink {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  tokenHash      String    @unique @map("token_hash")
+  createdBy      String    @map("created_by") @db.Uuid
+  maxUses        Int       @map("max_uses")
+  uses           Int       @default(0)
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt      DateTime? @map("revoked_at") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  creator      User         @relation("JoinLinkCreator", fields: [createdBy], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@map("join_links")
 }

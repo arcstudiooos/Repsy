@@ -593,3 +593,13 @@ export {
   type AnchorType,
   type MessageAnchor,
 } from './messages/anchors';
+export {
+  createJoinLink,
+  joinWithLink,
+  listJoinLinks,
+  lookupJoinLink,
+  revokeJoinLink,
+  JOIN_LINK_DAYS,
+  JOIN_LINK_MAX_USES,
+  type JoinLinkView,
+} from './invites/joinLinks';
