@@ -2,7 +2,11 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { listSessions, todayInZone, type SessionSummary } from '@kinetic/core';
 import { EmptyState } from '@/components/states/EmptyState';
-import { LoggedByCoachBadge, SessionStateBadge } from '@/components/sessions/SessionStateBadge';
+import {
+  ExtraWorkoutBadge,
+  LoggedByCoachBadge,
+  SessionStateBadge,
+} from '@/components/sessions/SessionStateBadge';
 import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatSessionDate, plural } from '@/lib/session-format';
@@ -48,6 +52,7 @@ function SessionList({
                     {plural(s.exerciseCount, 'exercise', 'exercises')}
                     <SessionStateBadge state={s.state} overdue={s.overdue} />
                     {s.loggedByCoach && <LoggedByCoachBadge />}
+                    {s.extra && <ExtraWorkoutBadge />}
                   </span>
                 </div>
                 <Link

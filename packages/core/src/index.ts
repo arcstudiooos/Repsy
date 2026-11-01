@@ -508,6 +508,15 @@ export {
   type SwapView,
 } from './sessions/swaps';
 export {
+  listSharedWorkouts,
+  searchExtraExercises,
+  startExtraWorkout,
+  setProgramShared,
+  EXTRA_MAX_EXERCISES,
+  type SharedWorkout,
+  type ExtraExerciseOption,
+} from './sessions/extra';
+export {
   listGoals,
   createGoal,
   setGoalStatus,

@@ -301,8 +301,9 @@ export async function getAssignmentSummary(
           await tx.programSlot.findFirst({
             where: {
               programVersionId: assignment.program.currentVersionId ?? '',
-              weekIndex: next.slotWeekIndex,
-              dayIndex: next.slotDayIndex,
+              // Sessions of an assignment always have a slot (only extra workouts lack one).
+              weekIndex: next.slotWeekIndex ?? -1,
+              dayIndex: next.slotDayIndex ?? -1,
             },
             select: { workoutVersion: { select: { title: true } } },
           })

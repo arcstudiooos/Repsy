@@ -5,7 +5,11 @@ import { getPortalHome, listHabits } from '@kinetic/core';
 import { HabitChecklist } from '@/components/habits/HabitChecklist';
 import { PausedBanner } from '@/components/portal/PausedBanner';
 import { EmptyState } from '@/components/states/EmptyState';
-import { LoggedByCoachBadge, SessionStateBadge } from '@/components/sessions/SessionStateBadge';
+import {
+  ExtraWorkoutBadge,
+  LoggedByCoachBadge,
+  SessionStateBadge,
+} from '@/components/sessions/SessionStateBadge';
 import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatSessionDate, plural, SAFETY_REMINDER } from '@/lib/session-format';
@@ -74,6 +78,7 @@ export default async function PortalHome() {
                 <span>{plural(next.exerciseCount, 'exercise', 'exercises')}</span>
                 <SessionStateBadge state={next.state} overdue={next.overdue} />
                 {next.loggedByCoach && <LoggedByCoachBadge />}
+                {next.extra && <ExtraWorkoutBadge />}
               </div>
               <Link
                 href={`/portal/workouts/${next.id}`}
@@ -120,6 +125,12 @@ export default async function PortalHome() {
           </Card>
         )}
 
+        <Link
+          href="/portal/workouts/extra"
+          className={cn(buttonVariants({ variant: 'secondary' }), 'min-h-12 w-full')}
+        >
+          Log an extra workout
+        </Link>
         <Link
           href="/portal/resources"
           className={cn(buttonVariants({ variant: 'secondary' }), 'min-h-12 w-full')}

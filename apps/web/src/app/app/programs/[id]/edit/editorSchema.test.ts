@@ -18,6 +18,7 @@ const program = (loadKg: number): ProgramDetail => ({
   id: 'p',
   title: 'P',
   kind: 'template',
+  sharedWithClients: false,
   versionNo: 1,
   versionId: 'v',
   daysPerWeek: 1,

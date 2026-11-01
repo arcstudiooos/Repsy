@@ -19,9 +19,10 @@ const finished = () =>
 export interface LockedSession {
   id: string;
   clientId: string;
-  assignmentId: string;
-  slotWeekIndex: number;
-  slotDayIndex: number;
+  /** Null, with the slot, for an extra workout (PRD D13). */
+  assignmentId: string | null;
+  slotWeekIndex: number | null;
+  slotDayIndex: number | null;
   state: SessionState;
   workoutVersionId: string | null;
   loggedByUserId: string | null;

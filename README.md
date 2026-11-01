@@ -80,6 +80,7 @@ R2 builds the web-platform features in `docs/competitive/complete-platform-prd.m
 - **C7 set targets:** besides reps, load, RPE, tempo and rest, a set can have a rep range (top of range), RIR and % of 1RM, and timed or distance sets a pace and heart-rate zone; the logger, print and version views show them, and program text import keeps the top of "3x8-10".
 - **B13 equipment profile:** the client context records where a client trains and the equipment they have; when the builder edits that client's program it flags exercises needing other equipment and offers one-click swaps to the coach's alternatives that fit.
 - **C9 workout sections:** each exercise in a workout can sit in the warm-up, main, conditioning or cool-down part; the builder has a Section picker, the logger, print and version views show section headings, and pasted programs read "Warm-up:" style lines inside a day.
+- **D13 extra workouts:** a client can log an unplanned workout from Workouts or Today ("Log an extra workout"): one of the workouts a coach shares (a template's "Share with clients as extra workouts" box), or exercises they pick from the library. It is marked Extra, shows in history, records and review, and never counts toward adherence, compliance or weekly totals. One can be open at a time.
 
 ## What works locally (Sprint 5)
 

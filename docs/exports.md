@@ -8,20 +8,20 @@ instants ISO 8601 UTC.
 
 ## Workspace export (owner)
 
-| File                 | One row per                | Notes                                             |
-| -------------------- | -------------------------- | ------------------------------------------------- |
-| `clients.csv`        | client                     | name, email, status, time zone, units, start date |
-| `sessions.csv`       | planned workout            | state, dates, logged by coach                     |
-| `set_logs.csv`       | logged set                 | reps, weight, RPE, duration, distance             |
-| `checkins.csv`       | answered question          | one row per question of each sent check-in        |
-| `metrics.csv`        | measurement                | canonical units                                   |
-| `habits.csv`         | habit tick                 |                                                   |
-| `nutrition.csv`      | logged day                 | calories and macros                               |
-| `exercise_swaps.csv` | swap (PRD D8)              | planned exercise, the one done instead, reason    |
-| `goals.csv`          | goal (PRD B18)             | start and target in canonical units               |
-| `workout_notes.csv`  | note on a workout (PRD D9) | author role and text                              |
-| `programs.json`      | —                          | every program, see below                          |
-| `exercises.json`     | —                          | the workspace's own exercises, see below          |
+| File                 | One row per                | Notes                                                               |
+| -------------------- | -------------------------- | ------------------------------------------------------------------- |
+| `clients.csv`        | client                     | name, email, status, time zone, units, start date                   |
+| `sessions.csv`       | workout                    | state, dates, logged by coach, kind (`planned` or `extra`, PRD D13) |
+| `set_logs.csv`       | logged set                 | reps, weight, RPE, duration, distance                               |
+| `checkins.csv`       | answered question          | one row per question of each sent check-in                          |
+| `metrics.csv`        | measurement                | canonical units                                                     |
+| `habits.csv`         | habit tick                 |                                                                     |
+| `nutrition.csv`      | logged day                 | calories and macros                                                 |
+| `exercise_swaps.csv` | swap (PRD D8)              | planned exercise, the one done instead, reason                      |
+| `goals.csv`          | goal (PRD B18)             | start and target in canonical units                                 |
+| `workout_notes.csv`  | note on a workout (PRD D9) | author role and text                                                |
+| `programs.json`      | —                          | every program, see below                                            |
+| `exercises.json`     | —                          | the workspace's own exercises, see below                            |
 
 ## Client export (the client themselves)
 

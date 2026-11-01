@@ -88,7 +88,10 @@ export async function reconcileSessions(
     select: { id: true, slotWeekIndex: true, slotDayIndex: true, state: true },
   });
   const bySlot = new Map(
-    existing.map((s) => [keyOf({ weekIndex: s.slotWeekIndex, dayIndex: s.slotDayIndex }), s]),
+    existing.map((s) => [
+      keyOf({ weekIndex: s.slotWeekIndex ?? -1, dayIndex: s.slotDayIndex ?? -1 }),
+      s,
+    ]),
   );
 
   let created = 0;

@@ -9,7 +9,11 @@ import {
 } from '@kinetic/core';
 import { PausedBanner } from '@/components/portal/PausedBanner';
 import { EmptyState } from '@/components/states/EmptyState';
-import { LoggedByCoachBadge, SessionStateBadge } from '@/components/sessions/SessionStateBadge';
+import {
+  ExtraWorkoutBadge,
+  LoggedByCoachBadge,
+  SessionStateBadge,
+} from '@/components/sessions/SessionStateBadge';
 import { buttonVariants } from '@/components/ui/button';
 import { formatSessionDate, plural } from '@/lib/session-format';
 import { cn } from '@/lib/utils';
@@ -70,7 +74,12 @@ export default async function PortalWorkouts({
 
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Workouts</h1>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold md:text-3xl">Workouts</h1>
+        <Link href="/portal/workouts/extra" className={buttonVariants({ variant: 'secondary' })}>
+          Log an extra workout
+        </Link>
+      </div>
       {data.pause && (
         <div className="mb-6">
           <PausedBanner {...data.pause} todayLocalDate={data.today} />
@@ -131,6 +140,7 @@ export default async function PortalWorkouts({
                   {plural(s.exerciseCount, 'exercise', 'exercises')}
                   <SessionStateBadge state={s.state} overdue={s.overdue} />
                   {s.loggedByCoach && <LoggedByCoachBadge />}
+                  {s.extra && <ExtraWorkoutBadge />}
                 </span>
               </Link>
             </li>

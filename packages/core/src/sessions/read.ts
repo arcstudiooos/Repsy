@@ -29,6 +29,7 @@ export const SUMMARY_SELECT = {
   assignmentId: true,
   slotWeekIndex: true,
   slotDayIndex: true,
+  kind: true,
   scheduledLocalDate: true,
   dueAt: true,
   state: true,
@@ -41,9 +42,11 @@ export const SUMMARY_SELECT = {
 export interface SummaryRow {
   id: string;
   clientId: string;
-  assignmentId: string;
-  slotWeekIndex: number;
-  slotDayIndex: number;
+  /** Null, with the slot, for an extra workout (PRD D13): its version is fixed from the start. */
+  assignmentId: string | null;
+  slotWeekIndex: number | null;
+  slotDayIndex: number | null;
+  kind: string;
   scheduledLocalDate: Date;
   dueAt: Date;
   state: SessionState;
@@ -63,7 +66,9 @@ export async function summarize(
   now: Date,
 ): Promise<SessionSummary[]> {
   const assignmentIds = [
-    ...new Set(rows.filter((r) => !r.workoutVersionId).map((r) => r.assignmentId)),
+    ...new Set(
+      rows.flatMap((r) => (!r.workoutVersionId && r.assignmentId ? [r.assignmentId] : [])),
+    ),
   ];
   const assignments = assignmentIds.length
     ? await tx.programAssignment.findMany({
@@ -74,8 +79,9 @@ export async function summarize(
   const currentVersion = new Map(assignments.map((a) => [a.id, a.program.currentVersionId]));
 
   const slotKeys = rows.flatMap((r) => {
-    const programVersionId = r.workoutVersionId ? null : currentVersion.get(r.assignmentId);
-    return programVersionId
+    const programVersionId =
+      r.workoutVersionId || !r.assignmentId ? null : currentVersion.get(r.assignmentId);
+    return programVersionId && r.slotWeekIndex !== null && r.slotDayIndex !== null
       ? [{ programVersionId, weekIndex: r.slotWeekIndex, dayIndex: r.slotDayIndex }]
       : [];
   });
@@ -92,8 +98,10 @@ export async function summarize(
 
   const versionOf = (r: SummaryRow): string | undefined => {
     if (r.workoutVersionId) return r.workoutVersionId;
-    const pv = currentVersion.get(r.assignmentId);
-    return pv ? slotVersion.get(slotKey(pv, r.slotWeekIndex, r.slotDayIndex)) : undefined;
+    const pv = r.assignmentId ? currentVersion.get(r.assignmentId) : undefined;
+    return pv && r.slotWeekIndex !== null && r.slotDayIndex !== null
+      ? slotVersion.get(slotKey(pv, r.slotWeekIndex, r.slotDayIndex))
+      : undefined;
   };
   const versionIds = [...new Set(rows.map(versionOf).filter((v): v is string => !!v))];
   const versions = versionIds.length
@@ -119,6 +127,7 @@ export async function summarize(
       startedAt: r.startedAt?.toISOString() ?? null,
       completedAt: r.completedAt?.toISOString() ?? null,
       overdue: open && r.dueAt < now,
+      extra: r.kind === 'extra',
     };
   });
 }
@@ -271,6 +280,7 @@ export async function getPortalHome(
   const { start, end } = isoWeekOf(today);
   const weekWhere = {
     clientId: client.id,
+    kind: 'planned',
     scheduledLocalDate: { gte: toDbDate(start), lte: toDbDate(end) },
   };
   // Sequential: one interactive transaction runs one statement at a time.

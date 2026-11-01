@@ -16,6 +16,7 @@ import { EmptyState } from '@/components/states/EmptyState';
 import { buttonVariants } from '@/components/ui/button';
 import { withServerTenant } from '@/server/serverActor';
 import { ProgramEditor, type EditorClient } from './ProgramEditor';
+import { ShareWithClients } from './ShareWithClients';
 
 export const metadata: Metadata = { title: 'Edit program | Kinetic' };
 
@@ -99,11 +100,19 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
     );
   }
   return (
-    <ProgramEditor
-      program={loaded.program}
-      units={loaded.units}
-      draft={loaded.draft}
-      client={loaded.client}
-    />
+    <>
+      {loaded.program.kind === 'template' && (
+        <ShareWithClients
+          programId={loaded.program.id}
+          initial={loaded.program.sharedWithClients}
+        />
+      )}
+      <ProgramEditor
+        program={loaded.program}
+        units={loaded.units}
+        draft={loaded.draft}
+        client={loaded.client}
+      />
+    </>
   );
 }

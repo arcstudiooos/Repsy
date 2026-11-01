@@ -389,6 +389,7 @@ export async function weekActivityBefore(
     by: ['state'],
     where: {
       clientId,
+      kind: 'planned',
       state: { not: 'cancelled' },
       scheduledLocalDate: { gte: toDbDate(from), lte: toDbDate(to) },
     },

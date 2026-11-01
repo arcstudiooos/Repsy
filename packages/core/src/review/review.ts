@@ -19,6 +19,8 @@ export interface ReviewItem {
   state: SessionState;
   completedAt: string | null;
   loggedByCoach: boolean;
+  /** PRD D13: an extra workout the client logged unplanned. */
+  extra: boolean;
   /** Exercises swapped for an alternative in this session (PRD D8). */
   swapCount: number;
 }
@@ -117,6 +119,7 @@ export async function getReviewOverview(
         state: s.state,
         completedAt: s.completedAt,
         loggedByCoach: s.loggedByCoach,
+        extra: s.extra,
         swapCount: swapCount.get(s.id) ?? 0,
       })),
     };
@@ -187,8 +190,10 @@ export async function getReviewCounts(
       where: { state: 'completed', completedAt: { gt: since } },
     }),
     dueThisWeek: await tx.workoutSession.count({
-      where: { state: { in: ['scheduled', 'in_progress'] }, ...week },
+      where: { kind: 'planned', state: { in: ['scheduled', 'in_progress'] }, ...week },
     }),
-    skippedThisWeek: await tx.workoutSession.count({ where: { state: 'skipped', ...week } }),
+    skippedThisWeek: await tx.workoutSession.count({
+      where: { kind: 'planned', state: 'skipped', ...week },
+    }),
   };
 }

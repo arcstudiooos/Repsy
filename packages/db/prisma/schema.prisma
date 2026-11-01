@@ -497,6 +497,8 @@ model Program {
   sourceVersionId  String?       @map("source_version_id") @db.Uuid
   currentVersionId String?       @unique @map("current_version_id") @db.Uuid
   status           ProgramStatus @default(active)
+  /// PRD D13: a template whose workouts clients may start as extra workouts.
+  sharedWithClients Boolean      @default(false) @map("shared_with_clients")
   createdBy        String        @map("created_by") @db.Uuid
   createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -673,10 +675,13 @@ model ProgramAssignment {
 model WorkoutSession {
   id                 String       @id @default(uuid()) @db.Uuid
   organizationId     String       @map("organization_id") @db.Uuid
-  assignmentId       String       @map("assignment_id") @db.Uuid
+  /// Null for an extra workout (PRD D13; CHECK workout_sessions_kind_check in migration 000052).
+  assignmentId       String?      @map("assignment_id") @db.Uuid
   clientId           String       @map("client_id") @db.Uuid
-  slotWeekIndex      Int          @map("slot_week_index")
-  slotDayIndex       Int          @map("slot_day_index")
+  slotWeekIndex      Int?         @map("slot_week_index")
+  slotDayIndex       Int?         @map("slot_day_index")
+  /// planned (from an assignment) or extra (logged by the client unplanned, PRD D13).
+  kind               String       @default("planned")
   /// Intended calendar date in the client's timezone.
   scheduledLocalDate DateTime     @map("scheduled_local_date") @db.Date
   /// 00:00 local on the date, as UTC.
@@ -694,7 +699,7 @@ model WorkoutSession {
   createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
 
   organization   Organization      @relation(fields: [organizationId], references: [id])
-  assignment     ProgramAssignment @relation(fields: [assignmentId, organizationId], references: [id, organizationId])
+  assignment     ProgramAssignment? @relation(fields: [assignmentId, organizationId], references: [id, organizationId])
   client         Client            @relation(fields: [clientId, organizationId], references: [id, organizationId])
   /// Composite FK (MATCH SIMPLE: null until locked) keeps the locked version in this org (migration 000017).
   workoutVersion WorkoutVersion?   @relation(fields: [workoutVersionId, organizationId], references: [id, organizationId], onDelete: Restrict)
@@ -708,6 +713,7 @@ model WorkoutSession {
   /// Target of set_logs' composite tenant FK.
   @@unique([id, organizationId])
   @@index([organizationId, clientId, dueAt])
+  @@index([organizationId, clientId, kind])
   /// Portal "upcoming" reads and the S4 missed-session sweep.
   @@index([organizationId, state, dueAt])
   /// Review list "new completed workouts" (S2-4).

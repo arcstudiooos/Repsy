@@ -80,14 +80,14 @@ Post-pilot target (option b): run migrations from CI with the owner URL stored o
 
 All jobs are pg-boss queues created by `pgboss:migrate`; scheduled ones are registered on boot. Every job is idempotent, so an overlapping or repeated run changes nothing.
 
-| Job | Schedule | What it does |
-| --- | --- | --- |
-| `email.deliver` | outbox sweep (`OUTBOX_POLL_INTERVAL_MS`) | Sends queued emails with retries. |
-| `pauses.end` | every 10 min | Ends pauses whose resume date arrived in the client's zone. |
-| `checkins.issue` | every 10 min | Issues weekly check-ins at 06:00 client-local. |
-| `review.sweep` | every 10 min | Marks missed/incomplete sessions, reopens snoozes, raises and auto-resolves review flags. |
-| `exports.build` | every minute | Builds requested exports into the private bucket (3 attempts). |
-| `deletions.run` | every minute | Runs verified deletion requests not on legal hold. |
+| Job              | Schedule                                 | What it does                                                                              |
+| ---------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `email.deliver`  | outbox sweep (`OUTBOX_POLL_INTERVAL_MS`) | Sends queued emails with retries.                                                         |
+| `pauses.end`     | every 10 min                             | Ends pauses whose resume date arrived in the client's zone.                               |
+| `checkins.issue` | every 10 min                             | Issues weekly check-ins at 06:00 client-local.                                            |
+| `review.sweep`   | every 10 min                             | Marks missed/incomplete sessions, reopens snoozes, raises and auto-resolves review flags. |
+| `exports.build`  | every minute                             | Builds requested exports into the private bucket (3 attempts).                            |
+| `deletions.run`  | every minute                             | Runs verified deletion requests not on legal hold.                                        |
 
 A stuck job shows in the worker logs (`... failed`, never with content) and in Sentry. Re-running is safe.
 
@@ -120,6 +120,6 @@ Render Postgres takes daily backups; retention must stay at or under 35 days (D-
 4. Run the smoke workflow against a temporary web service pointed at the restored database, then delete the scratch database and service.
 5. Record the date, the backup's timestamp, the person and any problems below.
 
-| Date | Backup restored | By | Result |
-| --- | --- | --- | --- |
-| — | — | — | Not run yet (no hosted database exists). |
+| Date | Backup restored | By  | Result                                   |
+| ---- | --------------- | --- | ---------------------------------------- |
+| —    | —               | —   | Not run yet (no hosted database exists). |

@@ -79,6 +79,8 @@ export interface ProgramDetail {
   id: string;
   title: string;
   kind: 'template' | 'client';
+  /** PRD D13: clients may start this template's workouts as extra workouts. */
+  sharedWithClients: boolean;
   /** Null until the first commit. */
   versionNo: number | null;
   versionId: string | null;
@@ -243,7 +245,12 @@ export async function getProgram(
     if (!byNo) throw notFound();
     wanted = byNo.id;
   }
-  const base = { id: program.id, title: program.title, kind: program.kind };
+  const base = {
+    id: program.id,
+    title: program.title,
+    kind: program.kind,
+    sharedWithClients: program.sharedWithClients,
+  };
   if (wanted === null) {
     return { ...base, versionNo: null, versionId: null, daysPerWeek: 0, weekCount: 0, weeks: [] };
   }

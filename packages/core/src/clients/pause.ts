@@ -126,10 +126,16 @@ async function shiftSessions(
 ): Promise<number> {
   if (delta === 0) return 0;
   const sessions = await tx.workoutSession.findMany({
-    where: { clientId, state: 'scheduled', scheduledLocalDate: { gte: toDbDate(fromLocalDate) } },
+    where: {
+      clientId,
+      kind: 'planned',
+      state: 'scheduled',
+      scheduledLocalDate: { gte: toDbDate(fromLocalDate) },
+    },
     select: { id: true, scheduledLocalDate: true, assignment: { select: { timezone: true } } },
   });
   for (const s of sessions) {
+    if (!s.assignment) continue;
     const date = addDays(fromDbDate(s.scheduledLocalDate), delta);
     const { scheduledAtUtc, dueAtUtc } = localDayBounds(date, s.assignment.timezone);
     await tx.workoutSession.update({

@@ -45,14 +45,14 @@ const localDate = (d: Date) => d.toISOString().slice(0, 10);
 const dates = async (w: ClientWorld) =>
   Object.fromEntries(
     (await sessionsOf(prisma, w.assignmentId)).map((s) => [
-      `W${s.slotWeekIndex + 1}D${s.slotDayIndex + 1}`,
+      `W${s.slotWeekIndex! + 1}D${s.slotDayIndex! + 1}`,
       localDate(s.scheduledLocalDate),
     ]),
   );
 
 const byKey = async (w: ClientWorld, key: string) =>
   (await sessionsOf(prisma, w.assignmentId)).find(
-    (s) => `W${s.slotWeekIndex + 1}D${s.slotDayIndex + 1}` === key,
+    (s) => `W${s.slotWeekIndex! + 1}D${s.slotDayIndex! + 1}` === key,
   )!;
 
 const setState = (id: string, data: Record<string, unknown>) =>

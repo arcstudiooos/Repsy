@@ -7,6 +7,7 @@ import type { LoggedSet, SessionDetail, TrackingType, Units } from '@kinetic/cor
 import { isPersonalRecord } from '@kinetic/core/pr';
 import { toDisplay } from '@kinetic/core/units';
 import {
+  ExtraWorkoutBadge,
   LoggedByCoachBadge,
   RevisionMark,
   SessionStateBadge,
@@ -566,6 +567,7 @@ export function WorkoutLogger({
       <div className="flex flex-wrap items-center gap-2">
         <SessionStateBadge state={session.state} overdue={session.overdue} />
         {session.loggedByCoach && <LoggedByCoachBadge />}
+        {session.extra && <ExtraWorkoutBadge />}
       </div>
       {mode === 'coach' && (
         <p className="rounded-control border border-input-border bg-surface px-3 py-2">

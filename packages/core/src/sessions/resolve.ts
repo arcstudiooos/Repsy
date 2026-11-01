@@ -13,8 +13,16 @@ const notFound = () => new DomainError('NOT_FOUND', 'Not found.');
  */
 export async function resolveSlotWorkoutVersionId(
   tx: TenantTx,
-  session: { assignmentId: string; slotWeekIndex: number; slotDayIndex: number },
+  session: {
+    assignmentId: string | null;
+    slotWeekIndex: number | null;
+    slotDayIndex: number | null;
+  },
 ): Promise<string> {
+  // An extra workout (PRD D13) has no slot; its version is fixed when it starts.
+  if (!session.assignmentId || session.slotWeekIndex === null || session.slotDayIndex === null) {
+    throw notFound();
+  }
   const assignment = await tx.programAssignment.findFirst({
     where: { id: session.assignmentId },
     select: { program: { select: { currentVersionId: true } } },

@@ -100,6 +100,8 @@ export async function adherence(
   const rows = await tx.workoutSession.groupBy({
     by: ['state'],
     where: {
+      // PRD D13: extra workouts are history, never adherence.
+      kind: 'planned',
       state: { not: 'cancelled' },
       scheduledLocalDate: { gte: toDbDate(range.from), lte: toDbDate(range.to) },
       dueAt: { lt: cutoff },
@@ -132,10 +134,14 @@ export async function getAnalytics(
   const inRange = { gte: toDbDate(range.from), lte: toDbDate(range.to) };
 
   const assigned = await tx.workoutSession.count({
-    where: { state: { not: 'cancelled' }, scheduledLocalDate: inRange },
+    where: { kind: 'planned', state: { not: 'cancelled' }, scheduledLocalDate: inRange },
   });
   const finished = await tx.workoutSession.count({
-    where: { state: { in: ['completed', 'skipped'] }, scheduledLocalDate: inRange },
+    where: {
+      kind: 'planned',
+      state: { in: ['completed', 'skipped'] },
+      scheduledLocalDate: inRange,
+    },
   });
 
   const ended = new Date(now.getTime() - grace);

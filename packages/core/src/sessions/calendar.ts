@@ -221,6 +221,10 @@ export async function rescheduleSession(
     },
   });
   if (!session) throw notFound();
+  const { assignment, assignmentId } = session;
+  if (!assignment || !assignmentId) {
+    throw new DomainError('CONFLICT', 'Extra workouts stay on the day they were logged.');
+  }
   if (session.state !== 'scheduled') {
     throw new DomainError('CONFLICT', 'Only workouts that have not been started can be moved.');
   }
@@ -252,7 +256,7 @@ export async function rescheduleSession(
   const targets = input.shiftLater
     ? await tx.workoutSession.findMany({
         where: {
-          assignmentId: session.assignmentId,
+          assignmentId,
           state: 'scheduled',
           scheduledLocalDate: { gte: session.scheduledLocalDate },
         },
@@ -262,7 +266,7 @@ export async function rescheduleSession(
 
   for (const t of targets) {
     const date = addDays(fromDbDate(t.scheduledLocalDate), delta);
-    const { scheduledAtUtc, dueAtUtc } = localDayBounds(date, session.assignment.timezone);
+    const { scheduledAtUtc, dueAtUtc } = localDayBounds(date, assignment.timezone);
     await tx.workoutSession.update({
       where: { id: t.id },
       data: { scheduledLocalDate: toDbDate(date), scheduledAt: scheduledAtUtc, dueAt: dueAtUtc },

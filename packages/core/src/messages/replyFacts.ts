@@ -51,6 +51,7 @@ export async function replyFacts(
     by: ['state'],
     where: {
       clientId,
+      kind: 'planned',
       state: { not: 'cancelled' },
       scheduledLocalDate: { gte: toDbDate(monday), lte: toDbDate(sunday) },
     },

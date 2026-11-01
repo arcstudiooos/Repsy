@@ -15,6 +15,7 @@ import {
   saveDraft,
   setTemplateArchived,
   type WeekInput,
+  setProgramShared,
 } from '@kinetic/core';
 import { ApiResult, type RouteDef } from '../api';
 
@@ -201,5 +202,17 @@ export const programImportRoute: RouteDef<typeof importSchema, true> = {
         ),
       ),
       { status: 201 },
+    ),
+};
+
+const sharedSchema = z.object({ sharedWithClients: z.boolean() });
+
+/** `PUT /api/v1/programs/:id/shared`: offer a template's workouts to clients as extra workouts (PRD D13). */
+export const programSharedRoute: RouteDef<typeof sharedSchema, true> = {
+  can: 'program:write',
+  input: sharedSchema,
+  handler: ({ actor, input, params, requestId, tenant }) =>
+    tenant((tx) =>
+      setProgramShared(tx, actor, params.id ?? '', input.sharedWithClients, { requestId }),
     ),
 };

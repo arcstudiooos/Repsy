@@ -83,7 +83,7 @@ const completed = async (w: ClientWorld, id: string, weekIndex: number, dayIndex
 
 const keyed = async (w: ClientWorld) => {
   const rows = await sessionsOf(prisma, w.assignmentId);
-  return new Map(rows.map((s) => [`W${s.slotWeekIndex + 1}D${s.slotDayIndex + 1}`, s]));
+  return new Map(rows.map((s) => [`W${s.slotWeekIndex! + 1}D${s.slotDayIndex! + 1}`, s]));
 };
 const localDate = (d: Date) => d.toISOString().slice(0, 10);
 

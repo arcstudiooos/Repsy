@@ -63,6 +63,7 @@ export async function clientCompliance(
     by: ['clientId', 'state', 'scheduledLocalDate'],
     where: {
       clientId: { in: [...today.keys()] },
+      kind: 'planned',
       state: { not: 'cancelled' },
       scheduledLocalDate: { gte: toDbDate(earliest), lte: toDbDate(latest) },
       dueAt: { lt: cutoff },

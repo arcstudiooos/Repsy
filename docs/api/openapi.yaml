@@ -38,7 +38,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     delete:
       tags: [Account]
-      summary: "Sign out one other device. 409 for the device making the request (use sign-out)."
+      summary: 'Sign out one other device. 409 for the device making the request (use sign-out).'
       responses:
         '204': { description: Signed out }
         '401': { $ref: '#/components/responses/Error' }
@@ -47,7 +47,7 @@ paths:
   /me:
     get:
       tags: [Account]
-      summary: "The signed-in user, their memberships and the active organization."
+      summary: 'The signed-in user, their memberships and the active organization.'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -56,7 +56,7 @@ paths:
   /org:
     get:
       tags: [Organization]
-      summary: "The active organization."
+      summary: 'The active organization.'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -64,7 +64,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     patch:
       tags: [Organization]
-      summary: "Update the organization (owner)."
+      summary: 'Update the organization (owner).'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -76,7 +76,7 @@ paths:
   /org/switch:
     post:
       tags: [Organization]
-      summary: "Make another membership\"s organization active (sets the signed org cookie)."
+      summary: 'Make another membership"s organization active (sets the signed org cookie).'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -88,7 +88,7 @@ paths:
   /settings:
     get:
       tags: [Settings]
-      summary: "Profile, organization, notifications and pilot access for the acting user."
+      summary: 'Profile, organization, notifications and pilot access for the acting user.'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -96,7 +96,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     patch:
       tags: [Settings]
-      summary: "Update settings sections."
+      summary: 'Update settings sections.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -108,7 +108,7 @@ paths:
   /settings/setup-checklist:
     put:
       tags: [Settings]
-      summary: "Hide or show the dashboard setup checklist for the calling coach (PRD A5). Body: {hidden: boolean}."
+      summary: 'Hide or show the dashboard setup checklist for the calling coach (PRD A5). Body: {hidden: boolean}.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -119,7 +119,7 @@ paths:
   /sessions/revoke-all:
     post:
       tags: [Account]
-      summary: "Sign out every other session of this user."
+      summary: 'Sign out every other session of this user.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -131,7 +131,7 @@ paths:
   /auth/invite/accept:
     post:
       tags: [Clients]
-      summary: "Accept a client invite (token, consent) and create or link the account."
+      summary: 'Accept a client invite (token, consent) and create or link the account.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -143,7 +143,7 @@ paths:
   /clients:
     get:
       tags: [Clients]
-      summary: "List clients (search, status filter, cursor)."
+      summary: 'List clients (search, status filter, cursor).'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -151,7 +151,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     post:
       tags: [Clients]
-      summary: "Create a client (within the active-client limit)."
+      summary: 'Create a client (within the active-client limit).'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -163,7 +163,7 @@ paths:
   /clients/import:
     post:
       tags: [Clients]
-      summary: "Import clients from a roster (PRD B17). Body: rows[] of {name, email, goals?, timezone?, units?} (at most 500) and dryRun?. Returns per-row results; rows that fail validation, duplicate an email or exceed the active-client limit are skipped, not rejected. No invites are sent."
+      summary: 'Import clients from a roster (PRD B17). Body: rows[] of {name, email, goals?, timezone?, units?} (at most 500) and dryRun?. Returns per-row results; rows that fail validation, duplicate an email or exceed the active-client limit are skipped, not rejected. No invites are sent.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -176,7 +176,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     get:
       tags: [Clients]
-      summary: "One client, with invite status, pause and check-in day."
+      summary: 'One client, with invite status, pause and check-in day.'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -184,7 +184,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     patch:
       tags: [Clients]
-      summary: "Update name, goals, start date or status (pausing goes through /pause)."
+      summary: 'Update name, goals, start date or status (pausing goes through /pause).'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -212,7 +212,7 @@ paths:
       tags: [Check-ins]
       summary: "The client's sent check-ins as CSV for coaches (PRD F12): one row per check-in, one column per question. Formula-like text is prefixed with an apostrophe."
       responses:
-        '200': { description: "text/csv attachment" }
+        '200': { description: 'text/csv attachment' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
@@ -229,7 +229,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     post:
       tags: [Clients]
-      summary: "Coaches set a goal. Body: {kind: metric|exercise|habit, metric? | exerciseId + exerciseMeasure (e1rm|heaviest)? | habitId?, targetValue (canonical units), startValue?, targetDate, title?}."
+      summary: 'Coaches set a goal. Body: {kind: metric|exercise|habit, metric? | exerciseId + exerciseMeasure (e1rm|heaviest)? | habitId?, targetValue (canonical units), startValue?, targetDate, title?}.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -243,7 +243,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     patch:
       tags: [Clients]
-      summary: "Archive or restore a goal. Body: {status: active|archived}."
+      summary: 'Archive or restore a goal. Body: {status: active|archived}.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -257,7 +257,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     post:
       tags: [Clients]
-      summary: "Send or resend the invite (7-day, single-use link)."
+      summary: 'Send or resend the invite (7-day, single-use link).'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -268,7 +268,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     delete:
       tags: [Clients]
-      summary: "Revoke the pending invite."
+      summary: 'Revoke the pending invite.'
       responses:
         '204': { $ref: '#/components/responses/Ok' }
         '422': { $ref: '#/components/responses/Error' }
@@ -280,7 +280,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     get:
       tags: [Programs]
-      summary: "The client\"s active assignment, or null."
+      summary: 'The client"s active assignment, or null.'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -291,7 +291,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     get:
       tags: [Programs]
-      summary: "Last logged sets per exercise (builder performance rail)."
+      summary: 'Last logged sets per exercise (builder performance rail).'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -302,7 +302,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     post:
       tags: [Clients]
-      summary: "Pause the program (D-003); replaying the same dates is a no-op."
+      summary: 'Pause the program (D-003); replaying the same dates is a no-op.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -313,7 +313,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     patch:
       tags: [Clients]
-      summary: "Change the expected resume date."
+      summary: 'Change the expected resume date.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -327,7 +327,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     post:
       tags: [Clients]
-      summary: "Resume now."
+      summary: 'Resume now.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -341,7 +341,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     put:
       tags: [Check-ins]
-      summary: "Set or clear the weekly check-in day."
+      summary: 'Set or clear the weekly check-in day.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -355,7 +355,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     get:
       tags: [Messages]
-      summary: "The client\"s conversation (created on first open)."
+      summary: 'The client"s conversation (created on first open).'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -366,7 +366,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     get:
       tags: [Notes]
-      summary: "Private notes about the client (coach/owner only)."
+      summary: 'Private notes about the client (coach/owner only).'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -374,7 +374,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     post:
       tags: [Notes]
-      summary: "Add a private note."
+      summary: 'Add a private note.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -388,7 +388,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     get:
       tags: [Progress]
-      summary: "Body metrics per metric, newest first (PRD E1). A client reads only their own."
+      summary: 'Body metrics per metric, newest first (PRD E1). A client reads only their own.'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -404,7 +404,11 @@ paths:
               type: object
               required: [metric, measuredOn, value]
               properties:
-                metric: { type: string, enum: [weight, body_fat, waist, hips, chest, arm, thigh, resting_hr, steps] }
+                metric:
+                  {
+                    type: string,
+                    enum: [weight, body_fat, waist, hips, chest, arm, thigh, resting_hr, steps],
+                  }
                 measuredOn: { type: string, format: date }
                 value: { type: number }
                 reason: { type: string }
@@ -419,7 +423,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     get:
       tags: [Progress]
-      summary: "Habits and tasks with recent ticks, streaks and completion (PRD G1-G3). A client reads only their own."
+      summary: 'Habits and tasks with recent ticks, streaks and completion (PRD G1-G3). A client reads only their own.'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -427,7 +431,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     post:
       tags: [Progress]
-      summary: "A coach assigns a habit (repeats on N days a week) or a one-off task."
+      summary: 'A coach assigns a habit (repeats on N days a week) or a one-off task.'
       requestBody:
         content: { application/json: { schema: { type: object, required: [title] } } }
       responses:
@@ -442,9 +446,19 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     put:
       tags: [Progress]
-      summary: "Archive or restore a habit or task (coach)."
+      summary: 'Archive or restore a habit or task (coach).'
       requestBody:
-        content: { application/json: { schema: { type: object, properties: { status: { type: string, enum: [active, archived] } } } } }
+        content:
+          {
+            application/json:
+              {
+                schema:
+                  {
+                    type: object,
+                    properties: { status: { type: string, enum: [active, archived] } },
+                  },
+              },
+          }
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -455,9 +469,24 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     post:
       tags: [Progress]
-      summary: "Tick a habit for today or the two days before, untick with done=false, or mark a task done."
+      summary: 'Tick a habit for today or the two days before, untick with done=false, or mark a task done.'
       requestBody:
-        content: { application/json: { schema: { type: object, properties: { localDate: { type: string, format: date }, value: { type: integer }, done: { type: boolean } } } } }
+        content:
+          {
+            application/json:
+              {
+                schema:
+                  {
+                    type: object,
+                    properties:
+                      {
+                        localDate: { type: string, format: date },
+                        value: { type: integer },
+                        done: { type: boolean },
+                      },
+                  },
+              },
+          }
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '422': { $ref: '#/components/responses/Error' }
@@ -472,7 +501,18 @@ paths:
       tags: [Clients]
       summary: "Replace a client's tags (PRD B4)."
       requestBody:
-        content: { application/json: { schema: { type: object, required: [tagIds], properties: { tagIds: { type: array, items: { type: string } } } } } }
+        content:
+          {
+            application/json:
+              {
+                schema:
+                  {
+                    type: object,
+                    required: [tagIds],
+                    properties: { tagIds: { type: array, items: { type: string } } },
+                  },
+              },
+          }
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '422': { $ref: '#/components/responses/Error' }
@@ -489,9 +529,24 @@ paths:
         '403': { $ref: '#/components/responses/Error' }
     post:
       tags: [Clients]
-      summary: "Create a tag; names are unique per organization, ignoring case."
+      summary: 'Create a tag; names are unique per organization, ignoring case.'
       requestBody:
-        content: { application/json: { schema: { type: object, required: [name], properties: { name: { type: string }, color: { type: string, enum: [teal, blue, purple, orange, red, gray] } } } } }
+        content:
+          {
+            application/json:
+              {
+                schema:
+                  {
+                    type: object,
+                    required: [name],
+                    properties:
+                      {
+                        name: { type: string },
+                        color: { type: string, enum: [teal, blue, purple, orange, red, gray] },
+                      },
+                  },
+              },
+          }
       responses:
         '201': { $ref: '#/components/responses/Ok' }
         '422': { $ref: '#/components/responses/Error' }
@@ -502,7 +557,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     delete:
       tags: [Clients]
-      summary: "Delete a tag and remove it from every client."
+      summary: 'Delete a tag and remove it from every client.'
       responses:
         '204': { description: Deleted }
         '401': { $ref: '#/components/responses/Error' }
@@ -513,7 +568,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     get:
       tags: [Notes]
-      summary: "The client context card: goals, why they came, schedule, equipment, preferences, pinned notes (PRD B7). Coaches only."
+      summary: 'The client context card: goals, why they came, schedule, equipment, preferences, pinned notes (PRD B7). Coaches only.'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -521,7 +576,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     patch:
       tags: [Notes]
-      summary: "Update the context fields given; an empty string clears one."
+      summary: 'Update the context fields given; an empty string clears one.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -546,7 +601,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     put:
       tags: [Progress]
-      summary: "A coach sets daily calorie and macro targets from a date on."
+      summary: 'A coach sets daily calorie and macro targets from a date on.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -572,14 +627,14 @@ paths:
   /org/review-rules:
     get:
       tags: [Organization]
-      summary: "Opt-in review rules (PRD I3): enabled rules (habit_low, program_ending, reply_overdue, weight_change), the weight band and the reply time reply_overdue uses."
+      summary: 'Opt-in review rules (PRD I3): enabled rules (habit_low, program_ending, reply_overdue, weight_change), the weight band and the reply time reply_overdue uses.'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
     put:
       tags: [Organization]
-      summary: "Owner only. Body: {enabled: string[], weightChangeBandPct?: 1-20 | null, clientsCanMoveWorkouts?: boolean}; weight_change needs a band."
+      summary: 'Owner only. Body: {enabled: string[], weightChangeBandPct?: 1-20 | null, clientsCanMoveWorkouts?: boolean}; weight_change needs a band.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -590,7 +645,7 @@ paths:
   /org/branding:
     get:
       tags: [Organization]
-      summary: "Workspace branding (PRD A6): name, accent (#rrggbb or null), its hover shade and logo URL. Any member."
+      summary: 'Workspace branding (PRD A6): name, accent (#rrggbb or null), its hover shade and logo URL. Any member.'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -607,14 +662,14 @@ paths:
   /org/reply-expectations:
     get:
       tags: [Messages]
-      summary: "Usual reply time and office hours shown to clients (PRD H16)."
+      summary: 'Usual reply time and office hours shown to clients (PRD H16).'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
     put:
       tags: [Messages]
-      summary: "Set them (owner only): replyTargetHours one of 4, 12, 24, 48, 72 or null; officeHours text."
+      summary: 'Set them (owner only): replyTargetHours one of 4, 12, 24, 48, 72 or null; officeHours text.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -632,7 +687,7 @@ paths:
         '403': { $ref: '#/components/responses/Error' }
     post:
       tags: [Messages]
-      summary: "Add a saved reply; {first_name} is filled when inserted."
+      summary: 'Add a saved reply; {first_name} is filled when inserted.'
       requestBody:
         content: { application/json: { schema: { type: object, required: [title, body] } } }
       responses:
@@ -645,7 +700,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     delete:
       tags: [Messages]
-      summary: "Delete a saved reply."
+      summary: 'Delete a saved reply.'
       responses:
         '204': { description: Deleted }
         '401': { $ref: '#/components/responses/Error' }
@@ -656,7 +711,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     get:
       tags: [Notes]
-      summary: "The client\"s history timeline, including private notes."
+      summary: 'The client"s history timeline, including private notes.'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -667,9 +722,16 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     put:
       tags: [Notes]
-      summary: "Pin a private note to the client context card (at most 3), or unpin it."
+      summary: 'Pin a private note to the client context card (at most 3), or unpin it.'
       requestBody:
-        content: { application/json: { schema: { type: object, required: [pinned], properties: { pinned: { type: boolean } } } } }
+        content:
+          {
+            application/json:
+              {
+                schema:
+                  { type: object, required: [pinned], properties: { pinned: { type: boolean } } },
+              },
+          }
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -681,7 +743,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     patch:
       tags: [Notes]
-      summary: "Edit your note (author only)."
+      summary: 'Edit your note (author only).'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -692,7 +754,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     delete:
       tags: [Notes]
-      summary: "Delete your note (author only)."
+      summary: 'Delete your note (author only).'
       responses:
         '204': { $ref: '#/components/responses/Ok' }
         '422': { $ref: '#/components/responses/Error' }
@@ -702,7 +764,7 @@ paths:
   /exercises:
     get:
       tags: [Programs]
-      summary: "Search the exercise library (global + organization)."
+      summary: 'Search the exercise library (global + organization).'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -710,7 +772,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     post:
       tags: [Programs]
-      summary: "Create an organization exercise."
+      summary: 'Create an organization exercise.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -732,7 +794,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     put:
       tags: [Exercises]
-      summary: "Replace the alternatives. Body: {alternativeIds: string[]}: at most 5, each a different exercise tracked the same way."
+      summary: 'Replace the alternatives. Body: {alternativeIds: string[]}: at most 5, each a different exercise tracked the same way.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -744,7 +806,7 @@ paths:
   /programs:
     get:
       tags: [Programs]
-      summary: "List program templates with usage counts."
+      summary: 'List program templates with usage counts.'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -752,7 +814,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     post:
       tags: [Programs]
-      summary: "Create a program template."
+      summary: 'Create a program template.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -766,7 +828,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     post:
       tags: [Programs]
-      summary: "Duplicate a template from its current version as \"Copy of …\" (PRD C13)."
+      summary: 'Duplicate a template from its current version as "Copy of …" (PRD C13).'
       responses:
         '201': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -777,11 +839,12 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     put:
       tags: [Programs]
-      summary: "Archive or restore a template; clients already on it keep their copy (PRD C13)."
+      summary: 'Archive or restore a template; clients already on it keep their copy (PRD C13).'
       requestBody:
         content:
           application/json:
-            schema: { type: object, required: [archived], properties: { archived: { type: boolean } } }
+            schema:
+              { type: object, required: [archived], properties: { archived: { type: boolean } } }
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '422': { $ref: '#/components/responses/Error' }
@@ -791,7 +854,7 @@ paths:
   /programs/import/match:
     post:
       tags: [Programs]
-      summary: "Library matches for written exercise names (PRD C14). Body: {names: string[]} (at most 300). Each result has the best match (or null) and up to 5 candidates. Saves nothing."
+      summary: 'Library matches for written exercise names (PRD C14). Body: {names: string[]} (at most 300). Each result has the best match (or null) and up to 5 candidates. Saves nothing.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -802,7 +865,7 @@ paths:
   /programs/import:
     post:
       tags: [Programs]
-      summary: "Create a template from a reviewed import (PRD C14). Body: {title, weeks} in the same shape as saving a version; saved as version 1."
+      summary: 'Create a template from a reviewed import (PRD C14). Body: {title, weeks} in the same shape as saving a version; saved as version 1.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -815,7 +878,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     get:
       tags: [Programs]
-      summary: "A program and its current version."
+      summary: 'A program and its current version.'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -823,7 +886,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     patch:
       tags: [Programs]
-      summary: "Rename, or commit a new version (expectedVersion; 409 on conflict)."
+      summary: 'Rename, or commit a new version (expectedVersion; 409 on conflict).'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -837,7 +900,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     get:
       tags: [Programs]
-      summary: "The autosaved draft, if any."
+      summary: 'The autosaved draft, if any.'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -845,7 +908,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     put:
       tags: [Programs]
-      summary: "Autosave the draft (last write wins)."
+      summary: 'Autosave the draft (last write wins).'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -856,7 +919,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     delete:
       tags: [Programs]
-      summary: "Discard the draft."
+      summary: 'Discard the draft.'
       responses:
         '204': { $ref: '#/components/responses/Ok' }
         '422': { $ref: '#/components/responses/Error' }
@@ -868,7 +931,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     get:
       tags: [Programs]
-      summary: "Version history."
+      summary: 'Version history.'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -880,7 +943,7 @@ paths:
       - { name: no, in: path, required: true, schema: { type: string } }
     get:
       tags: [Programs]
-      summary: "One version\"s content."
+      summary: 'One version"s content.'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -891,7 +954,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     post:
       tags: [Programs]
-      summary: "Assign a template to a client (copy-on-assign, sessions scheduled)."
+      summary: 'Assign a template to a client (copy-on-assign, sessions scheduled).'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -903,7 +966,7 @@ paths:
   /sessions:
     get:
       tags: [Workouts]
-      summary: "Upcoming or past sessions (the acting client\"s, or one client\"s for a coach)."
+      summary: 'Upcoming or past sessions (the acting client"s, or one client"s for a coach).'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -914,7 +977,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     get:
       tags: [Workouts]
-      summary: "The logging screen\"s data (workout, logs, revisions, edit window)."
+      summary: 'The logging screen"s data (workout, logs, revisions, edit window).'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -925,7 +988,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     post:
       tags: [Workouts]
-      summary: "Start (locks the workout version). Idempotent."
+      summary: 'Start (locks the workout version). Idempotent.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -939,7 +1002,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     post:
       tags: [Workouts]
-      summary: "Upsert set logs (idempotent per set; stale writes return the stored value)."
+      summary: 'Upsert set logs (idempotent per set; stale writes return the stored value).'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -950,7 +1013,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     patch:
       tags: [Workouts]
-      summary: "Edit a finished workout\"s sets (client within 24h; coach with a reason)."
+      summary: 'Edit a finished workout"s sets (client within 24h; coach with a reason).'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -964,7 +1027,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     post:
       tags: [Workouts]
-      summary: "Complete (idempotency key)."
+      summary: 'Complete (idempotency key).'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -978,7 +1041,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     post:
       tags: [Sessions]
-      summary: "Move an unstarted workout to another day (PRD C16). Body: {toLocalDate: YYYY-MM-DD, shiftLater?: boolean} (shiftLater moves every later unstarted workout of the program by the same number of days; coaches only). Clients may move their own workout within its Monday-Sunday week when the workspace allows it (PRD D14), which raises a review item. 409 when started, past or paused."
+      summary: 'Move an unstarted workout to another day (PRD C16). Body: {toLocalDate: YYYY-MM-DD, shiftLater?: boolean} (shiftLater moves every later unstarted workout of the program by the same number of days; coaches only). Clients may move their own workout within its Monday-Sunday week when the workspace allows it (PRD D14), which raises a review item. 409 when started, past or paused.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -993,7 +1056,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     post:
       tags: [Sessions]
-      summary: "Add a note on an exercise (or one set) in a started or finished session (PRD D9), by the client or their coach. Body: {workoutVersionExerciseId, setIndex?: 0-19 | null, body: 1-500 chars}. Notes are immutable; session detail returns them oldest first."
+      summary: 'Add a note on an exercise (or one set) in a started or finished session (PRD D9), by the client or their coach. Body: {workoutVersionExerciseId, setIndex?: 0-19 | null, body: 1-500 chars}. Notes are immutable; session detail returns them oldest first.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -1024,7 +1087,7 @@ paths:
       - { name: wveId, in: path, required: true, schema: { type: string } }
     delete:
       tags: [Sessions]
-      summary: "Undo a swap, back to the planned exercise (only before any set of it is logged)."
+      summary: 'Undo a swap, back to the planned exercise (only before any set of it is logged).'
       responses:
         '204': { description: Undone }
         '409': { $ref: '#/components/responses/Error' }
@@ -1036,7 +1099,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     post:
       tags: [Workouts]
-      summary: "Skip (idempotency key)."
+      summary: 'Skip (idempotency key).'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -1048,7 +1111,7 @@ paths:
   /checkin-template:
     get:
       tags: [Check-ins]
-      summary: "The organization\"s check-in questions (seeded on first read)."
+      summary: 'The organization"s check-in questions (seeded on first read).'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -1056,7 +1119,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     patch:
       tags: [Check-ins]
-      summary: "Edit the questions (issued check-ins keep theirs)."
+      summary: 'Edit the questions (issued check-ins keep theirs).'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -1068,7 +1131,7 @@ paths:
   /checkins:
     get:
       tags: [Check-ins]
-      summary: "The acting client\"s check-ins, or one client\"s for a coach."
+      summary: 'The acting client"s check-ins, or one client"s for a coach.'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -1079,7 +1142,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     get:
       tags: [Check-ins]
-      summary: "One check-in (coaches also get the week before in meta.activity)."
+      summary: 'One check-in (coaches also get the week before in meta.activity).'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -1090,7 +1153,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     put:
       tags: [Check-ins]
-      summary: "Autosave the client\"s draft answers."
+      summary: 'Autosave the client"s draft answers.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -1104,7 +1167,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     post:
       tags: [Check-ins]
-      summary: "A coach marks a sent check-in reviewed; resolves its New check-in flag (PRD F14)."
+      summary: 'A coach marks a sent check-in reviewed; resolves its New check-in flag (PRD F14).'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -1116,7 +1179,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     post:
       tags: [Check-ins]
-      summary: "Submit (idempotency key; another key after submission is 409)."
+      summary: 'Submit (idempotency key; another key after submission is 409).'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -1139,7 +1202,7 @@ paths:
   /threads:
     get:
       tags: [Messages]
-      summary: "The coach inbox with unread counts."
+      summary: 'The coach inbox with unread counts.'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -1148,7 +1211,7 @@ paths:
   /threads/me:
     get:
       tags: [Messages]
-      summary: "The acting client\"s conversation."
+      summary: 'The acting client"s conversation.'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -1159,7 +1222,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     get:
       tags: [Messages]
-      summary: "Messages, newest first, 30 per page; the first page marks the thread read."
+      summary: 'Messages, newest first, 30 per page; the first page marks the thread read.'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -1167,7 +1230,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     post:
       tags: [Messages]
-      summary: "Send a message (1-4,000 characters; idempotent on clientMessageId)."
+      summary: 'Send a message (1-4,000 characters; idempotent on clientMessageId).'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -1179,13 +1242,13 @@ paths:
   /resources:
     get:
       tags: [Resources]
-      summary: "The resource library (PRD G5): coaches see every active resource and who it is shared with; a client sees those shared with all clients, one of their tags, or them."
+      summary: 'The resource library (PRD G5): coaches see every active resource and who it is shared with; a client sees those shared with all clients, one of their tags, or them.'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
     post:
       tags: [Resources]
-      summary: "Coaches share a link (https) and/or text. Body: {title, url?, body?, audience: all|tag|client, tagId?, clientId?}."
+      summary: 'Coaches share a link (https) and/or text. Body: {title, url?, body?, audience: all|tag|client, tagId?, clientId?}.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -1207,7 +1270,7 @@ paths:
   /review:
     get:
       tags: [Review]
-      summary: "Sprint 2 activity lists (new completed, due, skipped this week)."
+      summary: 'Sprint 2 activity lists (new completed, due, skipped this week).'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -1216,7 +1279,7 @@ paths:
   /review/seen:
     post:
       tags: [Review]
-      summary: "Mark the activity list seen."
+      summary: 'Mark the activity list seen.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -1228,7 +1291,7 @@ paths:
   /review-flags:
     get:
       tags: [Review]
-      summary: "The review queue (filter, rule)."
+      summary: 'The review queue (filter, rule).'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -1236,7 +1299,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     post:
       tags: [Review]
-      summary: "Create a follow-up for a client."
+      summary: 'Create a follow-up for a client.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -1250,7 +1313,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     patch:
       tags: [Review]
-      summary: "Resolve or dismiss (reason required), snooze, or reopen."
+      summary: 'Resolve or dismiss (reason required), snooze, or reopen.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -1262,7 +1325,7 @@ paths:
   /exports:
     get:
       tags: [Data]
-      summary: "The acting user\"s exports."
+      summary: 'The acting user"s exports.'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -1270,7 +1333,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     post:
       tags: [Data]
-      summary: "Request an export: organization (owner) or own data (client). Idempotent per key."
+      summary: 'Request an export: organization (owner) or own data (client). Idempotent per key.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -1284,7 +1347,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     post:
       tags: [Data]
-      summary: "Download links for a finished export, valid 15 minutes, for the requester only."
+      summary: 'Download links for a finished export, valid 15 minutes, for the requester only.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -1299,7 +1362,7 @@ paths:
       - { name: name, in: path, required: true, schema: { type: string } }
     get:
       tags: [Data]
-      summary: "Download one CSV (token re-checked against the signed-in requester)."
+      summary: 'Download one CSV (token re-checked against the signed-in requester).'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -1308,7 +1371,7 @@ paths:
   /deletion-requests:
     post:
       tags: [Data]
-      summary: "Request erasure of a client\"s data (the client, or the owner for a client)."
+      summary: 'Request erasure of a client"s data (the client, or the owner for a client).'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -1320,7 +1383,7 @@ paths:
   /admin/pilot-codes:
     get:
       tags: [Admin]
-      summary: "Pilot codes (platform admin; 404 otherwise)."
+      summary: 'Pilot codes (platform admin; 404 otherwise).'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -1328,7 +1391,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     post:
       tags: [Admin]
-      summary: "Create a pilot code (plaintext shown once)."
+      summary: 'Create a pilot code (plaintext shown once).'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -1340,7 +1403,7 @@ paths:
   /admin/accounts:
     get:
       tags: [Admin]
-      summary: "Account lookup by email."
+      summary: 'Account lookup by email.'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -1349,7 +1412,7 @@ paths:
   /admin/deletions:
     get:
       tags: [Admin]
-      summary: "The deletion queue."
+      summary: 'The deletion queue.'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -1360,7 +1423,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     patch:
       tags: [Admin]
-      summary: "Verify, reject (reason) or set/clear a legal hold."
+      summary: 'Verify, reject (reason) or set/clear a legal hold.'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -1372,7 +1435,7 @@ paths:
   /admin/support-grants:
     get:
       tags: [Admin]
-      summary: "Your support access grants."
+      summary: 'Your support access grants.'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -1380,7 +1443,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     post:
       tags: [Admin]
-      summary: "Grant 24-hour support access to a client (reason required)."
+      summary: 'Grant 24-hour support access to a client (reason required).'
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -1394,7 +1457,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     delete:
       tags: [Admin]
-      summary: "Revoke a grant."
+      summary: 'Revoke a grant.'
       responses:
         '204': { $ref: '#/components/responses/Ok' }
         '422': { $ref: '#/components/responses/Error' }
@@ -1406,7 +1469,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     get:
       tags: [Admin]
-      summary: "A client\"s data for support (needs an active grant; audited)."
+      summary: 'A client"s data for support (needs an active grant; audited).'
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }
@@ -1428,9 +1491,37 @@ components:
           type: object
           required: [code, message, requestId]
           properties:
-            code: { type: string, enum: [BAD_REQUEST, UNAUTHENTICATED, FORBIDDEN, EDIT_WINDOW_CLOSED, NOT_FOUND, CONFLICT, ORG_SELECTION_REQUIRED, ALREADY_ONBOARDED, CLIENT_LIMIT_REACHED, ACTIVE_ASSIGNMENT_EXISTS, EMAIL_TAKEN, SESSION_NOT_STARTED, SESSION_FINISHED, VALIDATION, PILOT_CODE_INVALID, INVITE_INVALID, INVITE_EXPIRED, INVITE_USED, INVITE_REVOKED, RATE_LIMITED, INTERNAL] }
+            code:
+              {
+                type: string,
+                enum:
+                  [
+                    BAD_REQUEST,
+                    UNAUTHENTICATED,
+                    FORBIDDEN,
+                    EDIT_WINDOW_CLOSED,
+                    NOT_FOUND,
+                    CONFLICT,
+                    ORG_SELECTION_REQUIRED,
+                    ALREADY_ONBOARDED,
+                    CLIENT_LIMIT_REACHED,
+                    ACTIVE_ASSIGNMENT_EXISTS,
+                    EMAIL_TAKEN,
+                    SESSION_NOT_STARTED,
+                    SESSION_FINISHED,
+                    VALIDATION,
+                    PILOT_CODE_INVALID,
+                    INVITE_INVALID,
+                    INVITE_EXPIRED,
+                    INVITE_USED,
+                    INVITE_REVOKED,
+                    RATE_LIMITED,
+                    INTERNAL,
+                  ],
+              }
             message: { type: string }
-            fieldErrors: { type: object, additionalProperties: { type: array, items: { type: string } } }
+            fieldErrors:
+              { type: object, additionalProperties: { type: array, items: { type: string } } }
             requestId: { type: string }
     Envelope:
       type: object

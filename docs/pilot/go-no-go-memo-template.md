@@ -8,14 +8,14 @@ GO / NO-GO / EXTEND, in one sentence, and what happens next.
 
 ## Evidence against the pilot goals
 
-| Goal | Target | Result | Source |
-| --- | --- | --- | --- |
-| Weekly review time | ≥ 30% faster than baseline | | `time-on-task-protocol.md` |
-| Coach retention | | | PostHog coach retention |
-| Client workout completion | | | `/app/analytics` adherence per coach |
-| Check-in response rate | | | `/app/analytics` |
-| Willingness to pay | Majority at ≥ $29 | | `pricing-probe.md` |
-| Reliability | No open S1; S2 fixed within target | | `bug-triage.md` log |
+| Goal                      | Target                             | Result | Source                               |
+| ------------------------- | ---------------------------------- | ------ | ------------------------------------ |
+| Weekly review time        | ≥ 30% faster than baseline         |        | `time-on-task-protocol.md`           |
+| Coach retention           |                                    |        | PostHog coach retention              |
+| Client workout completion |                                    |        | `/app/analytics` adherence per coach |
+| Check-in response rate    |                                    |        | `/app/analytics`                     |
+| Willingness to pay        | Majority at ≥ $29                  |        | `pricing-probe.md`                   |
+| Reliability               | No open S1; S2 fixed within target |        | `bug-triage.md` log                  |
 
 ## What coaches said
 

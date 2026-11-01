@@ -7,5 +7,5 @@ Run outside the app (D-008 #12: no in-app checkout). Goal: learn what pilot coac
 3. Record answers per coach (no client data). Do not negotiate or promise features.
 
 | Coach | $29 | $39 | $49 | What would justify $49 | Notes |
-| --- | --- | --- | --- | --- | --- |
-| | | | | | |
+| ----- | --- | --- | --- | ---------------------- | ----- |
+|       |     |     |     |                        |       |

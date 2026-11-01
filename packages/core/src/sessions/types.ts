@@ -62,4 +62,6 @@ export interface SessionSummary {
   completedAt: string | null;
   /** Still open (scheduled or in progress) after its due time. */
   overdue: boolean;
+  /** PRD D13: logged unplanned by the client; counts toward history, not adherence. */
+  extra: boolean;
 }

@@ -16,8 +16,8 @@ Repeat the observation in Kinetic, starting from `/app` (dashboard) and the revi
 ## Recording
 
 | Coach | Clients | Baseline (min, normalized) | Week 3 (min) | Week 5 (min) | Change | Notes |
-| --- | --- | --- | --- | --- | --- | --- |
-| | | | | | | |
+| ----- | ------- | -------------------------- | ------------ | ------------ | ------ | ----- |
+|       |         |                            |              |              |        |       |
 
 **Target met** when the week-5 time is ≤ 70% of baseline for the majority of pilot coaches. Report the median and every individual result; no averaging away outliers.
 

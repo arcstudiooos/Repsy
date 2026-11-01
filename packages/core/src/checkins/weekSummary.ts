@@ -49,7 +49,8 @@ export async function checkinWeekSummary(
 
   const sessions = await tx.workoutSession.groupBy({
     by: ['state'],
-    where: { clientId, state: { not: 'cancelled' }, scheduledLocalDate: inWeek },
+    // Planned workouts only: extra workouts (PRD D13) count toward history, not adherence.
+    where: { clientId, kind: 'planned', state: { not: 'cancelled' }, scheduledLocalDate: inWeek },
     _count: { _all: true },
   });
   const n = (s: string) => sessions.find((r) => r.state === s)?._count._all ?? 0;

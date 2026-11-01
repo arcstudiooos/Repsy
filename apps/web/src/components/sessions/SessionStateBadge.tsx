@@ -28,6 +28,11 @@ export function LoggedByCoachBadge() {
   return <span className={cn(badge, 'border-input-border text-ink')}>Logged by coach</span>;
 }
 
+/** PRD D13: logged unplanned by the client; not part of adherence. */
+export function ExtraWorkoutBadge() {
+  return <span className={cn(badge, 'border-input-border text-ink')}>Extra</span>;
+}
+
 /** S3-4: a set changed after the workout was finished ("Edited", "Corrected by your coach"). */
 export function RevisionMark({ label }: { label: string }) {
   return <span className={cn(badge, 'border-input-border text-secondary')}>{label}</span>;

@@ -134,13 +134,14 @@ async function programEnding(tx: TenantTx, now: Date): Promise<FlagUpsert[]> {
     const last = await tx.workoutSession.findFirst({
       where: {
         clientId: c.id,
+        kind: 'planned',
         state: { in: ['scheduled', 'in_progress'] },
         scheduledLocalDate: { gte: toDbDate(today) },
       },
       orderBy: { scheduledLocalDate: 'desc' },
       select: { assignmentId: true, scheduledLocalDate: true },
     });
-    if (!last) continue;
+    if (!last?.assignmentId) continue;
     const lastDate = fromDbDate(last.scheduledLocalDate);
     if (lastDate > addDays(today, PROGRAM_ENDING_DAYS)) continue;
     out.push({
@@ -285,6 +286,7 @@ export async function staleOptInFlags(tx: TenantTx, now: Date): Promise<string[]
     const later = await tx.workoutSession.count({
       where: {
         clientId: f.clientId,
+        kind: 'planned',
         state: { in: ['scheduled', 'in_progress'] },
         scheduledLocalDate: { gt: toDbDate(horizon) },
       },

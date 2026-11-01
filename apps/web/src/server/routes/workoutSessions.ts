@@ -6,6 +6,9 @@ import {
   getClientCalendar,
   getSessionDetail,
   listSessions,
+  listSharedWorkouts,
+  searchExtraExercises,
+  startExtraWorkout,
   rescheduleSession,
   reviseSetLogs,
   skipSession,
@@ -189,4 +192,36 @@ export const sessionNoteRoute: RouteDef<typeof noteSchema, true> = {
       await tenant((tx) => addSessionNote(tx, actor, params.id ?? '', input, { requestId })),
       { status: 201 },
     ),
+};
+
+const extraStartSchema = z.object({
+  workoutVersionId: z.string().min(1).max(64).optional(),
+  exerciseIds: z.array(z.string().min(1).max(64)).max(50).optional(),
+  title: z.string().max(500).optional(),
+});
+
+/** `POST /api/v1/extra-workouts`: the signed-in client starts an unplanned workout (PRD D13). */
+export const extraWorkoutStartRoute: RouteDef<typeof extraStartSchema, true> = {
+  can: 'session:log',
+  input: extraStartSchema,
+  handler: async ({ actor, input, requestId, tenant }) =>
+    new ApiResult(await tenant((tx) => startExtraWorkout(tx, actor, input, { requestId })), {
+      status: 201,
+    }),
+};
+
+/** `GET /api/v1/extra-workouts/shared`: workouts the coach shares for extra sessions. */
+export const extraWorkoutSharedRoute: RouteDef<undefined, true> = {
+  can: 'session:log',
+  handler: async ({ actor, tenant }) => tenant((tx) => listSharedWorkouts(tx, actor)),
+};
+
+const extraExercisesSchema = z.object({ q: z.string().max(100).optional() });
+
+/** `GET /api/v1/extra-workouts/exercises?q=`: the library, for a blank extra workout. */
+export const extraWorkoutExercisesRoute: RouteDef<typeof extraExercisesSchema, true> = {
+  can: 'session:log',
+  input: extraExercisesSchema,
+  handler: async ({ actor, input, tenant }) =>
+    tenant((tx) => searchExtraExercises(tx, actor, input.q)),
 };

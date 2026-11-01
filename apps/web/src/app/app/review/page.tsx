@@ -9,7 +9,11 @@ import {
   type ReviewSection,
   type RuleKey,
 } from '@kinetic/core';
-import { LoggedByCoachBadge, SessionStateBadge } from '@/components/sessions/SessionStateBadge';
+import {
+  ExtraWorkoutBadge,
+  LoggedByCoachBadge,
+  SessionStateBadge,
+} from '@/components/sessions/SessionStateBadge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatSessionDate } from '@/lib/session-format';
 import { withServerTenant } from '@/server/serverActor';
@@ -75,6 +79,7 @@ function Section({
                     <span>{formatSessionDate(item.scheduledLocalDate, today)}</span>
                     <SessionStateBadge state={item.state} overdue={false} />
                     {item.loggedByCoach && <LoggedByCoachBadge />}
+                    {item.extra && <ExtraWorkoutBadge />}
                     {item.swapCount > 0 && (
                       <span className="rounded-full bg-canvas px-2 py-0.5 text-sm text-secondary">
                         {item.swapCount === 1

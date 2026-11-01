@@ -54,11 +54,11 @@
 
 Each item is pinned by a test in the named ticket.
 
-1. **DST and timezone boundaries.** A client in `America/New_York` with sessions spanning the 2026-11-01 DST end, and a coach in a different timezone than the client, must see the same local dates the client sees. Due remains 23:59 client-local. *Test in S1-6 (`scheduleSlots` DST case) and S4-2 (missed sweep at a boundary).*
-2. **Replay and duplicate submission.** The same set log or completion sent 3× (network retry, outbox replay after reload, double tap) produces exactly one row and one completion. *Test in S2-2 (API idempotency) and S3-3 (outbox replay).*
-3. **Dual-role and guessed IDs.** A user who is owner of org A and client of org B must not reach org B coach data or org A data as a client, including by swapping IDs in URLs and API bodies. *Test in S0-4 harness and S1-2.*
-4. **Coach edits while client mid-workout.** A coach commits a new version while the client has started a session (online or offline). The client keeps the locked version, and the sync still succeeds. *Test in S3-1/S3-3 (`started session keeps locked version after commit`).*
-5. **Unit round-trip.** A client in lb enters 135 lb, which is stored as kg. Re-display shows 135 lb, not 134.9, and the coach in kg sees 61.2 kg. *Test in S2-2 (`units round-trip`).*
+1. **DST and timezone boundaries.** A client in `America/New_York` with sessions spanning the 2026-11-01 DST end, and a coach in a different timezone than the client, must see the same local dates the client sees. Due remains 23:59 client-local. _Test in S1-6 (`scheduleSlots` DST case) and S4-2 (missed sweep at a boundary)._
+2. **Replay and duplicate submission.** The same set log or completion sent 3× (network retry, outbox replay after reload, double tap) produces exactly one row and one completion. _Test in S2-2 (API idempotency) and S3-3 (outbox replay)._
+3. **Dual-role and guessed IDs.** A user who is owner of org A and client of org B must not reach org B coach data or org A data as a client, including by swapping IDs in URLs and API bodies. _Test in S0-4 harness and S1-2._
+4. **Coach edits while client mid-workout.** A coach commits a new version while the client has started a session (online or offline). The client keeps the locked version, and the sync still succeeds. _Test in S3-1/S3-3 (`started session keeps locked version after commit`)._
+5. **Unit round-trip.** A client in lb enters 135 lb, which is stored as kg. Re-display shows 135 lb, not 134.9, and the coach in kg sees 61.2 kg. _Test in S2-2 (`units round-trip`)._
 
 ---
 
@@ -125,40 +125,40 @@ graph TD
 
 Every model listed with † carries `organizationId` and indexes on it. Enums in `snake_case` values. Introduce models in the sprint that first needs them, but **in this shape**. Don't add temporary ones.
 
-| Model | Key fields | Sprint | Refs |
-|---|---|---|---|
-| `User` | id, email (unique, normalized), name, emailVerified, isPlatformAdmin, lastLoginAt | 0 | F01, D-006 |
-| `Session`, `Account`, `Verification` | Better Auth's generated tables (DB sessions, OAuth accounts, tokens) | 0 | D-006 |
-| `Organization` | id, name, timezone, plan (`pilot`), ownerUserId, graceHours (default 24, 0–72), activeClientLimit (30) | 0 | F01, D-008 #5/#13 |
-| `Membership` | userId, organizationId, role (`owner`/`coach`/`client`), status; unique (userId, organizationId, role) | 0 | F01, D-006 |
-| `PilotCode` | codeHash, createdBy, usedBy?, usedAt?, expiresAt | 0 | D-008 #19 |
-| `AuditEvent`† | actorId, objectType, objectId, action, metadataJson (no content), requestId, createdAt; append-only | 0 | §11 |
-| `OutboxEmail`† | kind, toUserId, templateKey, payloadJson, idempotencyKey (unique), status, attempts, sentAt | 0 | D-005 |
-| `NotificationPreference` | userId, messageEmailOptIn (default false), marketingOptIn (default false) | 1 | D-008 clar. 3 |
-| `CoachProfile` | userId, bio, specialties, units | 1 | F14 |
-| `Client`† | id, userId?, coachUserId, status (`invited`/`active`/`paused`/`archived`), startDate, goals, timezone, preferredUnits (`kg`/`lb`), consentVersion?, consentAt?, checkinWeekday?, checkinTemplateId? | 1 | F03, D-007 |
-| `ClientInvite`† | clientId, tokenHash, expiresAt (+7d), acceptedAt?, revokedAt?, idempotencyKey | 1 | F04, D-008 #14 |
-| `Exercise` | organizationId? (null = seeded global), name, equipment, muscleGroup, movementType, trackingType (`reps_load`/`duration`/`distance`), instructions, mediaUrl? | 1 | F05, D-008 #8 |
-| `Program`† | id, title, kind (`template`/`client`), clientId?, sourceProgramId?, sourceVersionId?, currentVersionId?, status, createdBy | 1 | D-001 |
-| `ProgramVersion`† | programId, versionNo (unique per program), committedBy, committedAt, daysPerWeek, weekCount | 1 | D-001, D-002 |
-| `ProgramSlot`† | programVersionId, weekIndex, dayIndex, workoutVersionId; unique (programVersionId, weekIndex, dayIndex) | 1 | D-002 #2 |
-| `WorkoutVersion`† | id, title, notes; immutable | 1 | D-002 #1 |
-| `WorkoutVersionExercise`† | workoutVersionId, exerciseId, position, targetJson (Zod-validated: sets[{reps?, loadKg?, rpe?, restSec?, tempo?, durationSec?, distanceM?}]), note | 1 | F06 |
-| `ProgramDraft`† | programId, baseVersionNo, draftJson, updatedAt, updatedBy | 3 | D-002 #3 |
-| `ProgramAssignment`† | clientId, programId (client copy), startLocalDate, weekdays (int[] ISO 1–7), timezone, status (`active`/`ended`/`completed`), readinessConfirmedAt/By, endedAt; partial unique (clientId) where status=`active` | 1 | F07, D-010 #2, D-007 |
-| `WorkoutSession`† | assignmentId, clientId, slotWeekIndex, slotDayIndex, scheduledLocalDate, scheduledAt (UTC), dueAt (UTC), state (`scheduled`/`in_progress`/`completed`/`skipped`/`missed`/`incomplete`/`cancelled`), workoutVersionId? (null until locked), startedAt?, completedAt?, submittedAt?, comment?, loggedByUserId?, pauseOffsetDays (default 0); unique (assignmentId, slotWeekIndex, slotDayIndex) | 1 | D-002, D-008 #4/#7 |
-| `SetLog`† | sessionId, workoutVersionExerciseId, setIndex, reps?, weightKg?, rpe?, durationSeconds?, distanceM?, clientUpdatedAt, clientMutationId; unique (sessionId, workoutVersionExerciseId, setIndex) | 2 | D-004 #7, D-008 #8 |
-| `SetLogRevision`† | setLogId, before/after json, reason, revisedBy, createdAt | 3 | D-008 #6, clar. 2 |
-| `ClientPause`† | clientId, startLocalDate, resumeLocalDate, appliedOffsetDays, endedAt?, createdBy | 3 | D-003 |
-| `CheckinTemplate`† | title, questionSchema (Zod: [{id, type: `scale_1_5`/`short_text`/`yes_no`, label, optional: true}]), isSeeded | 4 | F09, D-008 #9 |
-| `Checkin`† | clientId, templateId, periodLocalDate, issuedAt, dueAt, submittedAt?, answersJson?, draftJson?; unique (clientId, periodLocalDate) | 4 | D-010 #3 |
-| `ReviewFlag`† | clientId, ruleKey (`missed_workouts`/`checkin_overdue`/`checkin_new`/`message_unread`/`coach_followup`), severity (`needs_review`), sourceType, sourceId, dedupeKey (unique), evidenceJson, state (`open`/`snoozed`/`resolved`/`dismissed`), snoozedUntil?, resolvedBy?, resolvedAt?, resolutionReason?, reopenedAt? | 4 | F10, D-008 #11 |
-| `ConversationThread`† | clientId (unique), coachUserId | 4 | F11 |
-| `Message`† | threadId, senderUserId, body, createdAt, readAt?; immutable | 4 | F11, D-008 #1 |
-| `InternalNote`† | clientId, authorUserId, body | 4 | F12 |
-| `ExportJob`† | requestedBy, scope (`client_self`/`org`), resourceType, status, objectKey?, expiresAt?, idempotencyKey | 5 | F13, D-010 #4 |
-| `DeletionRequest`† | subjectUserId, subjectClientId?, requestedBy, status (`requested`/`verified`/`processing`/`done`/`rejected`), legalHold, verifiedBy?, completedAt? | 5 | Journey E, D-008 #16 |
-| `SupportAccessGrant` | adminUserId, clientId, reason, expiresAt | 5 | D-006 roles |
+| Model                                | Key fields                                                                                                                                                                                                                                                                                                                                                                                    | Sprint | Refs                 |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | -------------------- |
+| `User`                               | id, email (unique, normalized), name, emailVerified, isPlatformAdmin, lastLoginAt                                                                                                                                                                                                                                                                                                             | 0      | F01, D-006           |
+| `Session`, `Account`, `Verification` | Better Auth's generated tables (DB sessions, OAuth accounts, tokens)                                                                                                                                                                                                                                                                                                                          | 0      | D-006                |
+| `Organization`                       | id, name, timezone, plan (`pilot`), ownerUserId, graceHours (default 24, 0–72), activeClientLimit (30)                                                                                                                                                                                                                                                                                        | 0      | F01, D-008 #5/#13    |
+| `Membership`                         | userId, organizationId, role (`owner`/`coach`/`client`), status; unique (userId, organizationId, role)                                                                                                                                                                                                                                                                                        | 0      | F01, D-006           |
+| `PilotCode`                          | codeHash, createdBy, usedBy?, usedAt?, expiresAt                                                                                                                                                                                                                                                                                                                                              | 0      | D-008 #19            |
+| `AuditEvent`†                        | actorId, objectType, objectId, action, metadataJson (no content), requestId, createdAt; append-only                                                                                                                                                                                                                                                                                           | 0      | §11                  |
+| `OutboxEmail`†                       | kind, toUserId, templateKey, payloadJson, idempotencyKey (unique), status, attempts, sentAt                                                                                                                                                                                                                                                                                                   | 0      | D-005                |
+| `NotificationPreference`             | userId, messageEmailOptIn (default false), marketingOptIn (default false)                                                                                                                                                                                                                                                                                                                     | 1      | D-008 clar. 3        |
+| `CoachProfile`                       | userId, bio, specialties, units                                                                                                                                                                                                                                                                                                                                                               | 1      | F14                  |
+| `Client`†                            | id, userId?, coachUserId, status (`invited`/`active`/`paused`/`archived`), startDate, goals, timezone, preferredUnits (`kg`/`lb`), consentVersion?, consentAt?, checkinWeekday?, checkinTemplateId?                                                                                                                                                                                           | 1      | F03, D-007           |
+| `ClientInvite`†                      | clientId, tokenHash, expiresAt (+7d), acceptedAt?, revokedAt?, idempotencyKey                                                                                                                                                                                                                                                                                                                 | 1      | F04, D-008 #14       |
+| `Exercise`                           | organizationId? (null = seeded global), name, equipment, muscleGroup, movementType, trackingType (`reps_load`/`duration`/`distance`), instructions, mediaUrl?                                                                                                                                                                                                                                 | 1      | F05, D-008 #8        |
+| `Program`†                           | id, title, kind (`template`/`client`), clientId?, sourceProgramId?, sourceVersionId?, currentVersionId?, status, createdBy                                                                                                                                                                                                                                                                    | 1      | D-001                |
+| `ProgramVersion`†                    | programId, versionNo (unique per program), committedBy, committedAt, daysPerWeek, weekCount                                                                                                                                                                                                                                                                                                   | 1      | D-001, D-002         |
+| `ProgramSlot`†                       | programVersionId, weekIndex, dayIndex, workoutVersionId; unique (programVersionId, weekIndex, dayIndex)                                                                                                                                                                                                                                                                                       | 1      | D-002 #2             |
+| `WorkoutVersion`†                    | id, title, notes; immutable                                                                                                                                                                                                                                                                                                                                                                   | 1      | D-002 #1             |
+| `WorkoutVersionExercise`†            | workoutVersionId, exerciseId, position, targetJson (Zod-validated: sets[{reps?, loadKg?, rpe?, restSec?, tempo?, durationSec?, distanceM?}]), note                                                                                                                                                                                                                                            | 1      | F06                  |
+| `ProgramDraft`†                      | programId, baseVersionNo, draftJson, updatedAt, updatedBy                                                                                                                                                                                                                                                                                                                                     | 3      | D-002 #3             |
+| `ProgramAssignment`†                 | clientId, programId (client copy), startLocalDate, weekdays (int[] ISO 1–7), timezone, status (`active`/`ended`/`completed`), readinessConfirmedAt/By, endedAt; partial unique (clientId) where status=`active`                                                                                                                                                                               | 1      | F07, D-010 #2, D-007 |
+| `WorkoutSession`†                    | assignmentId, clientId, slotWeekIndex, slotDayIndex, scheduledLocalDate, scheduledAt (UTC), dueAt (UTC), state (`scheduled`/`in_progress`/`completed`/`skipped`/`missed`/`incomplete`/`cancelled`), workoutVersionId? (null until locked), startedAt?, completedAt?, submittedAt?, comment?, loggedByUserId?, pauseOffsetDays (default 0); unique (assignmentId, slotWeekIndex, slotDayIndex) | 1      | D-002, D-008 #4/#7   |
+| `SetLog`†                            | sessionId, workoutVersionExerciseId, setIndex, reps?, weightKg?, rpe?, durationSeconds?, distanceM?, clientUpdatedAt, clientMutationId; unique (sessionId, workoutVersionExerciseId, setIndex)                                                                                                                                                                                                | 2      | D-004 #7, D-008 #8   |
+| `SetLogRevision`†                    | setLogId, before/after json, reason, revisedBy, createdAt                                                                                                                                                                                                                                                                                                                                     | 3      | D-008 #6, clar. 2    |
+| `ClientPause`†                       | clientId, startLocalDate, resumeLocalDate, appliedOffsetDays, endedAt?, createdBy                                                                                                                                                                                                                                                                                                             | 3      | D-003                |
+| `CheckinTemplate`†                   | title, questionSchema (Zod: [{id, type: `scale_1_5`/`short_text`/`yes_no`, label, optional: true}]), isSeeded                                                                                                                                                                                                                                                                                 | 4      | F09, D-008 #9        |
+| `Checkin`†                           | clientId, templateId, periodLocalDate, issuedAt, dueAt, submittedAt?, answersJson?, draftJson?; unique (clientId, periodLocalDate)                                                                                                                                                                                                                                                            | 4      | D-010 #3             |
+| `ReviewFlag`†                        | clientId, ruleKey (`missed_workouts`/`checkin_overdue`/`checkin_new`/`message_unread`/`coach_followup`), severity (`needs_review`), sourceType, sourceId, dedupeKey (unique), evidenceJson, state (`open`/`snoozed`/`resolved`/`dismissed`), snoozedUntil?, resolvedBy?, resolvedAt?, resolutionReason?, reopenedAt?                                                                          | 4      | F10, D-008 #11       |
+| `ConversationThread`†                | clientId (unique), coachUserId                                                                                                                                                                                                                                                                                                                                                                | 4      | F11                  |
+| `Message`†                           | threadId, senderUserId, body, createdAt, readAt?; immutable                                                                                                                                                                                                                                                                                                                                   | 4      | F11, D-008 #1        |
+| `InternalNote`†                      | clientId, authorUserId, body                                                                                                                                                                                                                                                                                                                                                                  | 4      | F12                  |
+| `ExportJob`†                         | requestedBy, scope (`client_self`/`org`), resourceType, status, objectKey?, expiresAt?, idempotencyKey                                                                                                                                                                                                                                                                                        | 5      | F13, D-010 #4        |
+| `DeletionRequest`†                   | subjectUserId, subjectClientId?, requestedBy, status (`requested`/`verified`/`processing`/`done`/`rejected`), legalHold, verifiedBy?, completedAt?                                                                                                                                                                                                                                            | 5      | Journey E, D-008 #16 |
+| `SupportAccessGrant`                 | adminUserId, clientId, reason, expiresAt                                                                                                                                                                                                                                                                                                                                                      | 5      | D-006 roles          |
 
 ---
 
@@ -185,10 +185,11 @@ Tests: integration: signup without pilot code → 422 `PILOT_CODE_INVALID`; pass
 **S0-4 — Authorization + API conventions** · §7.2, §9, §11 · D-006 · S0-3
 Scope: `ActorContext` resolution (user + active membership + platform admin), policy helpers in `packages/core/authz`, route-handler wrapper producing the envelope, `requestId`, structured error codes, Zod input parsing → 422 with `fieldErrors`, CSRF/origin check on mutations, per-route rate limiting. Cross-tenant test harness that seeds two orgs + a dual-role user.
 Interfaces:
+
 - `packages/core/src/authz/actor.ts`: `type ActorContext = { userId: string; orgId: string; role: 'owner'|'coach'|'client'; clientId?: string; isPlatformAdmin: boolean }`
 - `apps/web/src/server/api.ts`: `apiHandler<I, O>(opts: { input?: ZodType<I>; roles: Role[] }, fn: (ctx: ActorContext, input: I) => Promise<O>)`
 - `apps/web/test/harness/tenants.ts`: `seedTwoTenants(): Promise<{ orgA, orgB, coachA, coachB, clientA, dualRoleUser }>`
-Tests: `cross-tenant.test.ts`: coach B GET of org A resource → 404 (not 403, no existence leak); client role → 403 on coach routes; `dualRoleUser` acting as client of B can't read A's data. Errors always include `requestId`.
+  Tests: `cross-tenant.test.ts`: coach B GET of org A resource → 404 (not 403, no existence leak); client role → 403 on coach routes; `dualRoleUser` acting as client of B can't read A's data. Errors always include `requestId`.
 
 **S0-5 — Design tokens + app shells** · §6, §6.1, §6.2 · D-008 #18 · S0-1
 Scope: Tailwind theme from Global Constraints tokens; shadcn base (Button, Input, Card, Tabs, Dialog, Toast, Skeleton); `EmptyState`, `ErrorState`, `LoadingState` primitives; coach layout (desktop left nav: Overview, Clients, Programs, Review, Messages, Analytics, Settings pinned bottom; mobile bottom nav: Home, Clients, Review, Messages, More); portal layout (Home, Workouts, Check-ins, Messages, Profile); breadcrumbs; reduced-motion.
@@ -234,13 +235,14 @@ Tests: changing one workout in a 4×3 program creates exactly 1 new `WorkoutVers
 **S1-6 — Assignment + scheduling (F07)** · F07, §10 · D-001, D-002 #4, D-007, D-010 #1/#2 · S1-2, S1-3, S1-5
 Scope: assign dialog: client, start date, weekdays (must equal `daysPerWeek`, distinct), readiness checkbox (required on a client's first assignment), replacement confirmation if an active assignment exists; copy-on-assign deep copy into a `kind=client` `Program` with version 1 (the copy shares `WorkoutVersion` rows, since they're immutable); session generation in one transaction; replacement ends the old assignment and cancels its unstarted sessions dated ≥ new start; audit `assignment.created` / `assignment.replaced`.
 Interfaces:
+
 - `packages/core/src/schedule/scheduleSlots.ts`: `scheduleSlots(input: { slots: SlotKey[]; weekdays: IsoWeekday[]; startLocalDate: string /* YYYY-MM-DD */; timeZone: string }): ScheduledSlot[]` where `ScheduledSlot = { slot: SlotKey; localDate: string; scheduledAtUtc: Date; dueAtUtc: Date }`. `scheduledAtUtc` = 00:00 local, `dueAtUtc` = 23:59 local, both converted with `@date-fns/tz`.
 - `packages/core/src/assignments/assign.ts`: `assignProgram(tx, ctx, input: { clientId; templateProgramId; startLocalDate; weekdays; readinessConfirmed: boolean; confirmReplace: boolean }): Promise<{ assignmentId: string; sessionCount: number }>`
-Tests (`scheduleSlots.test.ts`):
+  Tests (`scheduleSlots.test.ts`):
 - Day 1–3, weekdays Mon/Wed/Fri `[1,3,5]`, start Wed `2026-11-04` → W1D1 `2026-11-04`, W1D2 `2026-11-06`, W1D3 `2026-11-09`, W2D1 `2026-11-11`.
 - DST: tz `America/New_York`, Sun-only `[7]`, start `2026-10-25` → slot 2 on `2026-11-01` has `dueAtUtc` `2026-11-02T04:59:00Z` (EST), slot 1 `dueAtUtc` `2026-10-26T03:59:00Z` (EDT). (Review Focus #1)
 - weekdays count ≠ daysPerWeek → `ScheduleInputError`.
-Tests (`assign.test.ts`): second assignment without `confirmReplace` → 409 `ACTIVE_ASSIGNMENT_EXISTS`; with it → old `ended`, unstarted sessions ≥ start `cancelled`, `completed`/`in_progress` untouched; missing readiness on first assignment → 422.
+  Tests (`assign.test.ts`): second assignment without `confirmReplace` → 409 `ACTIVE_ASSIGNMENT_EXISTS`; with it → old `ended`, unstarted sessions ≥ start `cancelled`, `completed`/`in_progress` untouched; missing readiness on first assignment → 422.
 
 ### Sprint 2 — First end-to-end loop (DoD: golden path E2E green)
 
@@ -357,12 +359,14 @@ Repo root is `D:\Gym`. Commands are run from the root unless noted.
 ### Task 0.1: Monorepo scaffold + CI (S0-1)
 
 **Files:**
+
 - Create: `package.json`, `pnpm-workspace.yaml`, `tsconfig.base.json`, `.nvmrc`, `.editorconfig`, `.gitignore`, `.prettierrc`, `eslint.config.mjs`, `vitest.workspace.ts`, `.env.example`, `README.md`
 - Create: `apps/web` (via `create-next-app`, App Router, TS, Tailwind, ESLint, `src/`), `apps/worker/package.json`, `apps/worker/src/index.ts`, `packages/core/package.json`, `packages/core/src/index.ts`, `packages/db/package.json`
 - Create: `.github/workflows/ci.yml`
 - Test: `packages/core/src/index.test.ts`
 
 **Interfaces:**
+
 - Produces: root scripts `lint`, `typecheck`, `test`, `test:e2e`; package names `@kinetic/web`, `@kinetic/worker`, `@kinetic/core`, `@kinetic/db`.
 
 - [ ] **Step 1: Write the failing smoke test** `packages/core/src/index.test.ts`
@@ -370,7 +374,11 @@ Repo root is `D:\Gym`. Commands are run from the root unless noted.
 ```ts
 import { describe, it, expect } from 'vitest';
 import { CORE_VERSION } from './index';
-describe('core', () => { it('exports a version', () => { expect(CORE_VERSION).toBe('0.0.0'); }); });
+describe('core', () => {
+  it('exports a version', () => {
+    expect(CORE_VERSION).toBe('0.0.0');
+  });
+});
 ```
 
 - [ ] **Step 2: Run it.** `pnpm --filter @kinetic/core test`. Expected: FAIL, `CORE_VERSION` not exported.
@@ -382,10 +390,12 @@ describe('core', () => { it('exports a version', () => { expect(CORE_VERSION).to
 ### Task 0.2: DB package + tenancy primitives (S0-2)
 
 **Files:**
+
 - Create: `packages/db/prisma/schema.prisma`, `packages/db/src/client.ts`, `packages/db/src/tenant.ts`, `packages/db/src/audit.ts`, `packages/db/src/testing/createTestDb.ts`, `packages/db/prisma/migrations/*`
 - Test: `packages/db/src/tenant.test.ts`, `packages/db/src/audit.test.ts`
 
 **Interfaces:**
+
 - Produces: `prisma`, `withTenant(orgId, fn)`, `TenantTx`, `appendAudit(tx, input: { orgId: string; actorId: string | null; objectType: string; objectId: string; action: string; metadata?: Record<string, string | number | boolean>; requestId?: string })`, `createTestDb(): Promise<{ prisma: PrismaClient; drop(): Promise<void> }>`
 
 - [ ] **Step 1: Write failing tests.**
@@ -399,11 +409,13 @@ describe('core', () => { it('exports a version', () => { expect(CORE_VERSION).to
 ### Task 0.3: Better Auth + pilot-code coach signup (S0-3)
 
 **Files:**
+
 - Create: `apps/web/src/lib/auth.ts`, `apps/web/src/lib/auth-client.ts`, `apps/web/src/app/api/auth/[...all]/route.ts`, `apps/web/src/app/(auth)/signup/page.tsx`, `login/page.tsx`, `verify-email/page.tsx`, `reset-password/page.tsx`, `packages/core/src/identity/signupCoach.ts`, `apps/web/src/middleware.ts`
 - Modify: `packages/db/prisma/schema.prisma` (Better Auth tables via `@better-auth/cli generate`)
 - Test: `packages/core/src/identity/signupCoach.test.ts`, `apps/web/test/auth.int.test.ts`, `apps/web/e2e/auth.spec.ts`
 
 **Interfaces:**
+
 - Consumes: `prisma`, `appendAudit`, `enqueueEmail` (Task 0.6; until then, inject `EmailPort` with `DevSinkEmailAdapter`).
 - Produces: `auth`, `getSessionUser(headers: Headers): Promise<SessionUser | null>` with `SessionUser = { id: string; email: string; emailVerified: boolean; isPlatformAdmin: boolean }`; `signupCoach(tx, input: { userId: string; pilotCode: string; orgName: string; timezone: string }): Promise<{ orgId: string }>`.
 
@@ -419,10 +431,12 @@ describe('core', () => { it('exports a version', () => { expect(CORE_VERSION).to
 ### Task 0.4: Authorization + API envelope + tenant harness (S0-4)
 
 **Files:**
+
 - Create: `packages/core/src/authz/actor.ts`, `packages/core/src/authz/policies.ts`, `packages/core/src/errors.ts`, `apps/web/src/server/api.ts`, `apps/web/src/server/requestId.ts`, `apps/web/src/server/rateLimit.ts`, `apps/web/src/app/api/v1/me/route.ts`, `apps/web/test/harness/tenants.ts`
 - Test: `apps/web/test/cross-tenant.int.test.ts`, `apps/web/test/api-envelope.int.test.ts`
 
 **Interfaces:**
+
 - Consumes: `getSessionUser`, `withTenant`.
 - Produces: `ActorContext` (see S0-4), `DomainError(code: ErrorCode, message?: string, fieldErrors?: Record<string, string[]>)`, `apiHandler`, `seedTwoTenants()`, `GET /api/v1/me` → `{ data: { userId, memberships: [{ orgId, role }] } }`.
 
@@ -437,10 +451,12 @@ describe('core', () => { it('exports a version', () => { expect(CORE_VERSION).to
 ### Task 0.5: Design tokens + app shells (S0-5)
 
 **Files:**
+
 - Create: `apps/web/src/styles/tokens.css`, `apps/web/src/lib/tokens.ts`, `apps/web/src/components/ui/*` (shadcn: button, input, card, tabs, dialog, toast, skeleton), `apps/web/src/components/states/{EmptyState,ErrorState,LoadingState}.tsx`, `apps/web/src/app/app/layout.tsx`, `apps/web/src/app/portal/layout.tsx`, `apps/web/src/components/nav/{CoachNav,PortalNav}.tsx`
 - Test: `apps/web/src/lib/tokens.test.ts`, `apps/web/e2e/shell.spec.ts`
 
 **Interfaces:**
+
 - Produces: `tokens` object (names from Global Constraints), `contrastRatio(a: string, b: string): number`, `<EmptyState title body action />`, `<ErrorState message onRetry />`, `<LoadingState />`.
 
 - [ ] **Step 1: Write failing tests.**
@@ -454,10 +470,12 @@ describe('core', () => { it('exports a version', () => { expect(CORE_VERSION).to
 ### Task 0.6: Worker, outbox, email adapters, observability (S0-6)
 
 **Files:**
+
 - Create: `packages/core/src/ports/email.ts`, `packages/core/src/outbox.ts`, `apps/worker/src/boss.ts`, `apps/worker/src/jobs/registry.ts`, `apps/worker/src/jobs/emailDeliver.ts`, `apps/worker/src/adapters/{resendEmail,devSinkEmail}.ts`, `apps/worker/src/health.ts`, `apps/web/src/app/healthz/route.ts`, `apps/web/sentry.*.config.ts`, `apps/worker/src/sentry.ts`, `packages/core/src/log.ts`
 - Test: `packages/core/src/outbox.test.ts`, `apps/worker/src/jobs/emailDeliver.test.ts`
 
 **Interfaces:**
+
 - Produces: `EmailPort`, `enqueueEmail`, `defineJob`, job `email.deliver` (polls `OutboxEmail` `pending` every 30s and on notify), `logger` (pino, redacts `body`, `password`, `token` keys).
 
 - [ ] **Step 1: Write failing tests.**
@@ -471,10 +489,12 @@ describe('core', () => { it('exports a version', () => { expect(CORE_VERSION).to
 ### Task 0.7: Render deploy, seed, smoke (S0-7)
 
 **Files:**
+
 - Create: `packages/db/prisma/seed.ts`, `render.yaml`, `packages/db/sql/app-role.sql`, `packages/db/src/assertRuntimeRole.ts`, `apps/web/e2e/smoke.spec.ts`, `.github/workflows/smoke.yml`, `docs/architecture/overview.md`, `docs/runbook.md`
 - Test: `packages/db/src/seed.test.ts`
 
 **Interfaces:**
+
 - Consumes: everything in Sprint 0.
 - Produces: `pnpm db:seed` (idempotent): admin `admin@example.test`, pilot code (printed once locally, hash stored), demo coach `coach@example.test` + 3 clients with synthetic names. Passwords come from local env `SEED_PASSWORD` and are never committed.
 
@@ -488,22 +508,22 @@ describe('core', () => { it('exports a version', () => { expect(CORE_VERSION).to
 
 ## Traceability: PRD features → tickets
 
-| PRD | Tickets |
-|---|---|
-| F01 Auth, org, roles | S0-3, S0-4, S5-3 |
-| F02 Coach dashboard | S2-4, S4-3 |
-| F03 Client directory | S1-1, S3-5, S4-5 |
-| F04 Invitations + onboarding | S1-2 |
-| F05 Exercise library | S1-4 |
-| F06 Program builder | S1-5, S3-1, S3-2, S3-6 |
-| F07 Schedule + assignments | S1-6, S3-2, S3-5 |
-| F08 Client workout logging | S2-2, S2-3, S3-3, S3-4 |
-| F09 Check-ins | S4-1 |
-| F10 Review queue | S2-4, S4-2, S4-3 |
-| F11 Messaging | S4-4 |
-| F12 History + notes | S4-5 |
-| F13 Analytics + exports | S5-1, S5-2 |
-| F14 Settings, billing placeholder | S1-3, S5-2, S5-3 |
-| Journeys A / B / C / D / E | S2-5 / S3-1 / S2-2 + S3-3 / S4-3 / S5-2 + S5-3 |
-| §13 events | S5-4 |
-| §12, §16, §17 | S5-5 |
+| PRD                               | Tickets                                        |
+| --------------------------------- | ---------------------------------------------- |
+| F01 Auth, org, roles              | S0-3, S0-4, S5-3                               |
+| F02 Coach dashboard               | S2-4, S4-3                                     |
+| F03 Client directory              | S1-1, S3-5, S4-5                               |
+| F04 Invitations + onboarding      | S1-2                                           |
+| F05 Exercise library              | S1-4                                           |
+| F06 Program builder               | S1-5, S3-1, S3-2, S3-6                         |
+| F07 Schedule + assignments        | S1-6, S3-2, S3-5                               |
+| F08 Client workout logging        | S2-2, S2-3, S3-3, S3-4                         |
+| F09 Check-ins                     | S4-1                                           |
+| F10 Review queue                  | S2-4, S4-2, S4-3                               |
+| F11 Messaging                     | S4-4                                           |
+| F12 History + notes               | S4-5                                           |
+| F13 Analytics + exports           | S5-1, S5-2                                     |
+| F14 Settings, billing placeholder | S1-3, S5-2, S5-3                               |
+| Journeys A / B / C / D / E        | S2-5 / S3-1 / S2-2 + S3-3 / S4-3 / S5-2 + S5-3 |
+| §13 events                        | S5-4                                           |
+| §12, §16, §17                     | S5-5                                           |
