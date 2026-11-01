@@ -2,6 +2,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
   broadcastAudiences,
+  getClientContext,
+  getSettings,
+  replyFacts,
   DomainError,
   getThread,
   isUuid,
@@ -53,10 +56,13 @@ export default async function MessagesPage({
       if (!pick) return { threads: list, open: null, hits, searchError, replies, audiences };
       const thread = await getThread(tx, actor, pick);
       const page = await listMessages(tx, actor, pick);
+      const units = (await getSettings(tx, actor)).profile?.units ?? 'kg';
+      const facts = await replyFacts(tx, actor, thread.clientId, units);
+      const context = await getClientContext(tx, actor, thread.clientId);
       // Opening the thread marked it read.
       return {
         threads: list.map((t) => (t.id === pick ? { ...t, unread: 0 } : t)),
-        open: { thread, page },
+        open: { thread, page, facts, context },
         hits,
         searchError,
         replies,
@@ -179,7 +185,25 @@ export default async function MessagesPage({
                 >
                   All conversations
                 </Link>
-                <h2 className="mb-4 text-lg font-semibold break-words">{open.thread.clientName}</h2>
+                <h2 className="mb-2 text-lg font-semibold break-words">{open.thread.clientName}</h2>
+                {(open.context.goals || open.context.motivation) && (
+                  <dl className="mb-4 grid gap-2 rounded-control bg-canvas p-3 text-sm sm:grid-cols-2">
+                    {open.context.goals && (
+                      <div>
+                        <dt className="text-secondary">Goals</dt>
+                        <dd className="break-words whitespace-pre-line">{open.context.goals}</dd>
+                      </div>
+                    )}
+                    {open.context.motivation && (
+                      <div>
+                        <dt className="text-secondary">Motivation</dt>
+                        <dd className="break-words whitespace-pre-line">
+                          {open.context.motivation}
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                )}
                 <MessageThread
                   key={open.thread.id}
                   threadId={open.thread.id}
@@ -188,6 +212,7 @@ export default async function MessagesPage({
                   initial={open.page.items}
                   initialCursor={open.page.nextCursor}
                   savedReplies={replies}
+                  replyFacts={open.facts}
                 />
               </>
             ) : (

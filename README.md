@@ -73,6 +73,7 @@ R2 builds the web-platform features in `docs/competitive/complete-platform-prd.m
 - **G5 resources:** `/app/resources` shares https links and short texts with all clients, a tag or one client; clients read theirs at `/portal/resources`. No uploads (text and links only).
 - **H14 coach digest:** coaches can turn on a daily digest email (Settings, Notifications); the worker (`coach.digest`, hourly) sends it once a day from 07:00 in the workspace's time zone with counts of check-ins to review, unread messages and open review items, and skips days with nothing to report. Never names or content.
 - **A6 branding:** the owner sets an accent colour (white text must reach 4.5:1) and an https logo in Settings; the client portal shows the workspace name, logo and accent. Printed programs and client emails already carry the workspace name.
+- **F7 reply toolkit (text):** saved replies fill `{first_name}`, `{workouts_done}`/`{workouts_planned}` (this week), `{weight}`, `{streak}` and `{next_workout}` from the client's data when inserted; the inbox shows the client's goals and motivation beside the conversation. Voice and video replies wait for the media decision.
 
 ## What works locally (Sprint 5)
 

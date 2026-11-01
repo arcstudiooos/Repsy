@@ -107,8 +107,11 @@ export function MessagingSection({
             Saved replies
           </h3>
           <p className="text-sm text-secondary">
-            Shared with your workspace&apos;s coaches. Insert one from the message box;{' '}
-            <code>{'{first_name}'}</code> becomes the client&apos;s first name. Nothing sends on its
+            Shared with your workspace&apos;s coaches. Insert one from the message box and these
+            fill in from the client&apos;s data: <code>{'{first_name}'}</code>,{' '}
+            <code>{'{workouts_done}'}</code> and <code>{'{workouts_planned}'}</code> (this week),{' '}
+            <code>{'{weight}'}</code>, <code>{'{streak}'}</code> (on-time check-ins) and{' '}
+            <code>{'{next_workout}'}</code>. One with no data stays as written. Nothing sends on its
             own.
           </p>
           {replies.length > 0 && (

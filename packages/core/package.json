@@ -29,6 +29,7 @@
     "./metric-catalog": "./src/progress/metric-catalog.ts",
     "./pr": "./src/progress/pr.ts",
     "./program-text": "./src/programs/text-import.ts",
-    "./brand-color": "./src/branding/color.ts"
+    "./brand-color": "./src/branding/color.ts",
+    "./reply-fill": "./src/messages/fill.ts"
   }
 }

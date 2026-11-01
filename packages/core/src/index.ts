@@ -535,3 +535,9 @@ export {
 } from './resources/resources';
 export { queueCoachDigests, DIGEST_HOUR } from './notifications/digest';
 export { getBranding, updateBranding, type Branding } from './branding/branding';
+export {
+  replyFacts,
+  fillPlaceholders,
+  REPLY_PLACEHOLDERS,
+  type ReplyPlaceholder,
+} from './messages/replyFacts';

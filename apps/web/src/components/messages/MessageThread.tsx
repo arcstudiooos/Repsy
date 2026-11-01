@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { fillPlaceholders } from '@kinetic/core/reply-fill';
 import type { MessageView, SavedReplyView } from '@kinetic/core';
 import { Button } from '@/components/ui/button';
 import { fetchMessages, postMessage } from '@/lib/message-api';
@@ -32,6 +33,7 @@ export function MessageThread({
   initial,
   initialCursor,
   savedReplies,
+  replyFacts,
 }: {
   threadId: string;
   canPost: boolean;
@@ -41,6 +43,8 @@ export function MessageThread({
   initialCursor: string | null;
   /** Coach side only (PRD H4): snippets to insert, `{first_name}` filled with the client's first name. */
   savedReplies?: SavedReplyView[];
+  /** Coach side (PRD F7): values for `{workouts_done}`, `{weight}` and the other saved-reply placeholders. */
+  replyFacts?: Partial<Record<string, string>>;
 }) {
   const id = useId();
   const [messages, setMessages] = useState(() => merge([], initial));
@@ -168,7 +172,7 @@ export function MessageThread({
                   const r = savedReplies.find((x) => x.id === e.target.value);
                   if (!r) return;
                   const first = otherName.trim().split(/\s+/)[0] || otherName;
-                  const text = r.body.replace(/\{first_name\}/g, first);
+                  const text = fillPlaceholders(r.body, { first_name: first, ...replyFacts });
                   setBody((b) => (b.trim() ? `${b}\n${text}` : text).slice(0, MAX));
                 }}
                 className="min-h-11 rounded-control border border-input-border bg-surface px-3 text-sm text-ink"
