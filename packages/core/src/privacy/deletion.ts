@@ -184,7 +184,10 @@ export async function eraseClientData(
   // D-011 #5: photos and form-check videos are removed now; their files are marked for the media purge job.
   await tx.sessionMedia.deleteMany({ where: ofSessions });
   await tx.progressPhoto.deleteMany({ where: inClient });
-  await tx.mediaFile.updateMany({ where: { ...inClient, erasedAt: null }, data: { erasedAt: now } });
+  await tx.mediaFile.updateMany({
+    where: { ...inClient, erasedAt: null },
+    data: { erasedAt: now },
+  });
   await tx.reviewFlag.deleteMany({ where: inClient });
   const messageIds = (
     await tx.message.findMany({
