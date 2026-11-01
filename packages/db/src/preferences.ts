@@ -16,6 +16,8 @@ export interface EmailOptIns {
   workout: boolean;
   checkin: boolean;
   habit: boolean;
+  /** PRD I9. */
+  brief: boolean;
 }
 
 /**
@@ -25,12 +27,13 @@ export interface EmailOptIns {
  */
 export async function emailOptIns(tx: TenantTx, userId: string): Promise<EmailOptIns> {
   const rows = await (tx as unknown as Pick<SystemTx, '$queryRaw'>).$queryRaw<EmailOptIns[]>`
-    SELECT digest, workout, checkin, habit FROM app_email_opt_ins(${userId}::uuid)`;
+    SELECT digest, workout, checkin, habit, brief FROM app_email_opt_ins(${userId}::uuid)`;
   const r = rows[0];
   return {
     digest: r?.digest === true,
     workout: r?.workout === true,
     checkin: r?.checkin === true,
     habit: r?.habit === true,
+    brief: r?.brief === true,
   };
 }

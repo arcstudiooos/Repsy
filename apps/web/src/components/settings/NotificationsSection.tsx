@@ -11,6 +11,7 @@ export function NotificationsSection({
     messageEmailOptIn: boolean;
     marketingOptIn: boolean;
     digestEmailOptIn?: boolean;
+    weeklyBriefOptIn?: boolean;
     workoutReminderOptIn?: boolean;
     checkinReminderOptIn?: boolean;
     habitReminderOptIn?: boolean;
@@ -27,7 +28,10 @@ export function NotificationsSection({
           messageEmailOptIn: data.get('messageEmailOptIn') === 'on',
           marketingOptIn: data.get('marketingOptIn') === 'on',
           ...(coach
-            ? { digestEmailOptIn: data.get('digestEmailOptIn') === 'on' }
+            ? {
+                digestEmailOptIn: data.get('digestEmailOptIn') === 'on',
+                weeklyBriefOptIn: data.get('weeklyBriefOptIn') === 'on',
+              }
             : {
                 workoutReminderOptIn: data.get('workoutReminderOptIn') === 'on',
                 checkinReminderOptIn: data.get('checkinReminderOptIn') === 'on',
@@ -56,6 +60,17 @@ export function NotificationsSection({
                 className="size-5 accent-accent"
               />
               Email me a daily digest (new check-ins, unread messages, items to review)
+            </label>
+          )}
+          {coach && (
+            <label className="flex min-h-11 items-center gap-3 text-base">
+              <input
+                type="checkbox"
+                name="weeklyBriefOptIn"
+                defaultChecked={notifications.weeklyBriefOptIn ?? false}
+                className="size-5 accent-accent"
+              />
+              Email me a Monday brief (last week&apos;s wins, who slipped, what&apos;s due)
             </label>
           )}
           {!coach && (

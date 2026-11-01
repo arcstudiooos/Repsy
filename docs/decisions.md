@@ -403,3 +403,19 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
 7. **Operations features (M8, M9, M10, M13)** ship as in-app surfaces only: an incident banner the platform admin
    sets, public status, reliability and plan pages, a support form and a changelog. External monitoring and billing
    providers stay out until chosen.
+
+## D-012 — R3 rulings delegated to the builder (2026-11-01)
+
+**Status:** Accepted, under the same delegation as D-011; each can be revisited.
+**PRD refs:** B20, H5, I4, I9 (more added as R3 is built).
+
+1. **Lifecycle stage (B20)** stores only the stages a coach chooses (Onboarding, Active, At renewal). Paused and
+   Alumni are read from the client's status, so a stage can never contradict a pause or archiving (D-003). The first
+   completed workout ends Onboarding.
+2. **Scheduled messages (H5)** are sent by the worker through the normal message path, as the coach who wrote them,
+   so they follow every message rule (D-008 #1, emails and pushes without content). If that coach has left the
+   workspace, or the thread is closed, the message is not sent.
+3. **Engagement (I4)** is a trend, never a label. Its "Needs review" flag is an opt-in review rule like the I3 rules,
+   off by default. Portal visits keep only the local day.
+4. **The Monday brief (I9)** follows D-007 like the daily digest: counts and a link, no client names, and nothing a
+   client wrote. Its own opt-in, off by default.

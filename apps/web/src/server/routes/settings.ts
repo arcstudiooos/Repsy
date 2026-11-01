@@ -33,6 +33,7 @@ const patchSchema = z.object({
     .object({
       messageEmailOptIn: z.boolean().optional(),
       digestEmailOptIn: z.boolean().optional(),
+      weeklyBriefOptIn: z.boolean().optional(),
       marketingOptIn: z.boolean().optional(),
       workoutReminderOptIn: z.boolean().optional(),
       checkinReminderOptIn: z.boolean().optional(),

@@ -585,6 +585,7 @@ export {
 } from './messages/replyFacts';
 export { equipmentGuideFor, type EquipmentGuide } from './exercises/equipmentGuide';
 export { setExerciseDemo } from './exercises/demo';
+export { queueWeeklyBriefs, weeklyBriefFacts, type WeeklyBrief } from './notifications/brief';
 export {
   ENGAGEMENT_WEEKS,
   getEngagement,

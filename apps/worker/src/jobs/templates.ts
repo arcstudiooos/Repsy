@@ -144,6 +144,62 @@ const TEMPLATES: Record<string, Template> = {
       '<p>You get this because you turned on the daily digest in Settings.</p>';
     return { subject: 'Your Kinetic daily digest', text, html };
   },
+  // PRD I9: the Monday brief. Counts and a link only, never client names or content (D-007).
+  weekly_brief: (payload, appBaseUrl) => {
+    const n = (k: string) => (typeof payload[k] === 'number' ? (payload[k] as number) : 0);
+    const orgName = str(payload, 'orgName');
+    const plural = (count: number, one: string, many: string) =>
+      `${count} ${count === 1 ? one : many}`;
+    const wins = [
+      n('completed') > 0 && plural(n('completed'), 'workout completed', 'workouts completed'),
+      n('perfectWeeks') > 0 &&
+        plural(n('perfectWeeks'), 'client did every workout', 'clients did every workout'),
+    ].filter((x): x is string => Boolean(x));
+    const slipped =
+      n('slipped') > 0
+        ? [
+            plural(
+              n('slipped'),
+              'client missed 2 or more workouts',
+              'clients missed 2 or more workouts',
+            ),
+          ]
+        : [];
+    const due = [
+      n('workoutsDue') > 0 && plural(n('workoutsDue'), 'workout planned', 'workouts planned'),
+      n('checkinsDue') > 0 && plural(n('checkinsDue'), 'check-in due', 'check-ins due'),
+      n('programsEnding') > 0 &&
+        plural(
+          n('programsEnding'),
+          'program ends with nothing after it',
+          'programs end with nothing after them',
+        ),
+    ].filter((x): x is string => Boolean(x));
+    const link = `${appBaseUrl.replace(/\/+$/, '')}/app`;
+    const sections: [string, string[]][] = [
+      ['Last week', wins],
+      ['Who slipped', slipped],
+      ['This week', due],
+    ];
+    const shown = sections.filter(([, lines]) => lines.length > 0);
+    const where = orgName ? ` for ${orgName}` : '';
+    const text =
+      `Your week ahead${where}:\n\n` +
+      shown.map(([h, lines]) => `${h}:\n${lines.map((l) => `- ${l}`).join('\n')}`).join('\n\n') +
+      `\n\nOpen Kinetic: ${link}\n\n` +
+      'You get this because you turned on the Monday brief in Settings.';
+    const html =
+      `<p>Your week ahead${escapeHtml(where)}:</p>` +
+      shown
+        .map(
+          ([h, lines]) =>
+            `<p><strong>${escapeHtml(h)}</strong></p><ul>${lines.map((l) => `<li>${escapeHtml(l)}</li>`).join('')}</ul>`,
+        )
+        .join('') +
+      `<p><a href="${escapeHtml(link)}">Open Kinetic</a></p>` +
+      '<p>You get this because you turned on the Monday brief in Settings.</p>';
+    return { subject: 'Your Kinetic week ahead', text, html };
+  },
   // S5-3: the coach is told a client asked for deletion (D-010 #4). No content beyond the client's name.
   deletion_requested: (payload, appBaseUrl) => {
     const name = str(payload, 'clientName') ?? 'A client';

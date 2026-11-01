@@ -28,6 +28,8 @@ export interface SettingsView {
     messageEmailOptIn: boolean;
     marketingOptIn: boolean;
     digestEmailOptIn: boolean;
+    /** PRD I9 (coaches). */
+    weeklyBriefOptIn: boolean;
     workoutReminderOptIn: boolean;
     checkinReminderOptIn: boolean;
     habitReminderOptIn: boolean;
@@ -43,6 +45,7 @@ export interface SettingsPatch {
     messageEmailOptIn?: boolean;
     marketingOptIn?: boolean;
     digestEmailOptIn?: boolean;
+    weeklyBriefOptIn?: boolean;
     workoutReminderOptIn?: boolean;
     checkinReminderOptIn?: boolean;
     habitReminderOptIn?: boolean;
@@ -71,6 +74,7 @@ export async function getSettings(tx: TenantTx, actor: ActorContext): Promise<Se
       messageEmailOptIn: true,
       marketingOptIn: true,
       digestEmailOptIn: true,
+      weeklyBriefOptIn: true,
       workoutReminderOptIn: true,
       checkinReminderOptIn: true,
       habitReminderOptIn: true,
@@ -112,6 +116,7 @@ interface Cleaned {
     messageEmailOptIn?: boolean;
     marketingOptIn?: boolean;
     digestEmailOptIn?: boolean;
+    weeklyBriefOptIn?: boolean;
     workoutReminderOptIn?: boolean;
     checkinReminderOptIn?: boolean;
     habitReminderOptIn?: boolean;
@@ -232,7 +237,10 @@ export async function updateSettings(
     changed.push(...names('org', clean.org));
   }
   // The digest (PRD H14) is a coach email; a client's setting is ignored.
-  if (clean.notifications && !isCoach(actor)) delete clean.notifications.digestEmailOptIn;
+  if (clean.notifications && !isCoach(actor)) {
+    delete clean.notifications.digestEmailOptIn;
+    delete clean.notifications.weeklyBriefOptIn;
+  }
   // Reminders (PRD H13) are client emails; a coach's setting is ignored.
   if (clean.notifications && isCoach(actor)) {
     delete clean.notifications.workoutReminderOptIn;
