@@ -123,6 +123,8 @@ model User {
   coursesCreated           Course[]
   assessmentsCreated       Assessment[]
   progressReportsCreated   ProgressReport[]
+  recipesCreated           Recipe[]
+  mealPlansCreated         MealPlan[]
   outboxPushes             OutboxPush[]
 
   @@map("users")
@@ -302,6 +304,9 @@ model Organization {
   clientAssessments ClientAssessment[]
   assessmentPhotos AssessmentPhoto[]
   progressReports ProgressReport[]
+  recipes Recipe[]
+  mealPlans MealPlan[]
+  clientMealPlans ClientMealPlan[]
 }
 
 model Membership {
@@ -426,6 +431,7 @@ model Client {
   assignments     ProgramAssignment[]
   workoutSessions WorkoutSession[]
   agreementAcceptances AgreementAcceptance[]
+  clientMealPlans ClientMealPlan[]
   progressReports ProgressReport[]
   clientAssessments ClientAssessment[]
   courseEnrollments CourseEnrollment[]
@@ -1727,6 +1733,8 @@ model MediaFile {
   uploader       User            @relation("MediaUploader", fields: [uploadedBy], references: [id])
   progressPhoto  ProgressPhoto?
   assessmentPhoto AssessmentPhoto?
+  recipes         Recipe[]
+  mealPlans       MealPlan[]
   sessionMedia   SessionMedia?
   messages       Message[]
   exercises      Exercise[]
@@ -2235,4 +2243,72 @@ model ProgressReport {
   @@unique([clientId, month])
   @@index([organizationId, clientId])
   @@map("progress_reports")
+}
+
+/// PRD G9: a recipe; macros are per serving.
+model Recipe {
+  id              String    @id @default(uuid()) @db.Uuid
+  organizationId  String    @map("organization_id") @db.Uuid
+  title           String
+  servings        Int       @default(1)
+  /// [{ name, amount?, unit? }]
+  ingredientsJson Json      @default("[]") @map("ingredients_json")
+  steps           String    @default("")
+  calories        Int?
+  proteinG        Int?      @map("protein_g")
+  carbsG          Int?      @map("carbs_g")
+  fatG            Int?      @map("fat_g")
+  photoMediaId    String?   @map("photo_media_id") @db.Uuid
+  createdBy       String    @map("created_by") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  archivedAt      DateTime? @map("archived_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  creator      User         @relation(fields: [createdBy], references: [id])
+  photo        MediaFile?   @relation(fields: [photoMediaId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@unique([id, organizationId])
+  @@index([organizationId])
+  @@map("recipes")
+}
+
+/// PRD G8: days x meals x options, or an uploaded PDF.
+model MealPlan {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  title          String
+  notes          String    @default("")
+  /// [{ name, meals: [{ name, options: [{ recipeId?, servings?, text?, calories?, proteinG?, carbsG?, fatG? }] }] }]
+  daysJson       Json      @default("[]") @map("days_json")
+  pdfMediaId     String?   @map("pdf_media_id") @db.Uuid
+  createdBy      String    @map("created_by") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  archivedAt     DateTime? @map("archived_at") @db.Timestamptz(3)
+
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  creator      User             @relation(fields: [createdBy], references: [id])
+  pdf          MediaFile?       @relation(fields: [pdfMediaId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  assigned     ClientMealPlan[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId])
+  @@map("meal_plans")
+}
+
+model ClientMealPlan {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  mealPlanId     String    @map("meal_plan_id") @db.Uuid
+  clientId       String    @map("client_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  endedAt        DateTime? @map("ended_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  mealPlan     MealPlan     @relation(fields: [mealPlanId, organizationId], references: [id, organizationId])
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
+
+  @@index([organizationId, clientId])
+  @@map("client_meal_plans")
 }

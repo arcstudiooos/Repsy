@@ -839,3 +839,21 @@ export {
   type ProgressReportView,
   type ReportData,
 } from './reports/progressReport';
+export {
+  archiveMealPlan,
+  archiveRecipe,
+  clientMealPlan,
+  getRecipe,
+  listMealPlans,
+  listRecipes,
+  saveMealPlan,
+  saveRecipe,
+  setClientMealPlan,
+  shoppingList,
+  type Ingredient,
+  type MealOptionInput,
+  type MealPlanDay,
+  type MealPlanView,
+  type RecipeView,
+  type ShoppingItem,
+} from './nutrition/mealPlans';

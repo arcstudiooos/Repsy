@@ -407,7 +407,7 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
 ## D-012 — R3 rulings delegated to the builder (2026-11-01)
 
 **Status:** Accepted, under the same delegation as D-011; each can be revisited.
-**PRD refs:** A10-A13, B14-B16, B20, C12, C17, C20, E5, E10, G4, H5, I4, I9, J1-J3, J5, J7-J9, L7 (more added as R3 is built).
+**PRD refs:** A10-A13, B14-B16, B20, C12, C17, C20, E5, E10, G4, G8, G9, H5, I4, I9, J1-J3, J5, J7-J9, L7 (more added as R3 is built).
 
 1. **Lifecycle stage (B20)** stores only the stages a coach chooses (Onboarding, Active, At renewal). Paused and
    Alumni are read from the client's status, so a stage can never contradict a pause or archiving (D-003). The first
@@ -468,3 +468,11 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
     browser; text outside Western European scripts shows as "?" until a font is embedded. Photos are the client's
     latest front, side and back of the month, and only when the coach includes them. PNG and WebP photos are left
     out of the PDF. The client is told through an ordinary coach message, which carries no report content.
+17. **Meal plans and recipes (G8, G9)** are coach-built workspace content; a client has one plan at a time.
+    A plan's days are stored as one validated JSON document, because a plan is edited and read as a whole and
+    never queried by meal. A meal's options are swaps; day totals and the shopping list use the first option of
+    each meal, scaled from the recipe's servings. Ticks on the shopping list stay on the client's screen. A client
+    may open a recipe only while it is in their current plan. Recipe photos and plan PDFs are workspace files (media
+    purpose `nutrition`, no client), like exercise demos: any member of the workspace can fetch them by id, and
+    they hold no client data. Archiving a recipe keeps it in the plans that use it. Food search and barcodes are
+    G10 (R4).

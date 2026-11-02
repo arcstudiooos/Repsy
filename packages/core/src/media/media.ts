@@ -11,7 +11,15 @@ import { isImage, MAX_BYTES, sniffType, stripMetadata, type MediaType } from './
  * private storage, then `recordMedia` stores the row. Files are only ever streamed back through `mediaForDownload`,
  * to the client they belong to and their coaches (exercise demos: anyone in the workspace).
  */
-export const MEDIA_PURPOSES = ['progress_photo', 'message', 'form_check', 'exercise_demo'] as const;
+export const MEDIA_PURPOSES = [
+  'progress_photo',
+  'message',
+  'form_check',
+  'exercise_demo',
+  'nutrition',
+] as const;
+/** Workspace files that belong to no client: exercise demos and recipe photos and meal-plan PDFs (PRD G8, G9). */
+const WORKSPACE_PURPOSES: readonly MediaPurpose[] = ['exercise_demo', 'nutrition'];
 export type MediaPurpose = (typeof MEDIA_PURPOSES)[number];
 
 const ALLOWED: Record<MediaPurpose, MediaType[]> = {
@@ -19,6 +27,7 @@ const ALLOWED: Record<MediaPurpose, MediaType[]> = {
   message: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
   form_check: ['video/mp4'],
   exercise_demo: ['video/mp4'],
+  nutrition: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
 };
 /** PRD D10: form-check videos are short. */
 const FORM_CHECK_MAX = 50 * 1024 * 1024;
@@ -43,7 +52,9 @@ export function prepareUpload(
         ? 'Use a JPEG, PNG or WebP photo.'
         : p === 'message'
           ? 'Send a photo (JPEG, PNG, WebP) or a PDF.'
-          : 'Use an MP4 video.',
+          : p === 'nutrition'
+            ? 'Use a photo (JPEG, PNG, WebP) or a PDF.'
+            : 'Use an MP4 video.',
     );
   }
   const max = p === 'form_check' ? FORM_CHECK_MAX : MAX_BYTES[type];
@@ -70,7 +81,7 @@ export async function uploadOwner(
   purpose: MediaPurpose,
   clientId: unknown,
 ): Promise<string | null> {
-  if (purpose === 'exercise_demo') {
+  if (WORKSPACE_PURPOSES.includes(purpose)) {
     if (!isCoach(actor)) throw new DomainError('FORBIDDEN', 'You do not have access to this.');
     return null;
   }
@@ -136,7 +147,7 @@ export async function mediaForDownload(
   if (!row) throw notFound();
   if (
     actor.role === 'client' &&
-    row.purpose !== 'exercise_demo' &&
+    !WORKSPACE_PURPOSES.includes(row.purpose as MediaPurpose) &&
     row.clientId !== actor.clientId
   ) {
     throw notFound();

@@ -194,6 +194,8 @@ export async function eraseClientData(
   await tx.clientAssessment.deleteMany({ where: inClient });
   // PRD E10: their monthly reports (the coach's summaries).
   await tx.progressReport.deleteMany({ where: inClient });
+  // PRD G8: which meal plans they were given (the plans are the workspace's).
+  await tx.clientMealPlan.deleteMany({ where: inClient });
   await tx.mediaFile.updateMany({
     where: { ...inClient, erasedAt: null },
     data: { erasedAt: now },
