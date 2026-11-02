@@ -1,6 +1,7 @@
 'use client';
 
 import { Plus, Trash2 } from 'lucide-react';
+import { ProgressionDialog } from './ProgressionDialog';
 import { useId } from 'react';
 import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import type { TrackingType } from '@kinetic/core/exercise-options';
@@ -249,6 +250,9 @@ export function ExerciseCard({
           {name}
         </h4>
         <MoveButtons name={name} index={index} count={count} onMove={onMove} buttonRef={moveRef} />
+        {trackingType === 'reps_load' && (
+          <ProgressionDialog base={base} name={name} units={units} />
+        )}
         <Button
           type="button"
           variant="ghost"
