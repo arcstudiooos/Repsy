@@ -118,6 +118,7 @@ model User {
   coversAway               CoachCover[]            @relation("CoverAway")
   coversCovering           CoachCover[]            @relation("CoverCovering")
   coversCreated            CoachCover[]            @relation("CoverCreator")
+  programPhasesCreated     ProgramPhase[]
   outboxPushes             OutboxPush[]
 
   @@map("users")
@@ -277,6 +278,7 @@ model Organization {
   agreementAcceptances AgreementAcceptance[]
   teamInvites TeamInvite[]
   coachCovers CoachCover[]
+  programPhases ProgramPhase[]
 }
 
 model Membership {
@@ -401,6 +403,7 @@ model Client {
   assignments     ProgramAssignment[]
   workoutSessions WorkoutSession[]
   agreementAcceptances AgreementAcceptance[]
+  programPhases   ProgramPhase[]
   portalVisits    PortalVisit[]
   pauses          ClientPause[]
   /// Composite FK (MATCH SIMPLE: null until a weekday is set) keeps the template in this org.
@@ -582,6 +585,7 @@ model Program {
   currentVersion ProgramVersion?     @relation("ProgramCurrentVersion", fields: [currentVersionId, organizationId], references: [id, organizationId], onDelete: Restrict)
   versions       ProgramVersion[]    @relation("ProgramVersions")
   assignments    ProgramAssignment[]
+  phases         ProgramPhase[]
   draft          ProgramDraft?
 
   @@unique([id, organizationId])
@@ -1045,6 +1049,7 @@ enum ReviewRule {
   workout_moved
   nutrition_low
   engagement_drop
+  phase_ready
 
   @@map("review_rule")
 }
@@ -1891,4 +1896,29 @@ model CoachCover {
   @@index([organizationId, coverUserId])
   @@index([organizationId, coachUserId])
   @@map("coach_covers")
+}
+
+/// PRD C17, J5: the next template in a client's queue, started when the running program ends.
+model ProgramPhase {
+  id                String    @id @default(uuid()) @db.Uuid
+  organizationId    String    @map("organization_id") @db.Uuid
+  clientId          String    @map("client_id") @db.Uuid
+  templateProgramId String    @map("template_program_id") @db.Uuid
+  position          Int
+  /// auto (starts on its own) or approve (waits for the coach, PRD J7).
+  mode              String    @default("auto")
+  /// queued, started or cancelled.
+  status            String    @default("queued")
+  assignmentId      String?   @map("assignment_id") @db.Uuid
+  createdBy         String    @map("created_by") @db.Uuid
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  startedAt         DateTime? @map("started_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  template     Program      @relation(fields: [templateProgramId, organizationId], references: [id, organizationId])
+  creator      User         @relation(fields: [createdBy], references: [id])
+
+  @@index([organizationId, clientId, status])
+  @@map("program_phases")
 }

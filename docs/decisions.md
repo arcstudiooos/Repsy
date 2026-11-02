@@ -407,7 +407,7 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
 ## D-012 — R3 rulings delegated to the builder (2026-11-01)
 
 **Status:** Accepted, under the same delegation as D-011; each can be revisited.
-**PRD refs:** A10-A13, B14, B20, C20, H5, I4, I9, L7 (more added as R3 is built).
+**PRD refs:** A10-A13, B14, B20, C17, C20, H5, I4, I9, J5, L7 (more added as R3 is built).
 
 1. **Lifecycle stage (B20)** stores only the stages a coach chooses (Onboarding, Active, At renewal). Paused and
    Alumni are read from the client's status, so a stage can never contradict a pause or archiving (D-003). The first
@@ -437,3 +437,6 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
 9. **House templates (C20)**: in a team, a coach's templates list shows house templates and their own (owners and
    admins see all). Editing a house template, whether its draft, a commit or a rename, is refused for non-managers in
    `assertEditableProgram`, the one gate every edit already passes. Duplicating gives the coach their own copy.
+10. **Phases (C17, J5)** start as an ordinary assignment (D-001, D-010 #2): replacing the finished program only
+    cancels never-started sessions, and none remain. A worker starts an automatic phase as the coach who queued it
+    (or the owner if they have left). An approve-mode phase is a review item, never a silent start.

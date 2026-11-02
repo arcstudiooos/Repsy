@@ -591,6 +591,16 @@ export {
 export { equipmentGuideFor, type EquipmentGuide } from './exercises/equipmentGuide';
 export { setExerciseDemo } from './exercises/demo';
 export {
+  addPhase,
+  advancePhases,
+  listPhases,
+  PHASES_MAX,
+  removePhase,
+  startPhase,
+  type PhaseMode,
+  type PhaseView,
+} from './programs/phases';
+export {
   defaultScope,
   parseScope,
   scopeCoachIds,

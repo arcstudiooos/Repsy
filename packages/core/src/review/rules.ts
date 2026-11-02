@@ -19,7 +19,8 @@ export type RuleKey =
   | 'weight_change'
   | 'workout_moved'
   | 'nutrition_low'
-  | 'engagement_drop';
+  | 'engagement_drop'
+  | 'phase_ready';
 
 /** The rule text shown with every flag (F10, §10). Copy is "Needs review", never "At risk". */
 export const RULE_TEXT: Record<RuleKey, string> = {
@@ -35,6 +36,7 @@ export const RULE_TEXT: Record<RuleKey, string> = {
   workout_moved: 'Client moved a workout to another day',
   nutrition_low: 'Nutrition on target on under half the days for 2 weeks',
   engagement_drop: 'Engagement score dropped 30 points or more last week',
+  phase_ready: 'Next program phase is ready to start',
 };
 
 export const AUTO_RESOLVED = 'Resolved automatically';

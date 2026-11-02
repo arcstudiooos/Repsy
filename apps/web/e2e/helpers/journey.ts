@@ -96,7 +96,9 @@ export async function buildProgram(
     await page.getByRole('button', { name: 'More days' }).click();
   }
   await expect(
-    page.getByText(`${days.length} ${days.length === 1 ? 'day' : 'days'} per week`),
+    page.getByText(`${days.length} ${days.length === 1 ? 'day' : 'days'} per week`, {
+      exact: true,
+    }),
   ).toBeVisible();
   for (const [i, exercises] of days.entries()) {
     const group = page.getByRole('group', { name: `Day ${i + 1}`, exact: true });
