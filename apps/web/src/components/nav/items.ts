@@ -18,6 +18,7 @@ import {
   Salad,
   UsersRound,
   Trophy,
+  CreditCard,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -45,6 +46,7 @@ export const coachDesktopItems: NavItem[] = [
   { label: 'Challenges', href: '/app/challenges', icon: Trophy },
   { label: 'Leads', href: '/app/leads', icon: Inbox },
   { label: 'Automations', href: '/app/automations', icon: Workflow },
+  { label: 'Billing', href: '/app/billing', icon: CreditCard },
 ];
 export const coachSettingsItem: NavItem = { label: 'Settings', href: '/settings', icon: Settings };
 

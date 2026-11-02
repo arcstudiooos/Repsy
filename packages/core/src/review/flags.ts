@@ -79,6 +79,13 @@ function hrefOf(row: FlagRow): string {
       return `${base}/history`;
     case 'workout_moved':
       return `${base}/calendar`;
+    case 'payment_failed':
+    case 'package_renewal':
+      return `${base}/billing`;
+    case 'ready_to_assign':
+      return typeof ev.templateProgramId === 'string'
+        ? `${base}/program?assign=${ev.templateProgramId}`
+        : `${base}/program`;
     case 'message_unread':
     case 'reply_overdue':
       return typeof ev.threadId === 'string'

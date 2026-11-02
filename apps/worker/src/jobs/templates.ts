@@ -46,6 +46,25 @@ const TEMPLATES: Record<string, Template> = {
     const html = `<p>${escapeHtml(name)} applied on your Kinetic page.</p><p><a href="${escapeHtml(link)}">See your leads</a></p>`;
     return { subject: `New application from ${name}`.replace(/[\r\n]+/g, ' '), text, html };
   },
+  // PRD K6 (D-013 #6): a receipt is a link, never an attachment; amounts stay in the app.
+  payment_receipt: (payload, appBaseUrl) => {
+    const id = str(payload, 'paymentId') ?? '';
+    const link = `${appBaseUrl.replace(/\/+$/, '')}/portal/billing/receipts/${encodeURIComponent(id)}`;
+    const text = `Thanks for your payment.\n\nSee your receipt: ${link}`;
+    const html = `<p>Thanks for your payment.</p><p><a href="${escapeHtml(link)}">See your receipt</a></p>`;
+    return { subject: 'Your payment receipt', text, html };
+  },
+  // PRD K7 (D-013 #7): a failed payment points to the billing page to update the card.
+  payment_failed: (_payload, appBaseUrl) => {
+    const link = `${appBaseUrl.replace(/\/+$/, '')}/portal/billing`;
+    const text =
+      "Your latest payment didn't go through. Your card may have expired or been declined.\n\n" +
+      `Update your payment details: ${link}`;
+    const html =
+      "<p>Your latest payment didn't go through. Your card may have expired or been declined.</p>" +
+      `<p><a href="${escapeHtml(link)}">Update your payment details</a></p>`;
+    return { subject: "Your payment didn't go through", text, html };
+  },
   // PRD A10: an invite to join a workspace's team.
   team_invite: (payload, appBaseUrl) => {
     const orgName = str(payload, 'orgName') ?? 'a workspace';

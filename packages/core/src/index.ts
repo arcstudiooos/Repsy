@@ -896,3 +896,65 @@ export {
 } from './challenges/challenges';
 export { getBusinessAnalytics, type BusinessAnalytics, type Cohort } from './analytics/business';
 export { CHURN_LABEL, CHURN_REASONS, type ChurnReason } from './clients/churn';
+export * from './payments/port';
+export {
+  FakePayments,
+  FAKE_SIGNATURE_HEADER,
+  signFakeWebhook,
+  fakeWebhookBody,
+  fakeCheckoutPaidEvents,
+} from './payments/fake';
+export {
+  CURRENCY,
+  minorDigits,
+  isCurrency,
+  formatMoney,
+  parseMoney,
+  discounted,
+  monthlyValue,
+  addInterval,
+  receiptLabel,
+  type CouponTerms,
+} from './payments/money';
+export {
+  getPaymentSettings,
+  updatePaymentSettings,
+  connectPaymentAccount,
+  disconnectPaymentAccount,
+  listPackages,
+  savePackage,
+  setPackageActive,
+  listCoupons,
+  createCoupon,
+  setCouponActive,
+  PACKAGE_KINDS,
+  type PaymentSettings,
+  type PackageKind,
+  type PackageView,
+  type PackageInput,
+  type CouponView,
+} from './payments/catalog';
+export {
+  getStorefront,
+  startCheckout,
+  applyWebhook,
+  recordManualPayment,
+  voidManualPayment,
+  cancelPurchase,
+  refundPayment,
+  listPurchases,
+  listPayments,
+  getReceipt,
+  ownerActor,
+  LIVE_STATUSES,
+  type StorefrontPackage,
+  type CheckoutInput,
+  type AccountOpener,
+  type ApplyResult,
+  type ManualMethod,
+  type PurchaseStatus,
+  type PurchaseView,
+  type PaymentView,
+  type ReceiptView,
+} from './payments/purchases';
+export { parseSealKey, seal, unseal } from './crypto/seal';

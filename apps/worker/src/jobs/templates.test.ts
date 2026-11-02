@@ -31,3 +31,12 @@ describe('reminder emails (PRD H13, F9)', () => {
     );
   });
 });
+
+describe('billing templates (PRD K6, K7)', () => {
+  it('link to the receipt and the billing page, without amounts', () => {
+    const receipt = renderTemplate('payment_receipt', { paymentId: 'p1' }, 'https://app.test/');
+    expect(receipt?.text).toContain('https://app.test/portal/billing/receipts/p1');
+    const failed = renderTemplate('payment_failed', {}, 'https://app.test');
+    expect(failed?.text).toContain('https://app.test/portal/billing');
+  });
+});

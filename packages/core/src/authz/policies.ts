@@ -39,7 +39,11 @@ export type Action =
   | 'nutrition:manage'
   | 'nutrition:log'
   | 'export:org'
-  | 'export:self';
+  | 'export:self'
+  | 'billing:read'
+  | 'billing:record'
+  | 'billing:manage'
+  | 'billing:self';
 
 const POLICY: Record<Action, readonly Role[]> = {
   'org:read': [...STAFF],
@@ -83,6 +87,12 @@ const POLICY: Record<Action, readonly Role[]> = {
   // D-010 #4: the owner exports the organization; a client exports their own data.
   'export:org': ['owner'],
   'export:self': ['client'],
+  // PRD K1-K11, K15 (D-013): staff see payments, trainers record manual ones, managers run the money; a client sees
+  // only their own (core scopes it).
+  'billing:read': [...STAFF],
+  'billing:record': [...TRAINER],
+  'billing:manage': [...MANAGER],
+  'billing:self': ['client'],
 };
 
 export const can = (actor: ActorContext, action: Action): boolean =>

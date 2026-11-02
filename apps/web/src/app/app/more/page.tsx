@@ -17,6 +17,7 @@ const links = [
   { label: 'Challenges', href: '/app/challenges' },
   { label: 'Leads', href: '/app/leads' },
   { label: 'Automations', href: '/app/automations' },
+  { label: 'Billing', href: '/app/billing' },
   { label: 'Team', href: '/app/team' },
   { label: 'Audit log', href: '/app/audit' },
   { label: 'Settings', href: '/settings' },
