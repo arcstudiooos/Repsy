@@ -11,6 +11,7 @@ import {
   User,
   Users,
   CalendarCheck,
+  Workflow,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -31,6 +32,7 @@ export const coachDesktopItems: NavItem[] = [
   { label: 'Messages', href: '/app/messages', icon: MessageSquare },
   { label: 'Analytics', href: '/app/analytics', icon: ChartColumn },
   { label: 'Resources', href: '/app/resources', icon: BookOpen },
+  { label: 'Automations', href: '/app/automations', icon: Workflow },
 ];
 export const coachSettingsItem: NavItem = { label: 'Settings', href: '/settings', icon: Settings };
 

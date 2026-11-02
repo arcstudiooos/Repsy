@@ -10,6 +10,7 @@ const links = [
   { label: 'Check-in questions', href: '/app/check-ins' },
   { label: 'Analytics', href: '/app/analytics' },
   { label: 'Resources', href: '/app/resources' },
+  { label: 'Automations', href: '/app/automations' },
   { label: 'Team', href: '/app/team' },
   { label: 'Audit log', href: '/app/audit' },
   { label: 'Settings', href: '/settings' },

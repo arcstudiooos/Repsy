@@ -407,7 +407,7 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
 ## D-012 — R3 rulings delegated to the builder (2026-11-01)
 
 **Status:** Accepted, under the same delegation as D-011; each can be revisited.
-**PRD refs:** A10-A13, B14, B20, C12, C17, C20, H5, I4, I9, J5, L7 (more added as R3 is built).
+**PRD refs:** A10-A13, B14, B20, C12, C17, C20, H5, I4, I9, J1-J3, J5, J7-J9, L7 (more added as R3 is built).
 
 1. **Lifecycle stage (B20)** stores only the stages a coach chooses (Onboarding, Active, At renewal). Paused and
    Alumni are read from the client's status, so a stage can never contradict a pause or archiving (D-003). The first
@@ -443,3 +443,7 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
 11. **Progression (C12)** is a builder tool that writes ordinary targets, so versions, client copies and history
     work unchanged (D-002). "While RPE is 8 or less" can't be known when the plan is written; it becomes each
     generated set's target RPE, and the coach adjusts the client's copy if a week goes too hard.
+12. **Automations (J1-J9)** react to `client_events` written in the same transaction as their cause, rather than
+    to scattered hooks or the audit log. That keeps triggers exact and lets the worker run with a delay of minutes.
+    Steps call the same core functions a coach would, as the sequence's coach, so every rule and audit applies.
+    J4 (onboarding per package) and J6 (renewal journeys) need packages (K3) and come with them.
