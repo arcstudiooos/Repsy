@@ -120,6 +120,7 @@ model User {
   coversCreated            CoachCover[]            @relation("CoverCreator")
   programPhasesCreated     ProgramPhase[]
   sequencesCreated         Sequence[]
+  coursesCreated           Course[]
   outboxPushes             OutboxPush[]
 
   @@map("users")
@@ -291,6 +292,10 @@ model Organization {
   sequenceRuns SequenceRun[]
   sequenceStepRuns SequenceStepRun[]
   leads Lead[]
+  courses Course[]
+  courseLessons CourseLesson[]
+  courseEnrollments CourseEnrollment[]
+  lessonCompletions LessonCompletion[]
 }
 
 model Membership {
@@ -415,6 +420,7 @@ model Client {
   assignments     ProgramAssignment[]
   workoutSessions WorkoutSession[]
   agreementAcceptances AgreementAcceptance[]
+  courseEnrollments CourseEnrollment[]
   leads           Lead[]
   clientEvents    ClientEvent[]
   sequenceRuns    SequenceRun[]
@@ -2062,4 +2068,80 @@ model Lead {
 
   @@index([organizationId, status])
   @@map("leads")
+}
+
+/// PRD G4: lessons dripped one a day or one a week.
+model Course {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  title          String
+  description    String    @default("")
+  /// daily or weekly.
+  cadence        String    @default("weekly")
+  createdBy      String    @map("created_by") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  archivedAt     DateTime? @map("archived_at") @db.Timestamptz(3)
+
+  organization Organization       @relation(fields: [organizationId], references: [id])
+  creator      User               @relation(fields: [createdBy], references: [id])
+  lessons      CourseLesson[]
+  enrollments  CourseEnrollment[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId])
+  @@map("courses")
+}
+
+model CourseLesson {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  courseId       String  @map("course_id") @db.Uuid
+  position       Int
+  title          String
+  body           String  @default("")
+  /// A video or PDF link (https).
+  url            String?
+
+  organization Organization       @relation(fields: [organizationId], references: [id])
+  course       Course             @relation(fields: [courseId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  completions  LessonCompletion[]
+
+  @@unique([id, organizationId])
+  @@index([courseId])
+  @@map("course_lessons")
+}
+
+model CourseEnrollment {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  courseId       String    @map("course_id") @db.Uuid
+  clientId       String    @map("client_id") @db.Uuid
+  startLocalDate DateTime  @map("start_local_date") @db.Date
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  endedAt        DateTime? @map("ended_at") @db.Timestamptz(3)
+
+  organization Organization       @relation(fields: [organizationId], references: [id])
+  course       Course             @relation(fields: [courseId, organizationId], references: [id, organizationId])
+  client       Client             @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  completions  LessonCompletion[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, clientId])
+  @@map("course_enrollments")
+}
+
+model LessonCompletion {
+  enrollmentId   String   @map("enrollment_id") @db.Uuid
+  lessonId       String   @map("lesson_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  completedAt    DateTime @default(now()) @map("completed_at") @db.Timestamptz(3)
+
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  enrollment   CourseEnrollment @relation(fields: [enrollmentId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  lesson       CourseLesson     @relation(fields: [lessonId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@id([enrollmentId, lessonId])
+  @@index([organizationId])
+  @@map("lesson_completions")
 }

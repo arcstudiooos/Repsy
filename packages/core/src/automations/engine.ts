@@ -2,6 +2,7 @@ import { appendAudit, withSystem, withTenant, type PrismaClient, type TenantTx }
 import { TRAINER_ROLES, type ActorContext, type Role } from '../authz/actor';
 import { assignProgram } from '../assignments/assign';
 import { sendForm } from '../checkins/checkins';
+import { enrollClient } from '../courses/courses';
 import { DomainError } from '../errors';
 import { createHabit } from '../habits/habits';
 import { getClientThread, sendMessage } from '../messages/messages';
@@ -160,6 +161,10 @@ async function perform(
         clientId,
         title: str(c, 'title') || 'Automation follow-up',
       });
+      return;
+    case 'course':
+      // PRD G4: enrol them; already enrolled is fine.
+      await enrollClient(tx, actor, { courseId: str(c, 'courseId'), clientId }, { now });
       return;
     default:
       throw new DomainError('VALIDATION', 'Unknown step.');

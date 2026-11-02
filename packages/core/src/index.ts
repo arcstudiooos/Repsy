@@ -791,3 +791,25 @@ export {
   type ProgressPhotoView,
 } from './media/progressPhotos';
 export { addFormCheck, FORM_CHECKS_PER_SESSION, type FormCheckView } from './sessions/formChecks';
+export {
+  archiveCourse,
+  clientCourses,
+  COURSE_CADENCES,
+  enrollClient,
+  endEnrollment,
+  getCourse,
+  LESSONS_MAX,
+  listCourses,
+  myCourses,
+  saveCourse,
+  setLessonDone,
+  unlockDate,
+  unlockedCount,
+  type CourseCadence,
+  type CourseDetail,
+  type CourseSummary,
+  type EnrollmentProgress,
+  type LessonInput,
+  type PortalCourse,
+  type PortalLesson,
+} from './courses/courses';

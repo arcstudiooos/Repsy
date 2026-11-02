@@ -197,6 +197,8 @@ export async function eraseClientData(
   // PRD J2, J8: their automation events and runs (step runs go with their run).
   await tx.clientEvent.deleteMany({ where: inClient });
   await tx.sequenceRun.deleteMany({ where: inClient });
+  // PRD G4: their course enrolments (lesson completions go with them).
+  await tx.courseEnrollment.deleteMany({ where: inClient });
   const messageIds = (
     await tx.message.findMany({
       where: { organizationId: orgId, thread: { is: { clientId } } },

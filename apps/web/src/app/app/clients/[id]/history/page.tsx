@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Lock } from 'lucide-react';
 import {
+  clientCourses,
   getClientTimeline,
   listSequences,
   runHistory,
@@ -14,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { withServerTenant } from '@/server/serverActor';
 import { loadClient } from '../data';
 import { ClientAutomations } from './ClientAutomations';
+import { ClientCourses } from './ClientCourses';
 
 export const metadata: Metadata = { title: 'History | Kinetic' };
 
@@ -30,23 +32,30 @@ const KIND: Record<TimelineKind, string> = {
 /** The client's history (S4-5), newest first, in the client's time zone. Private notes are marked and styled apart. */
 export default async function ClientHistoryPage({ params }: { params: Promise<{ id: string }> }) {
   const client = await loadClient((await params).id);
-  const { events, runs, sequences, canEdit } = await withServerTenant(async (tx, actor) => ({
-    events: await getClientTimeline(tx, actor, client.id),
-    // PRD J8: every automation run and step for this client.
-    runs: await runHistory(tx, actor, client.id),
-    sequences: (await listSequences(tx, actor))
-      .filter((s) => s.active)
-      .map((s) => ({ id: s.id, name: s.name })),
-    canEdit: (TRAINER_ROLES as readonly string[]).includes(actor.role),
-  }));
+  const { events, runs, sequences, canEdit, courses } = await withServerTenant(
+    async (tx, actor) => ({
+      events: await getClientTimeline(tx, actor, client.id),
+      // PRD J8: every automation run and step for this client.
+      runs: await runHistory(tx, actor, client.id),
+      sequences: (await listSequences(tx, actor))
+        .filter((s) => s.active)
+        .map((s) => ({ id: s.id, name: s.name })),
+      canEdit: (TRAINER_ROLES as readonly string[]).includes(actor.role),
+      // PRD G4.
+      courses: await clientCourses(tx, actor, client.id),
+    }),
+  );
   const automations = (
-    <ClientAutomations
-      clientId={client.id}
-      timezone={client.timezone}
-      runs={runs}
-      sequences={sequences}
-      canEdit={canEdit}
-    />
+    <>
+      <ClientCourses courses={courses} />
+      <ClientAutomations
+        clientId={client.id}
+        timezone={client.timezone}
+        runs={runs}
+        sequences={sequences}
+        canEdit={canEdit}
+      />
+    </>
   );
   if (events.length === 0) {
     return (

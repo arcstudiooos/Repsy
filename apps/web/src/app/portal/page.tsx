@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ShieldCheck } from 'lucide-react';
-import { coverForClient, getPortalHome, listHabits } from '@kinetic/core';
+import { coverForClient, getPortalHome, listHabits, myCourses } from '@kinetic/core';
 import { HabitChecklist } from '@/components/habits/HabitChecklist';
 import { PausedBanner } from '@/components/portal/PausedBanner';
 import { EmptyState } from '@/components/states/EmptyState';
@@ -21,13 +21,20 @@ export const metadata: Metadata = { title: 'Home | Kinetic' };
 
 // Access is enforced by src/proxy.ts and the portal layout's client gate.
 export default async function PortalHome() {
-  const { org, home, habits, cover } = await withPortalTenant(async (tx, actor) => ({
+  const { org, home, habits, cover, courses } = await withPortalTenant(async (tx, actor) => ({
     org: await tx.organization.findFirst({ where: { id: actor.orgId }, select: { name: true } }),
     home: await getPortalHome(tx, actor),
     habits: await listHabits(tx, actor, actor.clientId as string),
     // PRD A13: who is covering while the coach is away.
     cover: await coverForClient(tx, actor.clientId as string),
+    // PRD G4: the next open lesson not done yet.
+    courses: await myCourses(tx, actor),
   }));
+  const lesson = courses
+    .flatMap((c) =>
+      c.lessons.filter((l) => l.unlocked && !l.done).map((l) => ({ ...l, course: c.title })),
+    )
+    .at(0);
   const next = home.nextWorkout;
   const { week } = home;
 
@@ -48,6 +55,19 @@ export default async function PortalHome() {
             }).format(new Date(`${cover.until}T00:00:00Z`))}
             . {cover.coverName} is looking after you meanwhile, and gets your messages.
           </p>
+        )}
+        {lesson && (
+          <Card>
+            <CardHeader>
+              <CardDescription>New lesson · {lesson.course}</CardDescription>
+              <CardTitle className="text-xl break-words">{lesson.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Link href="/portal/learn" className={cn(buttonVariants(), 'min-h-12 w-full')}>
+                Read lesson
+              </Link>
+            </CardContent>
+          </Card>
         )}
         {home.openCheckin && (
           <Card>
@@ -152,6 +172,14 @@ export default async function PortalHome() {
         >
           Resources from your coach
         </Link>
+        {courses.length > 0 && (
+          <Link
+            href="/portal/learn"
+            className={cn(buttonVariants({ variant: 'secondary' }), 'min-h-12 w-full')}
+          >
+            Your lessons
+          </Link>
+        )}
         <Link
           href="/portal/calendar"
           className={cn(buttonVariants({ variant: 'secondary' }), 'min-h-12 w-full')}

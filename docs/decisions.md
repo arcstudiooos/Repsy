@@ -407,7 +407,7 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
 ## D-012 — R3 rulings delegated to the builder (2026-11-01)
 
 **Status:** Accepted, under the same delegation as D-011; each can be revisited.
-**PRD refs:** A10-A13, B14-B16, B20, C12, C17, C20, H5, I4, I9, J1-J3, J5, J7-J9, L7 (more added as R3 is built).
+**PRD refs:** A10-A13, B14-B16, B20, C12, C17, C20, G4, H5, I4, I9, J1-J3, J5, J7-J9, L7 (more added as R3 is built).
 
 1. **Lifecycle stage (B20)** stores only the stages a coach chooses (Onboarding, Active, At renewal). Paused and
    Alumni are read from the client's status, so a stage can never contradict a pause or archiving (D-003). The first
@@ -451,3 +451,8 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
     link token 43, so one route serves both. A visitor has no membership: `app_org_by_public_slug` (SECURITY
     DEFINER, enabled pages only, the id only) resolves the workspace, and the read and the lead insert run in its
     tenant scope, so no request-path system scope is added.
+14. **Courses (G4)** unlock by local date in the client's zone: lesson _n_ opens on start + (n-1) days or weeks,
+    with no worker and no notifications, so pausing or editing never leaves a half-sent drip. A locked lesson
+    shows its title and date only. Editing a course keeps a lesson's completions while it keeps its id; removing a
+    lesson removes its completions. PDFs are linked (https), not uploaded, as with resources (G5). Automations
+    gain an "Enrol in a course" step, which does nothing if the client is already enrolled.

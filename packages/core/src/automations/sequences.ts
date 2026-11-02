@@ -24,6 +24,7 @@ export const STEP_TYPES = [
   'tag_remove',
   'program',
   'followup',
+  'course',
 ] as const;
 export type StepType = (typeof STEP_TYPES)[number];
 export const STEPS_MAX = 30;
@@ -117,6 +118,9 @@ function cleanSteps(input: unknown): StepInput[] {
         break;
       case 'followup':
         config = { title: text('title', 200, 'Say what to follow up on.') };
+        break;
+      case 'course':
+        config = { courseId: id('courseId', 'Pick a course.') };
         break;
     }
     return { dayOffset, localTime, type, config, askFirst: s.askFirst === true };

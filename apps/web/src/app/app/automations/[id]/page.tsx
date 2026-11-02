@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import {
   isUuid,
   listCheckinTemplates,
+  listCourses,
   listSequences,
   listTags,
   SEQUENCE_TEMPLATES,
@@ -39,6 +40,7 @@ export default async function AutomationPage({
       programs: (await loadAllTemplates(tx, actor)).items
         .filter((p) => p.versionNo !== null)
         .map((p) => ({ id: p.id, title: p.title })),
+      courses: (await listCourses(tx, actor)).map((c) => ({ id: c.id, title: c.title })),
     },
   }));
   if (id !== 'new' && !data.sequence) notFound();

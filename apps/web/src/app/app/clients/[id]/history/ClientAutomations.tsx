@@ -16,6 +16,7 @@ const STEP: Record<StepType, string> = {
   tag_remove: 'Remove tag',
   program: 'Program',
   followup: 'Follow-up',
+  course: 'Course',
 };
 const STATUS: Record<string, string> = {
   pending: 'Scheduled',

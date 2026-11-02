@@ -13,6 +13,7 @@ import {
   CalendarCheck,
   Workflow,
   Inbox,
+  GraduationCap,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -33,6 +34,7 @@ export const coachDesktopItems: NavItem[] = [
   { label: 'Messages', href: '/app/messages', icon: MessageSquare },
   { label: 'Analytics', href: '/app/analytics', icon: ChartColumn },
   { label: 'Resources', href: '/app/resources', icon: BookOpen },
+  { label: 'Courses', href: '/app/courses', icon: GraduationCap },
   { label: 'Leads', href: '/app/leads', icon: Inbox },
   { label: 'Automations', href: '/app/automations', icon: Workflow },
 ];

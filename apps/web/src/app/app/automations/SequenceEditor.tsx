@@ -13,6 +13,7 @@ export interface EditorOptions {
   tags: { id: string; name: string }[];
   forms: { id: string; title: string }[];
   programs: { id: string; title: string }[];
+  courses: { id: string; title: string }[];
 }
 
 const SELECT =
@@ -34,7 +35,16 @@ const TYPES: [StepType, string][] = [
   ['tag_remove', 'Remove a tag'],
   ['program', 'Assign a program'],
   ['followup', 'Create a follow-up for me'],
+  ['course', 'Enrol in a course'],
 ];
+const pickKey = (t: StepType) =>
+  t === 'form'
+    ? 'templateId'
+    : t === 'program'
+      ? 'templateProgramId'
+      : t === 'course'
+        ? 'courseId'
+        : 'tagId';
 const STAGES: [string, string][] = [
   ['onboarding', 'Onboarding'],
   ['active', 'Active'],
@@ -303,36 +313,24 @@ export function SequenceEditor({
                         </div>
                       </div>
                     )}
-                    {(['form', 'tag_add', 'tag_remove', 'program'] as StepType[]).includes(
-                      s.type,
-                    ) && (
+                    {(
+                      ['form', 'tag_add', 'tag_remove', 'program', 'course'] as StepType[]
+                    ).includes(s.type) && (
                       <div className="flex min-w-0 flex-col gap-1">
                         <label htmlFor={`${uid}-${i}-pick`} className="text-sm font-medium">
                           Step {n}{' '}
-                          {s.type === 'form' ? 'form' : s.type === 'program' ? 'program' : 'tag'}
+                          {s.type === 'form'
+                            ? 'form'
+                            : s.type === 'program'
+                              ? 'program'
+                              : s.type === 'course'
+                                ? 'course'
+                                : 'tag'}
                         </label>
                         <select
                           id={`${uid}-${i}-pick`}
-                          value={String(
-                            s.config[
-                              s.type === 'form'
-                                ? 'templateId'
-                                : s.type === 'program'
-                                  ? 'templateProgramId'
-                                  : 'tagId'
-                            ] ?? '',
-                          )}
-                          onChange={(e) =>
-                            conf(
-                              i,
-                              s.type === 'form'
-                                ? 'templateId'
-                                : s.type === 'program'
-                                  ? 'templateProgramId'
-                                  : 'tagId',
-                              e.target.value,
-                            )
-                          }
+                          value={String(s.config[pickKey(s.type)] ?? '')}
+                          onChange={(e) => conf(i, pickKey(s.type), e.target.value)}
                           className={SELECT}
                         >
                           <option value="">Choose…</option>
@@ -340,7 +338,9 @@ export function SequenceEditor({
                             ? options.forms.map((f) => [f.id, f.title])
                             : s.type === 'program'
                               ? options.programs.map((p) => [p.id, p.title])
-                              : options.tags.map((t) => [t.id, t.name])
+                              : s.type === 'course'
+                                ? options.courses.map((c) => [c.id, c.title])
+                                : options.tags.map((t) => [t.id, t.name])
                           ).map(([v, l]) => (
                             <option key={v} value={v}>
                               {l}
