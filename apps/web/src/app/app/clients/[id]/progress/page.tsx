@@ -1,7 +1,10 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import {
+  clientAssessments,
   DomainError,
+  listAssessments,
+  TRAINER_ROLES,
   getExerciseHistory,
   getPersonalRecords,
   isUuid,
@@ -10,6 +13,8 @@ import {
   listProgressPhotos,
   getTrainingLoad,
 } from '@kinetic/core';
+import { AssessmentPhotos } from '@/components/assessments/AssessmentPhotos';
+import { AssignAssessment } from '@/components/assessments/AssignAssessment';
 import { MetricsPanel } from '@/components/progress/MetricsPanel';
 import { ExerciseProgress, RecordsList } from '@/components/progress/Progress';
 import { ProgressPhotos } from '@/components/progress/ProgressPhotos';
@@ -42,6 +47,10 @@ export default async function ClientProgressPage({
       records: await getPersonalRecords(tx, actor, client.id),
       load: exerciseId === undefined ? await getTrainingLoad(tx, actor, client.id) : null,
       photos: exerciseId === undefined ? await listProgressPhotos(tx, actor, client.id) : [],
+      // PRD E5.
+      assessments: exerciseId === undefined ? await clientAssessments(tx, actor, client.id) : [],
+      assessmentOptions: exerciseId === undefined ? await listAssessments(tx, actor) : [],
+      canEdit: (TRAINER_ROLES as readonly string[]).includes(actor.role),
       history:
         exerciseId !== undefined
           ? await getExerciseHistory(tx, actor, client.id, exerciseId)
@@ -51,7 +60,7 @@ export default async function ClientProgressPage({
     if (error instanceof DomainError && error.code === 'NOT_FOUND') notFound();
     throw error;
   }
-  const { metrics, records, history, photos, load } = data;
+  const { metrics, records, history, photos, load, assessments, assessmentOptions, canEdit } = data;
 
   if (history) {
     return (
@@ -77,6 +86,22 @@ export default async function ClientProgressPage({
         photos={photos}
         today={todayInZone(client.timezone)}
         canUpload={client.status !== 'archived'}
+      />
+      <AssessmentPhotos
+        clientId={client.id}
+        items={assessments}
+        today={todayInZone(client.timezone)}
+        canEnd={canEdit}
+        assign={
+          canEdit && client.status !== 'archived' ? (
+            <AssignAssessment
+              clientId={client.id}
+              options={assessmentOptions
+                .filter((o) => !assessments.some((a) => a.assessmentId === o.id))
+                .map((o) => ({ id: o.id, title: o.title }))}
+            />
+          ) : undefined
+        }
       />
       <section aria-labelledby="records-heading" className="flex flex-col gap-4">
         <h2 id="records-heading" className="text-lg font-semibold">

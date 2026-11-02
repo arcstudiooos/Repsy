@@ -813,3 +813,19 @@ export {
   type PortalCourse,
   type PortalLesson,
 } from './courses/courses';
+export {
+  addAssessmentPhoto,
+  archiveAssessment,
+  assignAssessment,
+  clientAssessments,
+  deleteAssessmentPhoto,
+  endClientAssessment,
+  GUIDES,
+  listAssessments,
+  nextDue,
+  saveAssessment,
+  type AssessmentPhotoView,
+  type AssessmentView,
+  type ClientAssessmentView,
+  type Guide,
+} from './assessments/assessments';

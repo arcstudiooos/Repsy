@@ -47,6 +47,10 @@ export async function addProgressPhoto(
   }
   if (takenOn > today) throw invalid('takenOn', 'Pick today or an earlier day.');
   const mediaId = await ownMedia(tx, actor, input.mediaId, 'progress_photo', client.id);
+  // PRD E5: a file already used as an assessment photo can't be a progress photo too.
+  if (await tx.assessmentPhoto.count({ where: { mediaId } })) {
+    throw invalid('mediaId', 'Upload the file first.');
+  }
   const row = await tx.progressPhoto.create({
     data: { clientId: client.id, mediaId, pose: input.pose as string, takenOn: toDbDate(takenOn) },
   } as Parameters<typeof tx.progressPhoto.create>[0]);

@@ -407,7 +407,7 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
 ## D-012 — R3 rulings delegated to the builder (2026-11-01)
 
 **Status:** Accepted, under the same delegation as D-011; each can be revisited.
-**PRD refs:** A10-A13, B14-B16, B20, C12, C17, C20, G4, H5, I4, I9, J1-J3, J5, J7-J9, L7 (more added as R3 is built).
+**PRD refs:** A10-A13, B14-B16, B20, C12, C17, C20, E5, G4, H5, I4, I9, J1-J3, J5, J7-J9, L7 (more added as R3 is built).
 
 1. **Lifecycle stage (B20)** stores only the stages a coach chooses (Onboarding, Active, At renewal). Paused and
    Alumni are read from the client's status, so a stage can never contradict a pause or archiving (D-003). The first
@@ -456,3 +456,9 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
     shows its title and date only. Editing a course keeps a lesson's completions while it keeps its id; removing a
     lesson removes its completions. PDFs are linked (https), not uploaded, as with resources (G5). Automations
     gain an "Enrol in a course" step, which does nothing if the client is already enrolled.
+15. **Assessments (E5)** reuse the progress-photo upload (private storage, EXIF and GPS stripped, client and coaches
+    only, erased with the client), and they are kept in their own table, so a file is a progress photo or an
+    assessment photo, never both. The "guide overlay" is a set of lines drawn over the photo when previewing,
+    reviewing and comparing (a grid or a plumb line), not over a live camera view, which the web cannot do
+    reliably on phones. A retest is due N weeks after the latest photo. Home and the Progress tab show what is due;
+    nothing is sent, as with courses.

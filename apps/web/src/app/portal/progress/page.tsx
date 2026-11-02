@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import {
+  clientAssessments,
   DomainError,
   getExerciseHistory,
   getPersonalRecords,
@@ -12,6 +13,7 @@ import {
   getTrainingLoad,
 } from '@kinetic/core';
 import { GoalsPanel } from '@/components/goals/GoalsPanel';
+import { AssessmentPhotos } from '@/components/assessments/AssessmentPhotos';
 import { MetricsPanel } from '@/components/progress/MetricsPanel';
 import { ExerciseProgress, RecordsList } from '@/components/progress/Progress';
 import { ProgressPhotos } from '@/components/progress/ProgressPhotos';
@@ -47,6 +49,7 @@ export default async function PortalProgressPage({
         records: await getPersonalRecords(tx, actor, clientId),
         load: exerciseId === undefined ? await getTrainingLoad(tx, actor, clientId) : null,
         photos: exerciseId === undefined ? await listProgressPhotos(tx, actor) : [],
+        assessments: exerciseId === undefined ? await clientAssessments(tx, actor) : [],
         history:
           exerciseId !== undefined
             ? await getExerciseHistory(tx, actor, clientId, exerciseId)
@@ -57,7 +60,8 @@ export default async function PortalProgressPage({
     if (error instanceof DomainError && error.code === 'NOT_FOUND') notFound();
     throw error;
   }
-  const { clientId, units, today, metrics, goals, records, history, photos, load } = data;
+  const { clientId, units, today, metrics, goals, records, history, photos, load, assessments } =
+    data;
 
   return (
     <>
@@ -80,6 +84,7 @@ export default async function PortalProgressPage({
           {metrics && <MetricsPanel clientId={clientId} view={metrics} isCoach={false} />}
           {load && <TrainingLoad load={load} units={units} />}
           <ProgressPhotos clientId={null} photos={photos} today={today} />
+          <AssessmentPhotos clientId={null} items={assessments} today={today} />
           <section aria-labelledby="records-heading" className="flex flex-col gap-4">
             <h2 id="records-heading" className="text-lg font-semibold">
               Personal records

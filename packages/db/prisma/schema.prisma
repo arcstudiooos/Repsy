@@ -121,6 +121,7 @@ model User {
   programPhasesCreated     ProgramPhase[]
   sequencesCreated         Sequence[]
   coursesCreated           Course[]
+  assessmentsCreated       Assessment[]
   outboxPushes             OutboxPush[]
 
   @@map("users")
@@ -296,6 +297,9 @@ model Organization {
   courseLessons CourseLesson[]
   courseEnrollments CourseEnrollment[]
   lessonCompletions LessonCompletion[]
+  assessments Assessment[]
+  clientAssessments ClientAssessment[]
+  assessmentPhotos AssessmentPhoto[]
 }
 
 model Membership {
@@ -420,6 +424,7 @@ model Client {
   assignments     ProgramAssignment[]
   workoutSessions WorkoutSession[]
   agreementAcceptances AgreementAcceptance[]
+  clientAssessments ClientAssessment[]
   courseEnrollments CourseEnrollment[]
   leads           Lead[]
   clientEvents    ClientEvent[]
@@ -1718,6 +1723,7 @@ model MediaFile {
   client         Client?         @relation(fields: [clientId, organizationId], references: [id, organizationId])
   uploader       User            @relation("MediaUploader", fields: [uploadedBy], references: [id])
   progressPhoto  ProgressPhoto?
+  assessmentPhoto AssessmentPhoto?
   sessionMedia   SessionMedia?
   messages       Message[]
   exercises      Exercise[]
@@ -2144,4 +2150,64 @@ model LessonCompletion {
   @@id([enrollmentId, lessonId])
   @@index([organizationId])
   @@map("lesson_completions")
+}
+
+/// PRD E5: an assessment photo protocol, retested every N weeks (0 = once).
+model Assessment {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  title          String
+  instructions   String    @default("")
+  /// posture_grid, plumb_line or none.
+  guide          String    @default("posture_grid")
+  everyWeeks     Int       @default(4) @map("every_weeks")
+  createdBy      String    @map("created_by") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  archivedAt     DateTime? @map("archived_at") @db.Timestamptz(3)
+
+  organization Organization       @relation(fields: [organizationId], references: [id])
+  creator      User               @relation(fields: [createdBy], references: [id])
+  assigned     ClientAssessment[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId])
+  @@map("assessments")
+}
+
+model ClientAssessment {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  assessmentId   String    @map("assessment_id") @db.Uuid
+  clientId       String    @map("client_id") @db.Uuid
+  startLocalDate DateTime  @map("start_local_date") @db.Date
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  endedAt        DateTime? @map("ended_at") @db.Timestamptz(3)
+
+  organization Organization      @relation(fields: [organizationId], references: [id])
+  assessment   Assessment        @relation(fields: [assessmentId, organizationId], references: [id, organizationId])
+  client       Client            @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  photos       AssessmentPhoto[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, clientId])
+  @@map("client_assessments")
+}
+
+model AssessmentPhoto {
+  id                 String   @id @default(uuid()) @db.Uuid
+  organizationId     String   @map("organization_id") @db.Uuid
+  clientAssessmentId String   @map("client_assessment_id") @db.Uuid
+  mediaId            String   @unique @map("media_id") @db.Uuid
+  takenOn            DateTime @map("taken_on") @db.Date
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization     Organization     @relation(fields: [organizationId], references: [id])
+  clientAssessment ClientAssessment @relation(fields: [clientAssessmentId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  media            MediaFile        @relation(fields: [mediaId, organizationId], references: [id, organizationId])
+
+  @@unique([mediaId, organizationId])
+  @@index([clientAssessmentId, takenOn])
+  @@index([organizationId])
+  @@map("assessment_photos")
 }
