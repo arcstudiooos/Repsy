@@ -196,6 +196,21 @@ export async function eraseClientData(
   await tx.progressReport.deleteMany({ where: inClient });
   // PRD G8: which meal plans they were given (the plans are the workspace's).
   await tx.clientMealPlan.deleteMany({ where: inClient });
+  // PRD H7, H8: what they wrote in groups (others' replies to their posts go with them), their reports, reactions,
+  // mutes and memberships.
+  await tx.groupReport.deleteMany({ where: { organizationId: orgId, reporterClientId: clientId } });
+  await tx.groupComment.deleteMany({ where: { organizationId: orgId, authorClientId: clientId } });
+  await tx.groupPost.deleteMany({ where: { organizationId: orgId, authorClientId: clientId } });
+  if (client.userId) {
+    await tx.groupReaction.deleteMany({ where: { organizationId: orgId, userId: client.userId } });
+    await tx.groupMute.deleteMany({
+      where: {
+        organizationId: orgId,
+        OR: [{ userId: client.userId }, { mutedUserId: client.userId }],
+      },
+    });
+  }
+  await tx.groupMember.deleteMany({ where: inClient });
   await tx.mediaFile.updateMany({
     where: { ...inClient, erasedAt: null },
     data: { erasedAt: now },

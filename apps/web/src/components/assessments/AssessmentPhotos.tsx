@@ -62,7 +62,7 @@ function Photo({
   guides: boolean;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-control bg-muted">
+    <div className="relative overflow-hidden rounded-control bg-canvas">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={src(mediaId)} alt={alt} className="block h-auto w-full" />
       {guides && <GuideOverlay guide={item.guide} />}

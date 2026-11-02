@@ -407,7 +407,7 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
 ## D-012 — R3 rulings delegated to the builder (2026-11-01)
 
 **Status:** Accepted, under the same delegation as D-011; each can be revisited.
-**PRD refs:** A10-A13, B14-B16, B20, C12, C17, C20, E5, E10, G4, G8, G9, H5, I4, I9, J1-J3, J5, J7-J9, L7 (more added as R3 is built).
+**PRD refs:** A10-A13, B14-B16, B20, C12, C17, C20, E5, E10, G4, G8, G9, H5, H7, H8, I4, I9, J1-J3, J5, J7-J9, L7 (more added as R3 is built).
 
 1. **Lifecycle stage (B20)** stores only the stages a coach chooses (Onboarding, Active, At renewal). Paused and
    Alumni are read from the client's status, so a stage can never contradict a pause or archiving (D-003). The first
@@ -476,3 +476,10 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
     purpose `nutrition`, no client), like exercise demos: any member of the workspace can fetch them by id, and
     they hold no client data. Archiving a recipe keeps it in the plans that use it. Food search and barcodes are
     G10 (R4).
+18. **Groups (H7, H8)** give each group a chat and a feed in one model (a `kind` on the post), so moderation,
+    reports and erasure work the same for both. Clients see one another as first name and last initial (D-007);
+    coaches see full names. Group activity sends no notifications, so a busy group never floods anyone's inbox;
+    the chat refreshes while it is open. A report waits on the group page and shows as "N reported" in the
+    groups list rather than in Review, which is per client. Hiding is reversible and settles the item's reports.
+    Muting is per person, across the workspace, and coaches can't be muted. Erasing a client removes everything
+    they wrote, along with replies to their posts.

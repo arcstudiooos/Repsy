@@ -125,6 +125,13 @@ model User {
   progressReportsCreated   ProgressReport[]
   recipesCreated           Recipe[]
   mealPlansCreated         MealPlan[]
+  groupsCreated            Group[]
+  groupPosts               GroupPost[]
+  groupComments            GroupComment[]
+  groupReactions           GroupReaction[]
+  groupReports             GroupReport[]
+  groupMutes               GroupMute[]              @relation("GroupMuter")
+  groupMutedBy             GroupMute[]              @relation("GroupMuted")
   outboxPushes             OutboxPush[]
 
   @@map("users")
@@ -307,6 +314,13 @@ model Organization {
   recipes Recipe[]
   mealPlans MealPlan[]
   clientMealPlans ClientMealPlan[]
+  groups Group[]
+  groupMembers GroupMember[]
+  groupPosts GroupPost[]
+  groupComments GroupComment[]
+  groupReactions GroupReaction[]
+  groupReports GroupReport[]
+  groupMutes GroupMute[]
 }
 
 model Membership {
@@ -431,6 +445,10 @@ model Client {
   assignments     ProgramAssignment[]
   workoutSessions WorkoutSession[]
   agreementAcceptances AgreementAcceptance[]
+  groupMembers     GroupMember[]
+  groupPosts       GroupPost[]
+  groupComments    GroupComment[]
+  groupReports     GroupReport[]
   clientMealPlans ClientMealPlan[]
   progressReports ProgressReport[]
   clientAssessments ClientAssessment[]
@@ -2311,4 +2329,142 @@ model ClientMealPlan {
 
   @@index([organizationId, clientId])
   @@map("client_meal_plans")
+}
+
+/// PRD H7, H8: a coach-moderated group with a chat and a feed.
+model Group {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  name           String
+  description    String    @default("")
+  createdBy      String    @map("created_by") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  archivedAt     DateTime? @map("archived_at") @db.Timestamptz(3)
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  creator      User          @relation(fields: [createdBy], references: [id])
+  members      GroupMember[]
+  posts        GroupPost[]
+  reports      GroupReport[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId])
+  @@map("groups")
+}
+
+model GroupMember {
+  groupId        String   @map("group_id") @db.Uuid
+  clientId       String   @map("client_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  joinedAt       DateTime @default(now()) @map("joined_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  group        Group        @relation(fields: [groupId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
+
+  @@id([groupId, clientId])
+  @@index([organizationId, clientId])
+  @@map("group_members")
+}
+
+model GroupPost {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  groupId        String    @map("group_id") @db.Uuid
+  /// chat (H7) or post (H8).
+  kind           String
+  authorUserId   String    @map("author_user_id") @db.Uuid
+  authorClientId String?   @map("author_client_id") @db.Uuid
+  body           String
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  hiddenAt       DateTime? @map("hidden_at") @db.Timestamptz(3)
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  group        Group           @relation(fields: [groupId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  author       User            @relation(fields: [authorUserId], references: [id])
+  authorClient Client?         @relation(fields: [authorClientId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  comments     GroupComment[]
+  reactions    GroupReaction[]
+  reports      GroupReport[]
+
+  @@unique([id, organizationId])
+  @@index([groupId, kind, createdAt])
+  @@index([organizationId, authorClientId])
+  @@map("group_posts")
+}
+
+model GroupComment {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  postId         String    @map("post_id") @db.Uuid
+  authorUserId   String    @map("author_user_id") @db.Uuid
+  authorClientId String?   @map("author_client_id") @db.Uuid
+  body           String
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  hiddenAt       DateTime? @map("hidden_at") @db.Timestamptz(3)
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  post         GroupPost     @relation(fields: [postId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  author       User          @relation(fields: [authorUserId], references: [id])
+  authorClient Client?       @relation(fields: [authorClientId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  reports      GroupReport[]
+
+  @@unique([id, organizationId])
+  @@index([postId, createdAt])
+  @@index([organizationId, authorClientId])
+  @@map("group_comments")
+}
+
+model GroupReaction {
+  postId         String   @map("post_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  /// like, clap, strong or fire.
+  kind           String
+  organizationId String   @map("organization_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  post         GroupPost    @relation(fields: [postId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@id([postId, userId, kind])
+  @@index([organizationId, userId])
+  @@map("group_reactions")
+}
+
+model GroupReport {
+  id               String    @id @default(uuid()) @db.Uuid
+  organizationId   String    @map("organization_id") @db.Uuid
+  groupId          String    @map("group_id") @db.Uuid
+  postId           String?   @map("post_id") @db.Uuid
+  commentId        String?   @map("comment_id") @db.Uuid
+  reporterUserId   String    @map("reporter_user_id") @db.Uuid
+  reporterClientId String?   @map("reporter_client_id") @db.Uuid
+  reason           String    @default("")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  resolvedAt       DateTime? @map("resolved_at") @db.Timestamptz(3)
+
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  group          Group         @relation(fields: [groupId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  post           GroupPost?    @relation(fields: [postId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  comment        GroupComment? @relation(fields: [commentId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  reporter       User          @relation(fields: [reporterUserId], references: [id])
+  reporterClient Client?       @relation(fields: [reporterClientId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@index([groupId, resolvedAt])
+  @@map("group_reports")
+}
+
+model GroupMute {
+  organizationId String   @map("organization_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  mutedUserId    String   @map("muted_user_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User         @relation("GroupMuter", fields: [userId], references: [id])
+  muted        User         @relation("GroupMuted", fields: [mutedUserId], references: [id])
+
+  @@id([organizationId, userId, mutedUserId])
+  @@map("group_mutes")
 }

@@ -5,6 +5,7 @@ import {
   clientAssessments,
   coverForClient,
   getPortalHome,
+  listGroups,
   listHabits,
   myCourses,
 } from '@kinetic/core';
@@ -27,7 +28,7 @@ export const metadata: Metadata = { title: 'Home | Kinetic' };
 
 // Access is enforced by src/proxy.ts and the portal layout's client gate.
 export default async function PortalHome() {
-  const { org, home, habits, cover, courses, assessmentsDue } = await withPortalTenant(
+  const { org, home, habits, cover, courses, assessmentsDue, inGroups } = await withPortalTenant(
     async (tx, actor) => ({
       org: await tx.organization.findFirst({ where: { id: actor.orgId }, select: { name: true } }),
       home: await getPortalHome(tx, actor),
@@ -38,6 +39,8 @@ export default async function PortalHome() {
       courses: await myCourses(tx, actor),
       // PRD E5: assessment photos due now.
       assessmentsDue: (await clientAssessments(tx, actor)).filter((a) => a.due),
+      // PRD H7, H8.
+      inGroups: (await listGroups(tx, actor)).length > 0,
     }),
   );
   const lesson = courses
@@ -197,6 +200,14 @@ export default async function PortalHome() {
         >
           Resources from your coach
         </Link>
+        {inGroups && (
+          <Link
+            href="/portal/groups"
+            className={cn(buttonVariants({ variant: 'secondary' }), 'min-h-12 w-full')}
+          >
+            Your groups
+          </Link>
+        )}
         {courses.length > 0 && (
           <Link
             href="/portal/learn"

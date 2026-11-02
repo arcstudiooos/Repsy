@@ -13,6 +13,7 @@ const links = [
   { label: 'Courses', href: '/app/courses' },
   { label: 'Assessments', href: '/app/assessments' },
   { label: 'Meal plans', href: '/app/meal-plans' },
+  { label: 'Groups', href: '/app/groups' },
   { label: 'Leads', href: '/app/leads' },
   { label: 'Automations', href: '/app/automations' },
   { label: 'Team', href: '/app/team' },

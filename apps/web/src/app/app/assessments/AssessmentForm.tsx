@@ -116,7 +116,7 @@ export function AssessmentForm({
         </div>
         {guide !== 'none' && (
           <div
-            className="relative h-28 w-20 rounded-control border border-divider bg-muted"
+            className="relative h-28 w-20 rounded-control border border-divider bg-canvas"
             title={GUIDE_LABEL[guide]}
           >
             <GuideOverlay guide={guide} />
