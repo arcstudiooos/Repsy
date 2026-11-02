@@ -4,6 +4,7 @@ import {
   clientAssessments,
   DomainError,
   listAssessments,
+  listProgressReports,
   TRAINER_ROLES,
   getExerciseHistory,
   getPersonalRecords,
@@ -17,6 +18,7 @@ import { AssessmentPhotos } from '@/components/assessments/AssessmentPhotos';
 import { AssignAssessment } from '@/components/assessments/AssignAssessment';
 import { MetricsPanel } from '@/components/progress/MetricsPanel';
 import { ExerciseProgress, RecordsList } from '@/components/progress/Progress';
+import { ProgressReports } from '@/components/progress/ProgressReports';
 import { ProgressPhotos } from '@/components/progress/ProgressPhotos';
 import { TrainingLoad } from '@/components/progress/TrainingLoad';
 import { withServerTenant } from '@/server/serverActor';
@@ -51,6 +53,8 @@ export default async function ClientProgressPage({
       assessments: exerciseId === undefined ? await clientAssessments(tx, actor, client.id) : [],
       assessmentOptions: exerciseId === undefined ? await listAssessments(tx, actor) : [],
       canEdit: (TRAINER_ROLES as readonly string[]).includes(actor.role),
+      // PRD E10.
+      reports: exerciseId === undefined ? await listProgressReports(tx, actor, client.id) : [],
       history:
         exerciseId !== undefined
           ? await getExerciseHistory(tx, actor, client.id, exerciseId)
@@ -60,7 +64,17 @@ export default async function ClientProgressPage({
     if (error instanceof DomainError && error.code === 'NOT_FOUND') notFound();
     throw error;
   }
-  const { metrics, records, history, photos, load, assessments, assessmentOptions, canEdit } = data;
+  const {
+    metrics,
+    records,
+    history,
+    photos,
+    load,
+    assessments,
+    assessmentOptions,
+    canEdit,
+    reports,
+  } = data;
 
   if (history) {
     return (
@@ -80,6 +94,13 @@ export default async function ClientProgressPage({
   return (
     <div className="flex flex-col gap-8">
       {metrics && <MetricsPanel clientId={client.id} view={metrics} isCoach />}
+      {(canEdit || reports.length > 0) && (
+        <ProgressReports
+          clientId={canEdit && client.status !== 'archived' ? client.id : null}
+          reports={reports}
+          today={todayInZone(client.timezone)}
+        />
+      )}
       {load && <TrainingLoad load={load} units={units} />}
       <ProgressPhotos
         clientId={client.id}

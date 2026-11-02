@@ -829,3 +829,13 @@ export {
   type ClientAssessmentView,
   type Guide,
 } from './assessments/assessments';
+export {
+  deleteProgressReport,
+  listProgressReports,
+  monthLabel,
+  progressReportData,
+  renderProgressReport,
+  saveProgressReport,
+  type ProgressReportView,
+  type ReportData,
+} from './reports/progressReport';

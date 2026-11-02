@@ -407,7 +407,7 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
 ## D-012 — R3 rulings delegated to the builder (2026-11-01)
 
 **Status:** Accepted, under the same delegation as D-011; each can be revisited.
-**PRD refs:** A10-A13, B14-B16, B20, C12, C17, C20, E5, G4, H5, I4, I9, J1-J3, J5, J7-J9, L7 (more added as R3 is built).
+**PRD refs:** A10-A13, B14-B16, B20, C12, C17, C20, E5, E10, G4, H5, I4, I9, J1-J3, J5, J7-J9, L7 (more added as R3 is built).
 
 1. **Lifecycle stage (B20)** stores only the stages a coach chooses (Onboarding, Active, At renewal). Paused and
    Alumni are read from the client's status, so a stage can never contradict a pause or archiving (D-003). The first
@@ -462,3 +462,9 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
     reviewing and comparing (a grid or a plumb line), not over a live camera view, which the web cannot do
     reliably on phones. A retest is due N weeks after the latest photo. Home and the Progress tab show what is due;
     nothing is sent, as with courses.
+16. **Progress report (E10)** is built when it is opened, from current data, so it never goes stale and no copy of
+    the client's photos is kept. The row stores only the month, the coach's summary and whether photos go in. A
+    small dependency-free PDF writer (Helvetica, WinAnsi text, JPEG photos) keeps the server free of a headless
+    browser; text outside Western European scripts shows as "?" until a font is embedded. Photos are the client's
+    latest front, side and back of the month, and only when the coach includes them. PNG and WebP photos are left
+    out of the PDF. The client is told through an ordinary coach message, which carries no report content.

@@ -122,6 +122,7 @@ model User {
   sequencesCreated         Sequence[]
   coursesCreated           Course[]
   assessmentsCreated       Assessment[]
+  progressReportsCreated   ProgressReport[]
   outboxPushes             OutboxPush[]
 
   @@map("users")
@@ -300,6 +301,7 @@ model Organization {
   assessments Assessment[]
   clientAssessments ClientAssessment[]
   assessmentPhotos AssessmentPhoto[]
+  progressReports ProgressReport[]
 }
 
 model Membership {
@@ -424,6 +426,7 @@ model Client {
   assignments     ProgramAssignment[]
   workoutSessions WorkoutSession[]
   agreementAcceptances AgreementAcceptance[]
+  progressReports ProgressReport[]
   clientAssessments ClientAssessment[]
   courseEnrollments CourseEnrollment[]
   leads           Lead[]
@@ -2210,4 +2213,26 @@ model AssessmentPhoto {
   @@index([clientAssessmentId, takenOn])
   @@index([organizationId])
   @@map("assessment_photos")
+}
+
+/// PRD E10: a monthly progress report; the PDF is built from live data when opened.
+model ProgressReport {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  clientId       String   @map("client_id") @db.Uuid
+  /// The first day of the month reported on.
+  month          DateTime @db.Date
+  summary        String   @default("")
+  includePhotos  Boolean  @default(false) @map("include_photos")
+  createdBy      String   @map("created_by") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  creator      User         @relation(fields: [createdBy], references: [id])
+
+  @@unique([clientId, month])
+  @@index([organizationId, clientId])
+  @@map("progress_reports")
 }
