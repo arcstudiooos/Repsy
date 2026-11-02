@@ -126,6 +126,7 @@ model User {
   recipesCreated           Recipe[]
   mealPlansCreated         MealPlan[]
   groupsCreated            Group[]
+  challengesCreated        Challenge[]
   groupPosts               GroupPost[]
   groupComments            GroupComment[]
   groupReactions           GroupReaction[]
@@ -321,6 +322,8 @@ model Organization {
   groupReactions GroupReaction[]
   groupReports GroupReport[]
   groupMutes GroupMute[]
+  challenges Challenge[]
+  challengeParticipants ChallengeParticipant[]
 }
 
 model Membership {
@@ -445,6 +448,7 @@ model Client {
   assignments     ProgramAssignment[]
   workoutSessions WorkoutSession[]
   agreementAcceptances AgreementAcceptance[]
+  challengeParticipants ChallengeParticipant[]
   groupMembers     GroupMember[]
   groupPosts       GroupPost[]
   groupComments    GroupComment[]
@@ -2346,6 +2350,7 @@ model Group {
   members      GroupMember[]
   posts        GroupPost[]
   reports      GroupReport[]
+  challenges   Challenge[]
 
   @@unique([id, organizationId])
   @@index([organizationId])
@@ -2467,4 +2472,46 @@ model GroupMute {
 
   @@id([organizationId, userId, mutedUserId])
   @@map("group_mutes")
+}
+
+/// PRD H9: a time-boxed challenge; scores come from logged data.
+model Challenge {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  title          String
+  description    String    @default("")
+  /// workouts, habit_days or volume.
+  metric         String
+  startLocalDate DateTime  @map("start_local_date") @db.Date
+  endLocalDate   DateTime  @map("end_local_date") @db.Date
+  /// When set, only this group's members can join.
+  groupId        String?   @map("group_id") @db.Uuid
+  createdBy      String    @map("created_by") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  archivedAt     DateTime? @map("archived_at") @db.Timestamptz(3)
+
+  organization Organization           @relation(fields: [organizationId], references: [id])
+  creator      User                   @relation(fields: [createdBy], references: [id])
+  group        Group?                 @relation(fields: [groupId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  participants ChallengeParticipant[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId])
+  @@map("challenges")
+}
+
+model ChallengeParticipant {
+  challengeId    String   @map("challenge_id") @db.Uuid
+  clientId       String   @map("client_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  onLeaderboard  Boolean  @default(false) @map("on_leaderboard")
+  joinedAt       DateTime @default(now()) @map("joined_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  challenge    Challenge    @relation(fields: [challengeId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
+
+  @@id([challengeId, clientId])
+  @@index([organizationId, clientId])
+  @@map("challenge_participants")
 }

@@ -880,3 +880,17 @@ export {
   type GroupSummary,
   type Reaction,
 } from './groups/groups';
+export {
+  archiveChallenge,
+  CHALLENGE_METRICS,
+  getChallenge,
+  joinChallenge,
+  leaveChallenge,
+  listChallenges,
+  saveChallenge,
+  type ChallengeDetail,
+  type ChallengeMetric,
+  type ChallengeStatus,
+  type ChallengeSummary,
+  type LeaderboardEntry,
+} from './challenges/challenges';

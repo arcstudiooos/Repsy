@@ -14,6 +14,7 @@ const links = [
   { label: 'Assessments', href: '/app/assessments' },
   { label: 'Meal plans', href: '/app/meal-plans' },
   { label: 'Groups', href: '/app/groups' },
+  { label: 'Challenges', href: '/app/challenges' },
   { label: 'Leads', href: '/app/leads' },
   { label: 'Automations', href: '/app/automations' },
   { label: 'Team', href: '/app/team' },

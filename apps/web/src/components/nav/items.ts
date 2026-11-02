@@ -17,6 +17,7 @@ import {
   ScanLine,
   Salad,
   UsersRound,
+  Trophy,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -41,6 +42,7 @@ export const coachDesktopItems: NavItem[] = [
   { label: 'Assessments', href: '/app/assessments', icon: ScanLine },
   { label: 'Meal plans', href: '/app/meal-plans', icon: Salad },
   { label: 'Groups', href: '/app/groups', icon: UsersRound },
+  { label: 'Challenges', href: '/app/challenges', icon: Trophy },
   { label: 'Leads', href: '/app/leads', icon: Inbox },
   { label: 'Automations', href: '/app/automations', icon: Workflow },
 ];

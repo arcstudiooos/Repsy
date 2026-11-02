@@ -211,6 +211,8 @@ export async function eraseClientData(
     });
   }
   await tx.groupMember.deleteMany({ where: inClient });
+  // PRD H9: the challenges they joined.
+  await tx.challengeParticipant.deleteMany({ where: inClient });
   await tx.mediaFile.updateMany({
     where: { ...inClient, erasedAt: null },
     data: { erasedAt: now },

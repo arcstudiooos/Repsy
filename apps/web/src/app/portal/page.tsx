@@ -5,6 +5,7 @@ import {
   clientAssessments,
   coverForClient,
   getPortalHome,
+  listChallenges,
   listGroups,
   listHabits,
   myCourses,
@@ -28,8 +29,8 @@ export const metadata: Metadata = { title: 'Home | Kinetic' };
 
 // Access is enforced by src/proxy.ts and the portal layout's client gate.
 export default async function PortalHome() {
-  const { org, home, habits, cover, courses, assessmentsDue, inGroups } = await withPortalTenant(
-    async (tx, actor) => ({
+  const { org, home, habits, cover, courses, assessmentsDue, inGroups, challenges } =
+    await withPortalTenant(async (tx, actor) => ({
       org: await tx.organization.findFirst({ where: { id: actor.orgId }, select: { name: true } }),
       home: await getPortalHome(tx, actor),
       habits: await listHabits(tx, actor, actor.clientId as string),
@@ -41,8 +42,9 @@ export default async function PortalHome() {
       assessmentsDue: (await clientAssessments(tx, actor)).filter((a) => a.due),
       // PRD H7, H8.
       inGroups: (await listGroups(tx, actor)).length > 0,
-    }),
-  );
+      // PRD H9: challenges on now or coming up.
+      challenges: (await listChallenges(tx, actor)).filter((c) => c.status !== 'ended').length,
+    }));
   const lesson = courses
     .flatMap((c) =>
       c.lessons.filter((l) => l.unlocked && !l.done).map((l) => ({ ...l, course: c.title })),
@@ -200,6 +202,14 @@ export default async function PortalHome() {
         >
           Resources from your coach
         </Link>
+        {challenges > 0 && (
+          <Link
+            href="/portal/challenges"
+            className={cn(buttonVariants({ variant: 'secondary' }), 'min-h-12 w-full')}
+          >
+            Challenges
+          </Link>
+        )}
         {inGroups && (
           <Link
             href="/portal/groups"
