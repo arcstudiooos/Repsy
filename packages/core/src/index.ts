@@ -590,6 +590,24 @@ export {
 } from './messages/replyFacts';
 export { equipmentGuideFor, type EquipmentGuide } from './exercises/equipmentGuide';
 export { setExerciseDemo } from './exercises/demo';
+export { CLIENT_EVENTS, emitClientEvent, type ClientEventKind } from './automations/events';
+export { decideStepRun, processClientEvents, runDueSteps } from './automations/engine';
+export {
+  archiveSequence,
+  cancelRun,
+  listSequences,
+  runHistory,
+  saveSequence,
+  SEQUENCE_TEMPLATES,
+  SEQUENCE_TRIGGERS,
+  startSequence,
+  STEP_TYPES,
+  type RunHistoryItem,
+  type SequenceTrigger,
+  type SequenceView,
+  type StepInput,
+  type StepType,
+} from './automations/sequences';
 export {
   addPhase,
   advancePhases,

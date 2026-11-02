@@ -194,6 +194,9 @@ export async function eraseClientData(
   await tx.reviewFlag.deleteMany({ where: inClient });
   // PRD I4: the days they opened the portal.
   await tx.portalVisit.deleteMany({ where: inClient });
+  // PRD J2, J8: their automation events and runs (step runs go with their run).
+  await tx.clientEvent.deleteMany({ where: inClient });
+  await tx.sequenceRun.deleteMany({ where: inClient });
   const messageIds = (
     await tx.message.findMany({
       where: { organizationId: orgId, thread: { is: { clientId } } },

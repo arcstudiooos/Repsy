@@ -1,4 +1,5 @@
 import { appendAudit, type TenantTx } from '@kinetic/db';
+import { emitClientEvent } from '../automations/events';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';
@@ -66,6 +67,7 @@ export async function setLifecycleStage(
       metadata: { clientId: client.id, from: client.lifecycleStage, to: stage as string },
       requestId: opts.requestId,
     });
+    await emitClientEvent(tx, client.id, 'stage_changed', { stage: stage as string });
   }
   return stage as SettableStage;
 }

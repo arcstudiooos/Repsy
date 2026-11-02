@@ -1,4 +1,5 @@
 import { appendAudit, type TenantTx } from '@kinetic/db';
+import { emitClientEvent } from '../automations/events';
 import { promoteOnFirstCompletion } from '../clients/stage';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
@@ -248,6 +249,28 @@ async function finishSession(
   await markCoachLogged(tx, actor, session, opts.requestId);
   // PRD B20: the first completed workout ends onboarding.
   if (kind === 'completed') await promoteOnFirstCompletion(tx, session.clientId);
+  // PRD J2: the last planned workout of a program finished it.
+  if (session.assignmentId) {
+    const open = await tx.workoutSession.count({
+      where: {
+        assignmentId: session.assignmentId,
+        kind: 'planned',
+        state: { in: ['scheduled', 'in_progress', 'missed', 'incomplete'] },
+      },
+    });
+    const already = await tx.clientEvent.count({
+      where: {
+        clientId: session.clientId,
+        kind: 'program_finished',
+        detailJson: { path: ['assignmentId'], equals: session.assignmentId },
+      },
+    });
+    if (open === 0 && already === 0) {
+      await emitClientEvent(tx, session.clientId, 'program_finished', {
+        assignmentId: session.assignmentId,
+      });
+    }
+  }
   // A late finish can end a missed-workouts episode (S4-2: Rule 1 is re-evaluated).
   if (session.state === 'missed') await resolveStaleMissedFlags(tx, now, session.clientId);
   return getSessionDetail(tx, actor, session.id, { now });

@@ -119,6 +119,7 @@ model User {
   coversCovering           CoachCover[]            @relation("CoverCovering")
   coversCreated            CoachCover[]            @relation("CoverCreator")
   programPhasesCreated     ProgramPhase[]
+  sequencesCreated         Sequence[]
   outboxPushes             OutboxPush[]
 
   @@map("users")
@@ -279,6 +280,11 @@ model Organization {
   teamInvites TeamInvite[]
   coachCovers CoachCover[]
   programPhases ProgramPhase[]
+  clientEvents ClientEvent[]
+  sequences Sequence[]
+  sequenceSteps SequenceStep[]
+  sequenceRuns SequenceRun[]
+  sequenceStepRuns SequenceStepRun[]
 }
 
 model Membership {
@@ -403,6 +409,8 @@ model Client {
   assignments     ProgramAssignment[]
   workoutSessions WorkoutSession[]
   agreementAcceptances AgreementAcceptance[]
+  clientEvents    ClientEvent[]
+  sequenceRuns    SequenceRun[]
   programPhases   ProgramPhase[]
   portalVisits    PortalVisit[]
   pauses          ClientPause[]
@@ -1050,6 +1058,8 @@ enum ReviewRule {
   nutrition_low
   engagement_drop
   phase_ready
+  automation_approval
+  automation_failed
 
   @@map("review_rule")
 }
@@ -1921,4 +1931,106 @@ model ProgramPhase {
 
   @@index([organizationId, clientId, status])
   @@map("program_phases")
+}
+
+/// PRD J2: something that happened to a client, for automations to react to; processed once by the worker.
+model ClientEvent {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  clientId       String    @map("client_id") @db.Uuid
+  kind           String
+  detailJson     Json      @default("{}") @map("detail_json")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  processedAt    DateTime? @map("processed_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@index([organizationId, clientId])
+  @@map("client_events")
+}
+
+/// PRD J1: an automation: a trigger and ordered steps.
+model Sequence {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  name           String
+  trigger        String
+  /// tag id (tag_added) or stage (stage_changed).
+  triggerValue   String?   @map("trigger_value")
+  active         Boolean   @default(true)
+  createdBy      String    @map("created_by") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  archivedAt     DateTime? @map("archived_at") @db.Timestamptz(3)
+
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  creator      User           @relation(fields: [createdBy], references: [id])
+  steps        SequenceStep[]
+  runs         SequenceRun[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, trigger])
+  @@map("sequences")
+}
+
+/// PRD J1, J3: one step: on day N after the start, at a client-local time.
+model SequenceStep {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  sequenceId     String  @map("sequence_id") @db.Uuid
+  position       Int
+  dayOffset      Int     @map("day_offset")
+  localTime      String  @map("local_time")
+  type           String
+  configJson     Json    @default("{}") @map("config_json")
+  /// PRD J7: wait in the review queue for approval.
+  askFirst       Boolean @default(false) @map("ask_first")
+
+  organization Organization      @relation(fields: [organizationId], references: [id])
+  sequence     Sequence          @relation(fields: [sequenceId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  runs         SequenceStepRun[]
+
+  @@unique([id, organizationId])
+  @@index([sequenceId])
+  @@map("sequence_steps")
+}
+
+/// PRD J8: one client going through a sequence.
+model SequenceRun {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  sequenceId     String    @map("sequence_id") @db.Uuid
+  clientId       String    @map("client_id") @db.Uuid
+  status         String    @default("active")
+  startedAt      DateTime  @default(now()) @map("started_at") @db.Timestamptz(3)
+  endedAt        DateTime? @map("ended_at") @db.Timestamptz(3)
+
+  organization Organization      @relation(fields: [organizationId], references: [id])
+  sequence     Sequence          @relation(fields: [sequenceId, organizationId], references: [id, organizationId])
+  client       Client            @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  steps        SequenceStepRun[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, clientId])
+  @@map("sequence_runs")
+}
+
+/// PRD J8: one step of one run: pending, waiting (for approval), done, failed or skipped.
+model SequenceStepRun {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  runId          String    @map("run_id") @db.Uuid
+  stepId         String    @map("step_id") @db.Uuid
+  dueAt          DateTime  @map("due_at") @db.Timestamptz(3)
+  status         String    @default("pending")
+  executedAt     DateTime? @map("executed_at") @db.Timestamptz(3)
+  error          String?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  run          SequenceRun  @relation(fields: [runId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  step         SequenceStep @relation(fields: [stepId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([runId, stepId])
+  @@map("sequence_step_runs")
 }

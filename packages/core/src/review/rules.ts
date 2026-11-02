@@ -20,7 +20,9 @@ export type RuleKey =
   | 'workout_moved'
   | 'nutrition_low'
   | 'engagement_drop'
-  | 'phase_ready';
+  | 'phase_ready'
+  | 'automation_approval'
+  | 'automation_failed';
 
 /** The rule text shown with every flag (F10, §10). Copy is "Needs review", never "At risk". */
 export const RULE_TEXT: Record<RuleKey, string> = {
@@ -37,6 +39,8 @@ export const RULE_TEXT: Record<RuleKey, string> = {
   nutrition_low: 'Nutrition on target on under half the days for 2 weeks',
   engagement_drop: 'Engagement score dropped 30 points or more last week',
   phase_ready: 'Next program phase is ready to start',
+  automation_approval: 'An automation step is waiting for your OK',
+  automation_failed: "An automation step couldn't run",
 };
 
 export const AUTO_RESOLVED = 'Resolved automatically';

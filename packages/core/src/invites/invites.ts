@@ -1,4 +1,5 @@
 import { appendAudit, findInviteByTokenHash, withSystem } from '@kinetic/db';
+import { emitClientEventAsSystem } from '../automations/events';
 import type { PrismaClient, TenantTx } from '@kinetic/db';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
@@ -243,6 +244,8 @@ export async function acceptInvite(
         action: 'invite.accepted',
         metadata: { inviteId: lookup.inviteId },
       });
+      // PRD J2: automations triggered by a client joining.
+      await emitClientEventAsSystem(tx, lookup.orgId, lookup.clientId, 'invite_accepted');
       return { orgId: lookup.orgId, clientId: lookup.clientId };
     }, prisma);
   } catch (error) {

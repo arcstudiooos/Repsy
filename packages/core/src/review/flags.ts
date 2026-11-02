@@ -74,6 +74,9 @@ function hrefOf(row: FlagRow): string {
       return base;
     case 'phase_ready':
       return `${base}/program`;
+    case 'automation_approval':
+    case 'automation_failed':
+      return `${base}/history`;
     case 'workout_moved':
       return `${base}/calendar`;
     case 'message_unread':

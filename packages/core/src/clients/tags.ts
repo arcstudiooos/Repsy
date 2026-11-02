@@ -1,4 +1,5 @@
 import { appendAudit, type TenantTx } from '@kinetic/db';
+import { emitClientEvent } from '../automations/events';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';
@@ -124,7 +125,16 @@ export async function setClientTags(
     orderBy: [{ name: 'asc' }, { id: 'asc' }],
   });
   if (tags.length !== ids.length) throw invalid('tagIds', 'One of these tags no longer exists.');
+  const before = new Set(
+    (
+      await tx.clientTagLink.findMany({ where: { clientId: client.id }, select: { tagId: true } })
+    ).map((l) => l.tagId),
+  );
   await tx.clientTagLink.deleteMany({ where: { clientId: client.id, tagId: { notIn: ids } } });
+  // PRD J2: automations triggered by a tag.
+  for (const tagId of ids.filter((t) => !before.has(t))) {
+    await emitClientEvent(tx, client.id, 'tag_added', { tagId });
+  }
   if (ids.length > 0) {
     await tx.clientTagLink.createMany({
       data: ids.map((tagId) => ({
@@ -188,6 +198,7 @@ export async function addTagToClients(
       data: fresh.map((c) => ({ organizationId: c.organizationId, clientId: c.id, tagId: tag.id })),
       skipDuplicates: true,
     });
+    for (const c of fresh) await emitClientEvent(tx, c.id, 'tag_added', { tagId: tag.id });
   }
   await appendAudit(tx, {
     orgId: actor.orgId,

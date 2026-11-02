@@ -1,4 +1,5 @@
 import { recordMetric } from '../progress/metrics';
+import { emitClientEvent } from '../automations/events';
 import { metricDef, metricFromCanonical } from '../progress/metric-catalog';
 import { appendAudit, Prisma, type TenantTx } from '@kinetic/db';
 import { graceMs } from '../analytics/adherence';
@@ -619,6 +620,17 @@ export async function submitCheckin(
   });
   await recordMetricAnswers(tx, actor, row, answers, now);
   if (row.kind === 'intake') await fillContextFromIntake(tx, row, answers);
+  // PRD J2: automations triggered by an intake or a weekly check-in.
+  if (row.kind === 'intake' || row.kind === 'checkin') {
+    await emitClientEvent(
+      tx,
+      row.clientId,
+      row.kind === 'intake' ? 'intake_submitted' : 'checkin_submitted',
+      {
+        checkinId: row.id,
+      },
+    );
+  }
   await opts.onSubmitted?.(tx, { id: row.id, clientId: row.clientId }, now);
   return toView(row, actor, now);
 }

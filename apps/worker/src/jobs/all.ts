@@ -6,6 +6,7 @@ import { emailDeliverJob } from './emailDeliver';
 import { exportsBuildJob } from './exportsBuild';
 import { mediaPurgeJob } from './mediaPurge';
 import { pushDeliverJob } from './pushDeliver';
+import { automationsJob } from './automations';
 import { phasesAdvanceJob } from './phasesAdvance';
 import { scheduledMessagesJob } from './scheduledMessages';
 import { pausesEndJob } from './pausesEnd';
@@ -25,4 +26,5 @@ export const jobs = [
   pushDeliverJob,
   scheduledMessagesJob,
   phasesAdvanceJob,
+  automationsJob,
 ] as const;
