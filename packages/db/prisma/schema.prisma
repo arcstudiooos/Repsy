@@ -205,6 +205,11 @@ model Organization {
   id                String   @id @default(uuid()) @db.Uuid
   name              String
   timezone          String
+  /// PRD B15: the public page at /join/<publicSlug>, off until enabled.
+  publicSlug        String?  @unique @map("public_slug")
+  publicBio         String?  @map("public_bio")
+  publicOffers      String?  @map("public_offers")
+  publicPageEnabled Boolean  @default(false) @map("public_page_enabled")
   plan              String   @default("pilot")
   ownerUserId       String   @map("owner_user_id") @db.Uuid
   graceHours        Int      @default(24) @map("grace_hours")
@@ -285,6 +290,7 @@ model Organization {
   sequenceSteps SequenceStep[]
   sequenceRuns SequenceRun[]
   sequenceStepRuns SequenceStepRun[]
+  leads Lead[]
 }
 
 model Membership {
@@ -409,6 +415,7 @@ model Client {
   assignments     ProgramAssignment[]
   workoutSessions WorkoutSession[]
   agreementAcceptances AgreementAcceptance[]
+  leads           Lead[]
   clientEvents    ClientEvent[]
   sequenceRuns    SequenceRun[]
   programPhases   ProgramPhase[]
@@ -2033,4 +2040,26 @@ model SequenceStepRun {
 
   @@unique([runId, stepId])
   @@map("sequence_step_runs")
+}
+
+/// PRD B16: someone who applied on the public page, worked through the pipeline.
+model Lead {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @map("organization_id") @db.Uuid
+  name              String
+  email             String
+  phone             String?
+  message           String   @default("")
+  /// new, contacted, call_booked, won or lost.
+  status            String   @default("new")
+  notes             String   @default("")
+  convertedClientId String?  @map("converted_client_id") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  client       Client?      @relation(fields: [convertedClientId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@index([organizationId, status])
+  @@map("leads")
 }

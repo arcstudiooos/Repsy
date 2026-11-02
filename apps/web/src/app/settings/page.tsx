@@ -11,8 +11,10 @@ import {
   twoFactorStatus,
   listAgreements,
   isManager,
+  getPublicPageSettings,
 } from '@kinetic/core';
 import { AgreementsSection } from '@/components/settings/AgreementsSection';
+import { PublicPageSection } from '@/components/settings/PublicPageSection';
 import { BrandingSection } from '@/components/settings/BrandingSection';
 import { DataExportSection } from '@/components/settings/DataExportSection';
 import {
@@ -40,6 +42,7 @@ export default async function SettingsPage() {
     replies,
     reviewRules,
     agreements,
+    publicPage,
     branding,
     twoFactor,
   } = await withServerTenant(async (tx, a) => ({
@@ -50,6 +53,7 @@ export default async function SettingsPage() {
     replies: a.role === 'client' ? [] : await listSavedReplies(tx, a),
     reviewRules: a.role === 'client' ? null : await getReviewRuleSettings(tx, a),
     agreements: a.role === 'client' ? [] : await listAgreements(tx),
+    publicPage: await getPublicPageSettings(tx),
     branding: await getBranding(tx),
     twoFactor: await twoFactorStatus(tx, a),
   }));
@@ -70,6 +74,7 @@ export default async function SettingsPage() {
         <MessagingSection expectations={expectations} replies={replies} canEdit={isOwner} />
         {reviewRules && <ReviewRulesSection settings={reviewRules} canEdit={isOwner} />}
         <AgreementsSection agreements={agreements} canEdit={isOwner} />
+        <PublicPageSection initial={publicPage} canEdit={isOwner} />
         <PilotAccessCard
           count={settings.org.activeClientCount}
           limit={settings.org.activeClientLimit}

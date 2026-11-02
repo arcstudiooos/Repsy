@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { lookupJoinLink } from '@kinetic/core';
+import { getPublicProfile, lookupJoinLink } from '@kinetic/core';
+import { prisma } from '@kinetic/db';
 import { AuthShell } from '@/components/auth-ui';
 import { LoadingState } from '@/components/states/LoadingState';
+import { ApplyForm } from './ApplyForm';
 import { JoinForm } from './JoinForm';
 
 export const metadata: Metadata = {
@@ -12,8 +14,39 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+/** PRD B15: a coach's public page: their bio, offers and an application form. */
+async function PublicPage({ slug }: { slug: string }) {
+  const profile = await getPublicProfile(prisma, slug);
+  if (!profile) {
+    return (
+      <AuthShell title="Page not found">
+        <p role="alert" className="text-base">
+          This page doesn&apos;t exist or isn&apos;t taking applications.
+        </p>
+      </AuthShell>
+    );
+  }
+  return (
+    <AuthShell title={profile.orgName}>
+      {profile.bio && <p className="mb-4 text-base whitespace-pre-line">{profile.bio}</p>}
+      {profile.offers && (
+        <section aria-labelledby="offers-heading" className="mb-6">
+          <h2 id="offers-heading" className="mb-1 text-lg font-semibold">
+            What I offer
+          </h2>
+          <p className="text-base whitespace-pre-line">{profile.offers}</p>
+        </section>
+      )}
+      <h2 className="mb-2 text-lg font-semibold">Apply</h2>
+      <ApplyForm slug={slug} orgName={profile.orgName} />
+    </AuthShell>
+  );
+}
+
 async function JoinBody({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
+  // A public page slug is 3-40 characters; a sign-up link's token is 43.
+  if (token.length <= 40) return <PublicPage slug={token} />;
   const link = await lookupJoinLink(token);
   if (!link || !link.usable) {
     return (

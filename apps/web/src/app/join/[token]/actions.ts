@@ -1,7 +1,7 @@
 'use server';
 
 import { headers } from 'next/headers';
-import { DomainError, joinWithLink } from '@kinetic/core';
+import { DomainError, joinWithLink, submitLead } from '@kinetic/core';
 import { prisma } from '@kinetic/db';
 import { clientIp } from '@/server/clientIp';
 import { InMemoryRateLimiter } from '@/server/rateLimit';
@@ -36,6 +36,44 @@ export async function joinAction(_prev: JoinState, data: FormData): Promise<Join
       return {
         fieldErrors: Object.fromEntries(Object.entries(fe).map(([k, v]) => [k, v[0] ?? ''])),
       };
+    }
+    throw error;
+  }
+}
+
+export interface LeadState {
+  status?: 'sent';
+  fieldErrors?: Record<string, string>;
+}
+
+// PRD B15: applications from the public page, a few a minute per address.
+const leadLimiter = new InMemoryRateLimiter({ capacity: 5, refillPerSecond: 5 / 60 });
+
+/** PRD B15: someone applies on a coach's public page. */
+export async function applyAction(_prev: LeadState, data: FormData): Promise<LeadState> {
+  const ip = clientIp(await headers());
+  if (!leadLimiter.consume(`ip:${ip}`).allowed) {
+    return { fieldErrors: { form: 'Too many tries. Wait a minute and try again.' } };
+  }
+  try {
+    await submitLead(prisma, String(data.get('slug') ?? ''), {
+      name: String(data.get('name') ?? ''),
+      email: String(data.get('email') ?? ''),
+      phone: String(data.get('phone') ?? ''),
+      message: String(data.get('message') ?? ''),
+      website: String(data.get('website') ?? ''),
+      loadedAt: Number(data.get('loadedAt') ?? 0),
+    });
+    return { status: 'sent' };
+  } catch (error) {
+    if (error instanceof DomainError && error.code === 'VALIDATION') {
+      const fe = error.fieldErrors ?? {};
+      return {
+        fieldErrors: Object.fromEntries(Object.entries(fe).map(([k, v]) => [k, v[0] ?? ''])),
+      };
+    }
+    if (error instanceof DomainError && error.code === 'NOT_FOUND') {
+      return { fieldErrors: { form: 'This page is no longer taking applications.' } };
     }
     throw error;
   }

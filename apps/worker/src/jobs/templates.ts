@@ -38,6 +38,14 @@ const TEMPLATES: Record<string, Template> = {
     const subject = `${coachName} invited you to Kinetic`.replace(/[\r\n]+/g, ' ');
     return { subject, text, html };
   },
+  // PRD B15: the owner hears that someone applied (their name only, D-007).
+  new_lead: (payload, appBaseUrl) => {
+    const name = str(payload, 'leadName') ?? 'Someone';
+    const link = `${appBaseUrl.replace(/\/+$/, '')}/app/leads`;
+    const text = `${name} applied on your Kinetic page.\n\nSee your leads: ${link}`;
+    const html = `<p>${escapeHtml(name)} applied on your Kinetic page.</p><p><a href="${escapeHtml(link)}">See your leads</a></p>`;
+    return { subject: `New application from ${name}`.replace(/[\r\n]+/g, ' '), text, html };
+  },
   // PRD A10: an invite to join a workspace's team.
   team_invite: (payload, appBaseUrl) => {
     const orgName = str(payload, 'orgName') ?? 'a workspace';

@@ -590,6 +590,20 @@ export {
 } from './messages/replyFacts';
 export { equipmentGuideFor, type EquipmentGuide } from './exercises/equipmentGuide';
 export { setExerciseDemo } from './exercises/demo';
+export {
+  convertLead,
+  getPublicPageSettings,
+  getPublicProfile,
+  LEAD_STATUSES,
+  listLeads,
+  submitLead,
+  updateLead,
+  updatePublicPage,
+  type LeadStatus,
+  type LeadView,
+  type PublicPageSettings,
+  type PublicProfile,
+} from './leads/leads';
 export { CLIENT_EVENTS, emitClientEvent, type ClientEventKind } from './automations/events';
 export { decideStepRun, processClientEvents, runDueSteps } from './automations/engine';
 export {
