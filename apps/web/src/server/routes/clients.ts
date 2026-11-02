@@ -110,6 +110,7 @@ const patchSchema = z.object({
   goals: z.string().max(2000).nullable().optional(),
   // Transitions are enforced by updateClient (nextClientStatus); `invited` is only reachable from archived.
   status: z.enum(['invited', 'active', 'paused', 'archived']).optional(),
+  churnReason: z.string().max(20).nullable().optional(),
   startDate: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)

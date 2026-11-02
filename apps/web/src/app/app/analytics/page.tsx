@@ -78,6 +78,11 @@ export default async function AnalyticsPage({
   return (
     <>
       <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Analytics</h1>
+      <p className="mb-6">
+        <Link href="/app/analytics/business" className="text-accent underline underline-offset-4">
+          Business analytics: retention, client lifetime and why clients leave
+        </Link>
+      </p>
       <form method="get" className="mb-6 flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
           <label htmlFor="from" className="text-sm font-medium">

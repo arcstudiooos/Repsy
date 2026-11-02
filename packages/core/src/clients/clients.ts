@@ -7,6 +7,7 @@ import { summarizeInvites, type InviteStatus } from '../invites/invites';
 import { decodeCursor, encodeCursor, PAGE_SIZE } from '../pagination';
 import { canonicalTimezone } from '../timezone';
 import { isUuid } from '../uuid';
+import { CHURN_REASONS } from './churn';
 import { closePauseOnArchive, toPauseView, type PauseView } from './pause';
 
 export type ClientStatus = 'invited' | 'active' | 'paused' | 'archived';
@@ -349,6 +350,8 @@ export async function updateClient(
     goals?: string | null;
     status?: ClientStatus;
     startDate?: string | null;
+    /** With `status: 'archived'` (PRD I7). */
+    churnReason?: string | null;
   },
 ): Promise<ClientView> {
   assertCan(actor, 'client:update');
@@ -358,6 +361,7 @@ export async function updateClient(
     goals?: string | null;
     status?: ClientStatus;
     startDate?: Date | null;
+    churnReason?: string | null;
   } = {};
   if (patch.name !== undefined) data.name = cleanName(patch.name);
   if (patch.goals !== undefined) data.goals = cleanGoals(patch.goals);
@@ -403,6 +407,12 @@ export async function updateClient(
       await assertUnderLimit(tx, org.activeClientLimit);
     }
     data.status = next;
+    if (next === 'archived' && current.status !== 'archived' && patch.churnReason) {
+      if (!(CHURN_REASONS as readonly string[]).includes(patch.churnReason)) {
+        throw invalid('churnReason', 'Pick a reason.');
+      }
+      data.churnReason = patch.churnReason;
+    }
   }
   // The client row first, then the pause row: the same lock order as the pause operations.
   const row = await tx.client.update({ where: { id }, data });

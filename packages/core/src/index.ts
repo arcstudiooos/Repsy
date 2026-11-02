@@ -894,3 +894,5 @@ export {
   type ChallengeSummary,
   type LeaderboardEntry,
 } from './challenges/challenges';
+export { getBusinessAnalytics, type BusinessAnalytics, type Cohort } from './analytics/business';
+export { CHURN_LABEL, CHURN_REASONS, type ChurnReason } from './clients/churn';

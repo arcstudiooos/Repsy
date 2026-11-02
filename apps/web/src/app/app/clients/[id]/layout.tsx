@@ -6,6 +6,7 @@ import { StatusBadge } from '../StatusBadge';
 import { ClientTabs } from './ClientTabs';
 import { ContextCard } from './ContextCard';
 import { loadClient } from './data';
+import { EndCoaching } from './EndCoaching';
 import { PauseControls } from './PauseControls';
 import { CoachSelect } from './CoachSelect';
 import { StageSelect } from './StageSelect';
@@ -19,7 +20,7 @@ export default async function ClientLayout({
 }) {
   const { id } = await params;
   const client = await loadClient(id);
-  const { context, coaches, canTransfer } = await withServerTenant(async (tx, actor) => ({
+  const { context, coaches, canTransfer, canEdit } = await withServerTenant(async (tx, actor) => ({
     context: await getClientContext(tx, actor, client.id),
     // PRD A11: the team's coaches, to move the client to another.
     coaches: (
@@ -31,6 +32,7 @@ export default async function ClientLayout({
     ).map((m) => ({ userId: m.userId, name: m.user.name })),
     canTransfer:
       isManager(actor.role) || (actor.role === 'coach' && actor.userId === client.coachUserId),
+    canEdit: (TRAINER_ROLES as readonly string[]).includes(actor.role),
   }));
   return (
     <>
@@ -48,8 +50,9 @@ export default async function ClientLayout({
           />
         )}
       </div>
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap items-start gap-3">
         <PauseControls client={client} />
+        {canEdit && <EndCoaching client={client} />}
       </div>
       <div className="mb-4">
         <ContextCard context={context} />

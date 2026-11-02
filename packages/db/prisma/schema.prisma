@@ -437,6 +437,10 @@ model Client {
   /// PRD F4: 1, 2 or 4 (CHECK in migration 000057).
   checkinEveryWeeks Int @default(1) @map("checkin_every_weeks") @db.SmallInt
   checkinTemplateId String?   @map("checkin_template_id") @db.Uuid
+  /// PRD I7: set by a trigger when the status becomes archived; cleared on restore.
+  archivedAt     DateTime?    @map("archived_at") @db.Timestamptz(3)
+  /// PRD I7: why coaching ended (goal_reached, cost, time, results, moved_on, health, other).
+  churnReason    String?      @map("churn_reason")
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 

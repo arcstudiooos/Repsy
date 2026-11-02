@@ -407,7 +407,7 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
 ## D-012 — R3 rulings delegated to the builder (2026-11-01)
 
 **Status:** Accepted, under the same delegation as D-011; each can be revisited.
-**PRD refs:** A10-A13, B14-B16, B20, C12, C17, C20, E5, E10, G4, G8, G9, H5, H7, H8, H9, I4, I9, J1-J3, J5, J7-J9, L7 (more added as R3 is built).
+**PRD refs:** A10-A13, B14-B16, B20, C12, C17, C20, E5, E10, G4, G8, G9, H5, H7, H8, H9, I7, I4, I9, J1-J3, J5, J7-J9, L7 (more added as R3 is built).
 
 1. **Lifecycle stage (B20)** stores only the stages a coach chooses (Onboarding, Active, At renewal). Paused and
    Alumni are read from the client's status, so a stage can never contradict a pause or archiving (D-003). The first
@@ -490,3 +490,10 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
     initial. A client who is off the leaderboard still sees their own score, unranked; coaches see everyone with
     full names. A challenge can be limited to a group (H7). Joining closes when it ends; scores are computed when
     read, so late logs within the dates still count.
+20. **Business analytics (I7)** treat accepting the invite as the start and ending coaching (archiving) as the end.
+    A trigger stamps `archived_at` whenever the status becomes archived and clears it on restore, so every path
+    agrees. The reason for leaving is optional and comes from a short fixed list; there is no free text, so
+    nothing personal is collected for a statistic (D-007). "End coaching" in the client header is the first UI
+    for archiving; it was only reachable through the API before. Retention for a cohort is shown only once its
+    1, 3 or 6 months have passed. Revenue, refunds and average client value come with payments (K9) and will join
+    this page then.
