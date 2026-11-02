@@ -497,3 +497,85 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
     for archiving; it was only reachable through the API before. Retention for a cohort is shown only once its
     1, 3 or 6 months have passed. Revenue, refunds and average client value come with payments (K9) and will join
     this page then.
+
+## D-013 — R3 completion rulings delegated to the builder (2026-11-02)
+
+**Status:** Accepted, under the same delegation as D-011 and D-012 ("complete R3 remaining features"); each can be revisited.
+**PRD refs:** K1-K11, K15, H15, J4, J6, I10-I12, I14, L4, M12. Plan: `docs/superpowers/plans/2026-11-02-r3-remaining.md`.
+
+1. **Providers behind ports, fakes until accounts exist.** Payments (`PaymentsPort`), calendar sync (`CalendarSyncPort`),
+   AI (`AiPort`) and branded sending (the email adapter) each have a deterministic fake used in development and tests.
+   The real adapters (Stripe Connect, Razorpay, Google Calendar, Microsoft Graph, Anthropic, Resend domains) call the
+   providers' REST APIs with `fetch`, add no SDK, and switch on only when their environment variables are set
+   (`.env.example`). They are tested against recorded request and webhook shapes, never live accounts; the founder
+   creates the accounts (D-010 #5). Provider tokens that must be stored (Razorpay, calendar OAuth) are encrypted at
+   rest with `PROVIDER_TOKEN_KEY` (AES-256-GCM).
+2. **Money (K3).** Amounts are integer minor units; a workspace has one ISO 4217 currency, set once. A package is
+   one-off, recurring (every N weeks or months) or a payment plan (N instalments), with an optional free trial. Prices
+   and coupons are computed by Repsy and sent to the provider as inline amounts, so a package edit never rewrites a
+   past purchase (it applies to new purchases).
+3. **Provider events are the source of truth for card payments.** Every webhook is verified (Stripe `Stripe-Signature`
+   HMAC with a 5-minute tolerance, Razorpay `X-Razorpay-Signature` HMAC) and stored once by its provider event id
+   before it is applied; a replay is a no-op. A webhook carries no workspace id that Repsy trusts: the connected
+   account resolves the workspace through `app_org_by_payment_account` (SECURITY DEFINER, like the public slug), and
+   the event is applied in that workspace's tenant scope.
+4. **On purchase (K3, K4).** A purchase creates the client (or links the existing client with that email in the
+   workspace) and sends the invite unless the client is already active; adds the package's tag; and emits
+   `package_purchased` (J4). A package's template is never assigned silently: when the client is active, a "Ready to
+   assign" review item asks the coach to confirm readiness (D-007 #6) and assigns from there.
+5. **Coupons (K5)** take a percentage (1-100) or a fixed amount, an optional expiry and use cap, and discount the first
+   charge only (the whole price of a one-off). A use is counted when the payment succeeds, under a row lock, so the
+   cap holds under concurrent checkouts; an abandoned checkout never uses one up.
+6. **Receipts and tax (K6).** Each successful payment gets a workspace receipt number (`R-000001`, gap-free per
+   workspace under a lock). The receipt shows the workspace's branding, its tax id (for example a GSTIN) and the tax
+   the provider charged: Stripe Tax when the workspace turns it on, or the workspace's GST rate for Razorpay, split
+   into CGST and SGST or shown as IGST by the buyer's state. Receipts are emailed as a link, never as an attachment.
+7. **Failed payments (K7)** leave retries to the provider (Stripe Smart Retries, Razorpay subscription retries). A
+   failure marks the purchase `past_due`, emails the client a link to their billing page, and opens a "Payment
+   failed" review item. After the workspace's grace period (0-30 days, default 7) the portal shows a payment gate,
+   like agreements (D-012 #5), until a payment succeeds or the coach lifts it. Sessions, pauses and history are never
+   changed (D-003).
+8. **Self-service (K8).** `/portal/billing` shows the plan, the next charge, receipts, an "Update card" link (the
+   provider's hosted page) and one-click cancel, which ends a subscription at the period end and shows that date at
+   once. A coach can cancel too, now or at the period end, and refund a payment.
+9. **Revenue (K9)** joins `/app/analytics/business`: MRR (weekly prices × 52 / 12; plans count their instalment
+   while it runs), active subscriptions, subscription churn over the last 30 days, refunds and average client value
+   (net revenue over paying clients), with a CSV. Manual payments count. Figures are per workspace currency.
+10. **Manual payments (K15)** record cash, bank transfer or other against a package for a client: a purchase with
+    provider `manual`, with the same receipts, revenue and journeys. They can be voided (never edited) with a reason.
+11. **Scheduling (K10, H15).** A session type has a kind (call, check-in call, in person), length, buffers before and
+    after, minimum notice, how far ahead it can be booked, an optional call link (https only, H15) or location, and
+    whether it uses a credit. Availability is weekly hours in the coach's time zone plus time off; slots are offered
+    in the client's time zone (DST-safe, as D-010 #1). A booking locks the coach's membership row, so two bookings
+    can never overlap the same coach's time including buffers. Clients cancel up to the session type's cancel
+    window; coaches any time. A reminder email goes 24 hours before (H13 opt-ins and daily cap apply). Bookings join
+    the private ICS feed (D-012 #6). Two-way Google and Outlook sync pushes bookings as events and reads busy times
+    to hide clashing slots; it never imports event details, only busy intervals.
+12. **Session packs (K11)** come from packages with session credits. A booking of a credit-using type takes one
+    credit from the oldest pack with credits left (expired packs skipped) under a row lock; a cancellation inside the
+    window returns it, a late cancellation or no-show keeps it used. The client sees the balance.
+13. **Journeys (J4, J6).** Sequences gain triggers `package_purchased`, `package_renewal_due` and `package_ended`,
+    each optionally narrowed to one package. A daily sweep emits `package_renewal_due` the workspace's renewal
+    notice (1-30 days, default 7) before a recurring purchase renews or a plan or fixed-term package ends, emails the
+    client once per period, and opens a coach follow-up review item; `package_ended` fires when access ends.
+14. **AI drafting (I10-I12, I14).** Off by default; the owner turns it on for the workspace. Only trainers (D-012 #7)
+    use it, only by asking, and the result is always a draft the coach saves, labelled "Drafted with AI". Sent to the
+    provider: pasted program text with emails, phone numbers and URLs removed (I10); a template's structure and the
+    library's exercise names (I11); two check-ins' questions and answers (I12). Never a name, email or other
+    identifier. Output naming medical, injury, medication or supplement topics is removed line by line with a note
+    saying so. Drafts are parsed by the C14 importer or validated against the source answers before they are shown;
+    I12 highlights link every point to its source answer and are not stored. Each workspace has a daily cap (50);
+    each request is audited without content. The Anthropic API does not train on API data; the adapter sends no
+    workspace or user identifiers.
+15. **Custom domains (L4).** A workspace adds a hostname, proves it with a DNS TXT record (`_repsy.<host>`) that a
+    worker job checks, then points a CNAME at the app. A verified domain serves that workspace's public page and
+    storefront only; sign-in, the portal and every API stay on the main domain, so cookies, CSRF origins and OAuth
+    callbacks are unchanged. Branded sending: the workspace's domain is registered with the email provider, and once
+    its DNS records verify, emails to that workspace's clients come from `name@domain`; until then they use the
+    default address.
+16. **Access after a lapse (M12).** A workspace lapses when a platform admin marks it lapsed (paid pilots are invoiced
+    outside the app, D-008 #12) or its trial ends without conversion. From then on every write is refused
+    (`WORKSPACE_LAPSED`) except exports, deletion requests, billing cancellation and signing out; the worker stops
+    issuing check-ins, automations, reminders and charges for it. Clients keep read-only access and export for 90
+    days, staff for 180 days; after that only an export already prepared can be downloaded. Restoring the workspace
+    lifts it at once.
