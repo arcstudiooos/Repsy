@@ -3,6 +3,9 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import { Toaster } from '@/components/ui/toast';
 import './globals.css';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 const geistSans = Geist({
   variable: '--font-geist-sans',
   subsets: ['latin'],

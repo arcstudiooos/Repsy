@@ -8,6 +8,9 @@ import { extraTargets, repsText } from '@/lib/target-text';
 import { blockLayout } from '@kinetic/core/workout-blocks';
 import { sectionStart } from '@kinetic/core/workout-sections';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = { title: 'Program version | Kinetic' };
 
 /** One target set as read-only text, e.g. "5 reps · 60 kg · RPE 8 · Rest 90 s". */

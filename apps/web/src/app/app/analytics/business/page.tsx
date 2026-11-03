@@ -5,6 +5,9 @@ import { RevenueSection } from './RevenueSection';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = { title: 'Business analytics | Kinetic' };
 
 const monthLabel = (m: string) =>

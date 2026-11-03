@@ -243,18 +243,17 @@ export async function getSchedule(
 ): Promise<ScheduleView> {
   assertCan(actor, 'schedule:read');
   const coach = coachUserId && isUuid(coachUserId) ? coachUserId : actor.userId;
-  const [windows, timeOff, org] = await Promise.all([
-    tx.coachAvailability.findMany({
-      where: { coachUserId: coach },
-      orderBy: [{ weekday: 'asc' }, { startTime: 'asc' }],
-    }),
-    tx.coachTimeOff.findMany({
-      where: { coachUserId: coach, endsAt: { gt: now } },
-      orderBy: { startsAt: 'asc' },
-      take: 100,
-    }),
-    tx.organization.findFirstOrThrow({ select: { timezone: true } }),
-  ]);
+  // One after another: a transaction is one connection, and pg queues overlapping queries on it.
+  const windows = await tx.coachAvailability.findMany({
+    where: { coachUserId: coach },
+    orderBy: [{ weekday: 'asc' }, { startTime: 'asc' }],
+  });
+  const timeOff = await tx.coachTimeOff.findMany({
+    where: { coachUserId: coach, endsAt: { gt: now } },
+    orderBy: { startsAt: 'asc' },
+    take: 100,
+  });
+  const org = await tx.organization.findFirstOrThrow({ select: { timezone: true } });
   return {
     coachUserId: coach,
     timezone: windows[0]?.timezone ?? org.timezone,

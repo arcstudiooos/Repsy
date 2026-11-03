@@ -7,6 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { withPlatformAdmin } from '@/server/platformAdmin';
 import { getServerSession } from '@/server/serverActor';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = { title: 'Support | Kinetic' };
 
 /** One client's data for support, only with an active grant (each view is audited). */

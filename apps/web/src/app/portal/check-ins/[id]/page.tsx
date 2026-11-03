@@ -7,6 +7,9 @@ import { WeekSummary } from '@/components/checkins/WeekSummary';
 import { formatDate } from '@/app/app/clients/StatusBadge';
 import { withPortalTenant } from '@/server/serverActor';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = { title: 'Check-in | Kinetic' };
 
 export default async function PortalCheckin({ params }: { params: Promise<{ id: string }> }) {

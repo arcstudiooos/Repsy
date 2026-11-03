@@ -904,21 +904,20 @@ export async function listCheckinsAwaitingReview(
     reviewedAt: null,
     client: { is: { status: { not: 'archived' as const } } },
   };
-  const [total, rows] = await Promise.all([
-    tx.checkin.count({ where }),
-    tx.checkin.findMany({
-      where,
-      orderBy: [{ submittedAt: 'asc' }, { id: 'asc' }],
-      take: Math.min(Math.max(opts.limit ?? 10, 1), 50),
-      select: {
-        id: true,
-        clientId: true,
-        periodLocalDate: true,
-        submittedAt: true,
-        client: { select: { name: true } },
-      },
-    }),
-  ]);
+  // Sequential: a transaction is one connection (pg deprecates overlapping queries on it).
+  const total = await tx.checkin.count({ where });
+  const rows = await tx.checkin.findMany({
+    where,
+    orderBy: [{ submittedAt: 'asc' }, { id: 'asc' }],
+    take: Math.min(Math.max(opts.limit ?? 10, 1), 50),
+    select: {
+      id: true,
+      clientId: true,
+      periodLocalDate: true,
+      submittedAt: true,
+      client: { select: { name: true } },
+    },
+  });
   return {
     total,
     items: rows.map((r) => ({

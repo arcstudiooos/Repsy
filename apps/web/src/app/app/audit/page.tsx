@@ -6,6 +6,9 @@ import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { withServerTenant } from '@/server/serverActor';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = { title: 'Audit log | Kinetic' };
 
 const CATEGORY_LABEL: Record<AuditCategory, string> = {

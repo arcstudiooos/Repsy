@@ -7,6 +7,9 @@ import { getSessionUser } from '@/lib/auth';
 import { ONBOARDING_PATH } from '@/lib/membership';
 import { loadMemberships, resolveActor } from '@/server/actor';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 /**
  * Role-based landing. Signed out -> /login. Otherwise the active org (signed
  * cookie, else the only membership) decides: owner/coach -> /app, client ->

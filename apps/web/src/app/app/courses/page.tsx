@@ -5,6 +5,9 @@ import { EmptyState } from '@/components/states/EmptyState';
 import { buttonVariants } from '@/components/ui/button';
 import { withServerTenant } from '@/server/serverActor';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = { title: 'Courses | Kinetic' };
 
 /** PRD G4: lesson courses that unlock one lesson a day or a week. */

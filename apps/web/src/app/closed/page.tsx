@@ -8,6 +8,9 @@ import { DataExportSection } from '@/components/settings/DataExportSection';
 import { LoadingState } from '@/components/states/LoadingState';
 import { getServerActor } from '@/server/serverActor';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = { title: 'Workspace closed | Kinetic' };
 
 /**

@@ -12,6 +12,9 @@ import { loadClient } from '../data';
 import { AssignDialog } from './AssignDialog';
 import { PhaseQueue } from './PhaseQueue';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = { title: 'Program | Kinetic' };
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;

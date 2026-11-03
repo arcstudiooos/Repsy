@@ -16,6 +16,9 @@ import { getSessionUser } from '@/lib/auth';
 import { maskEmail } from '@/lib/mask-email';
 import { AcceptForm } from './AcceptForm';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = {
   title: 'Join your coach | Kinetic',
   // The URL carries a secret: never let it leak through referrers or indexes.

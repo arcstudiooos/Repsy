@@ -6,6 +6,9 @@ import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { withPortalTenant } from '@/server/serverActor';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = { title: 'Nutrition | Kinetic' };
 
 /** The client's own nutrition targets and daily totals (PRD G6/G7), and a way to their meal plan (G8). */

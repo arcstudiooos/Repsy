@@ -4,6 +4,9 @@ import { DomainError, getReceipt } from '@kinetic/core';
 import { Receipt } from '@/components/billing/Receipt';
 import { withPortalTenant } from '@/server/serverActor';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = { title: 'Receipt | Kinetic' };
 
 /** PRD K6: the client's own receipt (another client's id is not found). */

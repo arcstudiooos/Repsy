@@ -7,6 +7,9 @@ import { withServerTenant } from '@/server/serverActor';
 import { ArchiveCourse, EndEnrollment, EnrollClient } from '../CourseActions';
 import { CourseEditor } from '../CourseEditor';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = { title: 'Course | Kinetic' };
 
 const day = (d: string) =>

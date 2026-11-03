@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 import { AuthShell } from '@/components/auth-ui';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = {
   title: 'Thank you | Kinetic',
   referrer: 'no-referrer',

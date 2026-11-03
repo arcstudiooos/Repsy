@@ -2,6 +2,9 @@ import type { Metadata } from 'next';
 import { ResendVerification } from './ResendVerification';
 import { AuthShell } from '@/components/auth-ui';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = { title: 'Verify your email | Kinetic' };
 
 export default function VerifyEmailPage() {

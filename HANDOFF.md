@@ -135,12 +135,7 @@ L8, L9, L10, M11, M14, M15.
 - **Fakes:** development and E2E take payments, sync a calendar and draft with AI through deterministic fakes
   (`FAKE_PAYMENTS`, `FAKE_CALENDAR`, `FAKE_AI` set to `on`; never in production). The test checkout is at
   `/dev/checkout/<ref>`.
-- **Dev servers** log "uncached data during prerendering" warnings on dynamic pages; they are expected and
-  `next build` passes.
-
-## 7. Where to look first
-
-1. `README.md`: setup and one paragraph per feature.
-2. `docs/decisions.md`: why things are the way they are (D-001 onwards).
-3. `docs/competitive/complete-platform-prd.md`: the full feature list with release tags.
-4. `docs/architecture/overview.md` and `docs/runbook.md`: the system and how to operate it.
+- **Dev servers:** every server page and layout sets `export const instant = false` (Next 16's opt-out from
+  instant-navigation validation, as its cache-components guide recommends for apps that read the session per
+  request), so the dev overlay doesn't flag them. Remove it from a segment once that segment streams its session
+  read behind `<Suspense>` or caches it. `next build` passes either way.

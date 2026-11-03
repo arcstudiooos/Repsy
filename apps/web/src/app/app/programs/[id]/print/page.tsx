@@ -10,6 +10,9 @@ import { withServerTenant } from '@/server/serverActor';
 import { PrintButton } from './PrintButton';
 import { extraTargets, repsText } from '@/lib/target-text';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = { title: 'Print program | Kinetic' };
 
 function describeSet(s: SetTarget, units: Units): string {

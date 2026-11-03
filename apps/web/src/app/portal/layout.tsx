@@ -14,6 +14,9 @@ import { lapseState, paymentGateFor, pendingAgreements, recordPortalVisit } from
 import { PaymentGateNotice } from '@/portal/billing/PaymentGateNotice';
 import { AgreementGate } from '@/portal/AgreementGate';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 /**
  * Portal gate (behind src/proxy.ts, which checks session + verified email):
  * the active org must give this user a `client` role AND a linked Client row.

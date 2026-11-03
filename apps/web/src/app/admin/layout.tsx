@@ -3,6 +3,9 @@ import { Suspense, type ReactNode } from 'react';
 import { LoadingState } from '@/components/states/LoadingState';
 import { getServerSession } from '@/server/serverActor';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 async function AdminGate({ children }: { children: ReactNode }) {
   const { user } = await getServerSession();
   // Invisible to everyone but platform admins (src/proxy.ts answers 404 too).

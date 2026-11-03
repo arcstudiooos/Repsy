@@ -8,6 +8,9 @@ import { WorkoutLogger } from '@/components/workout/WorkoutLogger';
 import { withServerTenant } from '@/server/serverActor';
 import { loadClient } from '../../data';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = { title: 'Log workout | Kinetic' };
 
 /** D-008 #7: a coach logs a workout on the client's behalf. The session must belong to the client in the URL. */

@@ -8,6 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';
 import { loadClient } from '../data';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = { title: 'Nutrition | Kinetic' };
 
 /** A client's nutrition targets and daily totals (PRD G6/G7), and their meal plan (G8). */

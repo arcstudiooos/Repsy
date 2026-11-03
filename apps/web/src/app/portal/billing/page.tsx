@@ -7,6 +7,9 @@ import { PROVIDER_LABEL, PURCHASE_STATUS_LABEL, formatDay, priceLabel } from '@/
 import { PlanActions } from '@/portal/billing/PlanActions';
 import { withPortalTenant } from '@/server/serverActor';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = { title: 'Billing | Kinetic' };
 
 const LIVE = ['trialing', 'active', 'past_due', 'canceled'];

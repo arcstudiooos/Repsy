@@ -7,6 +7,9 @@ import { WorkoutLogger } from '@/components/workout/WorkoutLogger';
 import { editWindowOpen, formatLocalDateTime } from '@/lib/session-format';
 import { withPortalTenant } from '@/server/serverActor';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = { title: 'Workout | Kinetic' };
 
 // Access is enforced by src/proxy.ts and the portal layout's client gate; core scopes the session to this client.

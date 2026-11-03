@@ -9,6 +9,9 @@ import { getSessionUser } from '@/lib/auth';
 import { loadMemberships } from '@/server/actor';
 import { OrgChoices } from './OrgChoices';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = { title: 'Choose workspace | Kinetic' };
 
 /** Lists the signed-in user's workspaces; choosing one POSTs to /api/v1/org/switch. */

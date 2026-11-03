@@ -3,6 +3,9 @@ import Link from 'next/link';
 import { SignOutButton } from '@/components/nav/SignOutButton';
 import { Card } from '@/components/ui/card';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = { title: 'More | Kinetic' };
 
 const links = [

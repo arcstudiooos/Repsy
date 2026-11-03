@@ -4,6 +4,9 @@ import { MealPlanDisplay } from '@/components/nutrition/MealPlanDisplay';
 import { EmptyState } from '@/components/states/EmptyState';
 import { withPortalTenant } from '@/server/serverActor';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = { title: 'Meal plan | Kinetic' };
 
 /** PRD G8: the client's meal plan, its recipes and a shopping list. */

@@ -11,6 +11,9 @@ import { PauseControls } from './PauseControls';
 import { CoachSelect } from './CoachSelect';
 import { StageSelect } from './StageSelect';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export default async function ClientLayout({
   children,
   params,

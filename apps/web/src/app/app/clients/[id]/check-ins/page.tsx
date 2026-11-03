@@ -23,6 +23,9 @@ import { MarkReviewedButton } from './MarkReviewedButton';
 import { CheckinHighlights } from '@/components/ai/CheckinHighlights';
 import { aiPortFromEnv } from '@/server/ai/anthropic';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = { title: 'Check-ins | Kinetic' };
 
 const STATUS = {

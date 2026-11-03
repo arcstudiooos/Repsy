@@ -14,6 +14,9 @@ import { Button } from '@/components/ui/button';
 import { LoadingState } from '@/components/states/LoadingState';
 import { appOrigin, fakePaymentsEnabled, fakeSecret } from '@/server/payments';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = {
   title: 'Test checkout | Kinetic',
   robots: { index: false, follow: false },

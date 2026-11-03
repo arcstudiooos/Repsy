@@ -15,6 +15,9 @@ import { loadClient } from '../data';
 import { PurchaseList } from './PurchaseList';
 import { RecordPayment } from './RecordPayment';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = { title: 'Billing | Kinetic' };
 
 /** PRD K3, K7, K8, K15: what this client bought, what they paid, and recording a cash or bank payment. */

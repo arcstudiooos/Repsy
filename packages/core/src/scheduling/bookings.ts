@@ -52,30 +52,29 @@ async function slotContext(
   to: Date,
   excludeBookingId?: string,
 ): Promise<SlotContext> {
-  const [windows, timeOff, bookings, busy] = await Promise.all([
-    tx.coachAvailability.findMany({
-      where: { coachUserId: type.coachUserId },
-      select: { weekday: true, startTime: true, endTime: true, timezone: true },
-    }),
-    tx.coachTimeOff.findMany({
-      where: { coachUserId: type.coachUserId, startsAt: { lt: to }, endsAt: { gt: from } },
-      select: { startsAt: true, endsAt: true },
-    }),
-    tx.booking.findMany({
-      where: {
-        coachUserId: type.coachUserId,
-        status: 'booked',
-        blockedFrom: { lt: to },
-        blockedTo: { gt: from },
-        ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
-      },
-      select: { blockedFrom: true, blockedTo: true },
-    }),
-    tx.calendarBusy.findMany({
-      where: { userId: type.coachUserId, startsAt: { lt: to }, endsAt: { gt: from } },
-      select: { startsAt: true, endsAt: true },
-    }),
-  ]);
+  // One after another: a transaction is one connection, and pg queues overlapping queries on it.
+  const windows = await tx.coachAvailability.findMany({
+    where: { coachUserId: type.coachUserId },
+    select: { weekday: true, startTime: true, endTime: true, timezone: true },
+  });
+  const timeOff = await tx.coachTimeOff.findMany({
+    where: { coachUserId: type.coachUserId, startsAt: { lt: to }, endsAt: { gt: from } },
+    select: { startsAt: true, endsAt: true },
+  });
+  const bookings = await tx.booking.findMany({
+    where: {
+      coachUserId: type.coachUserId,
+      status: 'booked',
+      blockedFrom: { lt: to },
+      blockedTo: { gt: from },
+      ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
+    },
+    select: { blockedFrom: true, blockedTo: true },
+  });
+  const busy = await tx.calendarBusy.findMany({
+    where: { userId: type.coachUserId, startsAt: { lt: to }, endsAt: { gt: from } },
+    select: { startsAt: true, endsAt: true },
+  });
   return {
     type,
     windows,

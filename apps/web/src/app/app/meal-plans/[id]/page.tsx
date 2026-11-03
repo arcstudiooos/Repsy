@@ -5,6 +5,9 @@ import { withServerTenant } from '@/server/serverActor';
 import { ArchiveButton } from '../ArchiveButton';
 import { MealPlanEditor } from '../MealPlanEditor';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = { title: 'Meal plan | Kinetic' };
 
 export default async function MealPlanPage({ params }: { params: Promise<{ id: string }> }) {

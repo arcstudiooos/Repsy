@@ -3,6 +3,9 @@ import { connection } from 'next/server';
 import { Suspense } from 'react';
 import { readNotices, RELIABILITY_TARGETS } from '@kinetic/core';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = { title: 'Service status | Kinetic' };
 
 const LABEL = { maintenance: 'Maintenance', degraded: 'Degraded', outage: 'Outage' } as const;

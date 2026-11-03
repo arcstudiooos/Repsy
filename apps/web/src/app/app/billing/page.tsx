@@ -18,6 +18,9 @@ import { PackagesSection } from './PackagesSection';
 import { PaymentsTable } from '@/components/billing/PaymentsTable';
 import { SettingsForm } from './SettingsForm';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = { title: 'Billing | Kinetic' };
 
 const DAY = 86_400_000;

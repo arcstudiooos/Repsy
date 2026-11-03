@@ -5,6 +5,9 @@ import { challengeDates, challengeStatus } from '@/components/challenges/Challen
 import { Leaderboard, METRIC_LABEL, Participation } from '@/components/challenges/Challenges';
 import { withPortalTenant } from '@/server/serverActor';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = { title: 'Challenge | Kinetic' };
 
 export default async function PortalChallengePage({ params }: { params: Promise<{ id: string }> }) {

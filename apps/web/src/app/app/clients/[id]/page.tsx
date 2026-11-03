@@ -24,6 +24,9 @@ import { AgreementStatus } from './AgreementStatus';
 import { InviteControls } from './InviteControls';
 import { TagEditor } from './TagEditor';
 
+// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
+export const instant = false;
+
 export const metadata: Metadata = { title: 'Client | Kinetic' };
 
 export default async function ClientOverviewPage({ params }: { params: Promise<{ id: string }> }) {
