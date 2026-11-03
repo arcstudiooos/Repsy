@@ -57,7 +57,8 @@ test.describe('Sprint 1 journey', () => {
     await dialog.getByRole('button', { name: 'Assign program', exact: true }).click();
     await expect(dialog).toBeHidden({ timeout: 30_000 });
 
-    await expect(page.getByText('Journey block')).toBeVisible();
+    // The assignment summary (the phase picker lists the template too, C17).
+    await expect(page.getByRole('definition').filter({ hasText: 'Journey block' })).toBeVisible();
     await expect(page.getByText('2 sessions')).toBeVisible();
     await expect(page.getByText('Mon, Thu')).toBeVisible();
     await expect(page.getByText('Next session')).toBeVisible();
@@ -128,7 +129,7 @@ test.describe('Sprint 1 journey', () => {
     await dialog.getByRole('button', { name: 'Assign program', exact: true }).click();
     await expect(dialog).toBeHidden({ timeout: 30_000 });
     await openProgramTab(page, 'Lee List');
-    await expect(page.getByText('From the list')).toBeVisible();
+    await expect(page.getByRole('definition').filter({ hasText: 'From the list' })).toBeVisible();
     await expect(page.getByText('Tue, Sat')).toBeVisible();
   });
 

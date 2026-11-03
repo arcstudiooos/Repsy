@@ -67,7 +67,11 @@ test.describe('pause and resume (S3-5)', () => {
 
       await page.goto('/app/clients');
       await expect(
-        page.getByRole('row', { name: /Pia Pause/ }).getByText('Paused', { exact: true }),
+        // The status badge (the lifecycle stage below the name can say "Paused" too).
+        page
+          .getByRole('row', { name: /Pia Pause/ })
+          .getByText('Paused', { exact: true })
+          .first(),
       ).toBeVisible();
 
       // The portal: banner with the date, and today's workout moved a week on.
