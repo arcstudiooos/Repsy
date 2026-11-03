@@ -7,6 +7,8 @@ import { newOrg, runAs } from '../sessions/fixtures.test-helpers';
 import {
   addCustomDomain,
   brandedFromFor,
+  DnsNoRecord,
+  removeCustomDomain,
   cleanHostname,
   getCustomDomain,
   publicSlugForHost,
@@ -33,8 +35,11 @@ const ctx = { appHost: 'app.repsy.test' };
 
 class FakeDns implements DnsPort {
   records = new Map<string, string[]>();
+  failing = false;
   txt(name: string) {
-    return Promise.resolve(this.records.get(name) ?? []);
+    if (this.failing) return Promise.reject(new Error('SERVFAIL'));
+    const r = this.records.get(name);
+    return r ? Promise.resolve(r) : Promise.reject(new DnsNoRecord());
   }
 }
 class FakeMail implements MailDomainPort {
@@ -47,6 +52,11 @@ class FakeMail implements MailDomainPort {
   }
   status() {
     return Promise.resolve(this.state);
+  }
+  removed: string[] = [];
+  remove(ref: string) {
+    this.removed.push(ref);
+    return Promise.resolve();
   }
 }
 
@@ -81,25 +91,63 @@ describe('custom domains (L4, D-013 #15)', () => {
     }
   });
 
-  it('one per workspace, unique across workspaces; managers only', async () => {
+  it('one per workspace; an unproven claim never blocks the owner who proves it (review #4); managers only', async () => {
     const a = await workspace();
     const b = await workspace();
     const host = `coach-${n}.example.test`;
-    await runAs(prisma, a.coach, (tx) => addCustomDomain(tx, a.coach, { hostname: host }, ctx));
+    const da = await runAs(prisma, a.coach, (tx) =>
+      addCustomDomain(tx, a.coach, { hostname: host }, ctx),
+    );
     expect(
       await code(
         runAs(prisma, a.coach, (tx) => addCustomDomain(tx, a.coach, { hostname: `x${host}` }, ctx)),
       ),
     ).toBe('CONFLICT');
-    expect(
-      await code(
-        runAs(prisma, b.coach, (tx) => addCustomDomain(tx, b.coach, { hostname: host }, ctx)),
-      ),
-    ).toBe('CONFLICT');
+    // B (say, a squatter) may claim it too; only proving it counts.
+    const db = await runAs(prisma, b.coach, (tx) =>
+      addCustomDomain(tx, b.coach, { hostname: host }, ctx),
+    );
+    expect(db.txtValue).not.toBe(da.txtValue);
+    const dns = new FakeDns();
+    dns.records.set(da.txtName, [da.txtValue]);
+    await sweepCustomDomains(prisma, { dns, mail: null }, new Date());
+    expect(await publicSlugForHost(prisma, host)).toBe(a.slug);
+    expect((await runAs(prisma, b.coach, (tx) => getCustomDomain(tx, b.coach)))?.status).not.toBe(
+      'verified',
+    );
     const coach: ActorContext = { ...b.coach, role: 'coach' };
     expect(await code(runAs(prisma, coach, (tx) => getCustomDomain(tx, coach)))).toBe('FORBIDDEN');
-    // B can't see A's domain.
-    expect(await runAs(prisma, b.coach, (tx) => getCustomDomain(tx, b.coach))).toBeNull();
+  });
+
+  it('a failed lookup changes nothing; three misses in a row demote; removal releases the sending domain', async () => {
+    const a = await workspace();
+    const host = `flaky-${n}.example.test`;
+    const d = await runAs(prisma, a.coach, (tx) =>
+      addCustomDomain(tx, a.coach, { hostname: host }, ctx),
+    );
+    const dns = new FakeDns();
+    const mail = new FakeMail();
+    dns.records.set(d.txtName, [d.txtValue]);
+    let t = Date.now();
+    const sweep = () => sweepCustomDomains(prisma, { dns, mail }, new Date((t += 10 * 60_000)));
+    await sweep();
+    expect(await publicSlugForHost(prisma, host)).toBe(a.slug);
+    dns.failing = true;
+    await sweep();
+    expect(await publicSlugForHost(prisma, host)).toBe(a.slug);
+    dns.failing = false;
+    dns.records.delete(d.txtName);
+    await sweep();
+    await sweep();
+    expect(await publicSlugForHost(prisma, host)).toBe(a.slug);
+    await sweep();
+    // Known but not serving: '' (the proxy redirects it to the app).
+    expect(await publicSlugForHost(prisma, host)).toBe('');
+    await runAs(prisma, a.coach, (tx) => removeCustomDomain(tx, a.coach));
+    expect(await runAs(prisma, a.coach, (tx) => getCustomDomain(tx, a.coach))).toBeNull();
+    await sweep();
+    expect(mail.removed).toEqual([`dom_${host}`]);
+    expect(await publicSlugForHost(prisma, host)).toBeNull();
   });
 
   it('verifies by TXT record, then serves the public page and sets up branded sending', async () => {
@@ -111,9 +159,9 @@ describe('custom domains (L4, D-013 #15)', () => {
     const dns = new FakeDns();
     const mail = new FakeMail();
     const now = new Date();
-    // Not yet proved: not served.
+    // Not yet proved: known, not served (the proxy redirects it to the app).
     await sweepCustomDomains(prisma, { dns, mail }, now);
-    expect(await publicSlugForHost(prisma, host)).toBeNull();
+    expect(await publicSlugForHost(prisma, host)).toBe('');
 
     dns.records.set(d.txtName, ['something else', d.txtValue]);
     const later = new Date(now.getTime() + 10 * 60_000);
@@ -125,18 +173,18 @@ describe('custom domains (L4, D-013 #15)', () => {
     // Not sending from it until the provider verifies.
     expect(await withSystem((tx) => brandedFromFor(tx, a.orgId), prisma)).toBeNull();
     mail.state = 'verified';
-    await sweepCustomDomains(prisma, { dns, mail }, new Date(later.getTime() + 60_000));
+    await sweepCustomDomains(prisma, { dns, mail }, new Date(later.getTime() + 10 * 60_000));
     // The display name can't break out of its quotes.
     expect(await withSystem((tx) => brandedFromFor(tx, a.orgId), prisma)).toBe(
       `"Fit Co x" <hello@${host}>`,
     );
 
-    // A disabled public page is never served, even on a verified domain.
+    // A disabled public page is never served, even on a verified domain (redirected to the app).
     await withSystem(
       (tx) =>
         tx.organization.update({ where: { id: a.orgId }, data: { publicPageEnabled: false } }),
       prisma,
     );
-    expect(await publicSlugForHost(prisma, host)).toBeNull();
+    expect(await publicSlugForHost(prisma, host)).toBe('');
   });
 });

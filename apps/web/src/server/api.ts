@@ -97,10 +97,11 @@ export interface RouteDef<S extends z.ZodType | undefined, R extends boolean> {
    */
   rateLimit?: { capacity: number; refillPerSecond: number };
   /**
-   * PRD M12 (D-013 #16): still allowed when the workspace has lapsed (exports, deletion requests, cancelling a
-   * payment plan). Every other write is refused then, and reads close after the member's read window.
+   * PRD M12 (D-013 #16): `true` is still allowed while a lapsed workspace can be read (requesting an export, a
+   * deletion request, support); `'always'` even after the read window closes (listing and downloading prepared
+   * exports, cancelling a payment plan). Every other write is refused, and reads close after the window.
    */
-  allowWhenLapsed?: boolean;
+  allowWhenLapsed?: boolean | 'always';
   handler(ctx: RouteCtx<InputOf<S>, R>): unknown;
 }
 
@@ -233,7 +234,7 @@ export function createApiHandler(deps: ApiDeps = {}) {
         if (actor) {
           await assertWorkspaceAccess(deps.prisma ?? defaultPrisma, actor, {
             write: !SAFE_METHODS.has(request.method),
-            exempt: def.allowWhenLapsed === true,
+            exempt: def.allowWhenLapsed,
           });
         }
 

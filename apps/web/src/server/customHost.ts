@@ -5,7 +5,8 @@ import { prisma as defaultPrisma, type PrismaClient } from '@kinetic/db';
 /**
  * PRD L4 (D-013 #15): a verified custom domain serves only its workspace's public page and storefront. Every other
  * path redirects to the main domain, so sign-in, the portal, cookies, CSRF origins and OAuth callbacks never run on
- * a custom host. A host that isn't a verified custom domain is left alone (it behaves exactly as before).
+ * a custom host; a custom domain that isn't serving redirects everything. A host that is no custom domain at all
+ * (the platform's own hostname, health checks) is left alone: it behaves exactly as before.
  */
 const TTL_MS = 60_000;
 const cache = new Map<string, { slug: string | null; until: number }>();
@@ -19,7 +20,8 @@ async function slugFor(host: string, now: number, prisma: PrismaClient): Promise
   } catch {
     slug = null;
   }
-  if (cache.size > 1000) cache.clear();
+  // Evict the oldest entry, never the whole cache (final review #10).
+  if (cache.size >= 1000) cache.delete(cache.keys().next().value!);
   cache.set(host, { slug, until: now + TTL_MS });
   return slug;
 }
@@ -43,9 +45,13 @@ export async function customHostResponse(
   }
   if (!host || host === appHost || host === 'localhost' || /^[\d.]+$/.test(host)) return null;
   const slug = await slugFor(host, Date.now(), prisma);
-  if (!slug) return null;
+  // Not a custom domain at all: behave as before.
+  if (slug === null) return null;
   const { pathname, search } = request.nextUrl;
   if (isAsset(pathname)) return NextResponse.next();
+  // A custom domain that isn't serving (unproven, failed, demoted, or its page is off) never shows the app
+  // there: everything goes to the main domain (final review #3).
+  if (slug === '') return NextResponse.redirect(`${appOrigin()}${pathname}${search}`, 308);
   if (pathname === '/' || pathname === '/thanks') {
     const url = request.nextUrl.clone();
     url.pathname =

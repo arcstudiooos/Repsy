@@ -74,13 +74,17 @@ describe('custom host routing (L4, D-013 #15)', () => {
     expect(asset?.headers.get('x-middleware-next')).toBe('1');
   });
 
-  it('leaves the app host, unverified and unknown hosts alone', async () => {
-    for (const host of [
-      'app.repsy.test',
-      'pending.example.test',
-      'other.example.test',
-      'localhost:3000',
-    ]) {
+  it('sends everything on a known but unverified domain to the main domain (review #3)', async () => {
+    const r = await customHostResponse(
+      req('https://pending.example.test/', 'pending.example.test'),
+      prisma,
+    );
+    expect(r?.status).toBe(308);
+    expect(r?.headers.get('location')).toBe('https://app.repsy.test/');
+  });
+
+  it('leaves the app host and unknown hosts alone', async () => {
+    for (const host of ['app.repsy.test', 'other.example.test', 'localhost:3000']) {
       expect(await customHostResponse(req(`https://${host}/login`, host), prisma)).toBeNull();
     }
   });

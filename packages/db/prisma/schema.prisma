@@ -327,7 +327,7 @@ model Organization {
   calendarConnections     CalendarConnection[]
   calendarBusy            CalendarBusy[]
   aiRequests              AiRequest[]
-  customDomain            CustomDomain?
+  customDomains           CustomDomain[]
   payments                Payment[]
   paymentEvents           PaymentEvent[]
   joinLinks               JoinLink[]
@@ -2949,12 +2949,16 @@ model AiRequest {
 /// PRD L4 (D-013 #15): the workspace's own hostname for its public page, and branded sending from it.
 model CustomDomain {
   id             String    @id @default(uuid()) @db.Uuid
-  organizationId String    @unique @map("organization_id") @db.Uuid
-  hostname       String    @unique
+  /// One live (not removed) domain per workspace: a partial unique index in migration 092.
+  organizationId String    @map("organization_id") @db.Uuid
+  /// Unique once verified: a partial unique index in migration 092.
+  hostname       String
   /// The value expected in the `_repsy.<hostname>` TXT record.
   verifyToken    String    @map("verify_token")
-  /// pending | verified | failed.
+  /// pending | verified | failed | removed (waiting for the worker to release it at the email provider).
   status         String    @default("pending")
+  /// Failed checks in a row; a verified domain is demoted only after several.
+  missedChecks   Int       @default(0) @map("missed_checks")
   verifiedAt     DateTime? @map("verified_at") @db.Timestamptz(3)
   lastCheckedAt  DateTime? @map("last_checked_at") @db.Timestamptz(3)
   /// none | pending | verified | failed: the email provider's view of the domain.
@@ -2969,5 +2973,7 @@ model CustomDomain {
   organization Organization @relation(fields: [organizationId], references: [id])
   creator      User?        @relation(fields: [createdBy], references: [id], onDelete: SetNull)
 
+  @@index([hostname])
+  @@index([organizationId])
   @@map("custom_domains")
 }

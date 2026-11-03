@@ -21,7 +21,10 @@ const invalid = (message: string) =>
   new DomainError('VALIDATION', 'Some fields are invalid.', { hostname: [message] });
 
 export interface DnsPort {
-  /** TXT records at `name` (each record's strings joined); empty when there are none. */
+  /**
+   * TXT records at `name` (each record's strings joined). Throws `DnsNoRecord` when DNS answered that there are
+   * none, and any other error when the lookup itself failed.
+   */
   txt(name: string): Promise<string[]>;
 }
 
@@ -34,6 +37,8 @@ export interface SendingDomainRecord {
 export interface MailDomainPort {
   create(hostname: string): Promise<{ ref: string; records: SendingDomainRecord[] }>;
   status(ref: string): Promise<'pending' | 'verified' | 'failed'>;
+  /** Releases the domain at the provider (a removed custom domain). */
+  remove(ref: string): Promise<void>;
 }
 
 export interface CustomDomainView {
@@ -84,12 +89,14 @@ const toView = (d: {
     : [],
 });
 
+const LIVE = { status: { not: 'removed' } } as const;
+
 export async function getCustomDomain(
   tx: TenantTx,
   actor: ActorContext,
 ): Promise<CustomDomainView | null> {
   assertCan(actor, 'settings:org:update');
-  const d = await tx.customDomain.findFirst();
+  const d = await tx.customDomain.findFirst({ where: LIVE });
   return d ? toView(d) : null;
 }
 
@@ -101,17 +108,18 @@ export async function addCustomDomain(
 ): Promise<CustomDomainView> {
   assertCan(actor, 'settings:org:update');
   const hostname = cleanHostname(input.hostname, ctx.appHost);
-  if (await tx.customDomain.findFirst({ select: { id: true } })) {
+  if (await tx.customDomain.findFirst({ where: LIVE, select: { id: true } })) {
     throw new DomainError('CONFLICT', 'Remove the current domain first.');
   }
-  // Hostnames are unique across workspaces: the index refuses a second claim (without saying whose it is).
+  // Only a verified domain reserves its hostname, so an unproven claim never blocks the real owner (final review
+  // #4): proving it with the TXT record decides. One live domain per workspace (partial unique index).
   const created = await tx.customDomain
     .create({
       data: { hostname, verifyToken: randomBytes(16).toString('hex'), createdBy: actor.userId },
     } as Parameters<typeof tx.customDomain.create>[0])
     .catch((e: unknown) => {
       if ((e as { code?: string }).code === 'P2002') {
-        throw new DomainError('CONFLICT', 'That domain is already connected to a workspace.');
+        throw new DomainError('CONFLICT', 'Remove the current domain first.');
       }
       throw e;
     });
@@ -127,15 +135,29 @@ export async function addCustomDomain(
   return toView(created);
 }
 
+/**
+ * Stops serving and sending at once. A domain registered with the email provider is kept as `removed` until the
+ * worker has released it there, so the next owner of the hostname can register it (final review #4).
+ */
 export async function removeCustomDomain(
   tx: TenantTx,
   actor: ActorContext,
   ctx: { requestId?: string } = {},
 ): Promise<void> {
   assertCan(actor, 'settings:org:update');
-  const d = await tx.customDomain.findFirst({ select: { id: true, hostname: true } });
+  const d = await tx.customDomain.findFirst({
+    where: LIVE,
+    select: { id: true, hostname: true, sendingRef: true },
+  });
   if (!d) return;
-  await tx.customDomain.deleteMany({ where: { id: d.id } });
+  if (d.sendingRef) {
+    await tx.customDomain.updateMany({
+      where: { id: d.id },
+      data: { status: 'removed', sendingStatus: 'none', lastCheckedAt: null },
+    });
+  } else {
+    await tx.customDomain.deleteMany({ where: { id: d.id } });
+  }
   await appendAudit(tx, {
     orgId: actor.orgId,
     actorId: actor.userId,
@@ -150,18 +172,29 @@ export async function removeCustomDomain(
 /** Ask for a check now (the sweep runs every few minutes; this just makes the next one pick it up). */
 export async function recheckCustomDomain(tx: TenantTx, actor: ActorContext): Promise<void> {
   assertCan(actor, 'settings:org:update');
-  await tx.customDomain.updateMany({ data: { lastCheckedAt: null } });
+  await tx.customDomain.updateMany({ where: LIVE, data: { lastCheckedAt: null } });
 }
 
 // ---------------------------------------------------------------- the worker sweep
 
 const CHECK_EVERY_MS = 5 * 60_000;
-/** After this long without the TXT record, the domain shows as failed (it is still checked). */
+/** After this long without the TXT record, an unproven domain shows as failed (it is still checked). */
 const GIVE_UP_MS = 7 * 86_400_000;
+/** A verified domain is demoted only after this many missing TXT answers in a row (final review #3). */
+const MISSES_BEFORE_DEMOTE = 3;
+
+/** DNS answered, and there is no such record (as opposed to a lookup that failed). */
+export class DnsNoRecord extends Error {
+  constructor() {
+    super('No such DNS record');
+    this.name = 'DnsNoRecord';
+  }
+}
 
 /**
- * Checks pending domains' TXT records, registers verified ones with the email provider, and follows that
- * provider's verification. A verified domain whose TXT record later disappears goes back to pending.
+ * Checks domains' TXT records, oldest check first, registers verified ones with the email provider and follows
+ * that provider's verification, and releases removed ones there. A lookup that fails (timeout, SERVFAIL) changes
+ * nothing; a verified domain whose record is missing three times in a row goes back to pending.
  */
 export async function sweepCustomDomains(
   prisma: PrismaClient,
@@ -175,29 +208,59 @@ export async function sweepCustomDomains(
           OR: [
             { lastCheckedAt: null },
             { lastCheckedAt: { lt: new Date(now.getTime() - CHECK_EVERY_MS) } },
-            { sendingStatus: 'pending' },
           ],
         },
+        orderBy: { lastCheckedAt: { sort: 'asc', nulls: 'first' } },
         take: 100,
       }),
     prisma,
   );
   let verified = 0;
   for (const d of due) {
-    let records: string[] = [];
+    const write = (data: Record<string, unknown>) =>
+      withTenant(
+        d.organizationId,
+        (tx) => tx.customDomain.updateMany({ where: { id: d.id }, data }),
+        prisma,
+      );
+    if (d.status === 'removed') {
+      try {
+        if (d.sendingRef && deps.mail) await deps.mail.remove(d.sendingRef);
+        await withTenant(
+          d.organizationId,
+          (tx) => tx.customDomain.deleteMany({ where: { id: d.id } }),
+          prisma,
+        );
+      } catch {
+        await write({ lastCheckedAt: now });
+      }
+      continue;
+    }
+    let records: string[];
     try {
       records = await deps.dns.txt(`_repsy.${d.hostname}`);
-    } catch {
+    } catch (e) {
+      if (!(e instanceof DnsNoRecord)) {
+        // The lookup itself failed: say nothing about the domain, look again next time.
+        await write({ lastCheckedAt: now });
+        continue;
+      }
       records = [];
     }
     const proved = records.some((r) => r.trim() === txtValueOf(d.verifyToken));
     const data: Record<string, unknown> = { lastCheckedAt: now };
-    if (proved && d.status !== 'verified') {
-      data.status = 'verified';
-      data.verifiedAt = now;
-      verified++;
-    } else if (!proved) {
-      data.status = now.getTime() - d.createdAt.getTime() > GIVE_UP_MS ? 'failed' : 'pending';
+    if (proved) {
+      data.missedChecks = 0;
+      if (d.status !== 'verified') {
+        data.status = 'verified';
+        data.verifiedAt = now;
+      }
+    } else {
+      const misses = d.missedChecks + 1;
+      data.missedChecks = misses;
+      if (d.status !== 'verified' || misses >= MISSES_BEFORE_DEMOTE) {
+        data.status = now.getTime() - d.createdAt.getTime() > GIVE_UP_MS ? 'failed' : 'pending';
+      }
     }
     if (proved && deps.mail) {
       try {
@@ -213,18 +276,24 @@ export async function sweepCustomDomains(
         // The provider is down or refused: try again on the next sweep.
       }
     }
-    await withTenant(
-      d.organizationId,
-      (tx) => tx.customDomain.updateMany({ where: { id: d.id }, data }),
-      prisma,
-    );
+    try {
+      await write(data);
+      if (proved && d.status !== 'verified') verified++;
+    } catch (e) {
+      // Another workspace proved this hostname first (partial unique index): this claim stays unproven.
+      if ((e as { code?: string }).code !== 'P2002') throw e;
+      await write({ lastCheckedAt: now, status: 'failed', missedChecks: d.missedChecks });
+    }
   }
   return { verified, checked: due.length };
 }
 
 // ---------------------------------------------------------------- serving and sending
 
-/** The public page slug a verified custom host serves, or null (security definer lookup, slug only). */
+/**
+ * The public page slug a verified custom host serves; `''` for a custom domain that isn't serving (redirect it);
+ * null for a host that is no custom domain (security definer lookup, slug only).
+ */
 export async function publicSlugForHost(
   prisma: PrismaClient,
   host: string,

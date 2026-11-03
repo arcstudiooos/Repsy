@@ -225,13 +225,31 @@ export async function eraseClientData(
   await tx.sequenceRun.deleteMany({ where: inClient });
   // PRD G4: their course enrolments (lesson completions go with them).
   await tx.courseEnrollment.deleteMany({ where: inClient });
-  // PRD K10 (D-013 #11): the client's booked sessions (a used credit stays counted on its kept purchase).
-  await tx.booking.deleteMany({ where: inClient });
+  // PRD K10 (D-013 #11): the client's booked sessions (a used credit stays counted on its kept purchase). One that
+  // was pushed to the coach's calendar carries the client's name there: it stays, emptied and cancelled, until the
+  // calendar worker has deleted that event (final review #7); the rest go now.
+  await tx.booking.updateMany({
+    where: { ...inClient, calendarEventRef: { not: null } },
+    data: {
+      status: 'canceled',
+      title: 'Session',
+      callLink: null,
+      location: null,
+      syncState: 'pending',
+      syncAttempts: 0,
+    },
+  });
+  await tx.booking.deleteMany({ where: { ...inClient, calendarEventRef: null } });
   // PRD K3-K8 (D-013): purchases and payments are financial records the workspace must keep (tax law), so they stay,
   // linked to the anonymized client row; the buyer's name, email and region captured at checkout are cleared.
   await tx.purchase.updateMany({
     where: inClient,
     data: { buyerName: null, buyerEmail: null, buyerRegion: null },
+  });
+  // A coach's free-text note on a payment may name the client (final review #7).
+  await tx.payment.updateMany({
+    where: inClient,
+    data: { note: null },
   });
   const messageIds = (
     await tx.message.findMany({

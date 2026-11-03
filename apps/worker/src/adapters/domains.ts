@@ -1,14 +1,24 @@
 import { resolveTxt } from 'node:dns/promises';
 import { Resend } from 'resend';
-import type { DnsPort, MailDomainPort, SendingDomainRecord } from '@kinetic/core';
+import {
+  DnsNoRecord,
+  type DnsPort,
+  type MailDomainPort,
+  type SendingDomainRecord,
+} from '@kinetic/core';
 
-/** PRD L4: TXT lookups through the system resolver. A missing name is simply no records. */
+/**
+ * PRD L4: TXT lookups through the system resolver. Only "no such name / no such record" means there are none; any
+ * other failure (timeout, SERVFAIL) is passed on, so the sweep changes nothing (final review #3).
+ */
 export const systemDns: DnsPort = {
   async txt(name) {
     try {
       return (await resolveTxt(name)).map((parts) => parts.join(''));
-    } catch {
-      return [];
+    } catch (e) {
+      const code = (e as { code?: string }).code;
+      if (code === 'ENOTFOUND' || code === 'ENODATA') throw new DnsNoRecord();
+      throw e;
     }
   },
 };
@@ -39,5 +49,13 @@ export class ResendMailDomains implements MailDomainPort {
       : data.status === 'failed'
         ? 'failed'
         : 'pending';
+  }
+
+  async remove(ref: string): Promise<void> {
+    const { error } = await this.client.domains.remove(ref);
+    // Already gone is done.
+    if (error && error.name !== 'not_found') {
+      throw new Error(`Resend refused the removal: ${error.name}`);
+    }
   }
 }

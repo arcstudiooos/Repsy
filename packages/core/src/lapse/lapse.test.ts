@@ -40,7 +40,12 @@ describe('lapse rules (M12, D-013 #16)', () => {
     const base = { lapsedAt: null, plan: 'pilot', trialEndsAt: null };
     expect(lapsedSince(base, NOW)).toBeNull();
     expect(lapsedSince({ ...base, plan: 'trial', trialEndsAt: at(1) }, NOW)).toBeNull();
-    expect(lapsedSince({ ...base, plan: 'trial', trialEndsAt: at(-2) }, NOW)).toEqual(at(-2));
+    // An ended trial lapses 14 days after its end (review #1), and warns meanwhile.
+    expect(lapsedSince({ ...base, plan: 'trial', trialEndsAt: at(-2) }, NOW)).toBeNull();
+    expect(lapseState({ ...base, plan: 'trial', trialEndsAt: at(-2) }, NOW).trialLapsesAt).toBe(
+      at(12).toISOString(),
+    );
+    expect(lapsedSince({ ...base, plan: 'trial', trialEndsAt: at(-20) }, NOW)).toEqual(at(-6));
     expect(lapsedSince({ plan: 'trial', trialEndsAt: at(-2), lapsedAt: at(-5) }, NOW)).toEqual(
       at(-5),
     );
@@ -57,6 +62,7 @@ describe('lapse rules (M12, D-013 #16)', () => {
       code(assertWorkspaceAccess(prisma, actor, { write, exempt, now }));
     expect(await gate(w.coach, true, NOW)).toBe('ok');
     await withSystem((tx) => setWorkspaceLapsed(tx, admin, w.orgId, true, NOW), prisma);
+    clearLapseCache();
     expect(await gate(w.coach, true, NOW)).toBe('WORKSPACE_LAPSED');
     expect(await gate(w.client, true, NOW)).toBe('WORKSPACE_LAPSED');
     expect(await gate(w.coach, true, NOW, true)).toBe('ok');
@@ -64,6 +70,17 @@ describe('lapse rules (M12, D-013 #16)', () => {
     expect(await gate(w.client, false, at(91))).toBe('WORKSPACE_LAPSED');
     expect(await gate(w.coach, false, at(179))).toBe('ok');
     expect(await gate(w.coach, false, at(181))).toBe('WORKSPACE_LAPSED');
+    // After the window: an ordinary exemption ends too; prepared exports and cancelling ('always') don't (review #2).
+    expect(
+      await code(
+        assertWorkspaceAccess(prisma, w.client, { write: true, exempt: true, now: at(91) }),
+      ),
+    ).toBe('WORKSPACE_LAPSED');
+    expect(
+      await code(
+        assertWorkspaceAccess(prisma, w.client, { write: false, exempt: 'always', now: at(400) }),
+      ),
+    ).toBe('ok');
     // Only a platform admin can change it.
     expect(
       await code(
@@ -83,6 +100,7 @@ describe('lapse rules (M12, D-013 #16)', () => {
       prisma,
     );
     await withSystem((tx) => setWorkspaceLapsed(tx, admin, w.orgId, false, NOW), prisma);
+    clearLapseCache();
     expect(await gate(w.coach, true, NOW)).toBe('ok');
     const org = await withSystem(
       (tx) =>
@@ -105,11 +123,13 @@ describe('lapse rules (M12, D-013 #16)', () => {
       }),
     );
     await withSystem((tx) => setWorkspaceLapsed(tx, admin, w.orgId, true), prisma);
+    clearLapseCache();
     await runAs(prisma, w.coach, (tx) =>
       emitClientEvent(tx, w.clientId, 'stage_changed', { stage: 'active' }),
     );
     await processClientEvents(prisma);
     await withSystem((tx) => setWorkspaceLapsed(tx, admin, w.orgId, false), prisma);
+    clearLapseCache();
     await processClientEvents(prisma);
     const runs = await withSystem(
       (tx) => tx.sequenceRun.count({ where: { clientId: w.clientId } }),

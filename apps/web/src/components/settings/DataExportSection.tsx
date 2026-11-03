@@ -24,9 +24,12 @@ export function DataExportSection({
   scope,
   initial,
   children,
+  canRequest = true,
 }: {
   scope: 'org' | 'client_self';
   initial: ExportView[];
+  /** PRD M12: false on /closed, where only exports already prepared can be downloaded. */
+  canRequest?: boolean;
   /** Extra actions beside the export (the client's deletion request). */
   children?: React.ReactNode;
 }) {
@@ -73,17 +76,19 @@ export function DataExportSection({
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => void start()}
-            disabled={busy || preparing}
-          >
-            {scope === 'org' ? 'Export organization data' : 'Download my data'}
-          </Button>
-          {children}
-        </div>
+        {canRequest && (
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => void start()}
+              disabled={busy || preparing}
+            >
+              {scope === 'org' ? 'Export organization data' : 'Download my data'}
+            </Button>
+            {children}
+          </div>
+        )}
         {error && (
           <p role="alert" className="text-sm text-danger">
             {error}

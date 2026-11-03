@@ -13,6 +13,7 @@ import {
   postNotice,
   resolveNotice,
   setWorkspaceLapsed,
+  clearLapseCache,
 } from '@kinetic/core';
 import { ApiResult, type RouteCtx, type RouteDef } from '../api';
 import { withPlatformAdmin } from '../platformAdmin';
@@ -160,6 +161,8 @@ export const adminWorkspaceLapseRoute: RouteDef<typeof lapseSchema, false> = {
     await asAdmin(ctx, (tx, admin) =>
       setWorkspaceLapsed(tx, admin, ctx.params.id ?? '', ctx.input.lapsed),
     );
+    // After the commit, so this process never re-caches the old state (final review #8).
+    clearLapseCache(ctx.params.id);
     return new ApiResult(null, { status: 204 });
   },
 };

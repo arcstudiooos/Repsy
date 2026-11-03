@@ -1046,6 +1046,7 @@ export {
   publicSlugForHost,
   brandedFromFor,
   cleanHostname,
+  DnsNoRecord,
   type CustomDomainView,
   type DnsPort,
   type MailDomainPort,
@@ -1054,6 +1055,8 @@ export {
 export {
   CLIENT_READ_DAYS,
   STAFF_READ_DAYS,
+  TRIAL_GRACE_DAYS,
+  trialLapsesAt,
   lapsedSince,
   lapseState,
   activeOrgWhere,

@@ -83,6 +83,23 @@ async function TrialBanner() {
       </div>
     );
   }
+  if (lapse.trialLapsesAt) {
+    return (
+      <div
+        role="status"
+        className="mb-6 rounded-card bg-surface p-4 shadow-card ring-1 ring-warning"
+      >
+        <p className="font-medium">Your free trial has ended</p>
+        <p className="text-sm text-secondary">
+          Your clients and data are kept, but adding new clients needs a plan. Unless you move to
+          one, this workspace becomes read-only on {formatLapseDay(lapse.trialLapsesAt)}.{' '}
+          <Link href="/plan" className="text-accent underline">
+            See the plan
+          </Link>
+        </p>
+      </div>
+    );
+  }
   if (!org.trialEndsAt) return null;
   const left = Math.ceil((org.trialEndsAt.getTime() - Date.now()) / 86_400_000);
   return (

@@ -1,3 +1,4 @@
+import { orgIsLapsed } from '../lapse/lapse';
 import { appendAudit, withSystem, type PrismaClient, type TenantTx } from '@kinetic/db';
 import { isCoachRole, isManager, STAFF_ROLES, type ActorContext, type Role } from '../authz/actor';
 import { DomainError } from '../errors';
@@ -302,6 +303,13 @@ export async function acceptTeamInvite(
       where: { tokenHash: hashInviteToken(token) },
     });
     if (!invite || invite.revokedAt || invite.acceptedAt) throw notFound();
+    // PRD M12: a lapsed workspace takes no one new (final review #6).
+    if (await orgIsLapsed(tx, invite.organizationId, now)) {
+      throw new DomainError(
+        'WORKSPACE_LAPSED',
+        'This workspace is not taking new members right now.',
+      );
+    }
     if (invite.expiresAt <= now)
       throw new DomainError('CONFLICT', 'This invite has expired. Ask for a new one.');
     if (!user.emailVerified || user.email.toLowerCase() !== invite.email.toLowerCase()) {

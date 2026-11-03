@@ -363,8 +363,8 @@ const cancelSchema = z.object({ now: z.boolean().optional() });
 
 /** `POST /api/v1/purchases/:id/cancel` (K8): a client at the period end; a manager now or then. */
 export const purchaseCancelRoute: RouteDef<typeof cancelSchema, true> = {
-  // PRD M12: still allowed after the workspace lapses.
-  allowWhenLapsed: true,
+  // PRD M12: still allowed after a lapse, even once the read window has closed.
+  allowWhenLapsed: 'always',
   input: cancelSchema,
   rateLimit: { capacity: 10, refillPerSecond: 10 / 60 },
   handler: ({ actor, input, params, requestId, tenant }) =>
