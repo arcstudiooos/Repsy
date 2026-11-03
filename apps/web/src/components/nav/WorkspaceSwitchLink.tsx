@@ -16,11 +16,11 @@ export async function WorkspaceSwitchLink({ className }: { className?: string })
     <Link
       href="/select-org"
       className={cn(
-        'flex min-h-11 items-center gap-3 rounded-control px-3 text-base text-secondary transition-colors duration-[var(--k-motion-fast)] hover:bg-canvas hover:text-ink',
+        'flex min-h-9 items-center gap-3 rounded-control px-2.5 text-[0.9375rem] text-secondary transition-colors duration-[var(--k-motion-fast)] hover:bg-surface-muted hover:text-ink',
         className,
       )}
     >
-      <ArrowLeftRight aria-hidden className="size-5" />
+      <ArrowLeftRight aria-hidden className="size-[1.125rem]" />
       Switch workspace
     </Link>
   );

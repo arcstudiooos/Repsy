@@ -29,26 +29,28 @@ export interface NavItem {
   icon: LucideIcon;
   /** Match only the exact path (for index routes like /app). */
   exact?: boolean;
+  /** Sidebar section heading this item sits under (coach desktop only). */
+  group?: string;
 }
 
 /** Coach desktop left nav, in order. Settings is pinned at the bottom (see CoachNav). */
 export const coachDesktopItems: NavItem[] = [
-  { label: 'Overview', href: '/app', icon: LayoutDashboard, exact: true },
-  { label: 'Clients', href: '/app/clients', icon: Users },
-  { label: 'Programs', href: '/app/programs', icon: Dumbbell },
-  { label: 'Review', href: '/app/review', icon: ClipboardCheck },
-  { label: 'Messages', href: '/app/messages', icon: MessageSquare },
-  { label: 'Schedule', href: '/app/schedule', icon: CalendarClock },
-  { label: 'Analytics', href: '/app/analytics', icon: ChartColumn },
-  { label: 'Resources', href: '/app/resources', icon: BookOpen },
-  { label: 'Courses', href: '/app/courses', icon: GraduationCap },
-  { label: 'Assessments', href: '/app/assessments', icon: ScanLine },
-  { label: 'Meal plans', href: '/app/meal-plans', icon: Salad },
-  { label: 'Groups', href: '/app/groups', icon: UsersRound },
-  { label: 'Challenges', href: '/app/challenges', icon: Trophy },
-  { label: 'Leads', href: '/app/leads', icon: Inbox },
-  { label: 'Automations', href: '/app/automations', icon: Workflow },
-  { label: 'Billing', href: '/app/billing', icon: CreditCard },
+  { label: 'Overview', href: '/app', icon: LayoutDashboard, exact: true, group: 'Coaching' },
+  { label: 'Clients', href: '/app/clients', icon: Users, group: 'Coaching' },
+  { label: 'Programs', href: '/app/programs', icon: Dumbbell, group: 'Coaching' },
+  { label: 'Review', href: '/app/review', icon: ClipboardCheck, group: 'Coaching' },
+  { label: 'Messages', href: '/app/messages', icon: MessageSquare, group: 'Coaching' },
+  { label: 'Schedule', href: '/app/schedule', icon: CalendarClock, group: 'Coaching' },
+  { label: 'Analytics', href: '/app/analytics', icon: ChartColumn, group: 'Coaching' },
+  { label: 'Resources', href: '/app/resources', icon: BookOpen, group: 'Content' },
+  { label: 'Courses', href: '/app/courses', icon: GraduationCap, group: 'Content' },
+  { label: 'Assessments', href: '/app/assessments', icon: ScanLine, group: 'Content' },
+  { label: 'Meal plans', href: '/app/meal-plans', icon: Salad, group: 'Content' },
+  { label: 'Groups', href: '/app/groups', icon: UsersRound, group: 'Community' },
+  { label: 'Challenges', href: '/app/challenges', icon: Trophy, group: 'Community' },
+  { label: 'Leads', href: '/app/leads', icon: Inbox, group: 'Business' },
+  { label: 'Automations', href: '/app/automations', icon: Workflow, group: 'Business' },
+  { label: 'Billing', href: '/app/billing', icon: CreditCard, group: 'Business' },
 ];
 export const coachSettingsItem: NavItem = { label: 'Settings', href: '/settings', icon: Settings };
 

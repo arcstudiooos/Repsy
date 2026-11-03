@@ -28,6 +28,13 @@ describe('design tokens', () => {
     expect(contrastRatio(tokens.danger, tokens.surface)).toBeGreaterThanOrEqual(4.5);
   });
 
+  it('the newer state colours stay readable (accent ink on its tint, success, secondary on a well)', () => {
+    expect(contrastRatio(tokens.accentInk, tokens.accentSoft)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(tokens.success, tokens.surface)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(tokens.secondary, tokens.surfaceMuted)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(tokens.ink, tokens.surfaceMuted)).toBeGreaterThanOrEqual(4.5);
+  });
+
   it('tokens.css mirrors tokens.ts', () => {
     const css = readFileSync(
       new URL('../styles/tokens.css', import.meta.url),
@@ -44,6 +51,11 @@ describe('design tokens', () => {
       ['--k-input-border', tokens.inputBorder],
       ['--k-warning', tokens.warning],
       ['--k-danger', tokens.danger],
+      ['--k-surface-muted', tokens.surfaceMuted],
+      ['--k-accent-soft', tokens.accentSoft],
+      ['--k-accent-ink', tokens.accentInk],
+      ['--k-border', tokens.border],
+      ['--k-success', tokens.success],
     ];
     for (const [name, hex] of pairs) expect(css).toContain(`${name}: ${hex.toLowerCase()};`);
   });

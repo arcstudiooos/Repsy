@@ -4,6 +4,11 @@
 @theme inline {
   --color-canvas: var(--k-canvas);
   --color-surface: var(--k-surface);
+  --color-surface-muted: var(--k-surface-muted);
+  --color-accent-soft: var(--k-accent-soft);
+  --color-accent-ink: var(--k-accent-ink);
+  --color-border: var(--k-border);
+  --color-success: var(--k-success);
   --color-ink: var(--k-ink);
   --color-accent: var(--k-accent);
   --color-accent-hover: var(--k-accent-hover);
@@ -16,6 +21,7 @@
   --radius-card: var(--k-radius-card);
   --radius-control: var(--k-radius-control);
   --shadow-card: var(--k-shadow-card);
+  --shadow-raised: var(--k-shadow-raised);
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
@@ -32,6 +38,18 @@
     color: var(--k-ink);
     font-family: var(--font-sans), system-ui, sans-serif;
     font-size: 1rem;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.015em;
+  }
+  /* Numbers that line up in tables and stats. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
   }
   :focus-visible {
     outline: 2px solid var(--k-accent);
