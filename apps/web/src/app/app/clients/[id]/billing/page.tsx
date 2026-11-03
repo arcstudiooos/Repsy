@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { can, getPaymentSettings, listPackages, listPayments, listPurchases } from '@kinetic/core';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';
-import { PaymentsTable } from '../../../billing/PaymentsTable';
+import { PaymentsTable } from '@/components/billing/PaymentsTable';
 import { loadClient } from '../data';
 import { PurchaseList } from './PurchaseList';
 import { RecordPayment } from './RecordPayment';
@@ -30,7 +30,11 @@ export default async function ClientBillingPage({ params }: { params: Promise<{ 
           <CardTitle>Packages</CardTitle>
         </CardHeader>
         <CardContent>
-          <PurchaseList purchases={data.purchases} manager={data.manager} />
+          <PurchaseList
+            purchases={data.purchases}
+            manager={data.manager}
+            recorder={data.recorder}
+          />
         </CardContent>
       </Card>
       {data.recorder && data.currency && client.status !== 'archived' && (

@@ -15,7 +15,7 @@ import { withServerTenant } from '@/server/serverActor';
 import { ConnectCard } from './ConnectCard';
 import { CouponsSection } from './CouponsSection';
 import { PackagesSection } from './PackagesSection';
-import { PaymentsTable } from './PaymentsTable';
+import { PaymentsTable } from '@/components/billing/PaymentsTable';
 import { SettingsForm } from './SettingsForm';
 
 export const metadata: Metadata = { title: 'Billing | Kinetic' };

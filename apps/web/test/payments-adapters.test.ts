@@ -122,6 +122,24 @@ describe('Stripe adapter (K1)', () => {
       return stripe.parseWebhook(body, new Headers({ 'stripe-signature': s }), NOW).events;
     };
     expect(send('invoice.paid', { id: 'in_1', amount_paid: 0, subscription: 'sub_1' })).toEqual([]);
+    // A delayed method completes the session unpaid: nothing activates until the money arrives.
+    const session = { id: 'cs_9', mode: 'payment', client_reference_id: 'p', amount_total: 100 };
+    expect(send('checkout.session.completed', { ...session, payment_status: 'unpaid' })).toEqual(
+      [],
+    );
+    expect(
+      send('checkout.session.async_payment_succeeded', { ...session, payment_status: 'paid' }).map(
+        (e) => e.type,
+      ),
+    ).toEqual(['checkout_completed', 'payment_succeeded']);
+    expect(
+      send('checkout.session.completed', {
+        ...session,
+        mode: 'subscription',
+        subscription: 'sub_9',
+        payment_status: 'no_payment_required',
+      }).map((e) => e.type),
+    ).toEqual(['checkout_completed']);
     expect(
       send('invoice.paid', {
         id: 'in_2',
@@ -228,14 +246,15 @@ describe('Razorpay adapter (K2)', () => {
 
   it('verifies X-Razorpay-Signature and maps link payments, charges, failures and refunds', () => {
     const rzp = new RazorpayPayments(config);
-    const send = (event: string, payload: Record<string, unknown>) => {
-      const body = JSON.stringify({ event, account_id: 'acc_1', created_at: unix, payload });
+    const send = (event: string, payload: Record<string, unknown>, created = unix) => {
+      const body = JSON.stringify({ event, account_id: 'acc_1', created_at: created, payload });
       return rzp.parseWebhook(
         body,
         new Headers({
           'x-razorpay-signature': createHmac('sha256', 'rzp_whsec').update(body).digest('hex'),
           'x-razorpay-event-id': `ev_${event}`,
         }),
+        NOW,
       );
     };
     const paid = send('payment_link.paid', {
@@ -285,5 +304,22 @@ describe('Razorpay adapter (K2)', () => {
     expect(() =>
       rzp.parseWebhook('{}', new Headers({ 'x-razorpay-signature': 'deadbeef' })),
     ).toThrow(WebhookSignatureError);
+
+    // Replays: the id comes from the signed body, not the header; an old body is refused.
+    const halted = { subscription: { entity: { id: 'sub_1', currency: 'INR' } } };
+    expect(send('subscription.halted', halted).events[0]?.eventId).toMatch(/^rzp_[0-9a-f]{64}/);
+    expect(() => send('subscription.halted', halted, unix - 3 * 86400)).toThrow(
+      WebhookSignatureError,
+    );
+    // A mandate alone activates nothing unless a trial comes first.
+    const sub = { id: 'sub_2', notes: { purchase_id: req.purchaseId } };
+    expect(send('subscription.authenticated', { subscription: { entity: sub } }).events).toEqual(
+      [],
+    );
+    expect(
+      send('subscription.authenticated', {
+        subscription: { entity: { ...sub, start_at: unix + 7 * 86400 } },
+      }).events.map((e) => e.type),
+    ).toEqual(['checkout_completed', 'subscription_updated']);
   });
 });

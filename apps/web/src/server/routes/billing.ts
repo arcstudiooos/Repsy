@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import {
+  billingManageUrl,
   cancelPurchase,
   connectPaymentAccount,
   createCoupon,
@@ -8,11 +9,15 @@ import {
   disconnectPaymentAccount,
   getPaymentSettings,
   getReceipt,
+  getRevenue,
+  liftPaymentGate,
   listCoupons,
   listPackages,
   listPayments,
   listPurchases,
+  minorDigits,
   recordManualPayment,
+  revenueCsv,
   refundPayment,
   savePackage,
   setCouponActive,
@@ -368,4 +373,46 @@ export const purchaseCancelRoute: RouteDef<typeof cancelSchema, true> = {
 
 export const receiptGetRoute: RouteDef<undefined, true> = {
   handler: ({ actor, params, tenant }) => tenant((tx) => getReceipt(tx, actor, params.id ?? '')),
+};
+
+/** `POST /api/v1/purchases/:id/manage` (K8): the provider's hosted "update card" page, or null when there is none. */
+export const purchaseManageRoute: RouteDef<undefined, true> = {
+  rateLimit: { capacity: 10, refillPerSecond: 10 / 60 },
+  handler: async ({ actor, params, tenant }) => ({
+    url: await tenant((tx) =>
+      billingManageUrl(tx, actor, params.id ?? '', {
+        ...paymentDeps,
+        returnUrl: `${appOrigin()}${actor.role === 'client' ? '/portal/billing' : '/app/billing'}`,
+      }),
+    ),
+  }),
+};
+
+/** `POST /api/v1/purchases/:id/lift-gate` (K7): lets a past-due client back into the portal for this episode. */
+export const purchaseLiftGateRoute: RouteDef<undefined, true> = {
+  can: 'billing:record',
+  handler: async ({ actor, params, requestId, tenant }) => {
+    await tenant((tx) => liftPaymentGate(tx, actor, params.id ?? '', { requestId }));
+    return new ApiResult(null, { status: 204 });
+  },
+};
+
+const revenueQuery = z.object({ format: z.enum(['json', 'csv']).optional() });
+
+/** `GET /api/v1/billing/revenue[?format=csv]` (K9). */
+export const revenueGetRoute: RouteDef<typeof revenueQuery, true> = {
+  can: 'billing:read',
+  input: revenueQuery,
+  handler: async ({ actor, input, tenant }) => {
+    const r = await tenant((tx) => getRevenue(tx, actor));
+    if (input.format !== 'csv') return r;
+    return new Response(revenueCsv(r, r.currency ? minorDigits(r.currency) : 2), {
+      status: 200,
+      headers: {
+        'content-type': 'text/csv; charset=utf-8',
+        'content-disposition': 'attachment; filename="revenue.csv"',
+        'cache-control': 'no-store',
+      },
+    });
+  },
 };

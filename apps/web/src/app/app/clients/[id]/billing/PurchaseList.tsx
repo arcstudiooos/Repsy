@@ -8,13 +8,15 @@ import { toast } from '@/components/ui/toast';
 import { PROVIDER_LABEL, PURCHASE_STATUS_LABEL, formatDay, priceLabel } from '@/lib/billing-format';
 import { send } from '@/lib/billing-api';
 
-/** A client's purchases, with the manager's cancel controls (K8). */
+/** A client's purchases, with the manager's cancel controls (K8) and lifting a payment gate (K7). */
 export function PurchaseList({
   purchases,
   manager,
+  recorder,
 }: {
   purchases: PurchaseView[];
   manager: boolean;
+  recorder: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -24,6 +26,15 @@ export function PurchaseList({
     setBusy(null);
     if (res.ok) {
       toast.success(now ? 'Ended now' : 'Will end at the period end');
+      router.refresh();
+    } else toast.error(res.message);
+  }
+  async function lift(p: PurchaseView) {
+    setBusy(p.id);
+    const res = await send('POST', `/api/v1/purchases/${p.id}/lift-gate`);
+    setBusy(null);
+    if (res.ok) {
+      toast.success('Portal access restored until the next failed payment');
       router.refresh();
     } else toast.error(res.message);
   }
@@ -51,9 +62,19 @@ export function PurchaseList({
                 {p.installments !== null && ` · ${p.installmentsPaid} of ${p.installments} paid`}
               </p>
             </div>
-            {manager && live && (
+            {(manager || recorder) && live && (
               <div className="flex flex-wrap gap-2">
-                {p.provider !== 'manual' && p.status !== 'canceled' && (
+                {recorder && p.status === 'past_due' && !p.gateLifted && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={busy === p.id}
+                    onClick={() => void lift(p)}
+                  >
+                    Keep portal open
+                  </Button>
+                )}
+                {manager && p.provider !== 'manual' && p.status !== 'canceled' && (
                   <Button
                     variant="secondary"
                     size="sm"
@@ -63,14 +84,16 @@ export function PurchaseList({
                     Cancel at period end
                   </Button>
                 )}
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={busy === p.id}
-                  onClick={() => void cancel(p, true)}
-                >
-                  End now
-                </Button>
+                {manager && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={busy === p.id}
+                    onClick={() => void cancel(p, true)}
+                  >
+                    End now
+                  </Button>
+                )}
               </div>
             )}
           </li>

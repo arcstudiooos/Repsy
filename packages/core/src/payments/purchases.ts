@@ -174,19 +174,26 @@ export async function startCheckout(
       if (org.taxRateBp !== null && org.taxHomeRegion !== null && region === '') {
         throw invalid('region', 'Enter your state or region.');
       }
-      const existing = await tx.client.findFirst({ where: { email }, select: { status: true } });
-      if (!existing || existing.status === 'archived') {
-        const counted = await tx.client.count({
-          where: { status: { in: ['invited', 'active', 'paused'] } },
-        });
-        if (counted >= org.activeClientLimit) {
-          throw new DomainError('CONFLICT', 'This coach is not taking new clients right now.');
-        }
+      // At the client limit the storefront closes for everyone, so the answer never reveals whether an email
+      // is already a client (security review F5).
+      const counted = await tx.client.count({
+        where: { status: { in: ['invited', 'active', 'paused'] } },
+      });
+      if (counted >= org.activeClientLimit) {
+        throw new DomainError('CONFLICT', 'This coach is not taking new clients right now.');
       }
       let coupon: Awaited<ReturnType<typeof findUsableCoupon>> = null;
       if (typeof input.coupon === 'string' && input.coupon.trim() !== '') {
         coupon = await findUsableCoupon(tx, input.coupon, now);
-        if (!coupon) throw invalid('coupon', "That code isn't valid.");
+        // The use is reserved now, atomically against the cap, so a single-use code can't be spent by many
+        // open checkouts at once; an unfinished checkout gives it back when it expires (security review F2).
+        const reserved = coupon
+          ? // Same transaction and connection, so the workspace's RLS still applies to this statement.
+            await (tx as unknown as Pick<SystemTx, '$executeRaw'>)
+              .$executeRaw`UPDATE coupons SET uses = uses + 1
+              WHERE id = ${coupon.id}::uuid AND (max_uses IS NULL OR uses < max_uses)`
+          : 0;
+        if (!coupon || reserved !== 1) throw invalid('coupon', "That code isn't valid.");
       }
       const view = toPackageView(pkg);
       const firstChargeMinor = discounted(view.amountMinor, coupon);
@@ -349,9 +356,14 @@ async function activate(
   const data: Record<string, unknown> = {};
   if (refs.customerRef && !p.customerRef) data.customerRef = refs.customerRef;
   if (refs.subscriptionRef && !p.subscriptionRef) data.subscriptionRef = refs.subscriptionRef;
-  if (p.status !== 'pending') {
+  // An expired checkout that is paid after all still counts: the money arrived (expireStalePurchases).
+  if (p.status !== 'pending' && p.status !== 'expired') {
     if (Object.keys(data).length) await tx.purchase.updateMany({ where: { id: p.id }, data });
     return;
+  }
+  // Expiry gave the coupon's reserved use back; it was paid for after all, so it counts again.
+  if (p.status === 'expired' && p.couponId) {
+    await tx.coupon.updateMany({ where: { id: p.couponId }, data: { uses: { increment: 1 } } });
   }
   const pkg = await tx.package.findFirstOrThrow({
     where: { id: p.packageId },
@@ -376,19 +388,6 @@ async function nextReceiptNo(tx: TenantTx, orgId: string): Promise<number> {
     select: { receiptSeq: true },
   });
   return org.receiptSeq;
-}
-
-/** Counts a coupon's use when its purchase's first payment succeeds, under the coupon row lock (D-013 #5). */
-async function countCouponUse(tx: TenantTx, couponId: string): Promise<void> {
-  await tx.coupon.updateMany({ where: { id: couponId }, data: { uses: { increment: 1 } } });
-  const c = await tx.coupon.findFirst({
-    where: { id: couponId },
-    select: { uses: true, maxUses: true },
-  });
-  // Paid already: a race past the cap is not refused, the coupon is simply closed.
-  if (c && c.maxUses !== null && c.uses >= c.maxUses) {
-    await tx.coupon.updateMany({ where: { id: couponId }, data: { active: false } });
-  }
 }
 
 async function receiptEmail(tx: TenantTx, paymentId: string, clientId: string): Promise<void> {
@@ -472,7 +471,7 @@ async function applyEvent(
     case 'subscription_updated': {
       const p = await purchaseFor(tx, provider, { subscriptionRef: e.subscriptionRef });
       if (!p) return;
-      if (p.status === 'pending' && e.status === 'trialing') {
+      if ((p.status === 'pending' || p.status === 'expired') && e.status === 'trialing') {
         await activate(
           tx,
           orgId,
@@ -521,7 +520,7 @@ async function applyEvent(
     case 'payment_succeeded': {
       const p = await purchaseFor(tx, provider, e);
       if (!p) return;
-      if (p.status === 'pending') {
+      if (p.status === 'pending' || p.status === 'expired') {
         await activate(tx, orgId, p.id, { subscriptionRef: e.subscriptionRef }, now);
       }
       const fresh = await tx.purchase.findFirstOrThrow({ where: { id: p.id } });
@@ -531,8 +530,6 @@ async function applyEvent(
         select: { id: true },
       });
       if (dup) return;
-      const first =
-        (await tx.payment.count({ where: { purchaseId: p.id, status: 'succeeded' } })) === 0;
       const payment = await tx.payment.create({
         data: {
           purchaseId: p.id,
@@ -548,7 +545,6 @@ async function applyEvent(
           paidAt: e.paidAt,
         },
       } as Parameters<typeof tx.payment.create>[0]);
-      if (first && fresh.couponId) await countCouponUse(tx, fresh.couponId);
       const pkg = await tx.package.findFirstOrThrow({
         where: { id: p.packageId },
         select: { kind: true, installments: true },
@@ -1120,7 +1116,9 @@ export async function listPurchases(
     accessEndsAt: r.accessEndsAt?.toISOString() ?? null,
     cancelAtPeriodEnd: r.cancelAtPeriodEnd,
     pastDueSince: r.pastDueSince?.toISOString() ?? null,
-    gateLifted: r.gateLiftedAt !== null,
+    // Lifted for this past-due episode; a later failure starts a new one (K7).
+    gateLifted:
+      r.gateLiftedAt !== null && r.pastDueSince !== null && r.gateLiftedAt >= r.pastDueSince,
     createdAt: r.createdAt.toISOString(),
   }));
 }

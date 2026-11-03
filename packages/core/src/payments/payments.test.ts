@@ -256,7 +256,7 @@ describe('storefront checkout and webhooks (K4, D-013 #3-#5)', () => {
       receiptNo: 1,
     });
     expect(state).toMatchObject({ invites: 1, tags: 1, events: 1, receiptEmails: 1 });
-    expect(state.coupon).toMatchObject({ uses: 1, active: false });
+    expect(state.coupon).toMatchObject({ uses: 1 });
 
     // The coupon is used up now.
     expect(

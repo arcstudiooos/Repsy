@@ -158,8 +158,12 @@ export class FakePayments implements PaymentsPort {
     return Promise.resolve();
   }
 
-  manageUrl(): Promise<string | null> {
-    return Promise.resolve(null);
+  /** No hosted page in development: the "Update card" link just returns to the billing page. */
+  manageUrl(
+    _account: ConnectedAccount,
+    refs: { customerRef: string | null; subscriptionRef: string | null; returnUrl: string },
+  ): Promise<string | null> {
+    return Promise.resolve(refs.subscriptionRef || refs.customerRef ? refs.returnUrl : null);
   }
 
   parseWebhook(rawBody: string, headers: Headers): WebhookBatch {

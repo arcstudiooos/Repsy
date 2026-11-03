@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import { formatMoney } from '@kinetic/core/money';
+import { withSystem } from '@kinetic/db';
 import {
   fakeCheckoutPaidEvents,
   fakeWebhookBody,
@@ -27,20 +28,45 @@ const safe = (url: string) => (url.startsWith(`${appOrigin()}/`) ? url : `${appO
 async function pay(data: FormData) {
   'use server';
   if (!fakePaymentsEnabled()) notFound();
-  const unit = String(data.get('unit') ?? '');
+  // Everything the webhook says comes from the stored purchase, never from the form, so this page can only
+  // complete the checkout it was opened for, at its own price (security review F4).
+  const found = await withSystem(async (tx) => {
+    const p = await tx.purchase.findFirst({
+      where: { provider: 'fake', checkoutRef: String(data.get('ref') ?? ''), status: 'pending' },
+      select: {
+        id: true,
+        organizationId: true,
+        checkoutRef: true,
+        currency: true,
+        firstChargeMinor: true,
+        package: {
+          select: { kind: true, intervalUnit: true, intervalCount: true, trialDays: true },
+        },
+      },
+    });
+    if (!p) return null;
+    const account = await tx.paymentAccount.findFirst({
+      where: { organizationId: p.organizationId, provider: 'fake', status: 'active' },
+      select: { accountRef: true },
+    });
+    return account ? { p, accountRef: account.accountRef } : null;
+  });
+  if (!found) notFound();
+  const { p, accountRef } = found;
+  const unit = p.package.intervalUnit;
   const events = fakeCheckoutPaidEvents({
-    checkoutRef: String(data.get('ref') ?? ''),
-    purchaseId: String(data.get('purchase') ?? ''),
-    amountMinor: Number(data.get('amount') ?? 0),
-    currency: String(data.get('currency') ?? 'USD'),
-    mode: data.get('mode') === 'subscription' ? 'subscription' : 'payment',
+    checkoutRef: p.checkoutRef!,
+    purchaseId: p.id,
+    amountMinor: p.firstChargeMinor,
+    currency: p.currency,
+    mode: p.package.kind === 'one_off' ? 'payment' : 'subscription',
     ...(unit === 'week' || unit === 'month'
-      ? { interval: { unit, count: Number(data.get('count') ?? 1) } }
+      ? { interval: { unit, count: p.package.intervalCount ?? 1 } }
       : {}),
-    trialDays: Number(data.get('trial') ?? 0),
+    trialDays: p.package.trialDays,
     now: new Date(),
   });
-  const body = fakeWebhookBody(String(data.get('account') ?? ''), events);
+  const body = fakeWebhookBody(accountRef, events);
   const res = await fetch(`${appOrigin()}/api/webhooks/payments/fake`, {
     method: 'POST',
     headers: {
@@ -70,18 +96,6 @@ async function Body({
   const q = await searchParams;
   const amount = Number(one(q.amount));
   const currency = one(q.currency) || 'USD';
-  const fields = [
-    'purchase',
-    'account',
-    'amount',
-    'currency',
-    'mode',
-    'trial',
-    'unit',
-    'count',
-    'success',
-    'cancel',
-  ];
   return (
     <AuthShell title="Test checkout">
       <p className="mb-2 text-base">
@@ -94,9 +108,7 @@ async function Body({
       <div className="flex flex-wrap gap-2">
         <form action={pay}>
           <input type="hidden" name="ref" value={ref} />
-          {fields.map((f) => (
-            <input key={f} type="hidden" name={f} value={one(q[f])} />
-          ))}
+          <input type="hidden" name="success" value={one(q.success)} />
           <Button type="submit">Pay (test)</Button>
         </form>
         <form action={decline}>

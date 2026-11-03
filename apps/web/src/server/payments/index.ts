@@ -13,8 +13,8 @@ import { StripePayments } from './stripe';
 
 /**
  * D-013 #1: which payment providers this deployment can use, from the environment. Stripe and Razorpay switch on
- * only with their keys; the fake provider runs everywhere except production (and can be switched off with
- * FAKE_PAYMENTS=off), so development and E2E take payments without any account.
+ * only with their keys; the fake provider is opt-in with FAKE_PAYMENTS=on and never runs in production (security review F4), so
+ * development and E2E take payments without any account.
  */
 const env = (k: string) => process.env[k]?.trim() || undefined;
 
@@ -23,7 +23,7 @@ export function appOrigin(): string {
 }
 
 export function fakePaymentsEnabled(): boolean {
-  return process.env.NODE_ENV !== 'production' && env('FAKE_PAYMENTS') !== 'off';
+  return process.env.NODE_ENV !== 'production' && env('FAKE_PAYMENTS') === 'on';
 }
 
 /** The fake provider's webhook secret: its own variable, else derived from the auth secret (dev only). */

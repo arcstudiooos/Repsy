@@ -957,4 +957,15 @@ export {
   type PaymentView,
   type ReceiptView,
 } from './payments/purchases';
+export {
+  paymentGateFor,
+  liftPaymentGate,
+  billingManageUrl,
+  getRevenue,
+  revenueCsv,
+  expireStalePurchases,
+  type PaymentGate,
+  type RevenueSummary,
+  type RevenueMonth,
+} from './payments/selfservice';
 export { parseSealKey, seal, unseal } from './crypto/seal';

@@ -9,6 +9,9 @@ import {
   billingSettingsGetRoute,
   billingSettingsPutRoute,
   manualPaymentRoute,
+  purchaseLiftGateRoute,
+  purchaseManageRoute,
+  revenueGetRoute,
   packagesPostRoute,
   paymentsGetRoute,
   purchasesGetRoute,
@@ -74,6 +77,7 @@ const call = (
 
 beforeAll(async () => {
   process.env.ORG_COOKIE_SECRET = TEST_SECRET;
+  process.env.FAKE_PAYMENTS = 'on';
   ({ prisma, authPrisma, drop } = await createTestDb());
   auth = createAuth({ prisma, authPrisma, env });
   t = await seedTwoTenants(prisma, auth);
@@ -236,6 +240,39 @@ describe('billing API (PRD K1-K6, K15)', () => {
       `/api/v1/payments?clientId=${clientAId}`,
     );
     expect(dual.status).toBe(404);
+  });
+
+  it('revenue CSV for staff only; manage and lift-gate are scoped to the purchase', async () => {
+    const owner = headersFor(t.coachA, t.orgA.id);
+    const csv = await call(revenueGetRoute, owner, '/api/v1/billing/revenue?format=csv');
+    expect(csv.status).toBe(200);
+    expect(csv.headers.get('content-type')).toMatch(/^text\/csv/);
+    expect((await csv.text()).split('\r\n')[0]).toBe('month,currency,payments,gross,refunded,net');
+    const client = headersFor(t.clientA, t.orgA.id);
+    expect((await call(revenueGetRoute, client, '/api/v1/billing/revenue')).status).toBe(403);
+
+    const purchases = (await (
+      await call(purchasesGetRoute, client, '/api/v1/purchases')
+    ).json()) as {
+      data: { id: string }[];
+    };
+    const id = purchases.data[0]!.id;
+    // A manual purchase has no provider page.
+    const manage = await call(
+      purchaseManageRoute,
+      client,
+      `/api/v1/purchases/${id}/manage`,
+      'POST',
+      {},
+      { id },
+    );
+    expect(manage.status).toBe(200);
+    expect(await manage.json()).toEqual({ data: { url: null } });
+    // Not past due: nothing to lift. A client may not lift; another workspace can't see it.
+    expect((await call(purchaseLiftGateRoute, owner, `/x`, 'POST', {}, { id })).status).toBe(404);
+    expect((await call(purchaseLiftGateRoute, client, `/x`, 'POST', {}, { id })).status).toBe(403);
+    const other = headersFor(t.coachB, t.orgB.id);
+    expect((await call(purchaseManageRoute, other, `/x`, 'POST', {}, { id })).status).toBe(404);
   });
 
   it('OAuth state binds the user, workspace and provider for 15 minutes', () => {

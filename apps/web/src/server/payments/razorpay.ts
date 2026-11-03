@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import {
   WebhookSignatureError,
   type CheckoutRequest,
@@ -18,6 +18,8 @@ import {
  */
 const API = 'https://api.razorpay.com/v1';
 const AUTH = 'https://auth.razorpay.com';
+/** Razorpay retries a webhook for up to 24 hours; allow a little more. */
+const REPLAY_WINDOW_S = 26 * 3600;
 
 export interface RazorpayConfig {
   clientId: string;
@@ -156,7 +158,7 @@ export class RazorpayPayments implements PaymentsPort {
       throw new WebhookSignatureError();
   }
 
-  parseWebhook(rawBody: string, headers: Headers): WebhookBatch {
+  parseWebhook(rawBody: string, headers: Headers, now: Date = new Date()): WebhookBatch {
     this.verify(rawBody, headers.get('x-razorpay-signature'));
     const event = JSON.parse(rawBody) as {
       event: string;
@@ -164,7 +166,12 @@ export class RazorpayPayments implements PaymentsPort {
       created_at: number;
       payload: Record<string, { entity: Record<string, unknown> }>;
     };
-    const eventId = headers.get('x-razorpay-event-id') ?? `${event.event}:${event.created_at}`;
+    // Replays are deduped on what the signature covers (the body), never on the unsigned event-id header, and
+    // a signed body older than Razorpay's retry window is refused outright (security review F3).
+    if (!(Math.abs(now.getTime() / 1000 - Number(event.created_at)) <= REPLAY_WINDOW_S)) {
+      throw new WebhookSignatureError();
+    }
+    const eventId = `rzp_${createHash('sha256').update(rawBody).digest('hex')}`;
     if (!event.account_id) return { accountRef: '', events: [] };
     return { accountRef: event.account_id, events: mapRazorpayEvent(eventId, event) };
   }
@@ -274,6 +281,14 @@ export function mapRazorpayEvent(
     case 'subscription.authenticated':
     case 'subscription.activated':
       if (!sub) return [];
+      // `authenticated` is only the mandate: it activates a trial, never a subscription that charges now, which
+      // waits for `activated` or `charged` (security review F1).
+      if (
+        event.event === 'subscription.authenticated' &&
+        !(sub.start_at && num(sub.start_at) > event.created_at)
+      ) {
+        return [];
+      }
       return [
         {
           type: 'checkout_completed',

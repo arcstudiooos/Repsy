@@ -275,7 +275,11 @@ export function mapStripeEvent(event: {
 }): PaymentEvent[] {
   const o = event.data.object;
   switch (event.type) {
-    case 'checkout.session.completed': {
+    case 'checkout.session.completed':
+    case 'checkout.session.async_payment_succeeded': {
+      // A delayed method (voucher, bank debit) completes the session unpaid: nothing is active until the money
+      // arrives, as `async_payment_succeeded` (security review F1). A trial completes with no payment required.
+      if (o.payment_status !== 'paid' && o.payment_status !== 'no_payment_required') return [];
       const out: PaymentEvent[] = [
         {
           type: 'checkout_completed',

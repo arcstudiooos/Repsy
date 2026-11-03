@@ -9,13 +9,39 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/toast';
 import { firstError, send } from '@/lib/billing-api';
 
-const CURRENCIES = (() => {
-  try {
-    return Intl.supportedValuesOf('currency');
-  } catch {
-    return ['USD', 'EUR', 'GBP', 'INR', 'AUD', 'CAD'];
-  }
-})();
+/**
+ * A fixed list: `Intl.supportedValuesOf('currency')` differs between the server's Node and the browser, which
+ * broke hydration of this form. Every code here is also accepted by the server's check (`isCurrency`).
+ */
+const CURRENCIES = [
+  'AED',
+  'AUD',
+  'BRL',
+  'CAD',
+  'CHF',
+  'CZK',
+  'DKK',
+  'EUR',
+  'GBP',
+  'HKD',
+  'IDR',
+  'ILS',
+  'INR',
+  'JPY',
+  'KRW',
+  'MXN',
+  'MYR',
+  'NOK',
+  'NZD',
+  'PHP',
+  'PLN',
+  'SAR',
+  'SEK',
+  'SGD',
+  'THB',
+  'USD',
+  'ZAR',
+];
 
 /** Currency (set once), grace before the payment gate, renewal notice and tax details (D-013 #2, #6, #7, #13). */
 export function SettingsForm({ settings }: { settings: PaymentSettings }) {

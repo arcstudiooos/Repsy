@@ -28,9 +28,14 @@ export function seal(key: Buffer, plaintext: string, context: string): string {
 export function unseal(key: Buffer, sealed: string, context: string): string {
   const [v, iv, tag, body] = sealed.split('.');
   if (v !== 'v1' || !iv || !tag || body === undefined) throw new Error('Malformed sealed value');
-  const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(iv, 'base64url'));
+  const tagBytes = Buffer.from(tag, 'base64url');
+  // Only full 16-byte tags: Node would accept truncated ones (security review F6).
+  if (tagBytes.length !== 16) throw new Error('Malformed sealed value');
+  const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(iv, 'base64url'), {
+    authTagLength: 16,
+  });
   decipher.setAAD(Buffer.from(context, 'utf8'));
-  decipher.setAuthTag(Buffer.from(tag, 'base64url'));
+  decipher.setAuthTag(tagBytes);
   return Buffer.concat([
     decipher.update(Buffer.from(body, 'base64url')),
     decipher.final(),

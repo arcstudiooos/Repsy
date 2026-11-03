@@ -10,7 +10,8 @@ import { PortalDevice } from '@/portal/offline/PortalDevice';
 import { ServiceWorker } from '@/portal/offline/ServiceWorker';
 import { getServerActorOutcome, getServerSession, withServerTenant } from '@/server/serverActor';
 import { shellRedirect } from '@/server/shellGate';
-import { pendingAgreements, recordPortalVisit } from '@kinetic/core';
+import { paymentGateFor, pendingAgreements, recordPortalVisit } from '@kinetic/core';
+import { PaymentGateNotice } from '@/portal/billing/PaymentGateNotice';
 import { AgreementGate } from '@/portal/AgreementGate';
 
 /**
@@ -24,7 +25,7 @@ async function ClientGate({ children }: { children: ReactNode }) {
   if (!user) redirect('/login?next=%2Fportal');
   const target = shellRedirect('portal', await getServerActorOutcome(user));
   if (target) redirect(target);
-  const { linked, owner, pending, coachName } = await withServerTenant(async (tx, actor) => {
+  const { linked, owner, pending, coachName, gate } = await withServerTenant(async (tx, actor) => {
     const linked = await tx.client.findFirst({
       where: { userId: actor.userId },
       select: { id: true, status: true, timezone: true },
@@ -33,10 +34,17 @@ async function ClientGate({ children }: { children: ReactNode }) {
     if (linked && linked.status !== 'archived') await recordPortalVisit(tx, linked);
     // PRD B14: terms and waivers still to accept (again, after a change).
     const pending = linked ? await pendingAgreements(tx, { ...actor, clientId: linked.id }) : [];
-    const org = pending.length ? await tx.organization.findFirst({ select: { name: true } }) : null;
+    // PRD K7 (D-013 #7): past due beyond the grace period, until paid or the coach lifts it.
+    const gate =
+      linked && !pending.length
+        ? await paymentGateFor(tx, { ...actor, clientId: linked.id })
+        : null;
+    const org =
+      pending.length || gate ? await tx.organization.findFirst({ select: { name: true } }) : null;
     return {
       linked,
       pending,
+      gate,
       coachName: org?.name ?? 'Your coach',
       owner: { userId: actor.userId, orgId: actor.orgId },
     };
@@ -67,7 +75,13 @@ async function ClientGate({ children }: { children: ReactNode }) {
       <Suspense fallback={null}>
         <NoticeBanner />
       </Suspense>
-      {pending.length > 0 ? <AgreementGate coachName={coachName} pending={pending} /> : children}
+      {pending.length > 0 ? (
+        <AgreementGate coachName={coachName} pending={pending} />
+      ) : gate ? (
+        <PaymentGateNotice coachName={coachName} gate={gate} />
+      ) : (
+        children
+      )}
     </>
   );
 }
