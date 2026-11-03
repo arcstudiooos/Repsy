@@ -1038,6 +1038,20 @@ export {
 } from './ai/port';
 export { redactContact, redactNames, filterUnsafe, isUnsafe } from './ai/guardrails';
 export {
+  getCustomDomain,
+  addCustomDomain,
+  removeCustomDomain,
+  recheckCustomDomain,
+  sweepCustomDomains,
+  publicSlugForHost,
+  brandedFromFor,
+  cleanHostname,
+  type CustomDomainView,
+  type DnsPort,
+  type MailDomainPort,
+  type SendingDomainRecord,
+} from './domains/domains';
+export {
   getCalendarConnection,
   saveCalendarConnection,
   disconnectCalendar,

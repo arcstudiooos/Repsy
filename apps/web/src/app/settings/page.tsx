@@ -13,9 +13,12 @@ import {
   isManager,
   getPublicPageSettings,
   getAiSettings,
+  getCustomDomain,
 } from '@kinetic/core';
 import { AgreementsSection } from '@/components/settings/AgreementsSection';
 import { AiSection } from '@/components/settings/AiSection';
+import { CustomDomainSection } from '@/components/settings/CustomDomainSection';
+import { appOrigin } from '@/server/payments';
 import { aiPortFromEnv } from '@/server/ai/anthropic';
 import { PublicPageSection } from '@/components/settings/PublicPageSection';
 import { BrandingSection } from '@/components/settings/BrandingSection';
@@ -49,6 +52,7 @@ export default async function SettingsPage() {
     branding,
     twoFactor,
     ai,
+    domain,
   } = await withServerTenant(async (tx, a) => ({
     actor: a,
     settings: a.role === 'client' ? null : await getSettings(tx, a),
@@ -60,6 +64,7 @@ export default async function SettingsPage() {
     publicPage: await getPublicPageSettings(tx),
     branding: await getBranding(tx),
     twoFactor: await twoFactorStatus(tx, a),
+    domain: isManager(a.role) ? await getCustomDomain(tx, a) : null,
     ai:
       a.role === 'client'
         ? null
@@ -83,6 +88,13 @@ export default async function SettingsPage() {
         {reviewRules && <ReviewRulesSection settings={reviewRules} canEdit={isOwner} />}
         <AgreementsSection agreements={agreements} canEdit={isOwner} />
         <PublicPageSection initial={publicPage} canEdit={isOwner} />
+        {isOwner && (
+          <CustomDomainSection
+            domain={domain}
+            cnameTarget={new URL(appOrigin()).hostname}
+            canEdit={isOwner}
+          />
+        )}
         {ai && <AiSection settings={ai} isOwner={actor.role === 'owner'} />}
         <PilotAccessCard
           count={settings.org.activeClientCount}

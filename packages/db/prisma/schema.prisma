@@ -147,6 +147,7 @@ model User {
   calendarBusy             CalendarBusy[]          @relation("CalendarBusyUser")
   recordedPayments         Payment[]               @relation("PaymentRecorder")
   aiRequests               AiRequest[]
+  customDomains            CustomDomain[]
 
   @@map("users")
 }
@@ -324,6 +325,7 @@ model Organization {
   calendarConnections     CalendarConnection[]
   calendarBusy            CalendarBusy[]
   aiRequests              AiRequest[]
+  customDomain            CustomDomain?
   payments                Payment[]
   paymentEvents           PaymentEvent[]
   joinLinks               JoinLink[]
@@ -2940,4 +2942,30 @@ model AiRequest {
 
   @@index([organizationId, createdAt])
   @@map("ai_requests")
+}
+
+/// PRD L4 (D-013 #15): the workspace's own hostname for its public page, and branded sending from it.
+model CustomDomain {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @unique @map("organization_id") @db.Uuid
+  hostname       String    @unique
+  /// The value expected in the `_repsy.<hostname>` TXT record.
+  verifyToken    String    @map("verify_token")
+  /// pending | verified | failed.
+  status         String    @default("pending")
+  verifiedAt     DateTime? @map("verified_at") @db.Timestamptz(3)
+  lastCheckedAt  DateTime? @map("last_checked_at") @db.Timestamptz(3)
+  /// none | pending | verified | failed: the email provider's view of the domain.
+  sendingStatus  String    @default("none") @map("sending_status")
+  sendingRef     String?   @map("sending_ref")
+  /// DNS records the email provider asks for ({ type, name, value }[]).
+  sendingRecords Json?     @map("sending_records")
+  createdBy      String?   @map("created_by") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  creator      User?        @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@map("custom_domains")
 }
