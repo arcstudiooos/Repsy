@@ -1,4 +1,5 @@
 import { getBranding, type Branding } from '@kinetic/core';
+import { RepsyMark } from '@/components/brand/Logo';
 import { withServerTenant } from '@/server/serverActor';
 
 /**
@@ -19,6 +20,7 @@ export async function PortalBrand() {
     <>
       {accent && hover && <style>{`:root{--k-accent:${accent};--k-accent-hover:${hover}}`}</style>}
       <p className="flex min-w-0 items-center gap-2 text-lg font-semibold">
+        {!brand?.logoUrl && <RepsyMark className="size-7" />}
         {brand?.logoUrl && (
           // eslint-disable-next-line @next/next/no-img-element -- a coach-hosted https logo; no image optimizer domain to allow-list.
           <img

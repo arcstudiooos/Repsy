@@ -1,10 +1,14 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface StatItem {
   label: string;
   value: ReactNode;
+  /** Draws the value in the warning ink: something here needs the coach. */
+  alert?: boolean;
+  icon?: LucideIcon;
   hint?: ReactNode;
   href?: string;
 }
@@ -33,8 +37,28 @@ export function StatStrip({
       {items.map((item) => {
         const body = (
           <>
-            <span className="text-sm text-secondary">{item.label}</span>{' '}
-            <span className="tabular mt-1 block text-2xl font-semibold text-ink md:text-[1.75rem]">
+            <span className="flex items-center gap-2 text-sm text-secondary">
+              {item.icon && (
+                <span
+                  aria-hidden
+                  className={cn(
+                    'flex size-7 items-center justify-center rounded-[8px]',
+                    item.alert
+                      ? 'bg-warning-soft text-warning-ink'
+                      : 'bg-surface-muted text-secondary',
+                  )}
+                >
+                  <item.icon className="size-4" />
+                </span>
+              )}
+              {item.label}
+            </span>{' '}
+            <span
+              className={cn(
+                'tabular mt-2 block text-2xl font-bold tracking-tight md:text-[1.75rem]',
+                item.alert ? 'text-warning-ink' : 'text-ink',
+              )}
+            >
               {item.value}
             </span>
             {item.hint && <span className="mt-0.5 block text-xs text-secondary">{item.hint}</span>}

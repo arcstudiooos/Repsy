@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
  * dot (the next rep). Decorative wherever the wordmark or a label sits next to it.
  */
 export function RepsyMark({ className, title }: { className?: string; title?: string }) {
-  const id = useId();
+  const id = `rm${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
   return (
     <svg
       viewBox="0 0 32 32"

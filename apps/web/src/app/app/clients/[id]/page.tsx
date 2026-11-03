@@ -13,6 +13,7 @@ import {
   acceptancesFor,
 } from '@kinetic/core';
 import { CompliancePercent, WINDOW_LABEL } from '@/components/analytics/Compliance';
+import { Ring } from '@/components/charts/Ring';
 import { EngagementCard } from '@/components/analytics/Engagement';
 import { GoalsPanel } from '@/components/goals/GoalsPanel';
 import { DeletionRequestButton } from '@/components/settings/DeletionRequestButton';
@@ -78,17 +79,22 @@ export default async function ClientOverviewPage({ params }: { params: Promise<{
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <dl className="grid grid-cols-3 divide-x divide-divider overflow-hidden rounded-control border border-divider">
+        <dl className="grid grid-cols-3 gap-2">
           {COMPLIANCE_WINDOWS.map((days) => {
             const c = compliance[days];
+            const pct = c.eligible > 0 ? (c.completed / c.eligible) * 100 : null;
             return (
-              <div key={days} className="p-3 sm:p-4">
-                <dt className="text-sm text-secondary">Last {WINDOW_LABEL[days]}</dt>
-                <dd className="mt-1 text-lg font-semibold sm:text-2xl">
+              <div
+                key={days}
+                className="flex flex-col items-center gap-2 rounded-control bg-surface-muted/60 p-3 text-center sm:p-4"
+              >
+                <Ring value={pct} size={84} stroke={9} />
+                <dt className="text-sm font-medium">Last {WINDOW_LABEL[days]}</dt>
+                <dd className="text-sm text-secondary">
                   <CompliancePercent counts={c} />
                 </dd>
                 {c.eligible > 0 && (
-                  <dd className="mt-1 hidden text-xs text-secondary sm:block">
+                  <dd className="hidden text-xs text-secondary sm:block">
                     {c.skipped} skipped · {c.incomplete} not finished · {c.missed} missed
                   </dd>
                 )}
