@@ -134,6 +134,9 @@ model User {
   groupMutes               GroupMute[]              @relation("GroupMuter")
   groupMutedBy             GroupMute[]              @relation("GroupMuted")
   outboxPushes             OutboxPush[]
+  aiDrafts             AiDraft[]
+  coachedSessionTypes SessionType[]
+  coachedBookings     Booking[]
 
   @@map("users")
 }
@@ -285,6 +288,19 @@ model Organization {
   nutritionTargets        NutritionTarget[]
   nutritionLogs           NutritionLog[]
   savedReplies            SavedReply[]
+  aiSettings         AiSetting[]
+  aiDrafts           AiDraft[]
+  billingPackages    BillingPackage[]
+  coupons            Coupon[]
+  subscriptions      Subscription[]
+  payments           Payment[]
+  receipts           Receipt[]
+  sessionTypes       SessionType[]
+  bookings           Booking[]
+  sessionPacks       SessionPack[]
+  packageJourneyRuns PackageJourneyRun[]
+  customDomains      CustomDomain[]
+  subscriptionLapses SubscriptionLapse[]
 
   @@map("organizations")
   joinLinks JoinLink[]
@@ -485,6 +501,11 @@ model Client {
   tagLinks        ClientTagLink[]
   nutritionTargets NutritionTarget[]
   nutritionLogs   NutritionLog[]
+  subscriptions   Subscription[]
+  payments        Payment[]
+  bookings        Booking[]
+  sessionPacks    SessionPack[]
+  packageJourneyRuns PackageJourneyRun[]
 
   @@unique([organizationId, email])
   @@unique([organizationId, userId])
@@ -2518,4 +2539,338 @@ model ChallengeParticipant {
   @@id([challengeId, clientId])
   @@index([organizationId, clientId])
   @@map("challenge_participants")
+}
+
+
+/// R3 remaining features (2026-11-03): AI drafting, billing, scheduling, domains, lapse.
+model AiSetting {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  /// Per-workspace opt-in for AI drafting. OFF by default (I14).
+  aiEnabled      Boolean  @default(false) @map("ai_enabled")
+  /// Only 'fake' is shipped: the fake/local provider. No provider keys exist.
+  provider       String   @default("fake")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([id, organizationId])
+  @@unique([organizationId])
+  @@map("ai_settings")
+}
+
+model AiDraft {
+  id           String   @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  /// The coach who created the draft.
+  coachUserId  String   @map("coach_user_id") @db.Uuid
+  /// 'paste' (I10) or 'template' (I11).
+  kind         String
+  /// Redacted paste only (emails, phones, supplied client names stripped); null for template drafts.
+  sourceText   String?  @map("source_text")
+  /// `AiDraftContent`: label 'Drafted with AI', title, weeks, unmatched exercises.
+  draftJson    Json     @map("draft_json")
+  /// Always 'draft'. A draft is never auto-saved as a program or sent (I14).
+  status       String   @default("draft")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  coach        User         @relation(fields: [coachUserId], references: [id])
+
+  @@unique([id, organizationId])
+  @@index([organizationId])
+  @@index([organizationId, coachUserId])
+  @@map("ai_drafts")
+}
+
+model BillingPackage {
+  id                   String   @id @default(uuid()) @db.Uuid
+  organizationId       String   @map("organization_id") @db.Uuid
+  title                String
+  description          String   @default("")
+  /// one_off, recurring or payment_plan.
+  kind                 String
+  /// week or month; only for recurring.
+  interval             String?
+  /// Minor units per charge (per installment for a payment plan).
+  amountMinor          Int      @map("amount_minor")
+  currency             String
+  /// Only for payment_plan (2-24).
+  installments         Int?
+  trialDays            Int      @default(0) @map("trial_days")
+  active               Boolean  @default(true)
+  /// Stored only; the journeys slice (J4) executes this on purchase.
+  onboardingSequence   Json?    @map("onboarding_sequence")
+  /// Days before renewal to remind; read by the journeys slice (J6).
+  renewalReminderDays  Int      @default(3) @map("renewal_reminder_days")
+  inviteOnPurchase     Boolean  @default(false) @map("invite_on_purchase")
+  tagsOnPurchase       String[] @default([]) @map("tags_on_purchase")
+  /// Program template assigned on purchase; no FK (templates live elsewhere).
+  templateId           String?  @map("template_id") @db.Uuid
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization  Organization   @relation(fields: [organizationId], references: [id])
+  subscriptions Subscription[]
+  payments      Payment[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId])
+  @@map("billing_packages")
+}
+
+model Coupon {
+  id           String    @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  /// Stored uppercased.
+  code         String
+  /// percentage (1-100) or fixed (minor units, needs currency).
+  kind         String
+  value        Int
+  currency     String?
+  expiresAt    DateTime? @map("expires_at") @db.Timestamptz(3)
+  usageCap     Int?      @map("usage_cap")
+  usedCount    Int       @default(0) @map("used_count")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization  Organization   @relation(fields: [organizationId], references: [id])
+  subscriptions Subscription[]
+  payments      Payment[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@map("coupons")
+}
+
+model Subscription {
+  id               String    @id @default(uuid()) @db.Uuid
+  organizationId   String    @map("organization_id") @db.Uuid
+  packageId        String    @map("package_id") @db.Uuid
+  clientId         String?   @map("client_id") @db.Uuid
+  customerEmail    String    @map("customer_email")
+  provider         String
+  /// pending, trialing, active, past_due, grace, paused, cancelled, ended.
+  status           String
+  /// Minor units per charge, including tax.
+  amountMinor      Int       @map("amount_minor")
+  taxMinor         Int       @default(0) @map("tax_minor")
+  taxRateBps       Int       @default(0) @map("tax_rate_bps")
+  currency         String
+  interval         String?
+  installments     Int?
+  installmentsPaid Int       @default(0) @map("installments_paid")
+  trialEndsAt      DateTime? @map("trial_ends_at") @db.Timestamptz(3)
+  currentPeriodStart DateTime? @map("current_period_start") @db.Timestamptz(3)
+  currentPeriodEnd   DateTime? @map("current_period_end") @db.Timestamptz(3)
+  nextChargeAt     DateTime? @map("next_charge_at") @db.Timestamptz(3)
+  nextRetryAt      DateTime? @map("next_retry_at") @db.Timestamptz(3)
+  graceEndsAt      DateTime? @map("grace_ends_at") @db.Timestamptz(3)
+  endsAt           DateTime? @map("ends_at") @db.Timestamptz(3)
+  cancelledAt      DateTime? @map("cancelled_at") @db.Timestamptz(3)
+  failedAttempts   Int       @default(0) @map("failed_attempts")
+  needsReview      Boolean   @default(false) @map("needs_review")
+  couponId         String?   @map("coupon_id") @db.Uuid
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  package      BillingPackage   @relation(fields: [packageId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  client       Client?          @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  coupon       Coupon?          @relation(fields: [couponId, organizationId], references: [id, organizationId])
+  payments     Payment[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId])
+  @@index([organizationId, clientId])
+  @@index([organizationId, needsReview])
+  @@map("subscriptions")
+}
+
+model Payment {
+  id              String    @id @default(uuid()) @db.Uuid
+  organizationId  String    @map("organization_id") @db.Uuid
+  packageId       String?   @map("package_id") @db.Uuid
+  subscriptionId  String?   @map("subscription_id") @db.Uuid
+  clientId        String?   @map("client_id") @db.Uuid
+  customerEmail   String    @map("customer_email")
+  /// stripe, razorpay or manual (K15).
+  provider        String
+  amountMinor     Int       @map("amount_minor")
+  taxMinor        Int       @default(0) @map("tax_minor")
+  taxRateBps      Int       @default(0) @map("tax_rate_bps")
+  currency        String
+  /// pending, succeeded, failed, refunded, partially_refunded.
+  status          String
+  /// one_off, recurring, payment_plan or manual.
+  kind            String
+  /// cash or bank_transfer; only for manual payments.
+  method          String?
+  reference       String?
+  providerChargeId String?  @map("provider_charge_id")
+  failureReason   String?   @map("failure_reason")
+  refundedMinor   Int       @default(0) @map("refunded_minor")
+  couponId        String?   @map("coupon_id") @db.Uuid
+  paidAt          DateTime? @map("paid_at") @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  package      BillingPackage? @relation(fields: [packageId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  subscription Subscription?   @relation(fields: [subscriptionId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  client       Client?         @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  coupon       Coupon?         @relation(fields: [couponId, organizationId], references: [id, organizationId])
+  receipts     Receipt[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId])
+  @@index([organizationId, clientId])
+  @@map("payments")
+}
+
+model Receipt {
+  id            String   @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  paymentId     String   @map("payment_id") @db.Uuid
+  number        String
+  customerEmail String   @map("customer_email")
+  description   String   @default("")
+  amountMinor   Int      @map("amount_minor")
+  taxMinor      Int      @default(0) @map("tax_minor")
+  taxRateBps    Int      @default(0) @map("tax_rate_bps")
+  currency      String
+  issuedAt      DateTime @default(now()) @map("issued_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  payment      Payment      @relation(fields: [paymentId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@unique([id, organizationId])
+  @@unique([paymentId, organizationId])
+  @@index([organizationId])
+  @@map("receipts")
+}
+
+model SessionType {
+  id                    String   @id @default(uuid()) @db.Uuid
+  organizationId        String   @map("organization_id") @db.Uuid
+  coachUserId           String?  @map("coach_user_id") @db.Uuid
+  name                  String
+  kind                  String
+  durationMinutes       Int      @map("duration_minutes")
+  bufferBeforeMinutes   Int      @default(0) @map("buffer_before_minutes")
+  bufferAfterMinutes    Int      @default(0) @map("buffer_after_minutes")
+  reminderMinutesBefore Int      @default(60) @map("reminder_minutes_before")
+  location              String?
+  availabilityJson      Json     @default("[]") @map("availability_json")
+  active                Boolean  @default(true)
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  coach        User?        @relation(fields: [coachUserId], references: [id])
+  bookings     Booking[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId])
+  @@map("session_types")
+}
+
+model Booking {
+  id            String    @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  sessionTypeId  String   @map("session_type_id") @db.Uuid
+  clientId       String   @map("client_id") @db.Uuid
+  coachUserId    String?  @map("coach_user_id") @db.Uuid
+  startsAt       DateTime @map("starts_at") @db.Timestamptz(3)
+  endsAt         DateTime @map("ends_at") @db.Timestamptz(3)
+  status         String   @default("booked")
+  callLink       String?  @map("call_link")
+  packId         String?  @map("pack_id") @db.Uuid
+  packConsumed   Boolean  @default(false) @map("pack_consumed")
+  cancelledAt    DateTime? @map("cancelled_at") @db.Timestamptz(3)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  sessionType  SessionType  @relation(fields: [sessionTypeId, organizationId], references: [id, organizationId])
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  coach        User?        @relation(fields: [coachUserId], references: [id])
+  pack         SessionPack? @relation(fields: [packId, organizationId], references: [id, organizationId])
+
+  @@unique([id, organizationId])
+  @@index([organizationId, clientId])
+  @@index([organizationId, coachUserId, startsAt])
+  @@map("bookings")
+}
+
+model SessionPack {
+  id            String    @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  clientId       String   @map("client_id") @db.Uuid
+  name           String
+  totalSessions  Int      @map("total_sessions")
+  usedSessions   Int      @default(0) @map("used_sessions")
+  expiresAt      DateTime? @map("expires_at") @db.Timestamptz(3)
+  status         String   @default("active")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  bookings     Booking[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, clientId])
+  @@map("session_packs")
+}
+
+model PackageJourneyRun {
+  id            String    @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  /// No relation: billing_packages (K3, billing slice) does not exist yet.
+  /// Add `package BillingPackage @relation(...)` when billing lands.
+  packageId     String   @map("package_id") @db.Uuid
+  clientId      String   @map("client_id") @db.Uuid
+  source        String
+  sequenceId    String?  @map("sequence_id") @db.Uuid
+  status        String   @default("active")
+  stepsJson     Json     @default("[]") @map("steps_json")
+  startedAt     DateTime @default(now()) @map("started_at") @db.Timestamptz(3)
+  endedAt       DateTime? @map("ended_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
+
+  @@unique([id, organizationId])
+  @@unique([packageId, clientId])
+  @@index([organizationId, clientId])
+  @@map("package_journey_runs")
+}
+
+model CustomDomain {
+  id               String    @id @default(uuid()) @db.Uuid
+  organizationId   String    @map("organization_id") @db.Uuid
+  hostname         String    @unique
+  status           String    @default("requested")
+  verificationToken String   @map("verification_token")
+  verifiedAt       DateTime? @map("verified_at") @db.Timestamptz(3)
+  brandedFromLocal String?   @map("branded_from_local")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([id, organizationId])
+  @@index([organizationId])
+  @@map("custom_domains")
+}
+
+model SubscriptionLapse {
+  id            String   @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  lapsedAt      DateTime @map("lapsed_at") @db.Timestamptz(3)
+  reason        String?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([id, organizationId])
+  @@index([organizationId, lapsedAt])
+  @@map("subscription_lapses")
 }
