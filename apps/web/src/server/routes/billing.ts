@@ -247,6 +247,6 @@ const couponValidateSchema = z.object({
 export const billingCouponValidateRoute: RouteDef<typeof couponValidateSchema, true> = {
   can: 'client:update',
   input: couponValidateSchema,
-  handler: ({ actor, input, tenant }) =>
+  handler: ({ input, tenant }) =>
     tenant((tx) => validateCoupon(tx, input.code, Number(input.amountMinor), input.currency)),
 };

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import {
+  clickUntilURL,
   expectNoAxeViolations,
   expectNoHorizontalOverflow,
   onboardClient,
@@ -34,8 +35,16 @@ test.describe('challenges and leaderboards (PRD H9)', () => {
       await expect(page.getByText('No one has joined yet.')).toBeVisible();
 
       await portal.goto('/portal');
-      await portal.getByRole('link', { name: 'Challenges' }).last().click();
-      await portal.getByRole('link', { name: '30-day workout challenge' }).click();
+      await clickUntilURL(
+        portal,
+        portal.getByRole('link', { name: 'Challenges' }).last(),
+        /\/portal\/challenges$/,
+      );
+      await clickUntilURL(
+        portal,
+        portal.getByRole('link', { name: '30-day workout challenge' }),
+        /\/portal\/challenges\/[0-9a-f-]{36}$/,
+      );
       await expect(
         portal.getByLabel('Show me on the leaderboard (first name and initial)'),
       ).toBeChecked();

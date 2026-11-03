@@ -9,6 +9,7 @@ import {
   type APIRequestContext,
   type Browser,
   type BrowserContext,
+  type Locator,
   type Page,
 } from '@playwright/test';
 import { resetRateLimits } from '../support/db';
@@ -112,6 +113,17 @@ export async function buildProgram(
   }
   await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect(page.getByText('Saved as version 1')).toBeVisible({ timeout: 30_000 });
+}
+
+/**
+ * Clicks `target` until the URL matches `url`: a click while the page is still hydrating can be lost. Each try
+ * waits long enough for the dev server to compile a route it has not built yet.
+ */
+export async function clickUntilURL(page: Page, target: Locator, url: RegExp): Promise<void> {
+  await expect(async () => {
+    await target.click();
+    await expect(page).toHaveURL(url, { timeout: 15_000 });
+  }).toPass({ timeout: 60_000 });
 }
 
 export async function openClientTab(page: Page, clientName: string, tab: string): Promise<void> {
