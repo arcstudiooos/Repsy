@@ -25,7 +25,7 @@ CREATE TABLE "session_types" (
 CREATE UNIQUE INDEX "session_types_id_organization_id_key" ON "session_types"("id", "organization_id");
 CREATE INDEX "session_types_organization_id_idx" ON "session_types"("organization_id");
 ALTER TABLE "session_types" ADD CONSTRAINT "session_types_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "session_types" ADD CONSTRAINT "session_types_coach_user_id_fkey" FOREIGN KEY ("coach_user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "session_types" ADD CONSTRAINT "session_types_coach_user_id_fkey" FOREIGN KEY ("coach_user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE "session_types" ADD CONSTRAINT "session_types_check" CHECK (
   length("name") BETWEEN 1 AND 120 AND "kind" IN ('call', 'checkin_call', 'in_person')
   AND "duration_minutes" BETWEEN 5 AND 480
@@ -73,11 +73,11 @@ CREATE TABLE "bookings" (
 );
 CREATE UNIQUE INDEX "bookings_id_organization_id_key" ON "bookings"("id", "organization_id");
 CREATE INDEX "bookings_organization_id_client_id_idx" ON "bookings"("organization_id", "client_id");
-CREATE INDEX "bookings_organization_id_coach_starts_idx" ON "bookings"("organization_id", "coach_user_id", "starts_at");
+CREATE INDEX "bookings_organization_id_coach_user_id_starts_at_idx" ON "bookings"("organization_id", "coach_user_id", "starts_at");
 ALTER TABLE "bookings" ADD CONSTRAINT "bookings_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "bookings" ADD CONSTRAINT "bookings_session_type_id_organization_id_fkey" FOREIGN KEY ("session_type_id", "organization_id") REFERENCES "session_types"("id", "organization_id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "bookings" ADD CONSTRAINT "bookings_client_id_organization_id_fkey" FOREIGN KEY ("client_id", "organization_id") REFERENCES "clients"("id", "organization_id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "bookings" ADD CONSTRAINT "bookings_coach_user_id_fkey" FOREIGN KEY ("coach_user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "bookings" ADD CONSTRAINT "bookings_coach_user_id_fkey" FOREIGN KEY ("coach_user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE "bookings" ADD CONSTRAINT "bookings_pack_id_organization_id_fkey" FOREIGN KEY ("pack_id", "organization_id") REFERENCES "session_packs"("id", "organization_id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "bookings" ADD CONSTRAINT "bookings_check" CHECK (
   "ends_at" > "starts_at" AND "status" IN ('booked', 'cancelled', 'completed')
@@ -98,7 +98,7 @@ CREATE TABLE "package_journey_runs" (
     CONSTRAINT "package_journey_runs_pkey" PRIMARY KEY ("id")
 );
 CREATE UNIQUE INDEX "package_journey_runs_id_organization_id_key" ON "package_journey_runs"("id", "organization_id");
-CREATE UNIQUE INDEX "package_journey_runs_package_client_idx" ON "package_journey_runs"("package_id", "client_id");
+CREATE UNIQUE INDEX "package_journey_runs_package_id_client_id_key" ON "package_journey_runs"("package_id", "client_id");
 CREATE INDEX "package_journey_runs_organization_id_client_id_idx" ON "package_journey_runs"("organization_id", "client_id");
 ALTER TABLE "package_journey_runs" ADD CONSTRAINT "package_journey_runs_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "package_journey_runs" ADD CONSTRAINT "package_journey_runs_client_id_organization_id_fkey" FOREIGN KEY ("client_id", "organization_id") REFERENCES "clients"("id", "organization_id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -132,11 +132,10 @@ CREATE TABLE "subscription_lapses" (
     "organization_id" UUID NOT NULL,
     "lapsed_at" TIMESTAMPTZ(3) NOT NULL,
     "reason" TEXT,
-    "created_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "subscription_lapses_pkey" PRIMARY KEY ("id")
 );
 CREATE UNIQUE INDEX "subscription_lapses_id_organization_id_key" ON "subscription_lapses"("id", "organization_id");
-CREATE INDEX "subscription_lapses_organization_id_lapsed_idx" ON "subscription_lapses"("organization_id", "lapsed_at");
+CREATE INDEX "subscription_lapses_organization_id_lapsed_at_idx" ON "subscription_lapses"("organization_id", "lapsed_at");
 ALTER TABLE "subscription_lapses" ADD CONSTRAINT "subscription_lapses_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 DO $$

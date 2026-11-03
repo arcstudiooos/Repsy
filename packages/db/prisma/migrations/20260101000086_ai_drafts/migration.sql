@@ -10,7 +10,7 @@ CREATE TABLE "ai_settings" (
     "ai_enabled" BOOLEAN NOT NULL DEFAULT false,
     "provider" TEXT NOT NULL DEFAULT 'fake',
     "created_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(3) NOT NULL,
     CONSTRAINT "ai_settings_pkey" PRIMARY KEY ("id")
 );
 CREATE UNIQUE INDEX "ai_settings_id_organization_id_key" ON "ai_settings"("id", "organization_id");
@@ -27,7 +27,7 @@ CREATE TABLE "ai_drafts" (
     "draft_json" JSONB NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'draft',
     "created_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(3) NOT NULL,
     CONSTRAINT "ai_drafts_pkey" PRIMARY KEY ("id")
 );
 CREATE UNIQUE INDEX "ai_drafts_id_organization_id_key" ON "ai_drafts"("id", "organization_id");

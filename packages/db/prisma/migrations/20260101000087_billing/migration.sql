@@ -22,7 +22,7 @@ CREATE TABLE "billing_packages" (
     "tags_on_purchase" TEXT[] NOT NULL DEFAULT '{}',
     "template_id" UUID,
     "created_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(3) NOT NULL,
     CONSTRAINT "billing_packages_pkey" PRIMARY KEY ("id")
 );
 CREATE UNIQUE INDEX "billing_packages_id_organization_id_key" ON "billing_packages"("id", "organization_id");
@@ -89,7 +89,7 @@ CREATE TABLE "subscriptions" (
     "needs_review" BOOLEAN NOT NULL DEFAULT false,
     "coupon_id" UUID,
     "created_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(3) NOT NULL,
     CONSTRAINT "subscriptions_pkey" PRIMARY KEY ("id")
 );
 CREATE UNIQUE INDEX "subscriptions_id_organization_id_key" ON "subscriptions"("id", "organization_id");
