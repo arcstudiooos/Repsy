@@ -82,7 +82,10 @@ export function NotificationsSection({
               </p>
               {(
                 [
-                  ['workoutReminderOptIn', 'On workout days, at 07:00'],
+                  [
+                    'workoutReminderOptIn',
+                    'On workout days at 07:00, and the day before a booked session',
+                  ],
                   [
                     'checkinReminderOptIn',
                     "When my check-in is due and I haven't sent it, at 18:00",

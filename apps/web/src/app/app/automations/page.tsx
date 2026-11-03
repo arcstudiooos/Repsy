@@ -16,6 +16,9 @@ const TRIGGER_TEXT: Record<string, string> = {
   program_finished: 'When a client finishes a program',
   tag_added: 'When a client gets a tag',
   stage_changed: 'When a client changes stage',
+  package_purchased: 'When a client buys a package',
+  package_renewal_due: 'When a package renews or ends soon',
+  package_ended: 'When a package ends',
 };
 
 /** PRD J1, J9: the workspace's automations, and starters to copy. */

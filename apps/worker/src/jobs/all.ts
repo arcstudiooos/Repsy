@@ -12,6 +12,7 @@ import { scheduledMessagesJob } from './scheduledMessages';
 import { pausesEndJob } from './pausesEnd';
 import { reviewSweepJob } from './reviewSweep';
 import { billingSweepJob } from './billingSweep';
+import { calendarSyncJob } from './calendarSync';
 
 /** Every job the worker runs; shared by the worker and the owner-only pg-boss migration. */
 export const jobs = [
@@ -29,4 +30,5 @@ export const jobs = [
   phasesAdvanceJob,
   automationsJob,
   billingSweepJob,
+  calendarSyncJob,
 ] as const;

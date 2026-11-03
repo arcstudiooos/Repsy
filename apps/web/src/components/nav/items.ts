@@ -19,6 +19,7 @@ import {
   UsersRound,
   Trophy,
   CreditCard,
+  CalendarClock,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -37,6 +38,7 @@ export const coachDesktopItems: NavItem[] = [
   { label: 'Programs', href: '/app/programs', icon: Dumbbell },
   { label: 'Review', href: '/app/review', icon: ClipboardCheck },
   { label: 'Messages', href: '/app/messages', icon: MessageSquare },
+  { label: 'Schedule', href: '/app/schedule', icon: CalendarClock },
   { label: 'Analytics', href: '/app/analytics', icon: ChartColumn },
   { label: 'Resources', href: '/app/resources', icon: BookOpen },
   { label: 'Courses', href: '/app/courses', icon: GraduationCap },

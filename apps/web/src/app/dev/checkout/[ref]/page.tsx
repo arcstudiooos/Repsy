@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import { formatMoney } from '@kinetic/core/money';
-import { withSystem } from '@kinetic/db';
 import {
+  fakeCheckoutDetails,
   fakeCheckoutPaidEvents,
   fakeWebhookBody,
   FAKE_SIGNATURE_HEADER,
@@ -30,27 +30,7 @@ async function pay(data: FormData) {
   if (!fakePaymentsEnabled()) notFound();
   // Everything the webhook says comes from the stored purchase, never from the form, so this page can only
   // complete the checkout it was opened for, at its own price (security review F4).
-  const found = await withSystem(async (tx) => {
-    const p = await tx.purchase.findFirst({
-      where: { provider: 'fake', checkoutRef: String(data.get('ref') ?? ''), status: 'pending' },
-      select: {
-        id: true,
-        organizationId: true,
-        checkoutRef: true,
-        currency: true,
-        firstChargeMinor: true,
-        package: {
-          select: { kind: true, intervalUnit: true, intervalCount: true, trialDays: true },
-        },
-      },
-    });
-    if (!p) return null;
-    const account = await tx.paymentAccount.findFirst({
-      where: { organizationId: p.organizationId, provider: 'fake', status: 'active' },
-      select: { accountRef: true },
-    });
-    return account ? { p, accountRef: account.accountRef } : null;
-  });
+  const found = await fakeCheckoutDetails(String(data.get('ref') ?? ''));
   if (!found) notFound();
   const { p, accountRef } = found;
   const unit = p.package.intervalUnit;

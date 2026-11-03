@@ -22,7 +22,11 @@ export const ERROR_STATUS = {
   INVITE_USED: 410,
   INVITE_REVOKED: 410,
   RATE_LIMITED: 429,
+  /** PRD M12 (D-013 #16): the workspace has lapsed; it is read-only. */
+  WORKSPACE_LAPSED: 403,
   INTERNAL: 500,
+  /** PRD I14: the AI provider declined or is down; nothing was drafted. */
+  AI_UNAVAILABLE: 503,
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_STATUS;

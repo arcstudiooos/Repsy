@@ -273,7 +273,9 @@ export async function processClientEvents(
               ? detail.tagId
               : e.kind === 'stage_changed'
                 ? detail.stage
-                : null;
+                : e.kind.startsWith('package_')
+                  ? detail.packageId
+                  : null;
           if (s.triggerValue && s.triggerValue !== value) continue;
           if (await startRun(tx, s.id, e.clientId, now)) started += 1;
         }

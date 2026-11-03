@@ -103,9 +103,16 @@ export async function calendarFeed(
   const today = todayInZone(client.timezone, now);
   const from = new Date(toDbDate(today).getTime() - FEED_PAST_DAYS * 86_400_000);
   const until = new Date(toDbDate(today).getTime() + FEED_AHEAD_DAYS * 86_400_000);
-  const sessions = await withTenant(
+  const { sessions, bookings } = await withTenant(
     client.organizationId,
     async (tx) => {
+      // PRD K10 (D-013 #11): booked sessions join the feed as timed events.
+      const bookings = await tx.booking.findMany({
+        where: { clientId: client.id, status: 'booked', startsAt: { gte: from, lte: until } },
+        orderBy: { startsAt: 'asc' },
+        take: 200,
+        select: { id: true, title: true, startsAt: true, endsAt: true },
+      });
       const rows = await tx.workoutSession.findMany({
         where: {
           clientId: client.id,
@@ -116,7 +123,7 @@ export async function calendarFeed(
         take: 500,
         select: SUMMARY_SELECT,
       });
-      return summarize(tx, rows, now);
+      return { sessions: await summarize(tx, rows, now), bookings };
     },
     prisma,
   );
@@ -141,6 +148,19 @@ export async function calendarFeed(
       `SUMMARY:${esc(`${s.title}${done}`)}`,
       ...(base ? [`URL:${base}/portal/workouts/${s.id}`] : []),
       'TRANSP:TRANSPARENT',
+      'END:VEVENT',
+    );
+  }
+  for (const b of bookings) {
+    lines.push(
+      'BEGIN:VEVENT',
+      `UID:booking-${b.id}@kinetic`,
+      `DTSTAMP:${stamp(now)}`,
+      `DTSTART:${stamp(b.startsAt)}`,
+      `DTEND:${stamp(b.endsAt)}`,
+      `SUMMARY:${esc(b.title)}`,
+      ...(base ? [`URL:${base}/portal/sessions`] : []),
+      'TRANSP:OPAQUE',
       'END:VEVENT',
     );
   }

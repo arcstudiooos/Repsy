@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 
 /**
  * D-013 #1: provider tokens stored at rest (Razorpay OAuth, calendar OAuth) are sealed with AES-256-GCM under
@@ -40,4 +40,17 @@ export function unseal(key: Buffer, sealed: string, context: string): string {
     decipher.update(Buffer.from(body, 'base64url')),
     decipher.final(),
   ]).toString('utf8');
+}
+
+/**
+ * The key for sealing stored provider tokens: PROVIDER_TOKEN_KEY, or outside production a key derived from the auth
+ * secret so development works without one. Null in production without the key (connecting is then refused).
+ */
+export function sealKeyFromEnv(env: Record<string, string | undefined>): Buffer | null {
+  const raw = env.PROVIDER_TOKEN_KEY?.trim();
+  if (raw) return parseSealKey(raw);
+  if (env.NODE_ENV === 'production') return null;
+  return createHash('sha256')
+    .update(`repsy-dev-provider-tokens:${env.BETTER_AUTH_SECRET ?? 'dev'}`)
+    .digest();
 }

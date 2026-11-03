@@ -1,5 +1,13 @@
 import type { Metadata } from 'next';
-import { can, getPaymentSettings, listPackages, listPayments, listPurchases } from '@kinetic/core';
+import {
+  can,
+  creditBalance,
+  getPaymentSettings,
+  listPackages,
+  listPayments,
+  listPurchases,
+} from '@kinetic/core';
+import { formatDay } from '@/lib/billing-format';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';
 import { PaymentsTable } from '@/components/billing/PaymentsTable';
@@ -19,6 +27,8 @@ export default async function ClientBillingPage({ params }: { params: Promise<{ 
     packages: await listPackages(tx, actor),
     purchases: await listPurchases(tx, actor, { clientId: client.id }),
     payments: await listPayments(tx, actor, { clientId: client.id }),
+    // PRD K11: session credits left from packs.
+    credits: can(actor, 'schedule:read') ? await creditBalance(tx, actor, client.id) : null,
   }));
   const manualPurchases = data.purchases
     .filter((p) => p.provider === 'manual' && ['active', 'past_due'].includes(p.status))
@@ -30,6 +40,14 @@ export default async function ClientBillingPage({ params }: { params: Promise<{ 
           <CardTitle>Packages</CardTitle>
         </CardHeader>
         <CardContent>
+          {data.credits && data.credits.left > 0 && (
+            <p className="mb-3">
+              <strong>
+                {data.credits.left} session {data.credits.left === 1 ? 'credit' : 'credits'} left
+              </strong>
+              {data.credits.nextExpiry && ` · use by ${formatDay(data.credits.nextExpiry)}`}
+            </p>
+          )}
           <PurchaseList
             purchases={data.purchases}
             manager={data.manager}

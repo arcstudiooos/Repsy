@@ -614,6 +614,7 @@ export {
   saveSequence,
   SEQUENCE_TEMPLATES,
   SEQUENCE_TRIGGERS,
+  PACKAGE_TRIGGERS,
   startSequence,
   STEP_TYPES,
   type RunHistoryItem,
@@ -945,6 +946,7 @@ export {
   listPurchases,
   listPayments,
   getReceipt,
+  fakeCheckoutDetails,
   ownerActor,
   LIVE_STATUSES,
   type StorefrontPackage,
@@ -968,4 +970,76 @@ export {
   type RevenueSummary,
   type RevenueMonth,
 } from './payments/selfservice';
-export { parseSealKey, seal, unseal } from './crypto/seal';
+export { sweepPackages, nextPackageDue } from './payments/renewals';
+export {
+  SESSION_KINDS,
+  listSessionTypes,
+  saveSessionType,
+  getSchedule,
+  setAvailability,
+  addTimeOff,
+  removeTimeOff,
+  cleanCallLink,
+  type SessionKind,
+  type SessionTypeView,
+  type ScheduleView,
+  type AvailabilityWindow,
+} from './scheduling/setup';
+export {
+  listSlots,
+  creditBalance,
+  createBooking,
+  cancelBooking,
+  markBooking,
+  listBookings,
+  type BookingView,
+  type CreditBalance,
+} from './scheduling/bookings';
+export {
+  GoogleCalendar,
+  OutlookCalendar,
+  FakeCalendar,
+  CalendarAuthError,
+  calendarPorts,
+  signCalendarState,
+  verifyCalendarState,
+  type CalendarProvider,
+  type CalendarSyncPort,
+  type CalendarTokens,
+} from './scheduling/calendarSync';
+export { syncCalendars, sealContext, type CalendarDeps } from './scheduling/sync';
+export {
+  AI_DAILY_CAP,
+  aiRoleAllowed,
+  getAiSettings,
+  setAiEnabled,
+  startAiRequest,
+  finishAiRequest,
+  draftProgramFromText,
+  templateDraftRequest,
+  completeProgramDraft,
+  programToText,
+  exerciseLibraryNames,
+  highlightsRequest,
+  completeHighlights,
+  type HighlightsRequest,
+  type AiKind,
+  type AiSettings,
+  type ProgramDraft,
+  type CheckinHighlight,
+} from './ai/drafting';
+export {
+  FakeAi,
+  AiUnavailableError,
+  type AiPort,
+  type AiDraftRequest,
+  type AiHighlight,
+} from './ai/port';
+export { redactContact, filterUnsafe, isUnsafe } from './ai/guardrails';
+export {
+  getCalendarConnection,
+  saveCalendarConnection,
+  disconnectCalendar,
+  type CalendarConnectionView,
+} from './scheduling/connections';
+export { parseSealKey, seal, unseal, sealKeyFromEnv } from './crypto/seal';

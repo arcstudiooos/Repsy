@@ -5,6 +5,8 @@ import {
   clientAssessments,
   coverForClient,
   getPortalHome,
+  listBookings,
+  listSessionTypes,
   listChallenges,
   listGroups,
   listHabits,
@@ -21,6 +23,7 @@ import {
 import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatSessionDate, plural, SAFETY_REMINDER } from '@/lib/session-format';
+import { formatWhen } from '@/lib/schedule-format';
 import { cn } from '@/lib/utils';
 import { KeepUpcoming } from '@/portal/offline/KeepUpcoming';
 import { withPortalTenant } from '@/server/serverActor';
@@ -29,22 +32,39 @@ export const metadata: Metadata = { title: 'Home | Kinetic' };
 
 // Access is enforced by src/proxy.ts and the portal layout's client gate.
 export default async function PortalHome() {
-  const { org, home, habits, cover, courses, assessmentsDue, inGroups, challenges } =
-    await withPortalTenant(async (tx, actor) => ({
-      org: await tx.organization.findFirst({ where: { id: actor.orgId }, select: { name: true } }),
-      home: await getPortalHome(tx, actor),
-      habits: await listHabits(tx, actor, actor.clientId as string),
-      // PRD A13: who is covering while the coach is away.
-      cover: await coverForClient(tx, actor.clientId as string),
-      // PRD G4: the next open lesson not done yet.
-      courses: await myCourses(tx, actor),
-      // PRD E5: assessment photos due now.
-      assessmentsDue: (await clientAssessments(tx, actor)).filter((a) => a.due),
-      // PRD H7, H8.
-      inGroups: (await listGroups(tx, actor)).length > 0,
-      // PRD H9: challenges on now or coming up.
-      challenges: (await listChallenges(tx, actor)).filter((c) => c.status !== 'ended').length,
-    }));
+  const {
+    org,
+    home,
+    habits,
+    cover,
+    courses,
+    assessmentsDue,
+    inGroups,
+    challenges,
+    nextBooking,
+    canBook,
+    timezone,
+  } = await withPortalTenant(async (tx, actor) => ({
+    org: await tx.organization.findFirst({ where: { id: actor.orgId }, select: { name: true } }),
+    home: await getPortalHome(tx, actor),
+    habits: await listHabits(tx, actor, actor.clientId as string),
+    // PRD A13: who is covering while the coach is away.
+    cover: await coverForClient(tx, actor.clientId as string),
+    // PRD G4: the next open lesson not done yet.
+    courses: await myCourses(tx, actor),
+    // PRD E5: assessment photos due now.
+    assessmentsDue: (await clientAssessments(tx, actor)).filter((a) => a.due),
+    // PRD H7, H8.
+    inGroups: (await listGroups(tx, actor)).length > 0,
+    // PRD H9: challenges on now or coming up.
+    challenges: (await listChallenges(tx, actor)).filter((c) => c.status !== 'ended').length,
+    // PRD K10: the next booked session, and whether there is anything to book.
+    nextBooking: (await listBookings(tx, actor)).find((b) => b.status === 'booked') ?? null,
+    canBook: (await listSessionTypes(tx, actor)).length > 0,
+    timezone:
+      (await tx.client.findFirst({ where: { id: actor.clientId! }, select: { timezone: true } }))
+        ?.timezone ?? 'UTC',
+  }));
   const lesson = courses
     .flatMap((c) =>
       c.lessons.filter((l) => l.unlocked && !l.done).map((l) => ({ ...l, course: c.title })),
@@ -98,6 +118,32 @@ export default async function PortalHome() {
               </Link>
             </CardContent>
           </Card>
+        )}
+        {nextBooking ? (
+          <Card>
+            <CardHeader>
+              <CardDescription>Next session</CardDescription>
+              <CardTitle className="text-xl break-words">
+                {nextBooking.title} · {formatWhen(nextBooking.startsAt, timezone)}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Link
+                href="/portal/sessions"
+                className={cn(buttonVariants({ variant: 'secondary' }), 'min-h-12 w-full')}
+              >
+                {nextBooking.callLink ? 'Details and call link' : 'Details'}
+              </Link>
+            </CardContent>
+          </Card>
+        ) : (
+          canBook && (
+            <p>
+              <Link href="/portal/sessions" className="text-accent underline underline-offset-4">
+                Book a session with your coach
+              </Link>
+            </p>
+          )
         )}
         {home.openCheckin && (
           <Card>

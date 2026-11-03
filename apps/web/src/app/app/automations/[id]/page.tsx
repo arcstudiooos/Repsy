@@ -4,6 +4,7 @@ import {
   isUuid,
   listCheckinTemplates,
   listCourses,
+  listPackages,
   listSequences,
   listTags,
   SEQUENCE_TEMPLATES,
@@ -41,6 +42,10 @@ export default async function AutomationPage({
         .filter((p) => p.versionNo !== null)
         .map((p) => ({ id: p.id, title: p.title })),
       courses: (await listCourses(tx, actor)).map((c) => ({ id: c.id, title: c.title })),
+      packages: (await listPackages(tx, actor, { includeArchived: true })).map((p) => ({
+        id: p.id,
+        title: p.title,
+      })),
     },
   }));
   if (id !== 'new' && !data.sequence) notFound();

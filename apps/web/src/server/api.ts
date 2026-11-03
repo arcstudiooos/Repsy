@@ -271,10 +271,16 @@ export function createApiHandler(deps: ApiDeps = {}) {
           clientHash: (clientId) => clientHash(analyticsHashSecret(), clientId),
         } as RouteCtx<InputOf<S>, R>);
 
-        // A raw response (a file download) passes through with the request id.
+        // A raw response (a file download, an OAuth redirect) passes through with the request id. Copy its headers
+        // first: `Response.redirect()` returns immutable ones, which would throw on set.
         if (result instanceof Response) {
-          result.headers.set('x-request-id', requestId);
-          return result;
+          const headers = new Headers(result.headers);
+          headers.set('x-request-id', requestId);
+          return new Response(result.body, {
+            status: result.status,
+            statusText: result.statusText,
+            headers,
+          });
         }
         const { data, options } =
           result instanceof ApiResult

@@ -43,7 +43,10 @@ export type Action =
   | 'billing:read'
   | 'billing:record'
   | 'billing:manage'
-  | 'billing:self';
+  | 'billing:self'
+  | 'schedule:read'
+  | 'schedule:manage'
+  | 'schedule:book';
 
 const POLICY: Record<Action, readonly Role[]> = {
   'org:read': [...STAFF],
@@ -93,6 +96,11 @@ const POLICY: Record<Action, readonly Role[]> = {
   'billing:record': [...TRAINER],
   'billing:manage': [...MANAGER],
   'billing:self': ['client'],
+  // PRD K10, K11 (D-013 #11): staff see the schedule, trainers run their own (managers any coach's), clients book
+  // with their own coach.
+  'schedule:read': [...STAFF],
+  'schedule:manage': [...TRAINER],
+  'schedule:book': ['client'],
 };
 
 export const can = (actor: ActorContext, action: Action): boolean =>

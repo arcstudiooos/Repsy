@@ -46,6 +46,12 @@ export default async function PortalProfile() {
         <TwoFactorSection enabled={twoFactor.enabled} required={false} />
         <SecuritySection />
         <p className="text-secondary">
+          Book and see sessions with your coach:{' '}
+          <Link href="/portal/sessions" className="text-accent underline">
+            Sessions
+          </Link>
+        </p>
+        <p className="text-secondary">
           Plans, payments and receipts:{' '}
           <Link href="/portal/billing" className="text-accent underline">
             Billing

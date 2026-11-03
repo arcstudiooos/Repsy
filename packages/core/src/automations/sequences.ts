@@ -14,6 +14,16 @@ export const SEQUENCE_TRIGGERS = [
   'program_finished',
   'tag_added',
   'stage_changed',
+  // PRD J4, J6 (D-013 #13), each optionally narrowed to one package.
+  'package_purchased',
+  'package_renewal_due',
+  'package_ended',
+] as const;
+/** Triggers narrowed by a package id (optional). */
+export const PACKAGE_TRIGGERS = [
+  'package_purchased',
+  'package_renewal_due',
+  'package_ended',
 ] as const;
 export type SequenceTrigger = (typeof SEQUENCE_TRIGGERS)[number];
 export const STEP_TYPES = [
@@ -212,8 +222,9 @@ export async function saveSequence(
   const trigger = input.trigger as SequenceTrigger;
   if (!(SEQUENCE_TRIGGERS as readonly unknown[]).includes(trigger))
     throw invalid('trigger', 'Pick what starts it.');
+  const isPackage = (PACKAGE_TRIGGERS as readonly string[]).includes(trigger);
   const triggerValue =
-    trigger === 'tag_added' || trigger === 'stage_changed'
+    trigger === 'tag_added' || trigger === 'stage_changed' || isPackage
       ? typeof input.triggerValue === 'string' &&
         input.triggerValue.length > 0 &&
         input.triggerValue.length <= 64
@@ -222,6 +233,13 @@ export async function saveSequence(
       : null;
   if (trigger === 'tag_added' && !isUuid(triggerValue))
     throw invalid('triggerValue', 'Pick the tag.');
+  if (isPackage && triggerValue !== null) {
+    // A package in this workspace (RLS hides any other).
+    const pkg = isUuid(triggerValue)
+      ? await tx.package.findFirst({ where: { id: triggerValue }, select: { id: true } })
+      : null;
+    if (!pkg) throw invalid('triggerValue', 'Pick one of your packages.');
+  }
   const steps = cleanSteps(input.steps ?? []);
   const data = { name, trigger, triggerValue, active: input.active !== false };
   let id: string;

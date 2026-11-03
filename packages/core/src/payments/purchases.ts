@@ -1,5 +1,6 @@
 import {
   appendAudit,
+  withSystem,
   withTenant,
   type PrismaClient,
   type SystemTx,
@@ -342,6 +343,20 @@ async function onActivated(
 }
 
 /** Activates a pending purchase once (a replayed or out-of-order event finds it already done). */
+/** K11: a package with session credits makes the purchase a session pack (D-013 #12). */
+function creditsFor(
+  pkg: { sessionCredits: number | null; creditsValidDays: number | null },
+  from: Date,
+): { creditsTotal?: number; creditsExpireAt?: Date } {
+  if (!pkg.sessionCredits) return {};
+  return {
+    creditsTotal: pkg.sessionCredits,
+    ...(pkg.creditsValidDays
+      ? { creditsExpireAt: new Date(from.getTime() + pkg.creditsValidDays * 86_400_000) }
+      : {}),
+  };
+}
+
 async function activate(
   tx: TenantTx,
   orgId: string,
@@ -367,7 +382,14 @@ async function activate(
   }
   const pkg = await tx.package.findFirstOrThrow({
     where: { id: p.packageId },
-    select: { id: true, tagId: true, accessDays: true, kind: true },
+    select: {
+      id: true,
+      tagId: true,
+      accessDays: true,
+      kind: true,
+      sessionCredits: true,
+      creditsValidDays: true,
+    },
   });
   const clientId = await linkClient(tx, orgId, p, now);
   data.clientId = clientId;
@@ -376,6 +398,7 @@ async function activate(
   if (pkg.kind === 'one_off' && pkg.accessDays) {
     data.accessEndsAt = new Date(now.getTime() + pkg.accessDays * 86_400_000);
   }
+  Object.assign(data, creditsFor(pkg, now));
   await tx.purchase.updateMany({ where: { id: p.id }, data });
   await onActivated(tx, orgId, p.id, clientId, pkg);
 }
@@ -744,6 +767,8 @@ export async function recordManualPayment(
     intervalUnit: string | null;
     intervalCount: number | null;
     accessDays: number | null;
+    sessionCredits: number | null;
+    creditsValidDays: number | null;
   };
   let isNew = false;
   if (input.purchaseId !== undefined && input.purchaseId !== null && input.purchaseId !== '') {
@@ -763,6 +788,8 @@ export async function recordManualPayment(
         intervalUnit: true,
         intervalCount: true,
         accessDays: true,
+        sessionCredits: true,
+        creditsValidDays: true,
       },
     });
   } else {
@@ -777,6 +804,8 @@ export async function recordManualPayment(
         intervalUnit: true,
         intervalCount: true,
         accessDays: true,
+        sessionCredits: true,
+        creditsValidDays: true,
       },
     });
     if (!found) throw invalid('packageId', 'Pick a package.');
@@ -795,6 +824,7 @@ export async function recordManualPayment(
         ...(pkg.kind === 'one_off' && pkg.accessDays
           ? { accessEndsAt: new Date(paidAt.getTime() + pkg.accessDays * 86_400_000) }
           : {}),
+        ...creditsFor(pkg, paidAt),
       },
     } as Parameters<typeof tx.purchase.create>[0]);
     purchaseId = created.id;
@@ -1273,4 +1303,50 @@ export async function getReceipt(
     status: pay.status,
     taxLines,
   };
+}
+
+/**
+ * Development only (the fake provider): what a pending fake checkout is for, looked up by its reference, so the test
+ * checkout page builds its webhook from the stored purchase and never from the form (security review F4).
+ */
+export async function fakeCheckoutDetails(
+  checkoutRef: string,
+  prisma?: PrismaClient,
+): Promise<{
+  accountRef: string;
+  p: {
+    id: string;
+    checkoutRef: string | null;
+    currency: string;
+    firstChargeMinor: number;
+    package: {
+      kind: string;
+      intervalUnit: string | null;
+      intervalCount: number | null;
+      trialDays: number;
+    };
+  };
+} | null> {
+  if (!/^[A-Za-z0-9_-]{1,200}$/.test(checkoutRef)) return null;
+  return withSystem(async (tx) => {
+    const p = await tx.purchase.findFirst({
+      where: { provider: 'fake', checkoutRef, status: 'pending' },
+      select: {
+        id: true,
+        organizationId: true,
+        checkoutRef: true,
+        currency: true,
+        firstChargeMinor: true,
+        package: {
+          select: { kind: true, intervalUnit: true, intervalCount: true, trialDays: true },
+        },
+      },
+    });
+    if (!p) return null;
+    const account = await tx.paymentAccount.findFirst({
+      where: { organizationId: p.organizationId, provider: 'fake', status: 'active' },
+      select: { accountRef: true },
+    });
+    return account ? { p, accountRef: account.accountRef } : null;
+  }, prisma);
 }

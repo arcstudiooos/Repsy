@@ -32,7 +32,9 @@ test.describe('digest and reminder preferences (PRD H14, H13)', () => {
 
       // PRD H13, F9: reminders are the client's choice, off until turned on; coaches don't get them.
       const portal = client.page;
-      const workout = portal.getByLabel('On workout days, at 07:00');
+      const workout = portal.getByLabel(
+        'On workout days at 07:00, and the day before a booked session',
+      );
       await expect(workout).not.toBeChecked();
       await workout.check();
       await portal
@@ -42,12 +44,16 @@ test.describe('digest and reminder preferences (PRD H14, H13)', () => {
         .click();
       await expect(portal.getByText('Notifications saved')).toBeVisible({ timeout: 15_000 });
       await portal.reload();
-      await expect(portal.getByLabel('On workout days, at 07:00')).toBeChecked({ timeout: 30_000 });
+      await expect(
+        portal.getByLabel('On workout days at 07:00, and the day before a booked session'),
+      ).toBeChecked({ timeout: 30_000 });
       await expect(
         portal.getByLabel("When my check-in is due and I haven't sent it, at 18:00"),
       ).not.toBeChecked();
       await expectNoAxeViolations(portal);
-      await expect(page.getByLabel('On workout days, at 07:00')).toHaveCount(0);
+      await expect(
+        page.getByLabel('On workout days at 07:00, and the day before a booked session'),
+      ).toHaveCount(0);
     } finally {
       await client.context.close();
     }

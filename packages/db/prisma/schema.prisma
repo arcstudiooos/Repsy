@@ -137,7 +137,16 @@ model User {
   connectedPaymentAccounts PaymentAccount[]        @relation("PaymentAccountConnector")
   createdPackages          Package[]               @relation("PackageCreator")
   createdPurchases         Purchase[]              @relation("PurchaseCreator")
+  sessionTypesCoached      SessionType[]           @relation("SessionTypeCoach")
+  availability             CoachAvailability[]     @relation("AvailabilityCoach")
+  timeOff                  CoachTimeOff[]          @relation("TimeOffCoach")
+  bookingsCoached          Booking[]               @relation("BookingCoach")
+  bookingsCanceled         Booking[]               @relation("BookingCanceler")
+  bookingsCreated          Booking[]               @relation("BookingCreator")
+  calendarConnections      CalendarConnection[]    @relation("CalendarConnectionUser")
+  calendarBusy             CalendarBusy[]          @relation("CalendarBusyUser")
   recordedPayments         Payment[]               @relation("PaymentRecorder")
+  aiRequests               AiRequest[]
 
   @@map("users")
 }
@@ -258,6 +267,8 @@ model Organization {
   stripeTaxEnabled       Boolean   @default(false) @map("stripe_tax_enabled")
   /// The last receipt number issued; incremented under the row lock, so numbers are gap-free.
   receiptSeq             Int       @default(0) @map("receipt_seq")
+  /// PRD I14 (D-013 #14): AI drafting, off by default; the owner turns it on.
+  aiEnabled              Boolean   @default(false) @map("ai_enabled")
   createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt              DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -306,6 +317,13 @@ model Organization {
   packages                Package[]
   coupons                 Coupon[]
   purchases               Purchase[]
+  sessionTypes            SessionType[]
+  coachAvailability       CoachAvailability[]
+  coachTimeOff            CoachTimeOff[]
+  bookings                Booking[]
+  calendarConnections     CalendarConnection[]
+  calendarBusy            CalendarBusy[]
+  aiRequests              AiRequest[]
   payments                Payment[]
   paymentEvents           PaymentEvent[]
   joinLinks               JoinLink[]
@@ -509,6 +527,7 @@ model Client {
   nutritionTargets      NutritionTarget[]
   nutritionLogs         NutritionLog[]
   purchases             Purchase[]
+  bookings              Booking[]
   payments              Payment[]
   mediaFiles            MediaFile[]
   progressPhotos        ProgressPhoto[]
@@ -2043,7 +2062,7 @@ model Sequence {
   organizationId String    @map("organization_id") @db.Uuid
   name           String
   trigger        String
-  /// tag id (tag_added) or stage (stage_changed).
+  /// tag id (tag_added), stage (stage_changed) or package id (package_*, optional).
   triggerValue   String?   @map("trigger_value")
   active         Boolean   @default(true)
   createdBy      String    @map("created_by") @db.Uuid
@@ -2644,39 +2663,45 @@ model Coupon {
 /// PRD K3, K4, K15: one purchase of a package. `pending` from checkout until the provider confirms it (then a client
 /// is linked); a manual purchase starts active.
 model Purchase {
-  id                String    @id @default(uuid()) @db.Uuid
-  organizationId    String    @map("organization_id") @db.Uuid
-  packageId         String    @map("package_id") @db.Uuid
-  clientId          String?   @map("client_id") @db.Uuid
+  id                 String    @id @default(uuid()) @db.Uuid
+  organizationId     String    @map("organization_id") @db.Uuid
+  packageId          String    @map("package_id") @db.Uuid
+  clientId           String?   @map("client_id") @db.Uuid
   /// Who checked out, until a client is linked; cleared on erasure.
-  buyerName         String?   @map("buyer_name")
-  buyerEmail        String?   @map("buyer_email")
+  buyerName          String?   @map("buyer_name")
+  buyerEmail         String?   @map("buyer_email")
   /// The buyer\'s state or region, asked at checkout when the workspace charges GST (D-013 #6).
-  buyerRegion       String?   @map("buyer_region")
+  buyerRegion        String?   @map("buyer_region")
   /// stripe | razorpay | fake | manual.
-  provider          String
-  checkoutRef       String?   @map("checkout_ref")
-  subscriptionRef   String?   @map("subscription_ref")
-  customerRef       String?   @map("customer_ref")
+  provider           String
+  checkoutRef        String?   @map("checkout_ref")
+  subscriptionRef    String?   @map("subscription_ref")
+  customerRef        String?   @map("customer_ref")
   /// pending | trialing | active | past_due | canceled | ended | expired.
-  status            String    @default("pending")
-  currency          String
+  status             String    @default("pending")
+  currency           String
   /// The package price per charge at the time of purchase.
-  amountMinor       Int       @map("amount_minor")
+  amountMinor        Int       @map("amount_minor")
   /// The first charge after any coupon.
-  firstChargeMinor  Int       @map("first_charge_minor")
-  couponId          String?   @map("coupon_id") @db.Uuid
-  installmentsPaid  Int       @default(0) @map("installments_paid")
-  currentPeriodEnd  DateTime? @map("current_period_end") @db.Timestamptz(3)
-  accessEndsAt      DateTime? @map("access_ends_at") @db.Timestamptz(3)
-  cancelAtPeriodEnd Boolean   @default(false) @map("cancel_at_period_end")
-  canceledAt        DateTime? @map("canceled_at") @db.Timestamptz(3)
-  endedAt           DateTime? @map("ended_at") @db.Timestamptz(3)
-  pastDueSince      DateTime? @map("past_due_since") @db.Timestamptz(3)
-  gateLiftedAt      DateTime? @map("gate_lifted_at") @db.Timestamptz(3)
-  createdBy         String?   @map("created_by") @db.Uuid
-  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  firstChargeMinor   Int       @map("first_charge_minor")
+  couponId           String?   @map("coupon_id") @db.Uuid
+  installmentsPaid   Int       @default(0) @map("installments_paid")
+  currentPeriodEnd   DateTime? @map("current_period_end") @db.Timestamptz(3)
+  accessEndsAt       DateTime? @map("access_ends_at") @db.Timestamptz(3)
+  cancelAtPeriodEnd  Boolean   @default(false) @map("cancel_at_period_end")
+  canceledAt         DateTime? @map("canceled_at") @db.Timestamptz(3)
+  endedAt            DateTime? @map("ended_at") @db.Timestamptz(3)
+  pastDueSince       DateTime? @map("past_due_since") @db.Timestamptz(3)
+  gateLiftedAt       DateTime? @map("gate_lifted_at") @db.Timestamptz(3)
+  /// The renewal or end date the client was last told about (J6), so each period notifies once.
+  renewalNotifiedFor DateTime? @map("renewal_notified_for") @db.Timestamptz(3)
+  /// K11: a session pack's credits (null when the package has none).
+  creditsTotal       Int?      @map("credits_total")
+  creditsUsed        Int       @default(0) @map("credits_used")
+  creditsExpireAt    DateTime? @map("credits_expire_at") @db.Timestamptz(3)
+  createdBy          String?   @map("created_by") @db.Uuid
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id])
   package      Package      @relation(fields: [packageId, organizationId], references: [id, organizationId])
@@ -2684,6 +2709,7 @@ model Purchase {
   coupon       Coupon?      @relation(fields: [couponId, organizationId], references: [id, organizationId], onDelete: Restrict)
   creator      User?        @relation("PurchaseCreator", fields: [createdBy], references: [id])
   payments     Payment[]
+  bookings     Booking[]
 
   @@unique([id, organizationId])
   @@unique([provider, checkoutRef])
@@ -2747,4 +2773,171 @@ model PaymentEvent {
   @@unique([provider, eventId])
   @@index([organizationId])
   @@map("payment_events")
+}
+
+/// PRD K10, H15 (D-013 #11): what a client can book with a coach.
+model SessionType {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @map("organization_id") @db.Uuid
+  coachUserId       String   @map("coach_user_id") @db.Uuid
+  title             String
+  /// call | checkin_call | in_person.
+  kind              String
+  durationMin       Int      @map("duration_min")
+  bufferBeforeMin   Int      @default(0) @map("buffer_before_min")
+  bufferAfterMin    Int      @default(0) @map("buffer_after_min")
+  minNoticeHours    Int      @default(12) @map("min_notice_hours")
+  maxDaysAhead      Int      @default(30) @map("max_days_ahead")
+  cancelWindowHours Int      @default(24) @map("cancel_window_hours")
+  /// https only (H15).
+  callLink          String?  @map("call_link")
+  location          String?
+  usesCredit        Boolean  @default(false) @map("uses_credit")
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  coach        User         @relation("SessionTypeCoach", fields: [coachUserId], references: [id])
+  bookings     Booking[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, coachUserId])
+  @@map("session_types")
+}
+
+/// Weekly hours, as wall-clock times in the coach's zone.
+model CoachAvailability {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  coachUserId    String   @map("coach_user_id") @db.Uuid
+  /// ISO weekday 1-7.
+  weekday        Int
+  startTime      String   @map("start_time")
+  endTime        String   @map("end_time")
+  timezone       String
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  coach        User         @relation("AvailabilityCoach", fields: [coachUserId], references: [id])
+
+  @@index([organizationId, coachUserId])
+  @@map("coach_availability")
+}
+
+model CoachTimeOff {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  coachUserId    String   @map("coach_user_id") @db.Uuid
+  startsAt       DateTime @map("starts_at") @db.Timestamptz(3)
+  endsAt         DateTime @map("ends_at") @db.Timestamptz(3)
+  note           String?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  coach        User         @relation("TimeOffCoach", fields: [coachUserId], references: [id])
+
+  @@index([organizationId, coachUserId, startsAt])
+  @@map("coach_time_off")
+}
+
+/// PRD K10, K11: a booked session. `blockedFrom`/`blockedTo` include the buffers.
+model Booking {
+  id               String    @id @default(uuid()) @db.Uuid
+  organizationId   String    @map("organization_id") @db.Uuid
+  sessionTypeId    String    @map("session_type_id") @db.Uuid
+  coachUserId      String    @map("coach_user_id") @db.Uuid
+  clientId         String    @map("client_id") @db.Uuid
+  startsAt         DateTime  @map("starts_at") @db.Timestamptz(3)
+  endsAt           DateTime  @map("ends_at") @db.Timestamptz(3)
+  blockedFrom      DateTime  @map("blocked_from") @db.Timestamptz(3)
+  blockedTo        DateTime  @map("blocked_to") @db.Timestamptz(3)
+  /// booked | canceled | completed | no_show.
+  status           String    @default("booked")
+  title            String
+  callLink         String?   @map("call_link")
+  location         String?
+  creditPurchaseId String?   @map("credit_purchase_id") @db.Uuid
+  creditReturned   Boolean   @default(false) @map("credit_returned")
+  canceledAt       DateTime? @map("canceled_at") @db.Timestamptz(3)
+  canceledBy       String?   @map("canceled_by") @db.Uuid
+  reminderSentAt   DateTime? @map("reminder_sent_at") @db.Timestamptz(3)
+  /// none | pending | synced | failed: pushing to the coach's connected calendar.
+  syncState        String    @default("none") @map("sync_state")
+  syncAttempts     Int       @default(0) @map("sync_attempts")
+  calendarEventRef String?   @map("calendar_event_ref")
+  createdBy        String?   @map("created_by") @db.Uuid
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  sessionType    SessionType  @relation(fields: [sessionTypeId, organizationId], references: [id, organizationId])
+  coach          User         @relation("BookingCoach", fields: [coachUserId], references: [id])
+  client         Client       @relation(fields: [clientId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  creditPurchase Purchase?    @relation(fields: [creditPurchaseId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  canceler       User?        @relation("BookingCanceler", fields: [canceledBy], references: [id], onDelete: SetNull)
+  creator        User?        @relation("BookingCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@unique([id, organizationId])
+  @@index([organizationId, coachUserId, startsAt])
+  @@index([organizationId, clientId, startsAt])
+  @@map("bookings")
+}
+
+/// A coach's two-way calendar sync (D-013 #11): tokens sealed; only busy intervals are read.
+model CalendarConnection {
+  id              String    @id @default(uuid()) @db.Uuid
+  organizationId  String    @map("organization_id") @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  /// google | outlook | fake.
+  provider        String
+  accountEmail    String?   @map("account_email")
+  tokenCiphertext String    @map("token_ciphertext")
+  calendarId      String    @default("primary") @map("calendar_id")
+  /// active | revoked | error.
+  status          String    @default("active")
+  busySyncedAt    DateTime? @map("busy_synced_at") @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User         @relation("CalendarConnectionUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@map("calendar_connections")
+}
+
+model CalendarBusy {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  startsAt       DateTime @map("starts_at") @db.Timestamptz(3)
+  endsAt         DateTime @map("ends_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User         @relation("CalendarBusyUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, userId, startsAt])
+  @@map("calendar_busy")
+}
+
+/// PRD I14: one AI drafting request, logged without content; counts toward the workspace's daily cap.
+model AiRequest {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  userId         String?  @map("user_id") @db.Uuid
+  /// program_from_text | program_from_template | checkin_highlights.
+  kind           String
+  /// pending | ok | refused | error.
+  status         String   @default("pending")
+  inputChars     Int      @default(0) @map("input_chars")
+  outputChars    Int      @default(0) @map("output_chars")
+  removedLines   Int      @default(0) @map("removed_lines")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@map("ai_requests")
 }
