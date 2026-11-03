@@ -604,3 +604,12 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
   stop. Payments clients set up with the coach's own Stripe or Razorpay account carry on until they cancel (cancel
   stays allowed). Contacting support is allowed too. Automation events from a lapsed workspace are consumed without
   starting runs, so restoring it does not replay them; due steps and scheduled messages wait and resume.
+- **#16, after the final review:** an ended trial lapses 14 days after it ends, with a banner meanwhile; trials that
+  had already ended when this shipped count from the release (migration 092). Exemptions have two levels:
+  requesting an export, a deletion request and support only while the member can still read; listing and
+  downloading prepared exports and cancelling a payment plan even after (`/closed` lists them). Join links and
+  invite acceptance (client and team) refuse a lapsed workspace.
+- **#15, after the final review:** only a verified domain reserves its hostname, so an unproven claim never blocks
+  the owner who proves it; removing one releases it at the email provider. A failed DNS lookup changes nothing and a
+  verified domain is demoted only after three missing answers in a row. A custom domain that isn't serving
+  redirects every path to the main domain; a host that is no custom domain at all is left alone.
