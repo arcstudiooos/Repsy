@@ -28,10 +28,12 @@ const listWindow = () => {
 
 /** PRD K10, K11, H15 (D-013 #11): sessions clients book, hours, time off, calendar sync and booked sessions. */
 export default async function SchedulePage() {
-  const w = listWindow();
   const data = await withServerTenant(async (tx, actor) => {
+    // Read the clock after the session lookup, so the page is rendered per request.
+    const w = listWindow();
     const manage = can(actor, 'schedule:manage');
     return {
+      nowIso: w.now.toISOString(),
       manage,
       schedule: await getSchedule(tx, actor, undefined, w.now),
       types: await listSessionTypes(tx, actor, {
@@ -66,7 +68,7 @@ export default async function SchedulePage() {
             <CardDescription>The last week and the next two months.</CardDescription>
           </CardHeader>
           <CardContent>
-            <BookingList bookings={data.bookings} timezone={tz} nowIso={w.now.toISOString()} />
+            <BookingList bookings={data.bookings} timezone={tz} nowIso={data.nowIso} />
           </CardContent>
         </Card>
         {data.manage && (
