@@ -50,6 +50,7 @@ describe('buildExports', () => {
     expect(await buildExports(prisma, storage, now)).toEqual({ done: 0, retried: 0, failed: 0 });
     const files = await readdir(join(dir, 'exports', orgId, jobId, 'a1'));
     expect(files.sort()).toEqual([
+      'bookings.csv',
       'checkins.csv',
       'clients.csv',
       'exercise_swaps.csv',
@@ -58,6 +59,7 @@ describe('buildExports', () => {
       'habits.csv',
       'metrics.csv',
       'nutrition.csv',
+      'payments.csv',
       'programs.json',
       'sessions.csv',
       'set_logs.csv',
@@ -102,7 +104,7 @@ describe('purgeExpiredExports (PR #2 review D-I4)', () => {
     // Later than the other tests' exports, which this first purge removes.
     const built = new Date('2027-01-04T12:00:00Z');
     await buildExports(prisma, storage, built);
-    expect(await readdir(join(dir, 'exports', orgId, jobId, 'a1'))).toHaveLength(12);
+    expect(await readdir(join(dir, 'exports', orgId, jobId, 'a1'))).toHaveLength(14);
     await purgeExpiredExports(prisma, storage, built);
 
     // Not expired yet: nothing happens.
