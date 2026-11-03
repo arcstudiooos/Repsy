@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'More | Kinetic' };
+export const metadata: Metadata = { title: 'More | Repsy' };
 
 const links = [
   { label: 'Programs', href: '/app/programs' },

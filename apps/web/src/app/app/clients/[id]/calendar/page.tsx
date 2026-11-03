@@ -8,7 +8,7 @@ import { loadClient } from '../data';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Calendar | Kinetic' };
+export const metadata: Metadata = { title: 'Calendar | Repsy' };
 
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 

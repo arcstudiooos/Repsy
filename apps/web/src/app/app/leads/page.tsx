@@ -9,7 +9,7 @@ import { LeadBoard } from './LeadBoard';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Leads | Kinetic' };
+export const metadata: Metadata = { title: 'Leads | Repsy' };
 
 /** PRD B16: applications from the public page, worked from New to Won or Lost. */
 export default async function LeadsPage() {

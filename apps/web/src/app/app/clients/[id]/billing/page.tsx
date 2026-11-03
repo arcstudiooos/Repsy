@@ -18,7 +18,7 @@ import { RecordPayment } from './RecordPayment';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Billing | Kinetic' };
+export const metadata: Metadata = { title: 'Billing | Repsy' };
 
 /** PRD K3, K7, K8, K15: what this client bought, what they paid, and recording a cash or bank payment. */
 export default async function ClientBillingPage({ params }: { params: Promise<{ id: string }> }) {

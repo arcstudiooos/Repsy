@@ -11,7 +11,7 @@ import { getServerActor } from '@/server/serverActor';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Workspace closed | Kinetic' };
+export const metadata: Metadata = { title: 'Workspace closed | Repsy' };
 
 /**
  * PRD M12 (D-013 #16): after a lapsed workspace's read window, members land here. Exports they prepared earlier

@@ -33,7 +33,7 @@ import { MarkSeenButton } from './MarkSeenButton';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Review | Kinetic' };
+export const metadata: Metadata = { title: 'Review | Repsy' };
 
 function Section({
   id,

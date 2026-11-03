@@ -101,7 +101,7 @@ export function AcceptForm(props: AcceptFormProps) {
               value={email}
               readOnly
               aria-readonly="true"
-              className={`${inputClass} bg-[#F7F8F6]`}
+              className={`${inputClass} bg-surface-muted`}
             />
           </div>
           <Field
@@ -120,7 +120,7 @@ export function AcceptForm(props: AcceptFormProps) {
         <h2 id="privacy-heading" className="mb-1 text-sm font-medium">
           Privacy notice
         </h2>
-        <p className="rounded-lg bg-[#F7F8F6] p-3 text-sm">{privacyText}</p>
+        <p className="rounded-lg bg-surface-muted p-3 text-sm">{privacyText}</p>
       </section>
 
       <div className="mb-4">
@@ -132,14 +132,14 @@ export function AcceptForm(props: AcceptFormProps) {
             required
             aria-invalid={errors.consent ? true : undefined}
             aria-describedby={errors.consent ? 'consent-error' : undefined}
-            className="mt-1 size-5 shrink-0 accent-[#1C7666]"
+            className="mt-1 size-5 shrink-0 accent-accent"
           />
           <label htmlFor="consent" className="text-base">
             I agree to share my training data with {orgName}
           </label>
         </div>
         {errors.consent && (
-          <p id="consent-error" role="alert" className="mt-1 text-sm text-[#B64743]">
+          <p id="consent-error" role="alert" className="mt-1 text-sm text-danger">
             {errors.consent}
           </p>
         )}
@@ -162,7 +162,7 @@ export function AcceptForm(props: AcceptFormProps) {
           ))}
         </select>
         {errors.timezone && (
-          <p role="alert" className="mt-1 text-sm text-[#B64743]">
+          <p role="alert" className="mt-1 text-sm text-danger">
             {errors.timezone}
           </p>
         )}
@@ -188,7 +188,7 @@ export function AcceptForm(props: AcceptFormProps) {
           className={`${inputClass} py-2`}
         />
         {errors.goals && (
-          <p id="goals-error" role="alert" className="mt-1 text-sm text-[#B64743]">
+          <p id="goals-error" role="alert" className="mt-1 text-sm text-danger">
             {errors.goals}
           </p>
         )}

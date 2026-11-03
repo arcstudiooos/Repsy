@@ -8,7 +8,7 @@ import { withServerTenant } from '@/server/serverActor';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Version history | Kinetic' };
+export const metadata: Metadata = { title: 'Version history | Repsy' };
 
 /** A commit time as an org-local date and time, e.g. "30 Oct 2026, 14:05". */
 function formatSavedAt(iso: string, timeZone: string): string {

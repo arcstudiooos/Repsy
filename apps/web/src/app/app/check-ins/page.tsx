@@ -9,7 +9,7 @@ import { TemplateEditor } from './TemplateEditor';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Check-in questions | Kinetic' };
+export const metadata: Metadata = { title: 'Check-in questions | Repsy' };
 
 const KIND_LABEL: Record<TemplateKind, string> = {
   checkin: 'Recurring check-in',

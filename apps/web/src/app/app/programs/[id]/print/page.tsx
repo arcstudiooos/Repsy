@@ -13,7 +13,7 @@ import { extraTargets, repsText } from '@/lib/target-text';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Print program | Kinetic' };
+export const metadata: Metadata = { title: 'Print program | Repsy' };
 
 function describeSet(s: SetTarget, units: Units): string {
   const parts: string[] = [];

@@ -5,7 +5,7 @@ import { AuthShell } from '@/components/auth-ui';
 export const instant = false;
 
 export const metadata: Metadata = {
-  title: 'Thank you | Kinetic',
+  title: 'Thank you | Repsy',
   referrer: 'no-referrer',
   robots: { index: false, follow: false },
 };

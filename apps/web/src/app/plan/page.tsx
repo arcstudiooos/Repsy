@@ -5,7 +5,7 @@ import { TRIAL_CLIENT_LIMIT, TRIAL_DAYS } from '@kinetic/core';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Plan and fair-billing charter | Kinetic' };
+export const metadata: Metadata = { title: 'Plan and fair-billing charter | Repsy' };
 
 const CHARTER = [
   ['One price, everything included', 'No add-ons, no feature tiers, no per-client surprises.'],

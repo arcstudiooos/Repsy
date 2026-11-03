@@ -11,7 +11,7 @@ import { sectionStart } from '@kinetic/core/workout-sections';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Program version | Kinetic' };
+export const metadata: Metadata = { title: 'Program version | Repsy' };
 
 /** One target set as read-only text, e.g. "5 reps · 60 kg · RPE 8 · Rest 90 s". */
 function describeSet(s: SetTarget, units: Units): string {

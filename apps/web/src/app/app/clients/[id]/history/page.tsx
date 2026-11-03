@@ -20,7 +20,7 @@ import { ClientCourses } from './ClientCourses';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'History | Kinetic' };
+export const metadata: Metadata = { title: 'History | Repsy' };
 
 const KIND: Record<TimelineKind, string> = {
   assignment: 'Program',

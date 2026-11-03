@@ -75,13 +75,7 @@ export function Meter({
 }) {
   const pct = value === null ? 0 : Math.max(0, Math.min(100, Math.round(value)));
   const tone =
-    value === null
-      ? 'bg-divider'
-      : pct >= 75
-        ? 'bg-accent'
-        : pct >= 50
-          ? 'bg-[#B9822F]'
-          : 'bg-danger';
+    value === null ? 'bg-divider' : pct >= 75 ? 'bg-accent' : pct >= 50 ? 'bg-energy' : 'bg-danger';
   return (
     <div className={cn('flex items-center gap-2', className)}>
       <div

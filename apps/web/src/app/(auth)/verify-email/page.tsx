@@ -5,7 +5,7 @@ import { AuthShell } from '@/components/auth-ui';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Verify your email | Kinetic' };
+export const metadata: Metadata = { title: 'Verify your email | Repsy' };
 
 export default function VerifyEmailPage() {
   return (

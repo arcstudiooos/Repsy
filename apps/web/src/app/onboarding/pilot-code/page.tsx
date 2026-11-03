@@ -4,7 +4,7 @@ import { PilotCodeForm } from './PilotCodeForm';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Pilot code | Kinetic' };
+export const metadata: Metadata = { title: 'Pilot code | Repsy' };
 
 // Session + verified email are enforced by src/proxy.ts and the server action.
 export default function PilotCodePage() {

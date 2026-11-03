@@ -27,7 +27,7 @@ import { readNotices } from '@kinetic/core';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Admin | Kinetic' };
+export const metadata: Metadata = { title: 'Admin | Repsy' };
 
 const when = (iso: string) => new Date(iso).toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) || undefined;

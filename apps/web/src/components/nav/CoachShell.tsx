@@ -63,7 +63,7 @@ async function TrialBanner() {
   const lapse = lapseState(org);
   if (lapse.lapsed) {
     return (
-      <div role="status" className="mb-6 rounded-card border border-[#EBD3B5] bg-[#FDF6EC] p-4">
+      <div role="status" className="mb-6 rounded-card border border-warning/25 bg-warning-soft p-4">
         <p className="font-medium">This workspace is read-only</p>
         <p className="text-sm text-secondary">
           {org.lapsedAt ? 'Its subscription has lapsed.' : 'Its free trial has ended.'} Nothing can
@@ -84,7 +84,7 @@ async function TrialBanner() {
   }
   if (lapse.trialLapsesAt) {
     return (
-      <div role="status" className="mb-6 rounded-card border border-[#EBD3B5] bg-[#FDF6EC] p-4">
+      <div role="status" className="mb-6 rounded-card border border-warning/25 bg-warning-soft p-4">
         <p className="font-medium">Your free trial has ended</p>
         <p className="text-sm text-secondary">
           Your clients and data are kept, but adding new clients needs a plan. Unless you move to
@@ -99,7 +99,7 @@ async function TrialBanner() {
   if (!org.trialEndsAt) return null;
   const left = Math.ceil((org.trialEndsAt.getTime() - Date.now()) / 86_400_000);
   return (
-    <div role="status" className="mb-6 rounded-card border border-[#BFDCD3] bg-accent-soft/60 p-4">
+    <div role="status" className="mb-6 rounded-card border border-accent/20 bg-accent-soft p-4">
       <p className="font-medium">{`Free trial: ${left} ${left === 1 ? 'day' : 'days'} left`}</p>
       <p className="text-sm text-secondary">
         Up to {org.activeClientLimit} active clients during the trial.{' '}
@@ -128,7 +128,7 @@ async function TwoFactorRequiredBanner() {
   );
   if (!status?.required || status.enabled) return null;
   return (
-    <div role="status" className="mb-6 rounded-card border border-[#EBD3B5] bg-[#FDF6EC] p-4">
+    <div role="status" className="mb-6 rounded-card border border-warning/25 bg-warning-soft p-4">
       <p className="font-medium">Turn on two-step sign-in</p>
       <p className="text-sm text-secondary">
         Your workspace has more than one coach, so the owner account needs a code from an

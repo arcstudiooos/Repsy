@@ -23,7 +23,7 @@ import { HouseTemplate, ShareWithClients } from './ShareWithClients';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Edit program | Kinetic' };
+export const metadata: Metadata = { title: 'Edit program | Repsy' };
 
 type Loaded =
   | {

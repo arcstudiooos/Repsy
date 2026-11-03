@@ -7,7 +7,7 @@ import { withPortalTenant } from '@/server/serverActor';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Group | Kinetic' };
+export const metadata: Metadata = { title: 'Group | Repsy' };
 
 export default async function PortalGroupPage({
   params,

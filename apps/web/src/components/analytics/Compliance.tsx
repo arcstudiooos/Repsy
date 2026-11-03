@@ -21,7 +21,7 @@ export function CompliancePercent({ counts }: { counts: AdherenceCounts }) {
   }
   const pct = Math.round((counts.completed / counts.eligible) * 100);
   // Text colour is a second signal only; the figure itself says it.
-  const tone = pct >= 80 ? 'text-success' : pct >= 50 ? 'text-warning' : 'text-[#9E3632]';
+  const tone = pct >= 80 ? 'text-success' : pct >= 50 ? 'text-warning' : 'text-danger-ink';
   return (
     <span className="tabular whitespace-nowrap">
       <span className={`font-medium ${tone}`}>{pct}%</span>{' '}

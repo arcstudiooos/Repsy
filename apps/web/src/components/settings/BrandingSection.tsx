@@ -54,7 +54,7 @@ export function BrandingSection({ branding, canEdit }: { branding: Branding; can
         <CardTitle as="h2">Branding</CardTitle>
         <CardDescription>
           Clients see your workspace name, logo and accent colour in their portal. Leave a field
-          empty to use Kinetic&apos;s.
+          empty to use Repsy&apos;s.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -68,7 +68,7 @@ export function BrandingSection({ branding, canEdit }: { branding: Branding; can
                 <Input
                   id={`${id}-accent`}
                   value={accent}
-                  placeholder="#1c7666"
+                  placeholder="#4f46e5"
                   maxLength={7}
                   onChange={(e) => setAccent(e.target.value)}
                   aria-invalid={errors.accent || problem ? true : undefined}

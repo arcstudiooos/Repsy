@@ -27,7 +27,7 @@ import { loadClient } from '../data';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Progress | Kinetic' };
+export const metadata: Metadata = { title: 'Progress | Repsy' };
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) || undefined;
 

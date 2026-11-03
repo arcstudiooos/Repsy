@@ -26,7 +26,7 @@ import { aiPortFromEnv } from '@/server/ai/anthropic';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Check-ins | Kinetic' };
+export const metadata: Metadata = { title: 'Check-ins | Repsy' };
 
 const STATUS = {
   open: 'Waiting for the client',

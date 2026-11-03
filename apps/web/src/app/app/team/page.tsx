@@ -7,7 +7,7 @@ import { TeamManager } from './TeamManager';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Team | Kinetic' };
+export const metadata: Metadata = { title: 'Team | Repsy' };
 
 /** PRD A10: who is on the workspace's team, and (for owners and admins) inviting more. */
 export default async function TeamPage() {

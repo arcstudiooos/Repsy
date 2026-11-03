@@ -8,7 +8,7 @@ import { withServerTenant } from '@/server/serverActor';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Challenges | Kinetic' };
+export const metadata: Metadata = { title: 'Challenges | Repsy' };
 
 /** PRD H9: time-boxed challenges with an opt-in leaderboard. */
 export default async function ChallengesPage() {

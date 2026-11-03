@@ -5,12 +5,12 @@ import { cn } from '@/lib/utils';
  * the name, so the same person always gets the same colour.
  */
 export const AVATAR_TONES = [
-  { bg: '#E2F1EC', fg: '#11564B' },
-  { bg: '#FCEBD9', fg: '#7A4413' },
-  { bg: '#E3ECFA', fg: '#22467F' },
-  { bg: '#F8E4E6', fg: '#8A2F3B' },
-  { bg: '#E9EEE1', fg: '#3F5524' },
-  { bg: '#ECE8F5', fg: '#4A3D78' },
+  { bg: '#E0E7FF', fg: '#3730A3' },
+  { bg: '#FFEDD5', fg: '#9A3412' },
+  { bg: '#E0F2FE', fg: '#075985' },
+  { bg: '#FCE7F3', fg: '#9D174D' },
+  { bg: '#CCFBF1', fg: '#115E59' },
+  { bg: '#FEF3C7', fg: '#92400E' },
 ] as const;
 
 export function initials(name: string): string {

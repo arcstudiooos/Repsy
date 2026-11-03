@@ -8,7 +8,7 @@ import { HabitsManager } from './HabitsManager';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Habits | Kinetic' };
+export const metadata: Metadata = { title: 'Habits | Repsy' };
 
 /** A client's habits and tasks (PRD G1-G3). */
 export default async function ClientHabitsPage({ params }: { params: Promise<{ id: string }> }) {

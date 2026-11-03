@@ -25,7 +25,7 @@ import { getServerSession, withServerTenant } from '@/server/serverActor';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Dashboard | Kinetic' };
+export const metadata: Metadata = { title: 'Dashboard | Repsy' };
 
 const ATTENTION_SHOWN = 5;
 

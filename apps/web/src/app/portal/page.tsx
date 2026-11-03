@@ -46,7 +46,7 @@ import { withPortalTenant } from '@/server/serverActor';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Home | Kinetic' };
+export const metadata: Metadata = { title: 'Home | Repsy' };
 
 // Access is enforced by src/proxy.ts and the portal layout's client gate.
 export default async function PortalHome() {
@@ -227,7 +227,7 @@ export default async function PortalHome() {
         ) : next ? (
           <section
             aria-labelledby="next-workout"
-            className="relative overflow-hidden rounded-card bg-accent p-5 text-white shadow-raised sm:p-6"
+            className="relative overflow-hidden rounded-card bg-accent bg-[linear-gradient(135deg,rgba(255,255,255,0)_0%,rgba(30,10,80,0.28)_100%)] p-5 text-white shadow-raised sm:p-6"
           >
             <div
               aria-hidden

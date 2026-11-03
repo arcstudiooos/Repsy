@@ -10,7 +10,7 @@ import { getServerSession } from '@/server/serverActor';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Support | Kinetic' };
+export const metadata: Metadata = { title: 'Support | Repsy' };
 
 /** One client's data for support, only with an active grant (each view is audited). */
 export default async function SupportClientPage({

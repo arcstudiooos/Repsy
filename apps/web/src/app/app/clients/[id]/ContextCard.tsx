@@ -212,7 +212,7 @@ export function ContextCard({ context }: { context: ClientContext }) {
           {context.pinnedNotes.length > 0 && (
             <ul aria-label="Pinned notes" className="flex flex-col gap-1.5 text-sm">
               {context.pinnedNotes.map((n) => (
-                <li key={n.id} className="flex gap-2 rounded-control bg-[#FDF6EC] px-3 py-2">
+                <li key={n.id} className="flex gap-2 rounded-control bg-warning-soft px-3 py-2">
                   <Pin aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
                   <span className="whitespace-pre-wrap">{n.body}</span>
                 </li>

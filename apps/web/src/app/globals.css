@@ -17,13 +17,26 @@
   --color-input-border: var(--k-input-border);
   --color-warning: var(--k-warning);
   --color-danger: var(--k-danger);
+  --color-energy: var(--k-energy);
+  --color-energy-ink: var(--k-energy-ink);
+  --color-success-soft: var(--k-success-soft);
+  --color-success-ink: var(--k-success-ink);
+  --color-warning-soft: var(--k-warning-soft);
+  --color-warning-ink: var(--k-warning-ink);
+  --color-danger-soft: var(--k-danger-soft);
+  --color-danger-ink: var(--k-danger-ink);
+  --color-chart-1: var(--k-chart-1);
+  --color-chart-2: var(--k-chart-2);
+  --color-chart-3: var(--k-chart-3);
+  --color-chart-4: var(--k-chart-4);
+  --color-chart-5: var(--k-chart-5);
 
   --radius-card: var(--k-radius-card);
   --radius-control: var(--k-radius-control);
   --shadow-card: var(--k-shadow-card);
   --shadow-raised: var(--k-shadow-raised);
 
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-sans-brand);
   --font-mono: var(--font-geist-mono);
 
   --ease-standard: var(--k-ease);
@@ -45,7 +58,7 @@
   h1,
   h2,
   h3 {
-    letter-spacing: -0.015em;
+    letter-spacing: -0.02em;
   }
   /* Numbers that line up in tables and stats. */
   .tabular {
@@ -64,7 +77,7 @@
 select:not([multiple]):not([size]) {
   appearance: none;
   background-color: var(--k-surface);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2360716e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235b6477' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-position: right 0.75rem center;
   background-repeat: no-repeat;
   background-size: 1rem;

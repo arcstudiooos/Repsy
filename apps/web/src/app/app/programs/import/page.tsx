@@ -8,7 +8,7 @@ import { ImportProgram } from './ImportProgram';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Import a program | Kinetic' };
+export const metadata: Metadata = { title: 'Import a program | Repsy' };
 
 /** Paste a program as text or from a spreadsheet; review the matches; save as a new template (PRD C14). */
 export default async function ImportProgramPage() {

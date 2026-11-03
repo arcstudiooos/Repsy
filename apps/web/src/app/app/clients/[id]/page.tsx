@@ -27,7 +27,7 @@ import { TagEditor } from './TagEditor';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Client | Kinetic' };
+export const metadata: Metadata = { title: 'Client | Repsy' };
 
 export default async function ClientOverviewPage({ params }: { params: Promise<{ id: string }> }) {
   const client = await loadClient((await params).id);
@@ -102,7 +102,7 @@ export default async function ClientOverviewPage({ params }: { params: Promise<{
   return (
     <div className="flex flex-col gap-6">
       {client.status === 'invited' && client.inviteStatus !== 'accepted' && (
-        <Card className="border-[#BFDCD3] bg-accent-soft/40">
+        <Card className="border-accent/20 bg-accent-soft/50">
           <CardHeader>
             <CardTitle>Invitation</CardTitle>
           </CardHeader>
@@ -167,7 +167,7 @@ export default async function ClientOverviewPage({ params }: { params: Promise<{
               <CardHeader>
                 <CardTitle className="text-base">Data</CardTitle>
                 <CardDescription>
-                  Ask Kinetic to delete this client&apos;s data. The request is verified before
+                  Ask Repsy to delete this client&apos;s data. The request is verified before
                   anything is deleted.
                 </CardDescription>
               </CardHeader>

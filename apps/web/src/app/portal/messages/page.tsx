@@ -13,7 +13,7 @@ import { withPortalTenant } from '@/server/serverActor';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Messages | Kinetic' };
+export const metadata: Metadata = { title: 'Messages | Repsy' };
 
 // Access is enforced by src/proxy.ts and the portal layout's client gate; core scopes to this client's thread.
 export default async function PortalMessages({

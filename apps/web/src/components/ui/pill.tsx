@@ -9,9 +9,9 @@ const pill = cva(
       tone: {
         neutral: 'bg-surface-muted text-secondary',
         accent: 'bg-accent-soft text-accent-ink',
-        success: 'bg-[#E3F2E9] text-success',
-        warning: 'bg-[#FBEEDD] text-warning',
-        danger: 'bg-[#FAE6E5] text-[#9E3632]',
+        success: 'bg-success-soft text-success-ink',
+        warning: 'bg-warning-soft text-warning-ink',
+        danger: 'bg-danger-soft text-danger-ink',
       },
     },
     defaultVariants: { tone: 'neutral' },

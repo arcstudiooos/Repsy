@@ -8,7 +8,7 @@ import { withServerTenant } from '@/server/serverActor';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Groups | Kinetic' };
+export const metadata: Metadata = { title: 'Groups | Repsy' };
 
 /** PRD H7, H8: cohorts and teams with a chat and a feed that you moderate. */
 export default async function GroupsPage() {

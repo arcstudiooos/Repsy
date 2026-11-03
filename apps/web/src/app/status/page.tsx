@@ -6,7 +6,7 @@ import { readNotices, RELIABILITY_TARGETS } from '@kinetic/core';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Service status | Kinetic' };
+export const metadata: Metadata = { title: 'Service status | Repsy' };
 
 const LABEL = { maintenance: 'Maintenance', degraded: 'Degraded', outage: 'Outage' } as const;
 const fmt = (iso: string) =>

@@ -10,7 +10,7 @@ import { withPortalTenant } from '@/server/serverActor';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Sessions | Kinetic' };
+export const metadata: Metadata = { title: 'Sessions | Repsy' };
 
 /** PRD K10, K11, H15: book a session with your coach, see what's booked, join the call, check your credits. */
 export default async function PortalSessionsPage() {

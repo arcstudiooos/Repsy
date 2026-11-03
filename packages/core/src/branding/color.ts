@@ -38,7 +38,7 @@ export function darken(hex: string, amount = 0.2): string {
 /** Null when the accent is usable; otherwise why not. */
 export function accentProblem(hex: string): string | null {
   const v = hex.trim().toLowerCase();
-  if (!HEX.test(v)) return 'Use a colour like #1c7666.';
+  if (!HEX.test(v)) return 'Use a colour like #4f46e5.';
   const ratio = contrastRatio(v, '#ffffff');
   if (ratio < MIN_CONTRAST) {
     return `White text on this colour has a contrast of ${ratio.toFixed(1)}:1; pick a darker colour (4.5:1 or more).`;

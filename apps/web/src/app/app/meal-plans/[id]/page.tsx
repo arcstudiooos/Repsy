@@ -8,7 +8,7 @@ import { MealPlanEditor } from '../MealPlanEditor';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Meal plan | Kinetic' };
+export const metadata: Metadata = { title: 'Meal plan | Repsy' };
 
 export default async function MealPlanPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

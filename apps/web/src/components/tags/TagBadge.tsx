@@ -2,12 +2,12 @@ import type { TagColor, TagView } from '@kinetic/core';
 
 /** Decorative dot colours; the tag name carries the meaning (text stays ink for contrast). */
 export const TAG_DOT: Record<TagColor, string> = {
-  teal: '#1C7666',
+  teal: '#0D9488',
   blue: '#2F5FA8',
   purple: '#6B4CA6',
   orange: '#B0601A',
   red: '#B64743',
-  gray: '#60716E',
+  gray: '#64748B',
 };
 
 export function TagBadge({ tag }: { tag: TagView }) {

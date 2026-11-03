@@ -3,7 +3,7 @@ import { withServerTenant } from '@/server/serverActor';
 
 /**
  * The portal header's workspace name and logo, and the workspace accent (PRD A6). Values are validated on save
- * (#rrggbb, https), so the style tag carries nothing user-shaped beyond two hex colours. Falls back to Kinetic.
+ * (#rrggbb, https), so the style tag carries nothing user-shaped beyond two hex colours. Falls back to Repsy.
  */
 export async function PortalBrand() {
   let brand: Branding | null = null;
@@ -30,7 +30,7 @@ export async function PortalBrand() {
             className="size-7 shrink-0 rounded-control object-contain"
           />
         )}
-        <span className="truncate">{brand?.name ?? 'Kinetic'}</span>
+        <span className="truncate">{brand?.name ?? 'Repsy'}</span>
       </p>
     </>
   );

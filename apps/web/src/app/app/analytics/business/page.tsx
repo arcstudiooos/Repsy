@@ -8,7 +8,7 @@ import { withServerTenant } from '@/server/serverActor';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Business analytics | Kinetic' };
+export const metadata: Metadata = { title: 'Business analytics | Repsy' };
 
 const monthLabel = (m: string) =>
   new Intl.DateTimeFormat('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' }).format(

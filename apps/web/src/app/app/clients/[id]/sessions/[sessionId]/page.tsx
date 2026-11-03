@@ -11,7 +11,7 @@ import { loadClient } from '../../data';
 // May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
 export const instant = false;
 
-export const metadata: Metadata = { title: 'Log workout | Kinetic' };
+export const metadata: Metadata = { title: 'Log workout | Repsy' };
 
 /** D-008 #7: a coach logs a workout on the client's behalf. The session must belong to the client in the URL. */
 export default async function CoachSessionPage({

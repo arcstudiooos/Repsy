@@ -18,7 +18,7 @@ import { appOrigin, fakePaymentsEnabled, fakeSecret } from '@/server/payments';
 export const instant = false;
 
 export const metadata: Metadata = {
-  title: 'Test checkout | Kinetic',
+  title: 'Test checkout | Repsy',
   robots: { index: false, follow: false },
 };
 

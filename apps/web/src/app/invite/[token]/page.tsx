@@ -20,7 +20,7 @@ import { AcceptForm } from './AcceptForm';
 export const instant = false;
 
 export const metadata: Metadata = {
-  title: 'Join your coach | Kinetic',
+  title: 'Join your coach | Repsy',
   // The URL carries a secret: never let it leak through referrers or indexes.
   referrer: 'no-referrer',
   robots: { index: false, follow: false },

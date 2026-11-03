@@ -15,7 +15,7 @@ import { JoinButton } from './JoinButton';
 export const instant = false;
 
 export const metadata: Metadata = {
-  title: 'Join the team | Kinetic',
+  title: 'Join the team | Repsy',
   // The URL carries a secret.
   referrer: 'no-referrer',
   robots: { index: false, follow: false },
@@ -55,7 +55,7 @@ async function JoinBody({ params }: { params: Promise<{ token: string }> }) {
           </Link>
         </div>
         <p className="mt-4 text-sm text-secondary">
-          New to Kinetic?{' '}
+          New to Repsy?{' '}
           <Link href="/signup" className={linkClass}>
             Create an account
           </Link>{' '}
