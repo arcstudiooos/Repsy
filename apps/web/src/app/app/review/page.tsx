@@ -21,6 +21,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { formatSessionDate } from '@/lib/session-format';
 import { withServerTenant } from '@/server/serverActor';
 import { cn } from '@/lib/utils';
+import { PageHeader } from '@/components/ui/page-header';
+
+const chip =
+  'inline-flex min-h-9 shrink-0 items-center rounded-full border px-3 whitespace-nowrap transition-colors duration-[var(--k-motion-fast)]';
+const chipOn = 'border-transparent bg-accent-soft font-medium text-accent-ink';
+const chipOff = 'border-border bg-surface text-secondary hover:border-ink/30 hover:text-ink';
 import { FlagQueue } from './FlagQueue';
 import { MarkSeenButton } from './MarkSeenButton';
 
@@ -177,9 +183,15 @@ export default async function ReviewPage({
   const today = todayInZone(timezone, new Date(review.generatedAt));
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Review</h1>
+      <PageHeader
+        title="Review"
+        description="Everything your review rules flagged, then this week's workout activity."
+      />
       {team && (
-        <nav aria-label="Whose clients" className="mb-4 flex gap-2">
+        <nav
+          aria-label="Whose clients"
+          className="mb-4 inline-flex gap-1 rounded-control bg-surface-muted p-1"
+        >
           {(
             [
               ['mine', 'My clients'],
@@ -191,10 +203,8 @@ export default async function ReviewPage({
               href={`/app/review?scope=${value}`}
               aria-current={scope === value ? 'page' : undefined}
               className={cn(
-                'inline-flex min-h-11 items-center rounded-control border px-3',
-                scope === value
-                  ? 'border-accent bg-accent text-white'
-                  : 'border-input-border bg-surface text-ink',
+                'inline-flex min-h-9 items-center rounded-[6px] px-3 text-sm font-medium',
+                scope === value ? 'bg-surface text-ink shadow-sm' : 'text-secondary hover:text-ink',
               )}
             >
               {label}
@@ -206,29 +216,34 @@ export default async function ReviewPage({
         <h2 id="queue-heading" className="text-lg font-semibold">
           Needs review
         </h2>
-        <nav aria-label="Queue filters" className="flex flex-wrap gap-2">
+        <nav
+          aria-label="Queue filters"
+          className="inline-flex w-fit gap-1 rounded-control bg-surface-muted p-1"
+        >
           {FILTERS.map((f) => (
             <Link
               key={f.value}
               href={hrefFor(f.value, rule)}
               aria-current={f.value === filter ? 'page' : undefined}
               className={cn(
-                'inline-flex min-h-11 items-center rounded-control border px-3',
-                f.value === filter ? 'border-accent font-semibold' : 'border-input-border',
+                'inline-flex min-h-9 items-center rounded-[6px] px-3 text-sm font-medium',
+                f.value === filter
+                  ? 'bg-surface text-ink shadow-sm'
+                  : 'text-secondary hover:text-ink',
               )}
             >
               {f.label}
             </Link>
           ))}
         </nav>
-        <nav aria-label="Filter by rule" className="flex flex-wrap gap-2 text-sm">
+        <nav
+          aria-label="Filter by rule"
+          className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 text-sm md:mx-0 md:flex-wrap md:overflow-visible md:px-0"
+        >
           <Link
             href={hrefFor(filter)}
             aria-current={!rule ? 'page' : undefined}
-            className={cn(
-              'inline-flex min-h-11 items-center underline-offset-4',
-              !rule ? 'font-semibold' : 'underline',
-            )}
+            className={cn(chip, !rule ? chipOn : chipOff)}
           >
             All rules
           </Link>
@@ -237,10 +252,7 @@ export default async function ReviewPage({
               key={r}
               href={hrefFor(filter, r)}
               aria-current={r === rule ? 'page' : undefined}
-              className={cn(
-                'inline-flex min-h-11 items-center underline-offset-4',
-                r === rule ? 'font-semibold' : 'underline',
-              )}
+              className={cn(chip, r === rule ? chipOn : chipOff)}
             >
               {RULE_TEXT[r]}
             </Link>

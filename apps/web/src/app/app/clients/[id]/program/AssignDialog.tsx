@@ -48,7 +48,7 @@ interface Props {
   capped?: boolean;
   triggerLabel: string;
   triggerAriaLabel?: string;
-  triggerVariant?: 'default' | 'secondary';
+  triggerVariant?: 'default' | 'secondary' | 'soft';
 }
 
 interface ApiError {

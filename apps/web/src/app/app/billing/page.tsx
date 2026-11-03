@@ -1,5 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { ChartColumn, Check } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
+import { buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import {
   can,
   getPaymentSettings,
@@ -47,15 +51,68 @@ export default async function BillingPage() {
   });
   const { settings } = data;
   const currency = settings.currency;
+  // PRD K1-K3: the order a new workspace sets payments up in.
+  const done = [settings.account !== null, currency !== null, data.packages.length > 0];
+  const firstOpen = done.indexOf(false);
+  const steps = ['Connect a payment account', 'Pick your currency', 'Create a package'].map(
+    (label, i) => ({ label, done: done[i]!, current: i === firstOpen }),
+  );
+  const setupDone = firstOpen === -1;
   return (
     <>
-      <h1 className="mb-2 text-2xl font-semibold md:text-3xl">Billing</h1>
-      <p className="mb-6 text-secondary">
-        Sell packages, take card and UPI payments, and record cash or bank transfers.{' '}
-        <Link href="/app/analytics/business" className="text-accent underline underline-offset-4">
-          See revenue
-        </Link>
-      </p>
+      <PageHeader
+        title="Billing"
+        description="Sell packages, take card and UPI payments, and record cash or bank transfers."
+        actions={
+          <Link href="/app/analytics/business" className={buttonVariants({ variant: 'secondary' })}>
+            <ChartColumn aria-hidden className="size-4" />
+            See revenue
+          </Link>
+        }
+      />
+      {data.manager && !setupDone && (
+        <ol
+          aria-label="Set up payments"
+          className="mb-6 grid gap-2 rounded-card border border-border bg-surface p-3 shadow-card sm:grid-cols-3"
+        >
+          {steps.map((step, i) => (
+            <li
+              key={step.label}
+              className={cn(
+                'flex items-center gap-3 rounded-control px-3 py-2',
+                step.current && 'bg-accent-soft/60',
+              )}
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  'flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold',
+                  step.done
+                    ? 'bg-accent text-white'
+                    : step.current
+                      ? 'border-[1.5px] border-accent text-accent-ink'
+                      : 'border-[1.5px] border-input-border text-secondary',
+                )}
+              >
+                {step.done ? <Check className="size-4" strokeWidth={3} /> : i + 1}
+              </span>
+              <span className="text-sm">
+                <span
+                  className={cn(
+                    'block font-medium',
+                    !step.done && !step.current && 'text-secondary',
+                  )}
+                >
+                  {step.label}
+                </span>
+                <span className="text-secondary">
+                  {step.done ? 'Done' : step.current ? 'Next' : 'Later'}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
       <div className="flex flex-col gap-6">
         {data.manager && (
           <>

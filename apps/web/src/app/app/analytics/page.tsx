@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { buttonVariants } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
 import { DomainError, getAnalytics, isoWeekOf, todayInZone, type Ratio } from '@kinetic/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -80,12 +82,15 @@ export default async function AnalyticsPage({
   const period = `${formatDate(range.from)} to ${formatDate(range.to)}`;
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Analytics</h1>
-      <p className="mb-6">
-        <Link href="/app/analytics/business" className="text-accent underline underline-offset-4">
-          Business analytics: retention, client lifetime and why clients leave
-        </Link>
-      </p>
+      <PageHeader
+        title="Analytics"
+        description="How your clients are training and checking in, for the dates you pick."
+        actions={
+          <Link href="/app/analytics/business" className={buttonVariants({ variant: 'secondary' })}>
+            Business analytics
+          </Link>
+        }
+      />
       <form method="get" className="mb-6 flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
           <label htmlFor="from" className="text-sm font-medium">
