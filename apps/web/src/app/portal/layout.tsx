@@ -84,10 +84,7 @@ async function ClientGate({ children }: { children: ReactNode }) {
         <NoticeBanner />
       </Suspense>
       {lapse?.lapsed && (
-        <p
-          role="status"
-          className="mb-6 rounded-card bg-surface p-4 shadow-card ring-1 ring-warning"
-        >
+        <p role="status" className="mb-6 rounded-card border border-[#EBD3B5] bg-[#FDF6EC] p-4">
           {coachName}&apos;s workspace is read-only now: you can look at everything and export your
           data (Profile) until{' '}
           {new Intl.DateTimeFormat('en-GB', {
@@ -121,7 +118,7 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
       >
         Skip to content
       </a>
-      <header className="border-b border-divider bg-surface px-4 py-2 md:border-b-0 md:pb-0">
+      <header className="border-b border-border bg-surface px-4 py-3 md:border-b-0 md:pb-1">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-2 md:px-8">
           <Suspense fallback={<p className="text-lg font-semibold">Kinetic</p>}>
             <PortalBrand />
@@ -137,7 +134,7 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
       </Suspense>
       <main
         id="main"
-        className="mx-auto w-full max-w-3xl flex-1 px-4 pt-6 pb-24 md:px-8 md:pt-8 md:pb-8"
+        className="mx-auto w-full max-w-3xl flex-1 px-4 pt-6 pb-28 md:px-8 md:pt-8 md:pb-12"
       >
         <Suspense fallback={<LoadingState />}>
           <ClientGate>{children}</ClientGate>
