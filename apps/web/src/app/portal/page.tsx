@@ -231,17 +231,17 @@ export default async function PortalHome() {
           >
             <div
               aria-hidden
-              className="pointer-events-none absolute -top-16 -right-16 size-56 rounded-full bg-white/10"
+              className="pointer-events-none absolute -top-16 -right-16 size-56 rounded-full bg-white/[0.06]"
             />
             <div
               aria-hidden
               className="pointer-events-none absolute -right-4 -bottom-24 size-44 rounded-full bg-white/5"
             />
-            <p className="relative text-sm font-medium text-white/85">Next workout</p>
+            <p className="relative text-sm font-medium text-white">Next workout</p>
             <h2 id="next-workout" className="relative mt-1 text-2xl font-semibold break-words">
               {next.title}
             </h2>
-            <div className="relative mt-2 flex flex-wrap items-center gap-2 text-sm text-white/90">
+            <div className="relative mt-2 flex flex-wrap items-center gap-2 text-sm text-white">
               <span>{formatSessionDate(next.scheduledLocalDate, home.todayLocalDate)}</span>
               <span aria-hidden>·</span>
               <span>{plural(next.exerciseCount, 'exercise', 'exercises')}</span>
