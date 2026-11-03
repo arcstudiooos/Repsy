@@ -238,6 +238,72 @@ describe('bookings (K10, D-013 #11)', () => {
     ).toBe('NOT_FOUND');
   });
 
+  it('a coach books and marks only their own sessions; a departed coach takes no bookings (review S1-S3)', async () => {
+    const { w, type } = await setup();
+    // A second coach in the same workspace.
+    const other = await withSystem(async (tx) => {
+      const u = await tx.user.create({
+        data: { email: `c2-${Date.now()}@example.test`, name: 'Coach Two' },
+      });
+      await tx.membership.create({
+        data: { userId: u.id, organizationId: w.orgId, role: 'coach' },
+      });
+      return u;
+    }, prisma);
+    const coach2 = {
+      userId: other.id,
+      orgId: w.orgId,
+      role: 'coach' as const,
+      isPlatformAdmin: false,
+    };
+    const slot = '2026-11-05T14:00:00.000Z';
+    expect(
+      await code(
+        runAs(prisma, coach2, (tx) =>
+          createBooking(
+            tx,
+            coach2,
+            { sessionTypeId: type.id, startsAt: slot, clientId: w.clientId },
+            { now: NOW },
+          ),
+        ),
+      ),
+    ).toBe('NOT_FOUND');
+    const b = await runAs(prisma, w.client, (tx) =>
+      createBooking(tx, w.client, { sessionTypeId: type.id, startsAt: slot }, { now: NOW }),
+    );
+    const after = new Date('2026-11-05T15:30:00Z');
+    expect(
+      await code(
+        runAs(prisma, coach2, (tx) => markBooking(tx, coach2, b.id, 'no_show', { now: after })),
+      ),
+    ).toBe('NOT_FOUND');
+    expect(
+      await code(runAs(prisma, coach2, (tx) => cancelBooking(tx, coach2, b.id, { now: NOW }))),
+    ).toBe('FORBIDDEN');
+    // The session type's coach leaves: nothing more can be booked with them.
+    await withSystem(
+      (tx) =>
+        tx.membership.updateMany({
+          where: { userId: w.coach.userId, organizationId: w.orgId },
+          data: { status: 'inactive' },
+        }),
+      prisma,
+    );
+    expect(
+      await code(
+        runAs(prisma, w.client, (tx) =>
+          createBooking(
+            tx,
+            w.client,
+            { sessionTypeId: type.id, startsAt: '2026-11-06T14:00:00.000Z' },
+            { now: NOW },
+          ),
+        ),
+      ),
+    ).toBe('NOT_FOUND');
+  });
+
   it('session credits: none means no booking; cancelling in time returns one, late cancel is refused, no-show keeps it', async () => {
     const { w, type } = await setup({ usesCredit: true });
     const book = (startsAt: string, now = NOW) =>

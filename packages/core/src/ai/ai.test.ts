@@ -50,6 +50,18 @@ describe('guardrails (I14)', () => {
     );
     expect(r.text).toBe('Day 1: Upper\nBench press 3x8\nRow 3x10');
     expect(r.removed).toBe(2);
+    // Common ways of saying it are caught too (review S5)…
+    for (const line of [
+      'Knee hurting more than last week',
+      'Felt dizzy on Tuesday',
+      'Back is sore',
+    ]) {
+      expect(filterUnsafe(line).removed).toBe(1);
+    }
+    // …while ordinary exercises pass.
+    const program =
+      'Shoulder press 3x8\nKnee raise 3x12\nHill sprint 6x30s\nDrill work 1x10min\nPallof press 3x10';
+    expect(filterUnsafe(program).removed).toBe(0);
   });
 });
 
@@ -112,10 +124,12 @@ describe('drafts (I10, I11, I12)', () => {
     const ai = new FakeAi();
     ai.extraLines = ['Take ibuprofen if your knee aches'];
     const d = await draftProgramFromText(ai, {
-      text: 'Coach Sam, sam@example.test\nDay 1: Push\n- Bench press 3x8 @ 60kg\n- Push-up 3x12',
+      text: 'For Priya Sharma, sam@example.test\nDay 1: Push\n- Bench press 3x8 @ 60kg\n- Push-up 3x12',
       units: 'kg',
       library: ['Bench press', 'Push-up'],
+      clientNames: ['Priya Sharma'],
     });
+    expect(ai.calls[0]?.prompt).not.toContain('Priya');
     expect(ai.calls[0]?.prompt).not.toContain('sam@example.test');
     expect(d.text).not.toMatch(/ibuprofen/);
     expect(d.removedLines).toBe(1);
@@ -182,7 +196,12 @@ describe('drafts (I10, I11, I12)', () => {
           },
         });
       const prev = await make('2026-10-28', { q1: 3, q2: 'Busy week' });
-      const cur = await make('2026-11-04', { q1: 5, q2: 'Slept well, email me at c@example.test' });
+      const client = await tx.client.findUniqueOrThrow({ where: { id: w.clientId } });
+      const first = client.name.split(' ')[0]!;
+      const cur = await make('2026-11-04', {
+        q1: 5,
+        q2: `Slept well. ${first} here, email me at c@example.test`,
+      });
       return { prev: prev.id, cur: cur.id };
     }, prisma);
 
@@ -199,6 +218,11 @@ describe('drafts (I10, I11, I12)', () => {
       prisma,
     );
     expect(prompt).not.toContain(name.name);
+    // The client's own name, written in an answer, is replaced too (review S4).
+    for (const part of name.name.split(' ').filter((p) => p.length >= 3)) {
+      expect(prompt).not.toMatch(new RegExp(`\\b${part}\\b`));
+    }
+    expect(prompt).toContain('[name] here');
     expect(r.previousId).toBe(ids.prev);
     expect(r.points.length).toBe(2);
     expect(r.points.every((p) => p.sources.length > 0)).toBe(true);

@@ -15,6 +15,8 @@ import { SESSION_TYPE_SELECT, toSessionTypeView, type SessionTypeView } from './
  * lock.
  */
 const DAY = 86_400_000;
+const isManagerRole = (actor: ActorContext) =>
+  (MANAGER_ROLES as readonly string[]).includes(actor.role);
 const MIN = 60_000;
 const notFound = () => new DomainError('NOT_FOUND', 'Not found.');
 const conflict = (message: string) => new DomainError('CONFLICT', message);
@@ -138,8 +140,18 @@ async function bookableType(
     select: { coachUserId: true },
   });
   if (!client) throw notFound();
-  // Clients book with their own coach; staff may book any coach's session for a client.
+  // Clients book with their own coach; a coach books their own sessions for a client; managers any coach's
+  // (security review S2).
   if (actor.role === 'client' && client.coachUserId !== row.coachUserId) throw notFound();
+  if (actor.role !== 'client' && !isManagerRole(actor) && row.coachUserId !== actor.userId) {
+    throw notFound();
+  }
+  // A coach who has left the workspace takes no bookings (security review S3).
+  const active = await tx.membership.findFirst({
+    where: { userId: row.coachUserId, status: 'active' },
+    select: { id: true },
+  });
+  if (!active) throw notFound();
   return toSessionTypeView(row);
 }
 
@@ -331,10 +343,12 @@ export async function createBooking(
     throw new DomainError('VALIDATION', 'Some fields are invalid.', { startsAt: ['Pick a time.'] });
   }
   // Serialise this coach's bookings: the second of two racing bookings waits here, then sees the first.
-  await (tx as unknown as Pick<SystemTx, '$executeRaw'>).$executeRaw`
-    SELECT 1 FROM memberships
+  const locked = await (tx as unknown as Pick<SystemTx, '$queryRaw'>).$queryRaw<{ id: string }[]>`
+    SELECT id FROM memberships
     WHERE user_id = ${type.coachUserId}::uuid AND organization_id = app_current_org() AND status = 'active'
     FOR UPDATE`;
+  // No row, no serialisation: refuse rather than book unlocked (security review S3).
+  if (locked.length === 0) throw notFound();
   const slotCtx = await slotContext(
     tx,
     type,
@@ -360,7 +374,9 @@ export async function createBooking(
   if (!free) throw conflict('That time was just taken or is no longer open. Pick another.');
   let creditPurchaseId: string | null = null;
   if (type.usesCredit) {
-    creditPurchaseId = await takeCredit(tx, clientId, now);
+    // A second try covers the oldest pack running out while this booking waited on its row lock.
+    creditPurchaseId =
+      (await takeCredit(tx, clientId, now)) ?? (await takeCredit(tx, clientId, now));
     if (!creditPurchaseId) throw conflict('No session credits left. Buy a pack or ask your coach.');
   }
   const calendar = await tx.calendarConnection.findFirst({
@@ -421,11 +437,7 @@ export async function cancelBooking(
   const b = (await tx.booking.findFirst({ where, select: BOOKING_SELECT })) as BookingRow | null;
   if (!b) throw notFound();
   // A coach cancels their own sessions; managers anyone's.
-  if (
-    actor.role !== 'client' &&
-    b.coachUserId !== actor.userId &&
-    !(MANAGER_ROLES as readonly string[]).includes(actor.role)
-  ) {
+  if (actor.role !== 'client' && b.coachUserId !== actor.userId && !isManagerRole(actor)) {
     throw new DomainError('FORBIDDEN', 'You can only cancel your own sessions.');
   }
   if (b.status !== 'booked') throw conflict('This session is not booked any more.');
@@ -491,8 +503,14 @@ export async function markBooking(
   if (outcome !== 'completed' && outcome !== 'no_show') {
     throw new DomainError('VALIDATION', 'Some fields are invalid.', { outcome: ['Pick one.'] });
   }
+  // A coach marks their own sessions; managers anyone's (security review S1).
   const { count } = await tx.booking.updateMany({
-    where: { id: bookingId, status: 'booked', startsAt: { lte: now } },
+    where: {
+      id: bookingId,
+      status: 'booked',
+      startsAt: { lte: now },
+      ...(isManagerRole(actor) ? {} : { coachUserId: actor.userId }),
+    },
     data: { status: outcome },
   });
   if (count === 0) throw notFound();

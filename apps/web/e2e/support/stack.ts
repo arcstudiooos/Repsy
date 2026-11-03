@@ -177,6 +177,7 @@ async function main(): Promise<void> {
     DISABLE_BREACHED_PASSWORD_CHECK: 'true',
     FAKE_PAYMENTS: 'on',
     FAKE_CALENDAR: 'on',
+    FAKE_AI: 'on',
     DEV_EMAIL_DIR: emailDir,
     OUTBOX_POLL_INTERVAL_MS: '1000',
     RESEND_API_KEY: '',

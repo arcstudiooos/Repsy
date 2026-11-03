@@ -21,11 +21,88 @@ export function redactContact(text: string): { text: string; redactions: number 
   return { text: out, redactions };
 }
 
+const escapeRe = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Replaces known people's names with "[name]" (security review S4). `fullNames` are matched whole (any client in
+ * the workspace, for pasted text); `nameParts` word by word (the one client a check-in is from), parts of two
+ * letters or fewer skipped.
+ */
+export function redactNames(
+  text: string,
+  names: { fullNames?: string[]; nameParts?: string[] },
+): { text: string; redactions: number } {
+  let redactions = 0;
+  let out = text;
+  const full = [
+    ...new Set((names.fullNames ?? []).map((n) => n.trim()).filter((n) => n.length >= 4)),
+  ]
+    .sort((a, b) => b.length - a.length)
+    .slice(0, 2000);
+  const parts = [
+    ...new Set((names.nameParts ?? []).map((n) => n.trim()).filter((n) => n.length >= 3)),
+  ];
+  for (const list of [full, parts]) {
+    if (list.length === 0) continue;
+    // Chunked so one regular expression never grows unbounded.
+    for (let i = 0; i < list.length; i += 200) {
+      const re = new RegExp(
+        `(?<![\\p{L}\\p{N}])(?:${list
+          .slice(i, i + 200)
+          .map(escapeRe)
+          .join('|')})(?![\\p{L}\\p{N}])`,
+        'giu',
+      );
+      out = out.replace(re, () => {
+        redactions++;
+        return '[name]';
+      });
+    }
+  }
+  return { text: out, redactions };
+}
+
+/** The words of a person's name and their email's local part, for `redactNames`. */
+export const namePartsOf = (name: string, email?: string | null): string[] => [
+  ...name.split(/[\s,.'-]+/),
+  ...(email ? email.split('@')[0]!.split(/[._+-]+/) : []),
+];
+
+/**
+ * Best effort, not a guarantee (security review S5): a keyword screen for injury, medical, medication and
+ * supplement content. The coach reviews every draft; this only removes the lines that are plainly out of scope.
+ */
 const UNSAFE = new RegExp(
   [
     'injur\\w*',
     'pain\\w*',
     'ache\\w*',
+    'hurt\\w*',
+    'sore\\w*',
+    'dizz\\w*',
+    'nause\\w*',
+    'faint\\w*',
+    'numb(?:ness)?',
+    'tingl\\w*',
+    'swell\\w*',
+    'swollen',
+    'flare\\w*',
+    'cramp\\w*',
+    'migraine\\w*',
+    'headache\\w*',
+    'ill(?:ness)?\\b',
+    'sick\\w*',
+    'concussion\\w*',
+    'fractur\\w*',
+    'hernia\\w*',
+    'arthritis',
+    'asthma\\w*',
+    'heart condition',
+    'chest pain',
+    'medicine\\w*',
+    'pill\\w*',
+    'drug\\w*',
+    'dose\\w*',
     'sprain\\w*',
     'strain(?:ed)?',
     'tendon\\w*',

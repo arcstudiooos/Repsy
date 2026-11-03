@@ -8,13 +8,20 @@ import { getProgram, type ProgramDetail } from '../programs/read';
 import { parseProgram, type ParsedProgram } from '../programs/text-import';
 import { todayInZone, zonedTimeToUtc } from '../timezone';
 import { isUuid } from '../uuid';
-import { filterUnsafe, isUnsafe, redactContact, REMOVED_NOTE } from './guardrails';
+import {
+  filterUnsafe,
+  isUnsafe,
+  namePartsOf,
+  redactContact,
+  redactNames,
+  REMOVED_NOTE,
+} from './guardrails';
 import { AiUnavailableError, type AiDraftRequest, type AiPort } from './port';
 
 /**
  * PRD I10-I12, I14 (D-013 #14): AI drafting for trainers, only when the owner has turned it on, only on request,
- * always a draft the coach reviews. Prompts carry program text, exercise names and check-in answers, never a name,
- * email or other identifier. Every answer is filtered (injury, medical and supplement lines removed and counted) and
+ * always a draft the coach reviews. Prompts carry program text, exercise names and check-in answers; contact details
+ * and the workspace's client names are replaced first (best effort: a name written in an unusual form can get through). Every answer is filtered (injury, medical and supplement lines removed and counted) and
  * checked against its source before it is shown: program drafts go through the C14 importer's review; check-in
  * highlights must cite answers that exist and are never stored.
  *
@@ -149,6 +156,19 @@ export async function finishAiRequest(
   });
 }
 
+/** Every client's full name in the workspace, to keep out of pasted text (security review S4). */
+export async function clientNamesForRedaction(tx: TenantTx): Promise<string[]> {
+  const rows = await tx.client.findMany({ select: { name: true }, take: 5000 });
+  return rows.map((r) => r.name);
+}
+
+/** Contact details, then known client names, out of text bound for the provider. */
+const scrub = (text: string, names: { fullNames?: string[]; nameParts?: string[] }) => {
+  const a = redactContact(text);
+  const b = redactNames(a.text, names);
+  return { text: b.text, redactions: a.redactions + b.redactions };
+};
+
 // ---------------------------------------------------------------- program drafts (I10, I11)
 
 const FORMAT_RULES = [
@@ -191,14 +211,14 @@ function finishProgramDraft(raw: string, units: 'kg' | 'lb'): ProgramDraft {
 /** I10: pasted text (or sheet rows) to a draft in the import format. Contact details never leave. */
 export async function draftProgramFromText(
   port: AiPort,
-  input: { text: string; units: 'kg' | 'lb'; library: string[] },
+  input: { text: string; units: 'kg' | 'lb'; library: string[]; clientNames?: string[] },
 ): Promise<ProgramDraft & { redactions: number }> {
   if (typeof input.text !== 'string' || input.text.trim().length === 0) {
     throw invalid('text', 'Paste the program first.');
   }
   if (input.text.length > AI_INPUT_MAX)
     throw invalid('text', `Paste up to ${AI_INPUT_MAX} characters.`);
-  const { text, redactions } = redactContact(input.text);
+  const { text, redactions } = scrub(input.text, { fullNames: input.clientNames });
   const raw = await port.draft({
     system: `You turn a fitness coach's pasted training program into a structured draft.\n${FORMAT_RULES}`,
     prompt: [
@@ -264,7 +284,11 @@ export async function templateDraftRequest(
   }
   const template = await getProgram(tx, actor, input.templateId);
   if (template.kind !== 'template' || template.versionNo === null) throw notFound();
-  const redacted = redactContact(request);
+  const clientNames = await clientNamesForRedaction(tx);
+  const redacted = scrub(request, { fullNames: clientNames });
+  const templateText = redactNames(programToText(template, input.units), {
+    fullNames: clientNames,
+  }).text;
   return {
     redactions: redacted.redactions,
     req: {
@@ -275,7 +299,7 @@ export async function templateDraftRequest(
         input.library.slice(0, 300).join('\n'),
         '',
         "The coach's template:",
-        programToText(template, input.units),
+        templateText,
         '',
         "The coach's request:",
         '<input>',
@@ -356,6 +380,15 @@ export async function highlightsRequest(
     orderBy: { submittedAt: 'desc' },
     select: { id: true, questionsJson: true, answersJson: true },
   });
+  const who = await tx.client.findFirst({
+    where: { id: current.clientId },
+    select: { name: true, email: true },
+  });
+  const names = {
+    fullNames: who ? [who.name] : [],
+    nameParts: who ? namePartsOf(who.name, who.email) : [],
+  };
+  const clean = (t: string) => scrub(t, names).text;
   const qs = readQuestions(current.questionsJson);
   const answers = (current.answersJson ?? {}) as Record<string, CheckinAnswer>;
   const prevQs = previous ? readQuestions(previous.questionsJson) : [];
@@ -363,13 +396,13 @@ export async function highlightsRequest(
   const sources: Record<string, HighlightSource> = {};
   const lines: string[] = [];
   for (const q of qs.slice(0, 20)) {
-    const label = redactContact(q.label).text;
+    const label = clean(q.label);
     lines.push(`Question: ${label}`);
     sources[`c:${q.id}`] = { questionId: q.id, checkin: 'current', label };
-    lines.push(`[c:${q.id}] ${redactContact(answerText(answers[q.id])).text.slice(0, 1500)}`);
+    lines.push(`[c:${q.id}] ${clean(answerText(answers[q.id])).slice(0, 1500)}`);
     if (previous && prevQs.some((p) => p.id === q.id)) {
       sources[`p:${q.id}`] = { questionId: q.id, checkin: 'previous', label };
-      lines.push(`[p:${q.id}] ${redactContact(answerText(prevAnswers[q.id])).text.slice(0, 1500)}`);
+      lines.push(`[p:${q.id}] ${clean(answerText(prevAnswers[q.id])).slice(0, 1500)}`);
     }
     lines.push('');
   }

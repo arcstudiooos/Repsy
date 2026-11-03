@@ -12,8 +12,11 @@ import {
   listAgreements,
   isManager,
   getPublicPageSettings,
+  getAiSettings,
 } from '@kinetic/core';
 import { AgreementsSection } from '@/components/settings/AgreementsSection';
+import { AiSection } from '@/components/settings/AiSection';
+import { aiPortFromEnv } from '@/server/ai/anthropic';
 import { PublicPageSection } from '@/components/settings/PublicPageSection';
 import { BrandingSection } from '@/components/settings/BrandingSection';
 import { DataExportSection } from '@/components/settings/DataExportSection';
@@ -45,6 +48,7 @@ export default async function SettingsPage() {
     publicPage,
     branding,
     twoFactor,
+    ai,
   } = await withServerTenant(async (tx, a) => ({
     actor: a,
     settings: a.role === 'client' ? null : await getSettings(tx, a),
@@ -56,6 +60,10 @@ export default async function SettingsPage() {
     publicPage: await getPublicPageSettings(tx),
     branding: await getBranding(tx),
     twoFactor: await twoFactorStatus(tx, a),
+    ai:
+      a.role === 'client'
+        ? null
+        : await getAiSettings(tx, a, { available: aiPortFromEnv() !== null }),
   }));
   // A client who lands here belongs in their portal.
   if (!settings?.profile || !settings.org) redirect('/portal/profile');
@@ -75,6 +83,7 @@ export default async function SettingsPage() {
         {reviewRules && <ReviewRulesSection settings={reviewRules} canEdit={isOwner} />}
         <AgreementsSection agreements={agreements} canEdit={isOwner} />
         <PublicPageSection initial={publicPage} canEdit={isOwner} />
+        {ai && <AiSection settings={ai} isOwner={actor.role === 'owner'} />}
         <PilotAccessCard
           count={settings.org.activeClientCount}
           limit={settings.org.activeClientLimit}

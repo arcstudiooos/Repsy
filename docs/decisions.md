@@ -561,9 +561,11 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
 14. **AI drafting (I10-I12, I14).** Off by default; the owner turns it on for the workspace. Only trainers (D-012 #7)
     use it, only by asking, and the result is always a draft the coach saves, labelled "Drafted with AI". Sent to the
     provider: pasted program text with emails, phone numbers and URLs removed (I10); a template's structure and the
-    library's exercise names (I11); two check-ins' questions and answers (I12). Never a name, email or other
-    identifier. Output naming medical, injury, medication or supplement topics is removed line by line with a note
-    saying so. Drafts are parsed by the C14 importer or validated against the source answers before they are shown;
+    library's exercise names (I11); two check-ins' questions and answers (I12). Contact details and the workspace's
+    client names (the check-in client's name parts and email name, any client's full name in pasted text) are
+    replaced before sending; this is best effort, so the coach is asked not to paste names. Output lines matching a
+    keyword screen for medical, injury, medication or supplement topics are removed one by one with a note saying
+    so; the screen is best effort too, and every draft is reviewed by the coach. Drafts are parsed by the C14 importer or validated against the source answers before they are shown;
     I12 highlights link every point to its source answer and are not stored. Each workspace has a daily cap (50);
     each request is audited without content. The Anthropic API does not train on API data; the adapter sends no
     workspace or user identifiers.

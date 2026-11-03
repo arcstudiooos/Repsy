@@ -1020,6 +1020,7 @@ export {
   completeProgramDraft,
   programToText,
   exerciseLibraryNames,
+  clientNamesForRedaction,
   highlightsRequest,
   completeHighlights,
   type HighlightsRequest,
@@ -1035,7 +1036,7 @@ export {
   type AiDraftRequest,
   type AiHighlight,
 } from './ai/port';
-export { redactContact, filterUnsafe, isUnsafe } from './ai/guardrails';
+export { redactContact, redactNames, filterUnsafe, isUnsafe } from './ai/guardrails';
 export {
   getCalendarConnection,
   saveCalendarConnection,

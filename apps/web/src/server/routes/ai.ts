@@ -5,6 +5,7 @@ import {
   completeProgramDraft,
   DomainError,
   draftProgramFromText,
+  clientNamesForRedaction,
   exerciseLibraryNames,
   finishAiRequest,
   getAiSettings,
@@ -88,13 +89,16 @@ export const aiProgramFromTextRoute: RouteDef<typeof fromTextSchema, true> = {
   rateLimit: { capacity: 5, refillPerSecond: 5 / 60 },
   handler: async ({ actor, input, tenant }) => {
     const p = port();
-    const library = await tenant((tx) => exerciseLibraryNames(tx, actor));
+    const { library, clientNames } = await tenant(async (tx) => ({
+      library: await exerciseLibraryNames(tx, actor),
+      clientNames: await clientNamesForRedaction(tx),
+    }));
     return run(
       tenant,
       actor,
       'program_from_text',
       input.text.length,
-      () => draftProgramFromText(p, { ...input, library }),
+      () => draftProgramFromText(p, { ...input, library, clientNames }),
       (r) => r.text.length,
     );
   },
