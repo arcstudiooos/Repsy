@@ -28,6 +28,41 @@ Open http://localhost:3000 and sign in as `coach@example.test` (or `admin@exampl
 - `pnpm dev`, `pnpm db:migrate`, `pnpm db:seed`, `pilot-code:create` and `pgboss:migrate` read the root `.env` (Node's built-in env-file loader; variables already set in the shell win). `pnpm test` does not.
 - `pnpm db:down` stops the container (data persists in a named volume).
 
+## What works locally (R3 completion, D-013)
+
+With `FAKE_PAYMENTS=on`, `FAKE_CALENDAR=on` and `FAKE_AI=on` (the defaults in `.env.example`) all of this runs
+without any provider account; `docs/r3-followups.md` lists what to set up for the real providers.
+
+- **K1-K6 payments:** owners pick a currency and connect Stripe, Razorpay or, in development, test payments
+  (Billing). Packages are one-off (optionally with days of access), recurring or payment plans, with free trials,
+  a tag, a template to assign and session credits. Public packages show on the public page; buying one runs through
+  the provider's checkout (the test checkout at `/dev/checkout/<ref>` in development), creates or links the client,
+  sends the invite, adds the tag, starts the package's journeys and raises "Ready to assign" when there is a
+  template. Coupons (percent or fixed, expiry, use cap) discount the first charge. Every payment gets a gap-free
+  receipt number; receipts show the tax id and GST (CGST and SGST, or IGST, by the buyer's state).
+- **K7-K9, K15:** a failed payment emails the client, opens a review item and, after the workspace's grace period,
+  gates the portal until they update their card (or the coach keeps it open). `/portal/billing` shows plans, the
+  next charge, receipts, "Update card" and one-click cancel. Coaches record cash and bank payments on a client's
+  Billing tab, void them with a reason, cancel plans and refund. Business analytics shows MRR, subscriptions,
+  churn, refunds and client value, with a CSV.
+- **K10, K11, H15 scheduling:** coaches set session types (length, buffers, notice, booking and cancel windows, an
+  https call link or a place, credit use), weekly hours and time off on Schedule, and can book for a client. Clients
+  book from `/portal/sessions` in their own time zone, see the call link, and cancel within the window. A coach is
+  never double-booked. Session packs give credits, used by booking and returned on an in-time cancel. Reminders go
+  the day before (workout reminder opt-in); bookings join the calendar feed; a connected Google or Outlook calendar
+  gets each session and hides busy times.
+- **J4, J6:** automations can start when a package is bought, when it is about to renew or end, or when it ends
+  (optionally for one package); clients are emailed before a renewal or end and the coach gets a follow-up item.
+- **I10-I12, I14 AI drafting:** off until the owner turns it on in Settings. Coaches can then tidy pasted text, or
+  adapt one of their templates, into a draft in the import review ("Drafted with AI"), and ask for highlights of a
+  check-in, each linked to the answers it rests on. Contact details and client names are replaced before anything
+  is sent and injury, medical and supplement lines are removed (both best effort); 50 requests a day per workspace.
+- **L4 custom domains:** owners add a domain in Settings, prove it with a TXT record and point a CNAME at the app;
+  it then serves the public page and storefront only, and emails come from it once its sending records verify.
+- **M12 lapse:** a workspace whose trial ended or that a platform admin marks lapsed is read-only (exports,
+  deletion requests and cancelling stay open) for 90 days for clients and 180 for staff, with nothing sent meanwhile.
+  Booked sessions and payments are in the exports.
+
 ## What works locally (R2, in progress)
 
 R2 builds the web-platform features in `docs/competitive/complete-platform-prd.md`, one per PR.

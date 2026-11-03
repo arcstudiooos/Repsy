@@ -20,6 +20,8 @@ instants ISO 8601 UTC.
 | `exercise_swaps.csv` | swap (PRD D8)              | planned exercise, the one done instead, reason                      |
 | `goals.csv`          | goal (PRD B18)             | start and target in canonical units                                 |
 | `workout_notes.csv`  | note on a workout (PRD D9) | author role and text                                                |
+| `bookings.csv`       | booked session (PRD K10)   | times, status, location, whether a session credit was used          |
+| `payments.csv`       | payment (PRD K3-K8, K15)   | package, status, method, amounts in minor units, receipt number     |
 | `programs.json`      | —                          | every program, see below                                            |
 | `exercises.json`     | —                          | the workspace's own exercises, see below                            |
 

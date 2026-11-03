@@ -429,6 +429,90 @@ const GOAL_HEADER = [
   'status',
 ];
 
+/** PRD K10 (D-013 #11): booked sessions. */
+async function bookingRows(tx: TenantTx, clientId?: string): Promise<Rows> {
+  const rows = await tx.booking.findMany({
+    where: clientId ? { clientId } : {},
+    orderBy: [{ clientId: 'asc' }, { startsAt: 'asc' }],
+    take: 50_000,
+    select: {
+      clientId: true,
+      title: true,
+      startsAt: true,
+      endsAt: true,
+      status: true,
+      location: true,
+      creditPurchaseId: true,
+      creditReturned: true,
+    },
+  });
+  return rows.map((b) => [
+    b.clientId,
+    b.title,
+    b.startsAt.toISOString(),
+    b.endsAt.toISOString(),
+    b.status,
+    b.location,
+    b.creditPurchaseId ? (b.creditReturned ? 'returned' : 'used') : '',
+  ]);
+}
+
+const BOOKING_HEADER = [
+  'client_id',
+  'title',
+  'starts_at',
+  'ends_at',
+  'status',
+  'location',
+  'credit',
+];
+
+/** PRD K3-K8, K15 (D-013): payments, in minor units of their currency. */
+async function paymentRows(tx: TenantTx, clientId?: string): Promise<Rows> {
+  const rows = await tx.payment.findMany({
+    where: clientId ? { clientId } : {},
+    orderBy: [{ clientId: 'asc' }, { paidAt: 'asc' }],
+    take: 50_000,
+    select: {
+      clientId: true,
+      paidAt: true,
+      status: true,
+      method: true,
+      currency: true,
+      amountMinor: true,
+      taxMinor: true,
+      refundedMinor: true,
+      receiptNo: true,
+      purchase: { select: { package: { select: { title: true } } } },
+    },
+  });
+  return rows.map((p) => [
+    p.clientId,
+    p.paidAt.toISOString(),
+    p.purchase.package.title,
+    p.status,
+    p.method,
+    p.currency,
+    p.amountMinor,
+    p.taxMinor,
+    p.refundedMinor,
+    p.receiptNo,
+  ]);
+}
+
+const PAYMENT_HEADER = [
+  'client_id',
+  'paid_at',
+  'package',
+  'status',
+  'method',
+  'currency',
+  'amount_minor',
+  'tax_minor',
+  'refunded_minor',
+  'receipt_no',
+];
+
 async function noteRows(tx: TenantTx, clientId?: string): Promise<Rows> {
   const rows = await tx.sessionNote.findMany({
     where: clientId ? { session: { is: { clientId } } } : {},
@@ -672,6 +756,8 @@ export async function buildExportFiles(
       file('exercise_swaps.csv', SWAP_HEADER, await swapRows(tx)),
       file('goals.csv', GOAL_HEADER, await goalRows(tx)),
       file('workout_notes.csv', NOTE_HEADER, await noteRows(tx)),
+      file('bookings.csv', BOOKING_HEADER, await bookingRows(tx)),
+      file('payments.csv', PAYMENT_HEADER, await paymentRows(tx)),
     ];
   }
   const clientId = job.clientId as string;
@@ -722,6 +808,8 @@ export async function buildExportFiles(
     file('exercise_swaps.csv', SWAP_HEADER, await swapRows(tx, clientId)),
     file('goals.csv', GOAL_HEADER, await goalRows(tx, clientId)),
     file('workout_notes.csv', NOTE_HEADER, await noteRows(tx, clientId)),
+    file('bookings.csv', BOOKING_HEADER, await bookingRows(tx, clientId)),
+    file('payments.csv', PAYMENT_HEADER, await paymentRows(tx, clientId)),
     file(
       'messages.csv',
       ['sent_at', 'from', 'body', 'read_at'],

@@ -581,3 +581,26 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
     issuing check-ins, automations, reminders and charges for it. Clients keep read-only access and export for 90
     days, staff for 180 days; after that only an export already prepared can be downloaded. Restoring the workspace
     lifts it at once.
+
+**Amendments made while building (2 to 3 November 2026):**
+
+- **#1, AI adapter:** the Anthropic adapter uses the official `@anthropic-ai/sdk` (in `apps/web`), not raw `fetch`:
+  the SDK is the supported way to call the Claude API. Core still holds only the port and the fake. It defaults to
+  `claude-opus-5-5` at medium effort with server-side refusal fallback (`fallbacks: "default"`). The fake providers
+  (payments, calendar, AI) are opt-in with `FAKE_PAYMENTS`, `FAKE_CALENDAR` and `FAKE_AI` set to `on`, and never
+  run in production.
+- **#3, webhooks (security review):** a checkout activates only when it is paid (Stripe delayed methods wait for
+  `async_payment_succeeded`; a Razorpay mandate alone activates only a trial). Razorpay events are deduplicated on
+  a hash of the signed body, never the unsigned event-id header, and bodies older than 26 hours are refused.
+- **#5, coupons:** a use is reserved at checkout, atomically against the cap, and given back when the unfinished
+  checkout expires after a day (a late payment still activates it and counts the use again).
+- **#11, scheduling roles:** a coach books and marks only their own sessions; managers any coach's. A coach who has
+  left the workspace takes no bookings. Booking reminders use the workout reminder opt-in (relabelled "and the day
+  before a booked session"), its quiet hours and its three-a-day cap.
+- **#14, AI privacy:** names are replaced as well as contact details (the check-in client's name parts and email
+  name; any workspace client's full name in pasted text and templates). Both this and the output keyword screen are
+  best effort and say so; the coach reviews every draft.
+- **#16, lapse:** "charges" means Repsy's own: the storefront and lead form take nothing new, and renewal notices
+  stop. Payments clients set up with the coach's own Stripe or Razorpay account carry on until they cancel (cancel
+  stays allowed). Contacting support is allowed too. Automation events from a lapsed workspace are consumed without
+  starting runs, so restoring it does not replay them; due steps and scheduled messages wait and resume.

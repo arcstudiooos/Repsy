@@ -4,9 +4,10 @@ Repsy (the code still calls itself **Kinetic** in package names, the UI and docs
 trainers: coaches build programs and run their clients from one place; clients train, log and check in from a
 mobile-first portal. This file is the starting point for whoever picks the project up next.
 
-Status on 2 November 2026: releases **R1 and R2 are complete**, **R3 is mostly built** (see the list below), and
-**R4 has not been started** on purpose. Everything below is on `main` in this repository, with the full history
-from the first commit.
+Status on 3 November 2026: releases **R1, R2 and R3 are complete**, and **R4 has not been started** on purpose. The
+R3 completion work (payments, scheduling, journeys, AI drafting, custom domains, access after a lapse) is on the
+branch `claude/charming-allen-mnzedx`; everything before it is on `main`, with the full history from the first
+commit.
 
 ## 1. Run it locally
 
@@ -17,7 +18,7 @@ pnpm install
 pnpm db:up                 # Postgres 16 on localhost:54320
 cp .env.example .env       # works as-is with no provider keys
 # edit .env: set SEED_PASSWORD to any local value of 12+ characters
-pnpm db:migrate            # applies all 85 migrations
+pnpm db:migrate            # applies all 91 migrations
 pnpm db:seed               # demo users; prints a pilot sign-up code once
 pnpm dev                   # web on http://localhost:3000 + the background worker
 ```
@@ -28,15 +29,15 @@ PostHog are off, and uploads go to local disk. `README.md` has the long version 
 
 ## 2. How it is built
 
-| Part               | What it is                                                                                                                                                                                                     |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/web`         | Next.js 16 App Router (`cacheComponents`), React, Tailwind. Coach app under `/app`, client portal under `/portal`, public pages (`/join/<slug>`, invites, calendar feed), REST API under `/api/v1`.            |
-| `apps/worker`      | pg-boss worker: email and push outbox, reminders, check-in issuing, automations, scheduled messages, phase advances, exports, deletions, media purge, weekly brief.                                            |
-| `packages/core`    | All domain logic. Functions take `(tx, actor, ...)` and throw `DomainError`; no provider SDKs. Pure modules are exported on subpaths for browser use.                                                          |
-| `packages/db`      | Prisma 7 schema, 85 SQL migrations, tenant helpers. Postgres row-level security is forced on every tenant table.                                                                                               |
-| `packages/storage` | Storage port (local disk in dev, object storage in production).                                                                                                                                                |
-| `docs/`            | `decisions.md` (all rulings), `competitive/complete-platform-prd.md` (the feature list), `architecture/overview.md`, `api/openapi.yaml`, `runbook.md`, `qa-matrix.md`, `accessibility-checklist.md`, `legal/`. |
-| `render.yaml`      | Render blueprint: Postgres, the web service and the worker.                                                                                                                                                    |
+| Part               | What it is                                                                                                                                                                                                                             |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/web`         | Next.js 16 App Router (`cacheComponents`), React, Tailwind. Coach app under `/app`, client portal under `/portal`, public pages (`/join/<slug>`, invites, calendar feed), REST API under `/api/v1`.                                    |
+| `apps/worker`      | pg-boss worker: email and push outbox, reminders, check-in issuing, automations, scheduled messages, phase advances, exports, deletions, media purge, weekly brief, billing and renewal sweep, calendar sync, custom-domain checks.    |
+| `packages/core`    | All domain logic. Functions take `(tx, actor, ...)` and throw `DomainError`; no provider SDKs (providers sit behind ports with fakes; the SDK-based adapters live in the apps). Pure modules are exported on subpaths for browser use. |
+| `packages/db`      | Prisma 7 schema, 91 SQL migrations, tenant helpers. Postgres row-level security is forced on every tenant table.                                                                                                                       |
+| `packages/storage` | Storage port (local disk in dev, object storage in production).                                                                                                                                                                        |
+| `docs/`            | `decisions.md` (all rulings), `competitive/complete-platform-prd.md` (the feature list), `architecture/overview.md`, `api/openapi.yaml`, `runbook.md`, `qa-matrix.md`, `accessibility-checklist.md`, `legal/`.                         |
+| `render.yaml`      | Render blueprint: Postgres, the web service and the worker.                                                                                                                                                                            |
 
 Rules every change follows (more in `docs/decisions.md` and the architecture overview):
 
@@ -58,7 +59,7 @@ pnpm typecheck
 pnpm lint                  # 4 known warnings, 0 errors
 pnpm format:check
 DATABASE_URL=postgres://... pnpm test        # 187 unit and integration test files, 1054+ tests, all passing
-pnpm test:e2e                                # 90 Playwright specs
+pnpm test:e2e                                # 92 Playwright specs
 ```
 
 The unit suite creates a throwaway database per file from `DATABASE_URL`. The last full run passed; every feature
@@ -67,7 +68,7 @@ built since was checked with its own unit tests and end-to-end spec.
 ## 4. What is built
 
 The feature IDs refer to `docs/competitive/complete-platform-prd.md`; each one has a line in `README.md` and, where
-a choice had to be made, a numbered ruling in `docs/decisions.md` (D-011 for R2, D-012 for R3).
+a choice had to be made, a numbered ruling in `docs/decisions.md` (D-011 for R2, D-012 and D-013 for R3).
 
 **R1 and R2 (complete):** workspaces, sign-up with pilot codes, two-factor sign-in, roles and branding; clients,
 invites, tags, bulk actions, intake and onboarding; the program builder (blocks, supersets, set targets, 104-week
@@ -97,23 +98,23 @@ logs; analytics and adherence; web push; exports, deletion and the privacy featu
 - I9: weekly coach brief
 - J1-J3, J5, J7-J9: automations (triggers, steps, ask-first, failures, history, templates)
 - L7: calendar feed
+- K1-K9, K15 (D-013): Stripe Connect and Razorpay behind one payments port (with a fake), packages (one-off,
+  recurring, payment plans, trials), storefront checkout on the public page, coupons, gap-free receipts with GST,
+  failed payments with a portal gate after the grace period, `/portal/billing` self-service, revenue on business
+  analytics with CSV, manual cash and bank payments
+- K10, K11, H15: session types, weekly hours and time off, client booking in the portal and coach booking, never
+  double-booked, session packs with credits, reminders, the calendar feed, Google and Outlook two-way sync, https
+  call links
+- J4, J6: sequences started by a purchase, an upcoming renewal or end, or a package ending; renewal notices
+- I10-I12, I14: AI drafting (owner opt-in, trainers only, 50 a day): pasted text or a template to a draft in the
+  import review, and check-in highlights linked to their answers; names, contact details and medical lines kept out
+- L4: custom domains for the public page and storefront, and branded sending
+- M12: read-only access after a lapse, 90 days for clients and 180 for staff
 
 ## 5. What is left
 
-**R3, not built yet** (in the order planned):
-
-1. **I10-I12, I14 AI drafting:** paste to program, draft from a template, check-in highlights. Coach-only,
-   per-workspace opt-in and off by default, always a draft, labelled "Drafted with AI", no client names sent, no
-   medical or supplement advice; the model provider goes behind a `packages/core` port.
-2. **K1-K11, K15 payments and scheduling:** Stripe Connect and Razorpay behind one payments port, packages,
-   storefront and checkout, coupons, receipts and tax, failed payments, billing self-service, revenue dashboard,
-   scheduling with calendar sync, session packs, manual payments. Needs provider accounts and keys; build against a
-   fake provider first. Revenue then joins `/app/analytics/business` (I7).
-3. **H15:** a call link (Zoom, Meet) on bookings; comes with K10 scheduling.
-4. **J4, J6:** onboarding sequence per package and renewal journeys; come with K3 packages.
-5. **L4:** custom domains for the portal and join pages, and branded sending addresses.
-6. **M12:** read-only access and export for 90 days (clients) and 180 days (coach) after a coach's subscription
-   lapses.
+**R3 is complete.** What only the founder can do (provider accounts, keys, the hosting side of custom domains) and
+the known limits are in `docs/r3-followups.md`.
 
 **R4 (not started, by decision):** A15, A16, D19, E12, E13, G10, G11, H12, I13, J10, K12, K13, K14, L2, L3, L5, L6,
 L8, L9, L10, M11, M14, M15.
@@ -129,7 +130,11 @@ L8, L9, L10, M11, M14, M15.
   client files (progress and assessment photos, attachments, form checks) only by that client and their coaches.
 - **Video** plays as uploaded; adaptive streaming waits for a media provider (D-011 #5).
 - **Production needs:** `BETTER_AUTH_SECRET`, `RESEND_API_KEY` and `EMAIL_FROM`, object storage, and optionally
-  Google sign-in, VAPID keys for push, Sentry and PostHog. All variables are documented in `.env.example`.
+  Google sign-in, VAPID keys for push, Sentry and PostHog; for R3's providers, `PROVIDER_TOKEN_KEY` plus each
+  provider's keys (`docs/r3-followups.md`). All variables are documented in `.env.example`.
+- **Fakes:** development and E2E take payments, sync a calendar and draft with AI through deterministic fakes
+  (`FAKE_PAYMENTS`, `FAKE_CALENDAR`, `FAKE_AI` set to `on`; never in production). The test checkout is at
+  `/dev/checkout/<ref>`.
 - **Dev servers** log "uncached data during prerendering" warnings on dynamic pages; they are expected and
   `next build` passes.
 

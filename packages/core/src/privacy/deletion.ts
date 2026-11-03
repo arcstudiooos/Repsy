@@ -225,6 +225,8 @@ export async function eraseClientData(
   await tx.sequenceRun.deleteMany({ where: inClient });
   // PRD G4: their course enrolments (lesson completions go with them).
   await tx.courseEnrollment.deleteMany({ where: inClient });
+  // PRD K10 (D-013 #11): the client's booked sessions (a used credit stays counted on its kept purchase).
+  await tx.booking.deleteMany({ where: inClient });
   // PRD K3-K8 (D-013): purchases and payments are financial records the workspace must keep (tax law), so they stay,
   // linked to the anonymized client row; the buyer's name, email and region captured at checkout are cleared.
   await tx.purchase.updateMany({
