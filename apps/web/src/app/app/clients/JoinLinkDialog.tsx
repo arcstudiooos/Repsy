@@ -1,5 +1,6 @@
 'use client';
 
+import { Link2 } from 'lucide-react';
 import { useCallback, useId, useState } from 'react';
 import type { JoinLinkView } from '@kinetic/core';
 import { Button } from '@/components/ui/button';
@@ -70,7 +71,10 @@ export function JoinLinkDialog() {
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="secondary">Invite link</Button>
+        <Button variant="secondary">
+          <Link2 aria-hidden className="size-4" />
+          Invite link
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

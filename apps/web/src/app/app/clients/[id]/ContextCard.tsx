@@ -173,12 +173,9 @@ export function ContextCard({ context }: { context: ClientContext }) {
   const hasKit = context.trainingLocation !== null || context.equipment.length > 0;
   const empty = filled.length === 0 && context.pinnedNotes.length === 0 && !hasKit;
   return (
-    <section
-      aria-labelledby="context-heading"
-      className="rounded-card border border-input-border bg-surface p-4"
-    >
+    <section aria-labelledby="context-heading">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h2 id="context-heading" className="text-base font-semibold">
+        <h2 id="context-heading" className="text-sm font-semibold text-secondary">
           Client context
         </h2>
         <EditContext context={context} />
@@ -191,10 +188,10 @@ export function ContextCard({ context }: { context: ClientContext }) {
       ) : (
         <div className="flex flex-col gap-3">
           {filled.length > 0 && (
-            <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
               {filled.map(([key, label]) => (
                 <div key={key}>
-                  <dt className="text-secondary">{label}</dt>
+                  <dt className="text-xs font-medium text-secondary">{label}</dt>
                   <dd className="line-clamp-3 whitespace-pre-wrap">{context[key]}</dd>
                 </div>
               ))}
@@ -213,10 +210,10 @@ export function ContextCard({ context }: { context: ClientContext }) {
             </p>
           )}
           {context.pinnedNotes.length > 0 && (
-            <ul aria-label="Pinned notes" className="flex flex-col gap-1 text-sm">
+            <ul aria-label="Pinned notes" className="flex flex-col gap-1.5 text-sm">
               {context.pinnedNotes.map((n) => (
-                <li key={n.id} className="flex gap-2">
-                  <Pin aria-hidden className="mt-0.5 size-4 shrink-0 text-accent" />
+                <li key={n.id} className="flex gap-2 rounded-control bg-[#FDF6EC] px-3 py-2">
+                  <Pin aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
                   <span className="whitespace-pre-wrap">{n.body}</span>
                 </li>
               ))}

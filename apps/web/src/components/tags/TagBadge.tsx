@@ -12,7 +12,7 @@ export const TAG_DOT: Record<TagColor, string> = {
 
 export function TagBadge({ tag }: { tag: TagView }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-input-border bg-surface px-2 py-0.5 text-sm text-ink">
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2 py-0.5 text-xs leading-5 font-medium text-ink">
       <span
         aria-hidden
         className="size-2 rounded-full"

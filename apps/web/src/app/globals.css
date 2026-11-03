@@ -56,3 +56,20 @@
     outline-offset: 2px;
   }
 }
+
+/*
+ * Native selects everywhere: a consistent chevron instead of each browser's own. Unlayered on purpose, so it wins over
+ * the padding utilities individual selects set (the chevron needs room on the right).
+ */
+select:not([multiple]):not([size]) {
+  appearance: none;
+  background-color: var(--k-surface);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2360716e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-position: right 0.75rem center;
+  background-repeat: no-repeat;
+  background-size: 1rem;
+  padding-inline-end: 2.25rem;
+}
+select:not([multiple]):not([size]):hover {
+  border-color: color-mix(in srgb, var(--k-ink) 50%, transparent);
+}

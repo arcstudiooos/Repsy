@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { Search } from 'lucide-react';
 import { LIFECYCLE_STAGES, STAGE_LABEL } from '@kinetic/core/client-stages';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
@@ -9,12 +10,17 @@ import { TagBadge } from '@/components/tags/TagBadge';
 import { CompliancePercent } from '@/components/analytics/Compliance';
 import { EmptyState } from '@/components/states/EmptyState';
 import { buttonVariants } from '@/components/ui/button';
+import { Avatar } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { BulkActions, type BulkTemplate } from './BulkActions';
 import { formatDate, StatusBadge } from './StatusBadge';
 
 const SEARCH_DEBOUNCE_MS = 300;
+
+const selectClass =
+  'min-h-11 rounded-control border border-input-border bg-surface px-3 text-base text-ink shadow-xs';
+const th = 'px-4 py-3 text-xs font-medium tracking-wide text-secondary uppercase';
 
 function hrefFor(
   pathname: string,
@@ -98,15 +104,21 @@ export function ClientsTable({
 
   return (
     <div className={cn('flex flex-col gap-4', pending && 'opacity-70')}>
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <Input
-          type="search"
-          aria-label="Search clients"
-          placeholder="Search by name or email"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="sm:max-w-sm"
-        />
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <div className="relative sm:w-80">
+          <Search
+            aria-hidden
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-secondary"
+          />
+          <Input
+            type="search"
+            aria-label="Search clients"
+            placeholder="Search by name or email"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
         <select
           aria-label="Filter by status"
           value={status}
@@ -115,7 +127,7 @@ export function ClientsTable({
               router.replace(hrefFor(pathname, { q, status: e.target.value, tag, stage })),
             )
           }
-          className="min-h-11 rounded-control border border-input-border bg-surface px-3 text-base text-ink"
+          className={selectClass}
         >
           <option value="">All statuses</option>
           <option value="invited">Invited</option>
@@ -131,7 +143,7 @@ export function ClientsTable({
               router.replace(hrefFor(pathname, { q, status, tag, stage: e.target.value })),
             )
           }
-          className="min-h-11 rounded-control border border-input-border bg-surface px-3 text-base text-ink"
+          className={selectClass}
         >
           <option value="">All stages</option>
           {LIFECYCLE_STAGES.map((st) => (
@@ -149,7 +161,7 @@ export function ClientsTable({
                 router.replace(hrefFor(pathname, { q, status, tag: e.target.value, stage })),
               )
             }
-            className="min-h-11 rounded-control border border-input-border bg-surface px-3 text-base text-ink"
+            className={selectClass}
           >
             <option value="">All tags</option>
             {tags.map((t) => (
@@ -182,138 +194,158 @@ export function ClientsTable({
         />
       ) : (
         <>
-          <div className="relative hidden overflow-x-auto rounded-card bg-surface shadow-card md:block">
+          <div className="relative hidden overflow-x-auto rounded-card border border-border bg-surface shadow-card md:block">
             <table className="w-full text-left text-base">
-              <thead className="border-b border-divider text-sm text-secondary">
+              <thead className="border-b border-divider bg-surface-muted/60">
                 <tr>
-                  <th scope="col" className="w-12 px-4 py-3 font-medium">
+                  <th scope="col" className={cn(th, 'w-12')}>
                     <input
                       type="checkbox"
                       aria-label="Select all clients on this page"
-                      className="size-5 accent-accent"
+                      className="size-4 accent-accent"
                       checked={allOnPage}
                       onChange={(e) => setSelected(e.target.checked ? items.map((c) => c.id) : [])}
                     />
                   </th>
-                  <th scope="col" className="px-4 py-3 font-medium">
-                    Name
+                  <th scope="col" className={th}>
+                    Client
                   </th>
-                  <th scope="col" className="px-4 py-3 font-medium">
-                    Email
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-medium">
+                  <th scope="col" className={th}>
                     Status
                   </th>
-                  <th scope="col" className="px-4 py-3 font-medium">
+                  <th scope="col" className={th}>
                     Start date
                   </th>
-                  <th scope="col" className="px-4 py-3 font-medium">
-                    <abbr title="Adherence, last 7 days" className="no-underline">
-                      7d
-                    </abbr>
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-medium">
-                    <abbr title="Adherence, last 30 days" className="no-underline">
-                      30d
-                    </abbr>
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-medium">
-                    <abbr title="Adherence, last 90 days" className="no-underline">
-                      90d
-                    </abbr>
-                  </th>
+                  {(
+                    [
+                      ['7d', 'Adherence, last 7 days'],
+                      ['30d', 'Adherence, last 30 days'],
+                      ['90d', 'Adherence, last 90 days'],
+                    ] as const
+                  ).map(([short, long]) => (
+                    <th key={short} scope="col" className={cn(th, 'text-right')}>
+                      <abbr title={long} className="no-underline">
+                        {short}
+                      </abbr>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {items.map((c) => (
-                  <tr key={c.id} className="border-b border-divider last:border-0">
-                    <td className="px-4 py-2">
-                      <input
-                        type="checkbox"
-                        aria-label={`Select ${c.name}`}
-                        className="size-5 accent-accent"
-                        checked={selected.includes(c.id)}
-                        onChange={(e) => toggle(c.id, e.target.checked)}
-                      />
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      <Link
-                        href={`/app/clients/${c.id}`}
-                        className="inline-flex min-h-11 items-center font-medium underline-offset-2 hover:underline md:min-h-6"
-                      >
-                        {c.name}
-                      </Link>
-                      {clientTags[c.id] && (
-                        <span className="mt-1 flex flex-wrap gap-1">
-                          {clientTags[c.id]!.map((t) => (
-                            <TagBadge key={t.id} tag={t} />
-                          ))}
-                        </span>
+                {items.map((c) => {
+                  const on = selected.includes(c.id);
+                  return (
+                    <tr
+                      key={c.id}
+                      className={cn(
+                        'border-b border-divider transition-colors duration-[var(--k-motion-fast)] last:border-0 hover:bg-surface-muted/50',
+                        on && 'bg-accent-soft/50 hover:bg-accent-soft/60',
                       )}
-                    </td>
-                    <td className="px-4 py-2 [overflow-wrap:anywhere]">{c.email}</td>
-                    <td className="px-4 py-2">
-                      <StatusBadge status={c.status} inviteStatus={c.inviteStatus} />
-                      <span className="mt-1 block text-sm text-secondary">
-                        {STAGE_LABEL[c.lifecycleStage]}
-                        {coachNames[c.coachUserId] && ` · ${coachNames[c.coachUserId]}`}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap">{formatDate(c.startDate)}</td>
-                    {([7, 30, 90] as const).map((days) => {
-                      const counts = compliance[c.id]?.[days];
-                      return (
-                        <td key={days} className="px-4 py-2">
-                          {counts && <CompliancePercent counts={counts} />}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
+                    >
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${c.name}`}
+                          className="size-4 accent-accent"
+                          checked={on}
+                          onChange={(e) => toggle(c.id, e.target.checked)}
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar name={c.name} />
+                          <div className="min-w-0">
+                            <Link
+                              href={`/app/clients/${c.id}`}
+                              className="font-medium whitespace-nowrap underline-offset-2 hover:text-accent-ink hover:underline"
+                            >
+                              {c.name}
+                            </Link>
+                            <p className="text-sm text-secondary [overflow-wrap:anywhere]">
+                              {c.email}
+                            </p>
+                            {clientTags[c.id] && (
+                              <span className="mt-1 flex flex-wrap gap-1">
+                                {clientTags[c.id]!.map((t) => (
+                                  <TagBadge key={t.id} tag={t} />
+                                ))}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={c.status} inviteStatus={c.inviteStatus} />
+                        <span className="mt-1 block text-sm text-secondary">
+                          {STAGE_LABEL[c.lifecycleStage]}
+                          {coachNames[c.coachUserId] && ` · ${coachNames[c.coachUserId]}`}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm whitespace-nowrap text-secondary">
+                        {formatDate(c.startDate)}
+                      </td>
+                      {([7, 30, 90] as const).map((days) => {
+                        const counts = compliance[c.id]?.[days];
+                        return (
+                          <td key={days} className="px-4 py-3 text-right">
+                            {counts && <CompliancePercent counts={counts} />}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
 
-          <ul className="flex flex-col gap-3 md:hidden" aria-label="Clients">
+          <ul className="flex flex-col gap-2 md:hidden" aria-label="Clients">
             {items.map((c) => (
-              <li key={c.id} className="rounded-card bg-surface p-4 shadow-card">
-                <div className="flex items-start justify-between gap-3">
+              <li
+                key={c.id}
+                className="rounded-card border border-border bg-surface p-4 shadow-card"
+              >
+                <div className="flex items-center gap-3">
                   <input
                     type="checkbox"
                     aria-label={`Select ${c.name}`}
-                    className="mt-3 size-5 shrink-0 accent-accent"
+                    className="size-5 shrink-0 accent-accent"
                     checked={selected.includes(c.id)}
                     onChange={(e) => toggle(c.id, e.target.checked)}
                   />
-                  <Link
-                    href={`/app/clients/${c.id}`}
-                    className="inline-flex min-h-11 min-w-0 flex-1 items-center font-semibold underline-offset-2 hover:underline"
-                  >
-                    {c.name}
-                  </Link>
-                  <StatusBadge status={c.status} inviteStatus={c.inviteStatus} />
+                  <Avatar name={c.name} />
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={`/app/clients/${c.id}`}
+                      className="inline-flex min-h-6 items-center font-semibold underline-offset-2 hover:underline"
+                    >
+                      {c.name}
+                    </Link>
+                    <p className="text-sm break-all text-secondary">{c.email}</p>
+                  </div>
                 </div>
-                <p className="text-sm break-all text-secondary">
-                  {c.email} · {STAGE_LABEL[c.lifecycleStage]}
-                  {coachNames[c.coachUserId] && ` · ${coachNames[c.coachUserId]}`}
-                </p>
-                {clientTags[c.id] && (
-                  <p className="mt-1 flex flex-wrap gap-1">
-                    {clientTags[c.id]!.map((t) => (
-                      <TagBadge key={t.id} tag={t} />
-                    ))}
-                  </p>
-                )}
-                <p className="mt-1 text-sm text-secondary">Start date: {formatDate(c.startDate)}</p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <StatusBadge status={c.status} inviteStatus={c.inviteStatus} />
+                  <span className="text-sm text-secondary">
+                    {STAGE_LABEL[c.lifecycleStage]}
+                    {coachNames[c.coachUserId] && ` · ${coachNames[c.coachUserId]}`}
+                    {' · '}Started {formatDate(c.startDate)}
+                  </span>
+                  {clientTags[c.id]?.map((t) => (
+                    <TagBadge key={t.id} tag={t} />
+                  ))}
+                </div>
                 {compliance[c.id] && (
-                  <p className="mt-1 text-sm">
-                    <span className="text-secondary">Adherence 7d:</span>{' '}
-                    <CompliancePercent counts={compliance[c.id]![7]} />
-                    <span className="text-secondary"> · 30d:</span>{' '}
-                    <CompliancePercent counts={compliance[c.id]![30]} />
-                    <span className="text-secondary"> · 90d:</span>{' '}
-                    <CompliancePercent counts={compliance[c.id]![90]} />
-                  </p>
+                  <dl className="mt-3 grid grid-cols-3 gap-2 rounded-control bg-surface-muted px-3 py-2 text-sm">
+                    {([7, 30, 90] as const).map((days) => (
+                      <div key={days}>
+                        <dt className="text-xs text-secondary">Adherence {days}d</dt>
+                        <dd>
+                          <CompliancePercent counts={compliance[c.id]![days]} />
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
                 )}
               </li>
             ))}

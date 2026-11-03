@@ -2,7 +2,8 @@ import type { ReactNode } from 'react';
 import { getClientContext, isManager, TRAINER_ROLES } from '@kinetic/core';
 import { Breadcrumbs } from '@/components/nav/Breadcrumbs';
 import { withServerTenant } from '@/server/serverActor';
-import { StatusBadge } from '../StatusBadge';
+import { Avatar } from '@/components/ui/avatar';
+import { formatDate, StatusBadge } from '../StatusBadge';
 import { ClientTabs } from './ClientTabs';
 import { ContextCard } from './ContextCard';
 import { loadClient } from './data';
@@ -40,26 +41,44 @@ export default async function ClientLayout({
   return (
     <>
       <Breadcrumbs items={[{ label: 'Clients', href: '/app/clients' }, { label: client.name }]} />
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-semibold break-words md:text-3xl">{client.name}</h1>
-        <StatusBadge status={client.status} />
-        <StageSelect clientId={client.id} stage={client.lifecycleStage} />
-        {coaches.length > 1 && (
-          <CoachSelect
-            clientId={client.id}
-            coachUserId={client.coachUserId}
-            coaches={coaches}
-            canTransfer={canTransfer}
-          />
-        )}
-      </div>
-      <div className="mb-4 flex flex-wrap items-start gap-3">
-        <PauseControls client={client} />
-        {canEdit && <EndCoaching client={client} />}
-      </div>
-      <div className="mb-4">
-        <ContextCard context={context} />
-      </div>
+      <section
+        aria-label="Client summary"
+        className="mb-6 rounded-card border border-border bg-surface p-4 shadow-card sm:p-6"
+      >
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex min-w-0 items-start gap-4">
+            <Avatar name={client.name} size="lg" />
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <h1 className="text-2xl font-semibold break-words md:text-3xl">{client.name}</h1>
+                <StatusBadge status={client.status} />
+              </div>
+              <p className="mt-0.5 text-sm break-all text-secondary">
+                {client.email}
+                {client.startDate && ` · Started ${formatDate(client.startDate)}`}
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <StageSelect clientId={client.id} stage={client.lifecycleStage} />
+                {coaches.length > 1 && (
+                  <CoachSelect
+                    clientId={client.id}
+                    coachUserId={client.coachUserId}
+                    coaches={coaches}
+                    canTransfer={canTransfer}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-start gap-2 lg:justify-end">
+            <PauseControls client={client} />
+            {canEdit && <EndCoaching client={client} />}
+          </div>
+        </div>
+        <div className="mt-5 border-t border-divider pt-5">
+          <ContextCard context={context} />
+        </div>
+      </section>
       <div className="flex flex-col gap-6">
         <ClientTabs clientId={client.id} />
         {children}

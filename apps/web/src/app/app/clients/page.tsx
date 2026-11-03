@@ -18,6 +18,8 @@ import {
 import { Button, buttonVariants } from '@/components/ui/button';
 import { EmptyState } from '@/components/states/EmptyState';
 import { ErrorState } from '@/components/states/ErrorState';
+import { PageHeader } from '@/components/ui/page-header';
+import { UserPlus } from 'lucide-react';
 import { loadAllTemplates } from '@/server/selectOptions';
 import { withServerTenant } from '@/server/serverActor';
 import { ClientsTable } from './ClientsTable';
@@ -133,18 +135,24 @@ export default async function ClientsPage({
 
   return (
     <>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold md:text-3xl">Clients</h1>
-        {!isEmptyRoster && (
-          <div className="flex flex-wrap gap-3">
-            <ImportLink />
-            <JoinLinkDialog />
-            <NewClientDialog intakeForms={intakeForms} />
-          </div>
-        )}
-      </div>
+      <PageHeader
+        title="Clients"
+        description="Everyone you coach. Search, filter, or select several to act on them at once."
+        actions={
+          !isEmptyRoster && (
+            <>
+              <ImportLink />
+              <JoinLinkDialog />
+              <NewClientDialog intakeForms={intakeForms} />
+            </>
+          )
+        }
+      />
       {Object.keys(coachNames).length > 1 && (
-        <nav aria-label="Whose clients" className="mb-4 flex gap-2">
+        <nav
+          aria-label="Whose clients"
+          className="mb-4 inline-flex gap-1 rounded-control bg-surface-muted p-1"
+        >
           {(
             [
               ['mine', 'My clients'],
@@ -156,8 +164,9 @@ export default async function ClientsPage({
               href={`/app/clients?scope=${value}`}
               aria-current={scope === value ? 'page' : undefined}
               className={buttonVariants({
-                variant: scope === value ? 'default' : 'secondary',
+                variant: scope === value ? 'secondary' : 'ghost',
                 size: 'sm',
+                className: scope === value ? 'shadow-sm' : 'text-secondary',
               })}
             >
               {label}
@@ -167,6 +176,7 @@ export default async function ClientsPage({
       )}
       {isEmptyRoster ? (
         <EmptyState
+          icon={UserPlus}
           title="Add your first client"
           body="Invite a client by email. They will get a link to set up their account. Moving from another app? Import your roster from a CSV file."
           action={
