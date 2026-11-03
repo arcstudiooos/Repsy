@@ -270,6 +270,8 @@ model Organization {
   receiptSeq             Int       @default(0) @map("receipt_seq")
   /// PRD I14 (D-013 #14): AI drafting, off by default; the owner turns it on.
   aiEnabled              Boolean   @default(false) @map("ai_enabled")
+  /// PRD M12 (D-013 #16): set by a platform admin when the workspace lapses; null when active.
+  lapsedAt               DateTime? @map("lapsed_at") @db.Timestamptz(3)
   createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt              DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 

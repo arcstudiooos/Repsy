@@ -1,3 +1,4 @@
+import { activeOrgWhere } from '../lapse/lapse';
 import { appendAudit, withSystem, withTenant, type PrismaClient, type TenantTx } from '@kinetic/db';
 import { TRAINER_ROLES, type ActorContext, type Role } from '../authz/actor';
 import { assertCan } from '../authz/policies';
@@ -219,7 +220,7 @@ export async function advancePhases(
   const heads = await withSystem(
     (tx) =>
       tx.programPhase.findMany({
-        where: { status: 'queued' },
+        where: { status: 'queued', organization: activeOrgWhere(now) },
         orderBy: [{ clientId: 'asc' }, { position: 'asc' }],
         distinct: ['clientId'],
         select: { id: true, organizationId: true, clientId: true, mode: true, createdBy: true },

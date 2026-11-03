@@ -1,8 +1,13 @@
 import { cache } from 'react';
 import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
-import { DomainError, type ActorContext, type MembershipRef } from '@kinetic/core';
-import { withTenant, type TenantTx } from '@kinetic/db';
+import {
+  assertWorkspaceAccess,
+  DomainError,
+  type ActorContext,
+  type MembershipRef,
+} from '@kinetic/core';
+import { prisma, withTenant, type TenantTx } from '@kinetic/db';
 import { getSessionUser, type SessionUser } from '@/lib/auth';
 import { loadMemberships, resolveActor } from './actor';
 import type { ActorOutcome } from './shellGate';
@@ -40,11 +45,25 @@ export const getServerActor = cache(async (): Promise<ActorContext> => {
   return resolveActor((await headers()).get('cookie'), user, memberships);
 });
 
+/**
+ * PRD M12 (D-013 #16): once a lapsed workspace's read window has closed for this member, its pages give way to
+ * /closed. (Writes are refused by apiHandler; pages only read.)
+ */
+async function readGate(actor: ActorContext): Promise<void> {
+  try {
+    await assertWorkspaceAccess(prisma, actor, { write: false });
+  } catch (error) {
+    if (error instanceof DomainError && error.code === 'WORKSPACE_LAPSED') redirect('/closed');
+    throw error;
+  }
+}
+
 /** Runs `fn` in a transaction scoped to the signed-in actor's organization. */
 export async function withServerTenant<T>(
   fn: (tx: TenantTx, actor: ActorContext) => Promise<T>,
 ): Promise<T> {
   const actor = await getServerActor();
+  await readGate(actor);
   return withTenant(actor.orgId, (tx) => fn(tx, actor), undefined, { userId: actor.userId });
 }
 
@@ -58,6 +77,7 @@ export async function withPortalTenant<T>(
 ): Promise<T> {
   const base = await getServerActor();
   if (base.role !== 'client') notFound();
+  await readGate(base);
   return withTenant(
     base.orgId,
     async (tx) => {

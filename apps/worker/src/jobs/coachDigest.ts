@@ -1,4 +1,10 @@
-import { queueCoachDigests, queueWeeklyBriefs, STAFF_ROLES, type Logger } from '@kinetic/core';
+import {
+  activeOrgWhere,
+  queueCoachDigests,
+  queueWeeklyBriefs,
+  STAFF_ROLES,
+  type Logger,
+} from '@kinetic/core';
 import { withSystem, withTenant, type PrismaClient } from '@kinetic/db';
 import { defineJob, type CaptureException } from './registry';
 
@@ -26,6 +32,7 @@ export async function runCoachDigests(
         userId: { in: users.map((u) => u.userId) },
         role: { in: [...STAFF_ROLES] },
         status: 'active',
+        organization: activeOrgWhere(now),
       },
       distinct: ['organizationId'],
       select: { organizationId: true },

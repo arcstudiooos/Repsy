@@ -18,6 +18,7 @@ import { raiseFlag } from '../review/rules';
 import { isUuid } from '../uuid';
 import { findUsableCoupon, PACKAGE_SELECT, toPackageView, type PackageView } from './catalog';
 import { addInterval, discounted } from './money';
+import { lapsedSince } from '../lapse/lapse';
 import type {
   CheckoutResult,
   ConnectedAccount,
@@ -89,13 +90,21 @@ export async function getStorefront(
     orgId,
     async (tx) => {
       const org = await tx.organization.findFirstOrThrow({
-        select: { currency: true, taxRateBp: true, taxHomeRegion: true },
+        select: {
+          currency: true,
+          taxRateBp: true,
+          taxHomeRegion: true,
+          lapsedAt: true,
+          plan: true,
+          trialEndsAt: true,
+        },
       });
       const account = await tx.paymentAccount.findFirst({
         where: { status: 'active' },
         select: { id: true },
       });
-      if (!org.currency || !account) return { packages: [], asksRegion: false };
+      // PRD M12: a lapsed workspace sells nothing.
+      if (!org.currency || !account || lapsedSince(org)) return { packages: [], asksRegion: false };
       const rows = await tx.package.findMany({
         where: { active: true, public: true },
         orderBy: { createdAt: 'asc' },
@@ -163,13 +172,16 @@ export async function startCheckout(
           stripeTaxEnabled: true,
           taxRateBp: true,
           taxHomeRegion: true,
+          lapsedAt: true,
+          plan: true,
+          trialEndsAt: true,
         },
       });
       const accountRow = await tx.paymentAccount.findFirst({
         where: { status: 'active' },
         select: { provider: true, accountRef: true, tokenCiphertext: true },
       });
-      if (!org.currency || !accountRow) {
+      if (!org.currency || !accountRow || lapsedSince(org, now)) {
         throw new DomainError('CONFLICT', 'This coach is not taking payments right now.');
       }
       if (org.taxRateBp !== null && org.taxHomeRegion !== null && region === '') {

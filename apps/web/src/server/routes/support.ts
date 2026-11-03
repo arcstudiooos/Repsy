@@ -6,6 +6,8 @@ const supportSchema = z.object({ topic: z.string().max(20), message: z.string().
 
 /** `POST /api/v1/support` (PRD M13): coaches and clients alike; the inbox is SUPPORT_EMAIL. */
 export const supportPostRoute: RouteDef<typeof supportSchema, true> = {
+  // PRD M12: still allowed after the workspace lapses.
+  allowWhenLapsed: true,
   input: supportSchema,
   rateLimit: { capacity: 5, refillPerSecond: 5 / 3600 },
   handler: async ({ actor, input, requestId, tenant }) =>

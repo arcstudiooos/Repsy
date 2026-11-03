@@ -1,4 +1,4 @@
-import { queueClientReminders, type Logger } from '@kinetic/core';
+import { queueClientReminders, type Logger, activeOrgWhere } from '@kinetic/core';
 import { withSystem, withTenant, type PrismaClient } from '@kinetic/db';
 import { defineJob, type CaptureException } from './registry';
 
@@ -28,7 +28,12 @@ export async function runClientReminders(
     });
     if (users.length === 0) return [];
     return tx.membership.findMany({
-      where: { userId: { in: users.map((u) => u.userId) }, role: 'client', status: 'active' },
+      where: {
+        userId: { in: users.map((u) => u.userId) },
+        role: 'client',
+        status: 'active',
+        organization: activeOrgWhere(now),
+      },
       distinct: ['organizationId'],
       select: { organizationId: true },
     });

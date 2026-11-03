@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { LapseControl } from './LapseControl';
 import { notFound } from 'next/navigation';
 import {
   listDeletionRequests,
@@ -124,6 +125,9 @@ export default async function AdminPage({
                   {data.account.memberships.map((m) => (
                     <li key={`${m.organizationId}:${m.role}`}>
                       {m.organizationName}: {m.role} ({m.status})
+                      {m.role === 'owner' && (
+                        <LapseControl orgId={m.organizationId} name={m.organizationName} />
+                      )}
                       {m.clientId && (
                         <>
                           {' '}

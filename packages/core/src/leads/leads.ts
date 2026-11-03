@@ -1,3 +1,4 @@
+import { lapsedSince } from '../lapse/lapse';
 import {
   appendAudit,
   withTenant,
@@ -107,6 +108,13 @@ export async function submitLead(
   await withTenant(
     orgId,
     async (tx) => {
+      // PRD M12: a lapsed workspace takes no new applications (the page says it isn't taking clients).
+      const org = await tx.organization.findFirstOrThrow({
+        select: { lapsedAt: true, plan: true, trialEndsAt: true },
+      });
+      if (lapsedSince(org, now)) {
+        throw new DomainError('CONFLICT', 'This coach is not taking new clients right now.');
+      }
       const lead = await tx.lead.create({
         data: { name, email, phone: phone || null, message },
       } as Parameters<typeof tx.lead.create>[0]);

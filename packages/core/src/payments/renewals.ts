@@ -1,3 +1,4 @@
+import { activeOrgWhere } from '../lapse/lapse';
 import { withSystem, withTenant, type PrismaClient, type TenantTx } from '@kinetic/db';
 import { emitClientEvent } from '../automations/events';
 import { enqueueEmail } from '../outbox';
@@ -151,7 +152,11 @@ export async function sweepPackages(
   const orgs = await withSystem(
     (tx) =>
       tx.purchase.findMany({
-        where: { status: { in: ['trialing', 'active', 'past_due', 'canceled'] } },
+        where: {
+          status: { in: ['trialing', 'active', 'past_due', 'canceled'] },
+          // PRD M12: no notices for a lapsed workspace.
+          organization: activeOrgWhere(now),
+        },
         distinct: ['organizationId'],
         select: { organizationId: true },
       }),

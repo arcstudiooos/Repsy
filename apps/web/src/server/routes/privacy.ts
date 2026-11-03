@@ -12,6 +12,7 @@ import {
   revokeSupportAccess,
   postNotice,
   resolveNotice,
+  setWorkspaceLapsed,
 } from '@kinetic/core';
 import { ApiResult, type RouteCtx, type RouteDef } from '../api';
 import { withPlatformAdmin } from '../platformAdmin';
@@ -20,6 +21,8 @@ const requestSchema = z.object({ clientId: z.string().max(64).optional() });
 
 /** `POST /api/v1/deletion-requests`: a client for themselves, an owner for one of their clients (`clientId`). */
 export const deletionRequestPostRoute: RouteDef<typeof requestSchema, true> = {
+  // PRD M12: still allowed after the workspace lapses.
+  allowWhenLapsed: true,
   input: requestSchema,
   handler: async ({ actor, input, requestId, tenant }) =>
     new ApiResult(await tenant((tx) => requestDeletion(tx, actor, input, { requestId })), {
@@ -144,4 +147,19 @@ export const adminNoticeResolveRoute: RouteDef<typeof resolveSchema, false> = {
   input: resolveSchema,
   handler: (ctx) =>
     asAdmin(ctx, (tx, admin) => resolveNotice(tx, admin, ctx.params.id ?? '', ctx.input)),
+};
+
+const lapseSchema = z.object({ lapsed: z.boolean() });
+
+/** `POST /api/v1/admin/workspaces/:id/lapse` (PRD M12): mark a workspace lapsed, or restore it. */
+export const adminWorkspaceLapseRoute: RouteDef<typeof lapseSchema, false> = {
+  requireOrg: false,
+  requirePlatformAdmin: true,
+  input: lapseSchema,
+  handler: async (ctx) => {
+    await asAdmin(ctx, (tx, admin) =>
+      setWorkspaceLapsed(tx, admin, ctx.params.id ?? '', ctx.input.lapsed),
+    );
+    return new ApiResult(null, { status: 204 });
+  },
 };

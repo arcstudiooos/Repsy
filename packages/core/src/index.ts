@@ -1052,6 +1052,17 @@ export {
   type SendingDomainRecord,
 } from './domains/domains';
 export {
+  CLIENT_READ_DAYS,
+  STAFF_READ_DAYS,
+  lapsedSince,
+  lapseState,
+  activeOrgWhere,
+  assertWorkspaceAccess,
+  setWorkspaceLapsed,
+  clearLapseCache,
+  type LapseState,
+} from './lapse/lapse';
+export {
   getCalendarConnection,
   saveCalendarConnection,
   disconnectCalendar,
