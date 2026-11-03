@@ -42,3 +42,10 @@ production (they are ignored there anyway).
   never saved without the coach; highlights are never stored. The daily cap counts failed requests.
 - **Lapse (M12):** clients' own provider subscriptions are not cancelled automatically when a workspace lapses.
 - **Lint:** the two known `window.location.assign` warnings remain (pre-existing).
+
+## E2E notes
+
+- `e2e/journey-d.spec.ts` fails on `main` as well as on this branch (checked in a clean worktree on 3 November
+  2026, a Tuesday): after the client sends the check-in, the coach's Check-ins tab shows a newly issued, unanswered
+  check-in for the same week instead of the answered one. It looks date-dependent (the check-in day is set to today),
+  not caused by R3; worth a look.

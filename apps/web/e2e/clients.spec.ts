@@ -188,6 +188,7 @@ test.describe('client directory', () => {
         'Nutrition',
         'Check-ins',
         'Messages',
+        'Billing',
         'Notes',
         'History',
       ]);
