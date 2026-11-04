@@ -309,6 +309,14 @@ export function createApiHandler(deps: ApiDeps = {}) {
             details: error.details,
           });
         }
+        // A unique-key race or duplicate the handler did not map itself: a conflict the caller can fix, not a 500.
+        if (
+          typeof error === 'object' &&
+          error !== null &&
+          (error as { code?: unknown }).code === 'P2002'
+        ) {
+          return fail('CONFLICT', 'That already exists.', requestId);
+        }
         // Never log err.message: it can carry client PII (e.g. Prisma echoes values).
         // Stack goes to logs only, never to the response.
         const err = error instanceof Error ? error : undefined;

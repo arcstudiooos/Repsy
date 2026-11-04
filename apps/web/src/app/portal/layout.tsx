@@ -13,6 +13,7 @@ import { getServerActorOutcome, getServerSession, withServerTenant } from '@/ser
 import { shellRedirect } from '@/server/shellGate';
 import { clientBillingPaused, pendingAgreements, recordPortalVisit } from '@kinetic/core';
 import { AgreementGate } from '@/portal/AgreementGate';
+import { BillingSelfService } from '@/portal/BillingSelfService';
 import { RepsyLogo } from '@/components/brand/Logo';
 
 /**
@@ -71,11 +72,15 @@ async function ClientGate({ children }: { children: ReactNode }) {
     );
   }
   if (billingPaused) {
+    // The plan and receipts stay visible (and the plan cancellable) while everything else is paused.
     return (
-      <EmptyState
-        title="Your coaching is paused"
-        body="A payment for your coaching did not go through, so your access is paused. Contact your coach to sort out payment and they can restore it."
-      />
+      <div className="flex flex-col gap-6">
+        <EmptyState
+          title="Your coaching is paused"
+          body="A payment for your coaching did not go through, so your access is paused. Contact your coach to sort out payment and they can restore it."
+        />
+        <BillingSelfService />
+      </div>
     );
   }
   return (

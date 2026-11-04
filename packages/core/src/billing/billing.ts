@@ -172,6 +172,47 @@ export async function clientBillingPaused(
   return paused.length > 0 && paused.length === subs.length;
 }
 
+/**
+ * Pure: what one successful charge does to a subscription (K3, K7). A recurring package starts a new period of its
+ * interval. A payment plan counts the installment and covers one month (installments are monthly); after the last
+ * one there is no next charge. Anything else has no period.
+ */
+export function periodAfterCharge(
+  sub: { interval: string | null; installments: number | null; installmentsPaid: number },
+  now: Date,
+): {
+  currentPeriodStart: Date;
+  currentPeriodEnd: Date | null;
+  nextChargeAt: Date | null;
+  installmentsPaid: number;
+} {
+  if (sub.interval === 'week' || sub.interval === 'month') {
+    const end = nextChargeDate(now, sub.interval);
+    return {
+      currentPeriodStart: now,
+      currentPeriodEnd: end,
+      nextChargeAt: end,
+      installmentsPaid: sub.installmentsPaid,
+    };
+  }
+  if (sub.installments !== null) {
+    const paid = sub.installmentsPaid + 1;
+    const end = nextChargeDate(now, 'month');
+    return {
+      currentPeriodStart: now,
+      currentPeriodEnd: end,
+      nextChargeAt: paid < sub.installments ? end : null,
+      installmentsPaid: paid,
+    };
+  }
+  return {
+    currentPeriodStart: now,
+    currentPeriodEnd: null,
+    nextChargeAt: null,
+    installmentsPaid: sub.installmentsPaid,
+  };
+}
+
 /** Pure: the date coaching paid for by this subscription ends after cancelling. */
 export function cancellationEndDate(sub: {
   status: SubscriptionStatus;
@@ -185,8 +226,9 @@ export function cancellationEndDate(sub: {
   if (sub.status === 'trialing' && sub.trialEndsAt) return sub.trialEndsAt;
   if (sub.interval) return sub.currentPeriodEnd;
   if (sub.installments !== null) {
-    // A plan stops after what was paid; the next charge never happens.
-    return sub.installmentsPaid > 0 ? sub.nextChargeAt : null;
+    // A plan stops after what was paid: coaching runs to the end of the last paid month; the next charge never
+    // happens.
+    return sub.installmentsPaid > 0 ? sub.currentPeriodEnd : null;
   }
   return sub.currentPeriodEnd;
 }
@@ -321,12 +363,14 @@ export async function confirmCheckout(
       select: { id: true },
     });
     if (confirmed) throw new DomainError('CONFLICT', 'This purchase is already confirmed.');
+    // A trial keeps the dates set at checkout (the first charge is at the trial's end); a paid start begins its
+    // first period now, so the next charge is one period away, not at once.
+    const trial = Boolean(sub.trialEndsAt);
     await db.subscription.updateMany({
       where: { id: sub.id },
-      data: {
-        status: sub.trialEndsAt ? 'trialing' : 'active',
-        currentPeriodStart: now,
-      },
+      data: trial
+        ? { status: 'trialing', currentPeriodStart: now }
+        : { status: 'active', ...periodAfterCharge(sub, now) },
     });
     payment = await db.payment.create({
       data: {
@@ -334,11 +378,12 @@ export async function confirmCheckout(
         clientId: sub.clientId,
         customerEmail: sub.customerEmail,
         provider: sub.provider,
-        amountMinor: sub.trialEndsAt ? 0 : sub.amountMinor,
-        taxMinor: sub.trialEndsAt ? 0 : (sub.taxMinor ?? 0),
+        amountMinor: trial ? 0 : sub.amountMinor,
+        taxMinor: trial ? 0 : (sub.taxMinor ?? 0),
         taxRateBps: sub.taxRateBps ?? 0,
         currency: sub.currency,
         status: 'succeeded',
+        paidAt: now,
         kind: sub.installments !== null ? 'payment_plan' : 'recurring',
         subscriptionId: sub.id,
         couponId: sub.couponId,
@@ -364,7 +409,11 @@ export async function confirmCheckout(
     purchase = {
       packageId: sub.packageId as string,
       clientId: sub.clientId as string | null,
-      renewsAt: sub.interval ? ((sub.currentPeriodEnd as Date | null) ?? null) : null,
+      renewsAt: !sub.interval
+        ? null
+        : trial
+          ? ((sub.currentPeriodEnd as Date | null) ?? null)
+          : periodAfterCharge(sub, now).currentPeriodEnd,
     };
   } else if (typeof input.paymentId === 'string' && isUuid(input.paymentId)) {
     const existing = await db.payment.findFirst({ where: { id: input.paymentId } });
@@ -536,7 +585,9 @@ async function recordPaymentFailure(
   await db.subscription.updateMany({
     where: { id: sub.id },
     data: {
-      status: needsReview ? 'past_due' : graceEnds ? 'grace' : 'past_due',
+      // Access ends at the later of the last retry and the grace period: out of retries with no grace left, the
+      // subscription is paused (and waits for the coach in "Needs review"); with grace left it pauses when that ends.
+      status: graceEnds && graceEnds > now ? 'grace' : needsReview ? 'paused' : 'past_due',
       failedAttempts: attempt,
       nextRetryAt: retry,
       graceEndsAt: graceEnds,
@@ -642,19 +693,76 @@ async function chargeRetry(
   payments: PaymentsPort | undefined,
   now: Date,
 ): Promise<{ status: SubscriptionStatus }> {
-  const db = billingTx(tx);
-  const sub = await db.subscription.findFirst({ where: { id: subscriptionId } });
+  const sub = await billingTx(tx).subscription.findFirst({ where: { id: subscriptionId } });
   if (!sub) throw notFound();
   if (sub.status !== 'past_due' && sub.status !== 'grace' && sub.status !== 'paused') {
     throw new DomainError('CONFLICT', 'Only a past-due subscription can be retried.');
   }
+  return chargeSubscription(tx, orgId, sub, payments, now, {
+    description: 'Subscription retry',
+    idempotencyKey: `retry-${sub.id}-${sub.failedAttempts}`,
+  });
+}
+
+/**
+ * Worker sweep (K3, K7): charges one subscription whose next charge date has arrived (a renewal, the next plan
+ * installment, or the first charge after a trial). Re-checks under the row lock; returns null when it was not due.
+ * A failed charge takes the failed-payment path (retries, "Needs review", optional grace).
+ */
+export async function chargeDueRenewal(
+  tx: TenantTx,
+  orgId: string,
+  subscriptionId: string,
+  payments?: PaymentsPort,
+  now: Date = new Date(),
+): Promise<{ status: SubscriptionStatus } | null> {
+  if (!isUuid(subscriptionId)) return null;
+  const db = billingTx(tx);
+  await db.subscription.updateMany({ where: { id: subscriptionId }, data: { updatedAt: now } });
+  const sub = await db.subscription.findFirst({
+    where: {
+      id: subscriptionId,
+      status: { in: ['active', 'trialing'] },
+      nextChargeAt: { lte: now },
+    },
+  });
+  if (!sub) return null;
+  // A trial is created as `trialing` at checkout, before the buyer finishes it: only a confirmed one (it has its
+  // zero-amount payment) is charged when the trial ends.
+  if (sub.status === 'trialing') {
+    const confirmed = await db.payment.findFirst({
+      where: { subscriptionId: sub.id },
+      select: { id: true },
+    });
+    if (!confirmed) return null;
+  }
+  return chargeSubscription(tx, orgId, sub, payments, now, {
+    description: 'Subscription renewal',
+    idempotencyKey: `renew-${sub.id}-${(sub.nextChargeAt as Date).toISOString()}`,
+  });
+}
+
+/**
+ * Charges a subscription through its provider. Success records the payment and a branded receipt (so revenue and the
+ * client's receipts include it), clears any failure state and starts the next period; failure records it.
+ */
+async function chargeSubscription(
+  tx: TenantTx,
+  orgId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sub: any,
+  payments: PaymentsPort | undefined,
+  now: Date,
+  opts: { description: string; idempotencyKey: string },
+): Promise<{ status: SubscriptionStatus }> {
+  const db = billingTx(tx);
   const provider = payments ?? fakePaymentsProvider(sub.provider as ProviderKind);
   const charge = await provider.createCharge({
     providerAccountId: `org_${orgId}`,
     customerEmail: sub.customerEmail as string,
     amount: { amountMinor: sub.amountMinor as number, currency: sub.currency as string },
-    description: 'Subscription retry',
-    idempotencyKey: `retry-${sub.id}-${sub.failedAttempts}`,
+    description: opts.description,
+    idempotencyKey: opts.idempotencyKey,
   });
   if (charge.status !== 'succeeded') {
     await recordPaymentFailure(
@@ -664,7 +772,37 @@ async function chargeRetry(
     );
     return { status: 'past_due' };
   }
-  const interval = sub.interval as 'week' | 'month' | null;
+  const payment = await db.payment.create({
+    data: {
+      packageId: sub.packageId,
+      clientId: sub.clientId,
+      customerEmail: sub.customerEmail,
+      provider: sub.provider,
+      amountMinor: sub.amountMinor,
+      taxMinor: sub.taxMinor ?? 0,
+      taxRateBps: sub.taxRateBps ?? 0,
+      currency: sub.currency,
+      status: 'succeeded',
+      kind: sub.installments !== null ? 'payment_plan' : 'recurring',
+      subscriptionId: sub.id,
+      providerChargeId: charge.providerChargeId,
+      paidAt: now,
+    },
+    select: { id: true },
+  });
+  await db.receipt.create({
+    data: {
+      paymentId: payment.id,
+      number: `R-${now.getUTCFullYear()}-${(payment.id as string).slice(0, 8).toUpperCase()}`,
+      customerEmail: sub.customerEmail,
+      description: 'Coaching package',
+      amountMinor: sub.amountMinor,
+      taxMinor: sub.taxMinor ?? 0,
+      taxRateBps: sub.taxRateBps ?? 0,
+      currency: sub.currency,
+      issuedAt: now,
+    },
+  });
   await db.subscription.updateMany({
     where: { id: sub.id },
     data: {
@@ -673,11 +811,7 @@ async function chargeRetry(
       nextRetryAt: null,
       graceEndsAt: null,
       needsReview: false,
-      installmentsPaid:
-        sub.installments !== null ? (sub.installmentsPaid as number) + 1 : sub.installmentsPaid,
-      currentPeriodStart: now,
-      currentPeriodEnd: interval ? nextChargeDate(now, interval) : sub.currentPeriodEnd,
-      nextChargeAt: interval ? nextChargeDate(now, interval) : null,
+      ...periodAfterCharge(sub, now),
     },
   });
   return { status: 'active' };
@@ -737,10 +871,17 @@ export async function refundPayment(
     throw invalid('amountMinor', 'Refund a whole number of cents or paise above 0.');
   }
   const db = billingTx(tx);
+  // Row lock first (no-op UPDATE): two refunds of one payment run one after the other, so together they never
+  // exceed it.
+  await db.payment.updateMany({
+    where: { id: input.paymentId },
+    data: { refundedMinor: { increment: 0 } },
+  });
   const payment = await db.payment.findFirst({ where: { id: input.paymentId } });
   if (!payment) throw notFound();
-  if (payment.status !== 'succeeded') {
-    throw new DomainError('CONFLICT', 'Only a succeeded payment can be refunded.');
+  // A partly refunded payment can be refunded again, up to what is left.
+  if (payment.status !== 'succeeded' && payment.status !== 'partially_refunded') {
+    throw new DomainError('CONFLICT', 'Only a paid payment can be refunded.');
   }
   const already = (payment.refundedMinor as number) ?? 0;
   if (already + amount > (payment.amountMinor as number)) {
@@ -796,7 +937,7 @@ export async function getBillingSelfService(
   const portal = sub
     ? await provider.createPortalSession({
         providerCustomerId: `cus_fake_${clientId ?? 'anon'}`,
-        returnUrl: '/app/billing/self-service',
+        returnUrl: '/portal/billing',
       })
     : null;
   return {
@@ -861,6 +1002,16 @@ export async function recordManualPayment(
   const paidAt =
     input.paidAt !== undefined && input.paidAt !== null ? new Date(input.paidAt as string) : now;
   if (Number.isNaN(paidAt.getTime())) throw invalid('paidAt', 'Pick a date.');
+  if (paidAt.getTime() > now.getTime() + 60_000)
+    throw invalid('paidAt', 'Pick today or an earlier date.');
+  const currency =
+    input.currency === undefined || input.currency === null || input.currency === ''
+      ? (pkg.currency as string)
+      : typeof input.currency === 'string' && /^[A-Z]{3}$/.test(input.currency.toUpperCase())
+        ? input.currency.toUpperCase()
+        : (() => {
+            throw invalid('currency', 'Use a 3-letter currency code.');
+          })();
   const payment = await db.payment.create({
     data: {
       packageId: pkg.id,
@@ -871,10 +1022,7 @@ export async function recordManualPayment(
       amountMinor: amount,
       taxMinor: 0,
       taxRateBps: 0,
-      currency:
-        typeof input.currency === 'string'
-          ? input.currency.toUpperCase()
-          : (pkg.currency as string),
+      currency,
       status: 'succeeded',
       kind: 'manual',
       method: input.method,
@@ -892,10 +1040,7 @@ export async function recordManualPayment(
       amountMinor: amount,
       taxMinor: 0,
       taxRateBps: 0,
-      currency:
-        typeof input.currency === 'string'
-          ? input.currency.toUpperCase()
-          : (pkg.currency as string),
+      currency,
       issuedAt: paidAt,
     },
     select: { id: true },
@@ -916,7 +1061,9 @@ export async function getReceipt(
     include: { payment: { select: { clientId: true } } },
   });
   if (!row) throw notFound();
-  if (actor.role === 'client' && row.payment?.clientId !== (await ownClientId(tx, actor))) {
+  // A client sees only receipts for their own payments; a payment with no client record is never theirs.
+  const mine = actor.role === 'client' ? await ownClientId(tx, actor) : null;
+  if (actor.role === 'client' && (!mine || row.payment?.clientId !== mine)) {
     throw notFound();
   }
   const org = await tx.organization.findFirstOrThrow({

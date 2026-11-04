@@ -26,6 +26,7 @@ export function OrgChoices({ choices }: { choices: OrgChoice[] }) {
       });
       if (!res.ok) throw new Error('switch failed');
       // Full navigation so server components re-read the new cookie.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.assign('/');
     } catch {
       setError('Could not switch workspace. Try again.');

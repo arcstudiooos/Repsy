@@ -38,6 +38,7 @@ afterAll(async () => {
 const subscription = (data: {
   status: string;
   nextRetryAt?: Date | null;
+  nextChargeAt?: Date | null;
   graceEndsAt?: Date | null;
   needsReview?: boolean;
 }) =>
@@ -79,19 +80,36 @@ describe('sweepBilling (PRD K7)', () => {
       nextRetryAt: null,
       needsReview: true,
     });
+    const renewal = await subscription({
+      status: 'active',
+      nextChargeAt: new Date(NOW.getTime() - 1),
+    });
     const graceOver = await subscription({
       status: 'grace',
       nextRetryAt: new Date(NOW.getTime() + DAY),
       graceEndsAt: new Date(NOW.getTime() - 1),
     });
 
-    expect(await sweepBilling(prisma, NOW)).toEqual({ retried: 1, paused: 1, failed: 0 });
+    expect(await sweepBilling(prisma, NOW)).toEqual({
+      renewed: 1,
+      retried: 1,
+      paused: 1,
+      failed: 0,
+    });
     expect((await statusOf(due)).status).toBe('active');
     expect((await statusOf(notYet)).status).toBe('past_due');
     expect((await statusOf(review)).status).toBe('past_due');
     expect((await statusOf(graceOver)).status).toBe('paused');
+    const renewed = await statusOf(renewal);
+    expect(renewed.status).toBe('active');
+    expect(renewed.nextChargeAt).toEqual(new Date('2026-12-04T12:00:00Z'));
 
     // A second run finds nothing left to do.
-    expect(await sweepBilling(prisma, NOW)).toEqual({ retried: 0, paused: 0, failed: 0 });
+    expect(await sweepBilling(prisma, NOW)).toEqual({
+      renewed: 0,
+      retried: 0,
+      paused: 0,
+      failed: 0,
+    });
   });
 });

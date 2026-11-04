@@ -136,6 +136,23 @@ function addDays(date: string, n: number): string {
   return new Date(new Date(`${date}T00:00:00Z`).getTime() + n * DAY_MS).toISOString().slice(0, 10);
 }
 
+/**
+ * Pure: whether two bookings (with their own buffers, in minutes) are too close. Whichever comes first, the gap to
+ * the other must be at least the larger of its buffer after and the other's buffer before.
+ */
+export function bookingsClash(
+  a: { startsAt: Date; endsAt: Date; before: number; after: number },
+  b: { startsAt: Date; endsAt: Date; before: number; after: number },
+): boolean {
+  const min = 60_000;
+  const aFirstGap = Math.max(a.after, b.before) * min;
+  const bFirstGap = Math.max(b.after, a.before) * min;
+  return (
+    a.startsAt.getTime() < b.endsAt.getTime() + bFirstGap &&
+    b.startsAt.getTime() < a.endsAt.getTime() + aFirstGap
+  );
+}
+
 /** Pure: do two half-open [start, end) spans overlap? Touching spans do not. */
 export function spansOverlap(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date): boolean {
   return aStart < bEnd && bStart < aEnd;
@@ -143,7 +160,7 @@ export function spansOverlap(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date)
 
 /**
  * Pure: generate bookable slots for `dateFrom..dateTo` (inclusive, YYYY-MM-DD)
- * in `timeZone`. Slots step by duration + bufferAfter, start on the window
+ * in `timeZone`. Slots step by duration + bufferAfter + bufferBefore, start on the window
  * start, and never cross the window end. A slot is dropped when it overlaps an
  * existing booking expanded by bufferBefore before it and bufferAfter after
  * it, so back-to-back bookings always keep their buffers. DST-safe: every
@@ -179,7 +196,8 @@ export function generateSlots(input: {
   for (let date = input.dateFrom; date <= input.dateTo; date = addDays(date, 1)) {
     const weekday = isoWeekday(date);
     for (const w of windows.filter((x) => x.weekday === weekday)) {
-      const step = duration + after;
+      // Back-to-back slots keep both buffers: this slot's after and the next one's before.
+      const step = duration + after + before;
       for (
         let start = minutesOf(w.startTime);
         start + duration <= minutesOf(w.endTime);
@@ -272,6 +290,7 @@ export interface SchedulingDb {
   };
   outboxEmail: {
     createMany(args: unknown): Promise<unknown>;
+    deleteMany(args: unknown): Promise<{ count: number }>;
   };
 }
 
@@ -468,15 +487,38 @@ export async function createBooking(
     where: { coachUserId: type.coachUserId, active: true },
     data: { active: true },
   });
-  const clashes = await db(tx).booking.findMany({
+  // Both sides' buffers count: the gap between two bookings must cover the earlier one's buffer after and the
+  // later one's buffer before. Buffers are at most 120 minutes each, so this window holds every possible clash.
+  const reach = 240 * 60_000;
+  const nearby = (await db(tx).booking.findMany({
     where: {
       coachUserId: type.coachUserId,
       status: 'booked',
-      startsAt: { lt: new Date(endsAt.getTime() + type.bufferAfterMinutes * 60_000) },
-      endsAt: { gt: new Date(startsAt.getTime() - type.bufferBeforeMinutes * 60_000) },
+      startsAt: { lt: new Date(endsAt.getTime() + reach) },
+      endsAt: { gt: new Date(startsAt.getTime() - reach) },
     },
-    select: { id: true },
-  });
+    select: {
+      id: true,
+      startsAt: true,
+      endsAt: true,
+      sessionType: { select: { bufferBeforeMinutes: true, bufferAfterMinutes: true } },
+    },
+  })) as unknown as {
+    startsAt: Date;
+    endsAt: Date;
+    sessionType: { bufferBeforeMinutes: number; bufferAfterMinutes: number } | null;
+  }[];
+  const clashes = nearby.filter((b) =>
+    bookingsClash(
+      { startsAt, endsAt, before: type.bufferBeforeMinutes, after: type.bufferAfterMinutes },
+      {
+        startsAt: new Date(b.startsAt),
+        endsAt: new Date(b.endsAt),
+        before: b.sessionType?.bufferBeforeMinutes ?? 0,
+        after: b.sessionType?.bufferAfterMinutes ?? 0,
+      },
+    ),
+  );
   if (clashes.length > 0) {
     throw new DomainError('CONFLICT', 'That slot is no longer free (buffers included).');
   }
@@ -557,6 +599,10 @@ export async function cancelBooking(
   await db(tx).booking.update({
     where: { id: booking.id },
     data: { status: 'cancelled', packConsumed: false, cancelledAt: now },
+  });
+  // The reminder for a cancelled session must not go out. Only a queued one: one already sent or being sent stays.
+  await db(tx).outboxEmail.deleteMany({
+    where: { idempotencyKey: `booking-reminder:${booking.id}`, status: 'pending' },
   });
 }
 

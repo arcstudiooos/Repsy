@@ -114,13 +114,6 @@ export default async function BillingPage() {
             Download revenue CSV
           </Link>
           {' · '}
-          <Link
-            href="/app/billing/self-service"
-            className="text-accent underline underline-offset-4"
-          >
-            Client billing self-service
-          </Link>
-          {' · '}
           <Link href="/app/analytics/business" className="text-accent underline underline-offset-4">
             Business analytics
           </Link>

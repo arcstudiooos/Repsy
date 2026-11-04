@@ -1,4 +1,4 @@
-import { expireGraces, retryDueSubscription, type Logger } from '@kinetic/core';
+import { chargeDueRenewal, expireGraces, retryDueSubscription, type Logger } from '@kinetic/core';
 import { withSystem, withTenant, type PrismaClient } from '@kinetic/db';
 import { defineJob, type CaptureException } from './registry';
 
@@ -7,8 +7,8 @@ export const BILLING_SWEEP = 'billing.sweep';
 export const BILLING_SWEEP_CRON = '*/15 * * * *';
 
 /**
- * PRD K7: retries every subscription whose retry date has arrived, then pauses every subscription whose grace period
- * has ended. The scan is a system read; each change runs in its own organization's tenant transaction, and the core
+ * PRD K3, K7: charges every subscription whose next charge date has arrived (renewals, plan installments, the end of
+ * a trial), retries every one whose retry date has arrived, then pauses every one whose grace period has ended. The scan is a system read; each change runs in its own organization's tenant transaction, and the core
  * functions re-check under the row lock, so overlapping runs (or a coach's manual retry) never charge twice. One
  * failing subscription never holds back the others; the next run tries it again.
  */
@@ -16,9 +16,14 @@ export async function sweepBilling(
   prisma: PrismaClient,
   now: Date,
   report: { logger?: Pick<Logger, 'error'>; captureException?: CaptureException } = {},
-): Promise<{ retried: number; paused: number; failed: number }> {
-  const { due, graceOrgs } = await withSystem(
+): Promise<{ renewed: number; retried: number; paused: number; failed: number }> {
+  const { renewals, due, graceOrgs } = await withSystem(
     async (tx) => ({
+      renewals: await tx.subscription.findMany({
+        where: { status: { in: ['active', 'trialing'] }, nextChargeAt: { lte: now } },
+        select: { id: true, organizationId: true },
+        take: 500,
+      }),
       due: await tx.subscription.findMany({
         where: {
           status: { in: ['past_due', 'grace'] },
@@ -36,6 +41,7 @@ export async function sweepBilling(
     }),
     prisma,
   );
+  let renewed = 0;
   let retried = 0;
   let paused = 0;
   let failed = 0;
@@ -45,6 +51,18 @@ export async function sweepBilling(
     report.logger?.error({ id, errName }, `${what} failed`);
     report.captureException?.(new Error(`${what} failed: ${errName}`), { id });
   };
+  for (const s of renewals) {
+    try {
+      const done = await withTenant(
+        s.organizationId,
+        (tx) => chargeDueRenewal(tx, s.organizationId, s.id, undefined, now),
+        prisma,
+      );
+      if (done?.status === 'active') renewed += 1;
+    } catch (error) {
+      fail(error, 'billing renewal', s.id);
+    }
+  }
   for (const s of due) {
     try {
       const done = await withTenant(
@@ -65,14 +83,16 @@ export async function sweepBilling(
       fail(error, 'grace expiry', organizationId);
     }
   }
-  return { retried, paused, failed };
+  return { renewed, retried, paused, failed };
 }
 
 export const billingSweepJob = defineJob<object>({
   name: BILLING_SWEEP,
   cron: BILLING_SWEEP_CRON,
   async handle(_data, deps) {
-    const { retried, paused } = await sweepBilling(deps.prisma, new Date(), deps);
-    if (retried > 0 || paused > 0) deps.logger.info({ retried, paused }, 'billing swept');
+    const { renewed, retried, paused } = await sweepBilling(deps.prisma, new Date(), deps);
+    if (renewed > 0 || retried > 0 || paused > 0) {
+      deps.logger.info({ renewed, retried, paused }, 'billing swept');
+    }
   },
 });

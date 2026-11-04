@@ -10,7 +10,13 @@ import {
   type ClientWorld,
 } from '../sessions/fixtures.test-helpers';
 import { purchasePack } from './packs';
-import { createBooking, saveSessionType, withinAvailability } from './scheduling';
+import {
+  bookingsClash,
+  cancelBooking,
+  createBooking,
+  saveSessionType,
+  withinAvailability,
+} from './scheduling';
 
 /**
  * PRD K10, K11 against Postgres: a booking must fall inside the coach's availability (in the workspace zone), and two
@@ -161,5 +167,86 @@ describe('createBooking (K10, K11)', () => {
       prisma,
     );
     expect(pack.usedSessions).toBe(1);
+  });
+});
+
+describe('buffers and reminders (review L3, L4)', () => {
+  it('L3: the gap between two bookings covers either side buffer', () => {
+    const a = {
+      startsAt: new Date('2026-11-05T15:00:00Z'),
+      endsAt: new Date('2026-11-05T15:30:00Z'),
+      before: 0,
+      after: 30,
+    };
+    const b = (start: string) => ({
+      startsAt: new Date(start),
+      endsAt: new Date(new Date(start).getTime() + 30 * 60_000),
+      before: 0,
+      after: 0,
+    });
+    // b (no buffers) 15 minutes after a ends: inside a's 30-minute buffer after.
+    expect(bookingsClash(b('2026-11-05T15:45:00Z'), a)).toBe(true);
+    expect(bookingsClash(a, b('2026-11-05T15:45:00Z'))).toBe(true);
+    expect(bookingsClash(b('2026-11-05T16:00:00Z'), a)).toBe(false);
+    // Back-to-back with no buffers on either side is fine.
+    expect(bookingsClash(b('2026-11-05T15:30:00Z'), { ...a, after: 0 })).toBe(false);
+  });
+
+  it("L3: a new booking respects an existing booking's own buffer after", async () => {
+    const { id: padded } = await runAs(prisma, w.coach, (tx) =>
+      saveSessionType(tx, w.coach, {
+        name: 'Padded',
+        kind: 'call',
+        durationMinutes: 30,
+        bufferAfterMinutes: 30,
+        availability: [{ weekday: 4, startTime: '13:00', endTime: '16:00' }],
+      }),
+    );
+    const bookType = (sessionTypeId: string, startsAt: string) =>
+      codeOf(
+        runAs(prisma, w.client, (tx) =>
+          createBooking(
+            tx,
+            w.client,
+            {
+              sessionTypeId,
+              clientId: w.clientId,
+              startsAt,
+              endsAt: at(startsAt, 30).toISOString(),
+            },
+            { now: NOW },
+          ),
+        ),
+      );
+    // 13:00-13:30 New York with a 30-minute buffer after.
+    expect(await bookType(padded, '2026-11-05T18:00:00.000Z')).toBe('ok');
+    // The PT type has no buffers of its own, but 13:45 is inside the padded booking's buffer.
+    await runAs(prisma, w.coach, (tx) =>
+      saveSessionType(tx, w.coach, {
+        id: typeId,
+        name: 'PT',
+        kind: 'in_person',
+        location: 'Studio',
+        durationMinutes: 30,
+        availability: [
+          { weekday: 4, startTime: '09:00', endTime: '12:00' },
+          { weekday: 4, startTime: '13:00', endTime: '16:00' },
+        ],
+      }),
+    );
+    expect(await bookType(typeId, '2026-11-05T18:45:00.000Z')).toBe('CONFLICT');
+    expect(await bookType(typeId, '2026-11-05T19:00:00.000Z')).toBe('ok');
+  });
+
+  it('L4: cancelling a booking drops its queued reminder', async () => {
+    const { id } = await book('2026-11-05T14:30:00.000Z');
+    const reminders = () =>
+      withSystem(
+        (tx) => tx.outboxEmail.count({ where: { idempotencyKey: `booking-reminder:${id}` } }),
+        prisma,
+      );
+    expect(await reminders()).toBe(1);
+    await runAs(prisma, w.client, (tx) => cancelBooking(tx, w.client, id, { now: NOW }));
+    expect(await reminders()).toBe(0);
   });
 });

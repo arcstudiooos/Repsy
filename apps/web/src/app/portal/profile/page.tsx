@@ -173,6 +173,12 @@ export default async function PortalProfile() {
         <TwoFactorSection enabled={twoFactor.enabled} required={false} />
         <SecuritySection />
         <p className="text-secondary">
+          Your plan and receipts:{' '}
+          <Link href="/portal/billing" className="text-accent underline">
+            My billing
+          </Link>
+        </p>
+        <p className="text-secondary">
           Need help?{' '}
           <Link href="/portal/support" className="text-accent underline">
             Help and support

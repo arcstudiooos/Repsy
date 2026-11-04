@@ -1,4 +1,4 @@
-# Kinetic
+# Repsy
 
 Coaching web app. pnpm monorepo.
 
@@ -28,9 +28,9 @@ Open http://localhost:3000 and sign in as `coach@example.test` (or `admin@exampl
 - `pnpm dev`, `pnpm db:migrate`, `pnpm db:seed`, `pilot-code:create` and `pgboss:migrate` read the root `.env` (Node's built-in env-file loader; variables already set in the shell win). `pnpm test` does not.
 - `pnpm db:down` stops the container (data persists in a named volume).
 
-## R3 remaining (this branch, not yet merged)
+## R3 features
 
-This branch adds the remaining R3 features from `docs/competitive/complete-platform-prd.md`:
+R3 added the remaining features from `docs/competitive/complete-platform-prd.md`:
 
 - **I10–I12, I14 AI drafting:** coach-only, per-workspace opt-in (off by default) drafts at `/app/ai-drafts` — paste to program, draft from template, and check-in highlights. Every draft is labelled "Drafted with AI" and is never auto-saved as a program or sent. The only provider is a fake/local one; no keys, SDKs, or network calls. "Save draft as program" is not yet built.
 - **K1–K9, K15 payments:** one payments port with fake Stripe Connect and Razorpay providers only. Packages, storefront on `/join/<coach>`, coupons, branded receipts/tax, failed-payment retries with "Needs review" and grace, billing self-service, revenue dashboard with CSV, and manual (cash/bank) payments. The worker's `billing.sweep` job (every 15 minutes) retries due payments and pauses subscriptions whose grace has ended; a client whose subscriptions are all paused sees "Your coaching is paused" in the portal. No real money moves; `confirmCheckout` is a coach-only demo stand-in until a verified provider webhook replaces it.

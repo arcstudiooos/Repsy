@@ -103,6 +103,19 @@ describe('api envelope', () => {
     expect(text).not.toMatch(/\bat \S+ \(/);
   });
 
+  it('an unmapped unique-key violation (Prisma P2002) → 409 CONFLICT, not 500', async () => {
+    const handler = make()({
+      handler: () => {
+        throw Object.assign(new Error('Unique constraint failed on (email)'), { code: 'P2002' });
+      },
+    });
+    const res = await handler(req('POST', headersFor(t.coachA), {}));
+    expect(res.status).toBe(409);
+    const text = await res.text();
+    expect((JSON.parse(text) as { error: { code: string } }).error.code).toBe('CONFLICT');
+    expect(text).not.toContain('email');
+  });
+
   it('catch-all never logs error message', async () => {
     const spy = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
     try {
