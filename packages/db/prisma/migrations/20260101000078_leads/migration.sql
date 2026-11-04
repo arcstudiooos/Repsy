@@ -45,12 +45,20 @@ BEGIN
   EXECUTE pg_catalog.format($f$
     CREATE FUNCTION %1$I.app_org_by_public_slug(target text)
       RETURNS uuid
-      LANGUAGE sql STABLE
-      SET app.bypass_rls = 'on'
+      LANGUAGE plpgsql VOLATILE
       SET search_path = %1$I, pg_temp
       AS $body$
+      DECLARE
+        prior_bypass text := pg_catalog.current_setting('app.bypass_rls', true);
+        result uuid;
+      BEGIN
+        PERFORM pg_catalog.set_config('app.bypass_rls', 'on', true);
         SELECT o.id FROM %1$I.organizations o
          WHERE o.public_slug OPERATOR(pg_catalog.=) target AND o.public_page_enabled
+          INTO result;
+        PERFORM pg_catalog.set_config('app.bypass_rls', COALESCE(prior_bypass, ''), true);
+        RETURN result;
+      END
       $body$
   $f$, pg_catalog.current_schema());
 END
