@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { SupportPage } from '@/components/support/SupportPage';
 
-export const metadata: Metadata = { title: 'Help and support | Kinetic' };
+export const metadata: Metadata = { title: 'Help and support | Repsy' };
 
 export default function PortalSupport() {
   return <SupportPage />;

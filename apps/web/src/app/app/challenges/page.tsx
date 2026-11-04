@@ -5,7 +5,7 @@ import { NewChallengeForm } from '@/components/challenges/Challenges';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Challenges | Kinetic' };
+export const metadata: Metadata = { title: 'Challenges | Repsy' };
 
 /** PRD H9: time-boxed challenges with an opt-in leaderboard. */
 export default async function ChallengesPage() {
@@ -20,7 +20,7 @@ export default async function ChallengesPage() {
   });
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Challenges</h1>
+      <h1 className="mb-6 text-h1 font-semibold md:text-display">Challenges</h1>
       <div className="flex flex-col gap-6">
         {items.length === 0 ? (
           <p className="text-secondary">No challenges yet.</p>

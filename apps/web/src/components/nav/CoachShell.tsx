@@ -2,13 +2,14 @@ import { redirect } from 'next/navigation';
 import { Suspense, type ReactNode } from 'react';
 import Link from 'next/link';
 import { isCoachRole, twoFactorStatus } from '@kinetic/core';
-import { CoachNav } from '@/components/nav/CoachNav';
+import { CoachNavServer } from '@/components/nav/CoachNavServer';
 import { NoticeBanner } from '@/components/nav/NoticeBanner';
 import { PathBreadcrumbs } from '@/components/nav/PathBreadcrumbs';
 import { WorkspaceSwitchLink } from '@/components/nav/WorkspaceSwitchLink';
 import { LoadingState } from '@/components/states/LoadingState';
 import { getServerActorOutcome, getServerSession, withServerTenant } from '@/server/serverActor';
 import { shellRedirect } from '@/server/shellGate';
+import { RepsyLogo } from '@/components/brand/Logo';
 
 /**
  * Defense in depth behind src/proxy.ts: needs a verified user with an active owner/coach membership, and the
@@ -109,7 +110,7 @@ export function CoachShell({
   noMembershipPath: string;
 }) {
   return (
-    <div className="min-h-dvh md:grid md:grid-cols-[15rem_minmax(0,1fr)] print:block">
+    <div className="min-h-dvh md:grid md:grid-cols-[var(--rail-w,15.5rem)_minmax(0,1fr)] print:block">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-control focus:bg-surface focus:px-4 focus:py-3"
@@ -117,25 +118,27 @@ export function CoachShell({
         Skip to content
       </a>
       {/* usePathname() is runtime data: keep it out of the prerendered shell for dynamic routes. */}
-      <Suspense fallback={null}>
-        <CoachNav
+      <Suspense fallback={<div aria-hidden className="hidden bg-midnight md:block md:h-dvh" />}>
+        <CoachNavServer
           switcher={
             <Suspense fallback={null}>
-              <WorkspaceSwitchLink />
+              <WorkspaceSwitchLink className="text-on-midnight-muted hover:bg-midnight-2 hover:text-on-midnight" />
             </Suspense>
           }
         />
       </Suspense>
       <div className="flex min-w-0 flex-col">
-        <header className="flex items-center justify-between gap-2 border-b border-divider bg-surface px-4 py-2 md:hidden print:hidden">
-          <p className="text-lg font-semibold">Kinetic</p>
+        <header className="sticky top-0 z-30 flex min-h-14 items-center justify-between gap-2 border-b border-border bg-surface/95 px-4 backdrop-blur md:hidden print:hidden">
+          <p>
+            <RepsyLogo size="sm" />
+          </p>
           <Suspense fallback={null}>
             <WorkspaceSwitchLink className="text-sm" />
           </Suspense>
         </header>
         <main
           id="main"
-          className="mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-24 md:px-8 md:pt-8 md:pb-8"
+          className="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-28 md:px-8 md:pt-8 md:pb-12"
         >
           <div className="print:hidden">
             <Suspense fallback={null}>

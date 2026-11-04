@@ -28,9 +28,12 @@ const SIGN_OUT_FAILED = "Couldn't sign out. Check your connection and try again.
 export function SignOutButton({
   className,
   redirectTo = '/login',
+  iconOnly = false,
 }: {
   className?: string;
   redirectTo?: string;
+  /** A compact icon button (the coach sidebar); its accessible name is still "Sign out". */
+  iconOnly?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -82,9 +85,11 @@ export function SignOutButton({
         className={className ?? 'w-full justify-start px-3 text-secondary'}
         disabled={busy}
         onClick={() => void start()}
+        aria-label={iconOnly ? 'Sign out' : undefined}
+        title={iconOnly ? 'Sign out' : undefined}
       >
         <LogOut aria-hidden className="size-5" />
-        Sign out
+        {!iconOnly && 'Sign out'}
       </Button>
       {error && (
         <p role="alert" className="px-3 text-sm text-danger">

@@ -5,7 +5,7 @@ import { DomainError, getProgram, getSettings, listProgramVersions } from '@kine
 import { EmptyState } from '@/components/states/EmptyState';
 import { withServerTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Version history | Kinetic' };
+export const metadata: Metadata = { title: 'Version history | Repsy' };
 
 /** A commit time as an org-local date and time, e.g. "30 Oct 2026, 14:05". */
 function formatSavedAt(iso: string, timeZone: string): string {
@@ -44,7 +44,7 @@ export default async function ProgramHistoryPage({ params }: { params: Promise<{
         >
           Back to editor
         </Link>
-        <h1 className="text-2xl font-semibold md:text-3xl">Version history</h1>
+        <h1 className="text-h1 font-semibold md:text-display">Version history</h1>
         <p className="text-sm break-words text-secondary">{program.title}</p>
       </div>
 

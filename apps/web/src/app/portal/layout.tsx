@@ -2,6 +2,7 @@ import { NoticeBanner } from '@/components/nav/NoticeBanner';
 import { redirect } from 'next/navigation';
 import { Suspense, type ReactNode } from 'react';
 import { PortalBrand } from '@/components/nav/PortalBrand';
+import { PortalAvatar } from '@/components/nav/PortalAvatar';
 import { PortalNav } from '@/components/nav/PortalNav';
 import { WorkspaceSwitchLink } from '@/components/nav/WorkspaceSwitchLink';
 import { EmptyState } from '@/components/states/EmptyState';
@@ -12,6 +13,7 @@ import { getServerActorOutcome, getServerSession, withServerTenant } from '@/ser
 import { shellRedirect } from '@/server/shellGate';
 import { pendingAgreements, recordPortalVisit } from '@kinetic/core';
 import { AgreementGate } from '@/portal/AgreementGate';
+import { RepsyLogo } from '@/components/brand/Logo';
 
 /**
  * Portal gate (behind src/proxy.ts, which checks session + verified email):
@@ -83,23 +85,34 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
       >
         Skip to content
       </a>
-      <header className="border-b border-divider bg-surface px-4 py-2 md:border-b-0 md:pb-0">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-2 md:px-8">
-          <Suspense fallback={<p className="text-lg font-semibold">Kinetic</p>}>
+      <header className="sticky top-0 z-30 border-b border-border bg-surface/95 px-4 backdrop-blur">
+        <div className="mx-auto flex min-h-14 max-w-5xl items-center justify-between gap-3 md:px-4">
+          <Suspense
+            fallback={
+              <p>
+                <RepsyLogo />
+              </p>
+            }
+          >
             <PortalBrand />
           </Suspense>
+          {/* usePathname() is runtime data: keep it out of the prerendered shell for dynamic routes. */}
           <Suspense fallback={null}>
-            <WorkspaceSwitchLink className="text-sm" />
+            <PortalNav />
           </Suspense>
+          <div className="flex items-center gap-2">
+            <Suspense fallback={null}>
+              <WorkspaceSwitchLink className="min-h-10 text-sm" />
+            </Suspense>
+            <Suspense fallback={null}>
+              <PortalAvatar />
+            </Suspense>
+          </div>
         </div>
       </header>
-      {/* usePathname() is runtime data: keep it out of the prerendered shell for dynamic routes. */}
-      <Suspense fallback={null}>
-        <PortalNav />
-      </Suspense>
       <main
         id="main"
-        className="mx-auto w-full max-w-3xl flex-1 px-4 pt-6 pb-24 md:px-8 md:pt-8 md:pb-8"
+        className="mx-auto w-full max-w-3xl flex-1 px-4 pt-6 pb-28 md:px-8 md:pt-8 md:pb-12"
       >
         <Suspense fallback={<LoadingState />}>
           <ClientGate>{children}</ClientGate>

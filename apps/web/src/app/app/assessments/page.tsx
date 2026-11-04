@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';
 import { ArchiveAssessment, AssessmentForm } from './AssessmentForm';
 
-export const metadata: Metadata = { title: 'Assessments | Kinetic' };
+export const metadata: Metadata = { title: 'Assessments | Repsy' };
 
 /** PRD E5: posture and mobility photo assessments, asked for from a client's Progress tab. */
 export default async function AssessmentsPage() {
@@ -15,7 +15,7 @@ export default async function AssessmentsPage() {
   }));
   return (
     <>
-      <h1 className="mb-2 text-2xl font-semibold md:text-3xl">Assessments</h1>
+      <h1 className="mb-2 text-h1 font-semibold md:text-display">Assessments</h1>
       <p className="mb-6 text-secondary">
         Ask a client for one from their Progress tab. They are asked again every few weeks, and you
         see their first and latest photos side by side.

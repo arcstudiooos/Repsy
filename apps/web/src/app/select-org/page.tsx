@@ -9,7 +9,7 @@ import { getSessionUser } from '@/lib/auth';
 import { loadMemberships } from '@/server/actor';
 import { OrgChoices } from './OrgChoices';
 
-export const metadata: Metadata = { title: 'Choose workspace | Kinetic' };
+export const metadata: Metadata = { title: 'Choose workspace | Repsy' };
 
 /** Lists the signed-in user's workspaces; choosing one POSTs to /api/v1/org/switch. */
 async function Choices() {

@@ -54,7 +54,7 @@ export function BrandingSection({ branding, canEdit }: { branding: Branding; can
         <CardTitle as="h2">Branding</CardTitle>
         <CardDescription>
           Clients see your workspace name, logo and accent colour in their portal. Leave a field
-          empty to use Kinetic&apos;s.
+          empty to use Repsy&apos;s.
         </CardDescription>
       </CardHeader>
       <CardContent>

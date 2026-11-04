@@ -1,13 +1,30 @@
+import { cva, type VariantProps } from 'class-variance-authority';
 import type { ComponentProps } from 'react';
 import { cn } from '@/lib/utils';
 
-export function Card({ className, ...props }: ComponentProps<'div'>) {
-  return (
-    <div
-      className={cn('rounded-card bg-surface p-4 text-ink shadow-card sm:p-6', className)}
-      {...props}
-    />
-  );
+export const cardVariants = cva('rounded-card text-ink', {
+  variants: {
+    variant: {
+      /** Resting card: hairline border + e1. */
+      default: 'border border-border bg-surface p-4 shadow-e1 sm:p-6',
+      /** A well inside a card or page section. */
+      inset: 'bg-surface-2 p-4',
+      /** Midnight hero tile (next workout, KPI hero). Text is white; cyan and ember for accents. */
+      hero: 'rounded-xl bg-midnight p-5 text-on-midnight shadow-e2 sm:p-6',
+      /** A whole-card link or button target. */
+      interactive:
+        'border border-border bg-surface p-4 shadow-e1 transition-[border-color,box-shadow] duration-[var(--k-motion-fast)] hover:border-input-border hover:shadow-e2 sm:p-6',
+    },
+  },
+  defaultVariants: { variant: 'default' },
+});
+
+export function Card({
+  className,
+  variant,
+  ...props
+}: ComponentProps<'div'> & VariantProps<typeof cardVariants>) {
+  return <div className={cn(cardVariants({ variant }), className)} {...props} />;
 }
 
 export function CardHeader({ className, ...props }: ComponentProps<'div'>) {
@@ -19,7 +36,7 @@ export function CardTitle({
   as: Heading = 'h2',
   ...props
 }: ComponentProps<'h2'> & { as?: 'h2' | 'h3' | 'h4' }) {
-  return <Heading className={cn('text-lg font-semibold', className)} {...props} />;
+  return <Heading className={cn('text-h2 font-semibold', className)} {...props} />;
 }
 
 export function CardDescription({ className, ...props }: ComponentProps<'p'>) {

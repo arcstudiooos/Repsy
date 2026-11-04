@@ -2,17 +2,17 @@ import type { TagColor, TagView } from '@kinetic/core';
 
 /** Decorative dot colours; the tag name carries the meaning (text stays ink for contrast). */
 export const TAG_DOT: Record<TagColor, string> = {
-  teal: '#1C7666',
-  blue: '#2F5FA8',
-  purple: '#6B4CA6',
-  orange: '#B0601A',
-  red: '#B64743',
-  gray: '#60716E',
+  teal: '#0A7C8C',
+  blue: '#2F6FD8',
+  purple: '#7B61FF',
+  orange: '#E8552D',
+  red: '#C0283C',
+  gray: '#8C847C',
 };
 
 export function TagBadge({ tag }: { tag: TagView }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-input-border bg-surface px-2 py-0.5 text-sm text-ink">
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2 py-0.5 text-caption font-medium text-ink">
       <span
         aria-hidden
         className="size-2 rounded-full"

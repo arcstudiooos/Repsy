@@ -4,7 +4,7 @@ import { listMealPlans, listRecipes } from '@kinetic/core';
 import { buttonVariants } from '@/components/ui/button';
 import { withServerTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Meal plans | Kinetic' };
+export const metadata: Metadata = { title: 'Meal plans | Repsy' };
 
 const kcal = (v: number | null) => (v === null ? '' : ` · ${v} kcal`);
 
@@ -16,7 +16,7 @@ export default async function MealPlansPage() {
   }));
   return (
     <>
-      <h1 className="mb-2 text-2xl font-semibold md:text-3xl">Meal plans</h1>
+      <h1 className="mb-2 text-h1 font-semibold md:text-display">Meal plans</h1>
       <p className="mb-6 text-secondary">
         Build plans from your recipes, with swap options for each meal. Give a client a plan from
         their Nutrition tab; they get a shopping list with it.

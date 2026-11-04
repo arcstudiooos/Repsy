@@ -23,7 +23,7 @@ import {
 } from './AdminActions';
 import { readNotices } from '@kinetic/core';
 
-export const metadata: Metadata = { title: 'Admin | Kinetic' };
+export const metadata: Metadata = { title: 'Admin | Repsy' };
 
 const when = (iso: string) => new Date(iso).toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) || undefined;
@@ -62,7 +62,7 @@ export default async function AdminPage({
 
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Admin</h1>
+      <h1 className="mb-6 text-h1 font-semibold md:text-display">Admin</h1>
       <div className="flex flex-col gap-6">
         <Card>
           <CardHeader>

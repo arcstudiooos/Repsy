@@ -113,12 +113,12 @@ export function PushToggle() {
       <CardContent>
         {state.kind === 'unsupported' ? (
           <p className="text-secondary">
-            This browser can&apos;t show notifications. On iPhone, add Kinetic to your home screen
+            This browser can&apos;t show notifications. On iPhone, add Repsy to your home screen
             first.
           </p>
         ) : state.kind === 'blocked' ? (
           <p className="text-secondary">
-            Notifications are blocked for Kinetic in this browser&apos;s settings.
+            Notifications are blocked for Repsy in this browser&apos;s settings.
           </p>
         ) : state.subscribed ? (
           <Button variant="secondary" disabled={busy} onClick={() => void turnOff(state.publicKey)}>

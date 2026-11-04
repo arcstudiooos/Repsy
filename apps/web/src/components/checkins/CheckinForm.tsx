@@ -234,12 +234,12 @@ function QuestionField({
         {options.map((o) => (
           <label
             key={o.label}
-            className="flex min-h-11 min-w-11 cursor-pointer items-center justify-center gap-2 rounded-control border border-input-border px-3 has-checked:border-accent has-checked:bg-canvas"
+            className="relative flex min-h-12 min-w-12 cursor-pointer items-center justify-center gap-2 rounded-full border border-input-border bg-surface px-4 text-base font-semibold transition-colors duration-[var(--k-motion-fast)] hover:border-ink/40 has-checked:border-transparent has-checked:bg-accent-fill has-checked:text-on-accent has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent"
           >
             <input
               type="radio"
               name={id}
-              className="size-5"
+              className="absolute inset-0 size-full cursor-pointer appearance-none rounded-full opacity-0"
               checked={value === o.value}
               onChange={() => onChange(o.value)}
             />

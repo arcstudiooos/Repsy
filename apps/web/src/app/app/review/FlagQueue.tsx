@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useId, useState } from 'react';
 import type { FlagFilter, FlagView } from '@kinetic/core';
-import { Button } from '@/components/ui/button';
+import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
@@ -105,7 +107,7 @@ export function FlagQueue({
   // Not an early return: the dialogs must stay mounted while an optimistic removal empties the list.
   const empty =
     flags.length === 0 ? (
-      <p className="rounded-card bg-surface p-4 text-secondary shadow-card">
+      <p className="rounded-card border border-dashed border-input-border/60 bg-surface p-6 text-center text-secondary">
         {filter === 'needs_attention'
           ? 'Nothing needs review right now.'
           : filter === 'snoozed'
@@ -126,20 +128,24 @@ export function FlagQueue({
       <ul className="flex flex-col gap-4" hidden={flags.length === 0}>
         {[...byClient.entries()].map(([clientId, items]) => (
           <li key={clientId}>
-            <Card>
+            <Card className="border-l-4 border-l-warning-fill">
               <CardHeader className="flex-row flex-wrap items-center justify-between gap-3">
-                <CardTitle as="h3">
+                <CardTitle as="h3" className="flex items-center gap-3">
+                  <Avatar name={items[0]?.clientName ?? ''} />
                   <Link
                     href={`/app/clients/${clientId}`}
-                    className="break-words text-accent underline underline-offset-4"
+                    className="break-words hover:text-accent hover:underline"
                   >
                     {items[0]?.clientName}
                   </Link>
+                  <Badge tone="warning">
+                    {items.length} {items.length === 1 ? 'item' : 'items'}
+                  </Badge>
                 </CardTitle>
                 <div className="flex flex-wrap gap-2">
                   <Link
                     href={`/app/clients/${clientId}/messages`}
-                    className="inline-flex min-h-11 items-center rounded-control border border-input-border px-3 text-sm"
+                    className={buttonVariants({ variant: 'soft', size: 'sm' })}
                   >
                     Send message
                   </Link>
@@ -156,7 +162,7 @@ export function FlagQueue({
                 </div>
               </CardHeader>
               <CardContent>
-                <ul className="flex flex-col divide-y divide-divider">
+                <ul className="flex flex-col divide-y divide-border">
                   {items.map((f) => (
                     <li key={f.id} className="flex flex-col gap-2 py-3">
                       <div className="flex flex-wrap items-center gap-2">

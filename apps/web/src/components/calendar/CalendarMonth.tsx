@@ -257,7 +257,8 @@ export function CalendarMonth({
                       <span
                         className={cn(
                           'inline-flex size-7 items-center justify-center rounded-full text-sm',
-                          d === calendar.todayLocalDate && 'bg-accent font-semibold text-white',
+                          d === calendar.todayLocalDate &&
+                            'bg-accent-fill font-semibold text-on-accent',
                           !inMonth(d) && 'text-secondary',
                         )}
                       >

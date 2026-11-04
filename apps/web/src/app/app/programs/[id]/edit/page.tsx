@@ -20,7 +20,7 @@ import { withServerTenant } from '@/server/serverActor';
 import { ProgramEditor, type EditorClient } from './ProgramEditor';
 import { HouseTemplate, ShareWithClients } from './ShareWithClients';
 
-export const metadata: Metadata = { title: 'Edit program | Kinetic' };
+export const metadata: Metadata = { title: 'Edit program | Repsy' };
 
 type Loaded =
   | {
@@ -95,7 +95,7 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
   if (!loaded.editable) {
     return (
       <div className="flex flex-col gap-6">
-        <h1 className="text-2xl font-semibold md:text-3xl">{loaded.program.title}</h1>
+        <h1 className="text-h1 font-semibold md:text-display">{loaded.program.title}</h1>
         <EmptyState
           title="This program can't be edited"
           body={

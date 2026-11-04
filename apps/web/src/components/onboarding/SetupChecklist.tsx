@@ -72,7 +72,7 @@ export function SetupChecklist({ checklist }: { checklist: Checklist }) {
               <span
                 aria-hidden
                 className={`mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full border text-sm ${
-                  s.done ? 'border-accent bg-accent text-white' : 'border-input-border'
+                  s.done ? 'border-accent bg-accent-fill text-on-accent' : 'border-input-border'
                 }`}
               >
                 {s.done ? '✓' : ''}

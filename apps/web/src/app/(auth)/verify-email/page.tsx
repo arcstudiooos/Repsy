@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { ResendVerification } from './ResendVerification';
 import { AuthShell } from '@/components/auth-ui';
 
-export const metadata: Metadata = { title: 'Verify your email | Kinetic' };
+export const metadata: Metadata = { title: 'Verify your email | Repsy' };
 
 export default function VerifyEmailPage() {
   return (

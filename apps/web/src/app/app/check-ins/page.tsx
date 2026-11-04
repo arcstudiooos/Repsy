@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { NewTemplateForm } from './NewTemplateForm';
 import { TemplateEditor } from './TemplateEditor';
 
-export const metadata: Metadata = { title: 'Check-in questions | Kinetic' };
+export const metadata: Metadata = { title: 'Check-in questions | Repsy' };
 
 const KIND_LABEL: Record<TemplateKind, string> = {
   checkin: 'Recurring check-in',
@@ -26,7 +26,7 @@ export default async function CheckinTemplatePage({
   const selected = templates.find((t) => t.id === wanted) ?? templates[0]!;
   return (
     <>
-      <h1 className="mb-2 text-2xl font-semibold md:text-3xl">Check-in questions</h1>
+      <h1 className="mb-2 text-h1 font-semibold md:text-display">Check-in questions</h1>
       <p className="mb-6 text-secondary">
         Recurring check-ins go out on each client&apos;s day; one-off and intake forms are sent when
         you choose. Changes apply to what you send from now on.

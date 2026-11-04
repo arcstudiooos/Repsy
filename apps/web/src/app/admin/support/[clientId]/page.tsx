@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { withPlatformAdmin } from '@/server/platformAdmin';
 import { getServerSession } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Support | Kinetic' };
+export const metadata: Metadata = { title: 'Support | Repsy' };
 
 /** One client's data for support, only with an active grant (each view is audited). */
 export default async function SupportClientPage({

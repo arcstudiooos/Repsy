@@ -1,11 +1,19 @@
 import type { ClientStatus, InviteStatus } from '@kinetic/core';
-import { cn } from '@/lib/utils';
+import { CircleCheck, Mail, Pause, Archive } from 'lucide-react';
+import { Badge, type BadgeTone } from '@/components/ui/badge';
 
 const LABEL: Record<ClientStatus, string> = {
   invited: 'Invited',
   active: 'Active',
   paused: 'Paused',
   archived: 'Archived',
+};
+
+const STYLE: Record<ClientStatus, { tone: BadgeTone; icon: typeof Mail }> = {
+  invited: { tone: 'info', icon: Mail },
+  active: { tone: 'success', icon: CircleCheck },
+  paused: { tone: 'warning', icon: Pause },
+  archived: { tone: 'neutral', icon: Archive },
 };
 
 /** Text label always shown, so status never relies on color alone. */
@@ -24,14 +32,9 @@ export function StatusBadge({
 }) {
   const suffix = status === 'invited' && inviteStatus ? INVITE_SUFFIX[inviteStatus] : undefined;
   return (
-    <span
-      className={cn(
-        'inline-flex items-center rounded-control border px-2 py-0.5 text-sm font-medium',
-        status === 'active' ? 'border-accent text-accent' : 'border-input-border text-secondary',
-      )}
-    >
+    <Badge tone={STYLE[status].tone} icon={STYLE[status].icon} className="text-sm">
       {suffix ? `${LABEL[status]} · ${suffix}` : LABEL[status]}
-    </span>
+    </Badge>
   );
 }
 

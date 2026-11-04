@@ -1,8 +1,9 @@
 'use client';
 
+import { Check, CheckCheck } from 'lucide-react';
 import Link from 'next/link';
 import type { MessageAnchor } from '@kinetic/core';
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { fillPlaceholders } from '@kinetic/core/reply-fill';
 import type { MessageView, SavedReplyView } from '@kinetic/core';
 import { Button } from '@/components/ui/button';
@@ -182,35 +183,65 @@ export function MessageThread({
         <p className="text-secondary">No messages yet. Say hello to {otherName}.</p>
       ) : (
         <ol aria-label="Messages" className="flex flex-col gap-3">
-          {messages.map((m) => (
-            <li
-              key={m.id}
-              className={cn('flex flex-col gap-1', m.mine ? 'items-end' : 'items-start')}
-            >
-              <div
-                className={cn(
-                  'max-w-[85%] rounded-card border px-4 py-2 break-words whitespace-pre-line',
-                  m.mine ? 'border-accent bg-surface' : 'border-input-border bg-canvas',
+          {messages.map((m, i) => {
+            const day = new Date(m.createdAt).toDateString();
+            const prevDay = i > 0 ? new Date(messages[i - 1]!.createdAt).toDateString() : null;
+            return (
+              <Fragment key={m.id}>
+                {day !== prevDay && (
+                  <li
+                    aria-hidden
+                    className="my-1 flex items-center gap-3 text-micro text-secondary"
+                  >
+                    <span className="h-px flex-1 bg-border" />
+                    {new Date(m.createdAt).toLocaleDateString('en-GB', {
+                      weekday: 'short',
+                      day: 'numeric',
+                      month: 'short',
+                    })}
+                    <span className="h-px flex-1 bg-border" />
+                  </li>
                 )}
-              >
-                {m.anchor && <AnchorChip anchor={m.anchor} href={hrefOf(m.anchor)} />}
-                <span className="sr-only">{m.mine ? 'You' : m.senderName}: </span>
-                {m.body}
-                {m.attachment && <Attachment a={m.attachment} />}
-              </div>
-              <p className="text-xs text-secondary">
-                {m.mine ? 'You' : m.senderName} ·{' '}
-                <time dateTime={m.createdAt}>{timeLabel(m.createdAt)}</time>
-                {m.mine && <> · {m.readAt ? 'Read' : 'Sent'}</>}
-              </p>
-            </li>
-          ))}
+                <li className={cn('flex flex-col gap-1', m.mine ? 'items-end' : 'items-start')}>
+                  <div
+                    className={cn(
+                      'max-w-[85%] px-4 py-2.5 break-words whitespace-pre-line',
+                      m.mine
+                        ? 'rounded-2xl rounded-br-md bg-accent-soft text-ink'
+                        : 'rounded-2xl rounded-bl-md bg-surface-2 text-ink',
+                    )}
+                  >
+                    {m.anchor && <AnchorChip anchor={m.anchor} href={hrefOf(m.anchor)} />}
+                    <span className="sr-only">{m.mine ? 'You' : m.senderName}: </span>
+                    {m.body}
+                    {m.attachment && <Attachment a={m.attachment} />}
+                  </div>
+                  <p className="flex items-center gap-1 text-xs text-secondary">
+                    {m.mine ? 'You' : m.senderName} ·{' '}
+                    <time dateTime={m.createdAt}>{timeLabel(m.createdAt)}</time>
+                    {m.mine && (
+                      <>
+                        {' '}
+                        ·{' '}
+                        {m.readAt ? (
+                          <CheckCheck aria-hidden className="size-3.5 text-cyan-strong" />
+                        ) : (
+                          <Check aria-hidden className="size-3.5" />
+                        )}
+                        {m.readAt ? 'Read' : 'Sent'}
+                      </>
+                    )}
+                  </p>
+                </li>
+              </Fragment>
+            );
+          })}
           <li ref={bottom} aria-hidden />
         </ol>
       )}
       {canPost ? (
         <form
-          className="flex flex-col gap-2"
+          className="sticky bottom-20 z-10 flex flex-col gap-2 rounded-card border border-border bg-surface p-3 shadow-e2 md:bottom-4"
           noValidate
           onSubmit={(e) => {
             e.preventDefault();
@@ -275,7 +306,7 @@ export function MessageThread({
           </div>
           {about && (
             <p className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="rounded-control bg-canvas px-2 py-1 font-medium">
+              <span className="rounded-control bg-surface-2 px-2 py-1 font-medium">
                 Re: {about.label}
               </span>
               <Button
@@ -324,7 +355,7 @@ export function MessageThread({
 
 /** PRD H3: "Re: Upper A, Tue 3 Nov", linking to the workout or check-in. */
 function AnchorChip({ anchor, href }: { anchor: MessageAnchor; href: string | null }) {
-  const cls = 'mb-1 inline-block rounded-control bg-canvas px-2 py-0.5 text-xs font-medium';
+  const cls = 'mb-1 inline-block rounded-control bg-surface px-2 py-0.5 text-xs font-medium';
   return (
     <span className="block">
       {href ? (

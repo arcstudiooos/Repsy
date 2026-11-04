@@ -22,7 +22,7 @@ import { ProgressPhotos } from '@/components/progress/ProgressPhotos';
 import { TrainingLoad } from '@/components/progress/TrainingLoad';
 import { withPortalTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Progress | Kinetic' };
+export const metadata: Metadata = { title: 'Progress | Repsy' };
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) || undefined;
 
@@ -79,7 +79,7 @@ export default async function PortalProgressPage({
 
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold md:text-3xl">
+      <h1 className="mb-6 text-h1 font-semibold md:text-display">
         {history ? history.exercise.name : 'Progress'}
       </h1>
       {history ? (

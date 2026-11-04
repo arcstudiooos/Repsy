@@ -48,7 +48,7 @@ export function OrgChoices({ choices }: { choices: OrgChoice[] }) {
               onClick={() => void choose(c.orgId)}
             >
               <span className="block font-semibold">{c.name}</span>
-              <span className="block text-sm text-[#60716E]">
+              <span className="block text-sm text-secondary">
                 {pending === c.orgId ? 'Opening' : c.roles.join(', ')}
               </span>
             </button>

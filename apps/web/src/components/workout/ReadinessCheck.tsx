@@ -33,7 +33,7 @@ export function ReadinessCheck({
               {[1, 2, 3, 4, 5].map((n) => (
                 <label
                   key={n}
-                  className="flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-control border border-input-border has-checked:border-accent has-checked:bg-accent has-checked:text-white has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent"
+                  className="flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-control border border-input-border has-checked:border-accent has-checked:bg-accent-fill has-checked:text-on-accent has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent"
                 >
                   <input
                     type="radio"

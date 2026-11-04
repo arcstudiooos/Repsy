@@ -10,7 +10,7 @@ import { withServerTenant } from '@/server/serverActor';
 import { ExerciseLibrary } from './ExerciseLibrary';
 import { NewExerciseDialog } from './NewExerciseDialog';
 
-export const metadata: Metadata = { title: 'Exercise library | Kinetic' };
+export const metadata: Metadata = { title: 'Exercise library | Repsy' };
 
 const first = (v: string | string[] | undefined): string | undefined =>
   (Array.isArray(v) ? v[0] : v) || undefined;
@@ -40,7 +40,7 @@ export default async function ExercisesPage({
     if (error instanceof DomainError && error.code === 'VALIDATION') {
       return (
         <>
-          <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Exercise library</h1>
+          <h1 className="mb-6 text-h1 font-semibold md:text-display">Exercise library</h1>
           <ErrorState message="That page link is no longer valid. Go back to the first page." />
         </>
       );
@@ -51,7 +51,7 @@ export default async function ExercisesPage({
   return (
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold md:text-3xl">Exercise library</h1>
+        <h1 className="text-h1 font-semibold md:text-display">Exercise library</h1>
         <NewExerciseDialog />
       </div>
       <ExerciseLibrary

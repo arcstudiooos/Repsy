@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { loadActiveClients } from '@/server/selectOptions';
 import { withServerTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Resources | Kinetic' };
+export const metadata: Metadata = { title: 'Resources | Repsy' };
 
 /** The coach's resource library (PRD G5): links and short texts shared with all clients, a tag or one client. */
 export default async function ResourcesPage() {
@@ -18,7 +18,7 @@ export default async function ResourcesPage() {
   }));
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Resources</h1>
+      <h1 className="mb-6 text-h1 font-semibold md:text-display">Resources</h1>
       <div className="flex max-w-3xl flex-col gap-6">
         <Card>
           <CardHeader>

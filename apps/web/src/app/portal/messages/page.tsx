@@ -10,7 +10,7 @@ import {
 import { MessageThread } from '@/components/messages/MessageThread';
 import { withPortalTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Messages | Kinetic' };
+export const metadata: Metadata = { title: 'Messages | Repsy' };
 
 // Access is enforced by src/proxy.ts and the portal layout's client gate; core scopes to this client's thread.
 export default async function PortalMessages({
@@ -41,7 +41,7 @@ export default async function PortalMessages({
   );
   return (
     <>
-      <h1 className="mb-2 text-2xl font-semibold md:text-3xl">Messages</h1>
+      <h1 className="mb-2 text-h1 font-semibold md:text-display">Messages</h1>
       <p
         className={
           expectations.replyTargetHours || expectations.officeHours

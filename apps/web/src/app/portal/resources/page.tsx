@@ -4,14 +4,14 @@ import { ResourceList } from '@/components/resources/ResourceList';
 import { EmptyState } from '@/components/states/EmptyState';
 import { withPortalTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Resources | Kinetic' };
+export const metadata: Metadata = { title: 'Resources | Repsy' };
 
 /** Links and notes your coach shared with you (PRD G5). */
 export default async function PortalResourcesPage() {
   const items = await withPortalTenant((tx, actor) => listResources(tx, actor));
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Resources</h1>
+      <h1 className="mb-6 text-h1 font-semibold md:text-display">Resources</h1>
       {items.length === 0 ? (
         <EmptyState
           title="Nothing here yet"

@@ -6,7 +6,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { withServerTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Audit log | Kinetic' };
+export const metadata: Metadata = { title: 'Audit log | Repsy' };
 
 const CATEGORY_LABEL: Record<AuditCategory, string> = {
   all: 'All',
@@ -45,7 +45,7 @@ export default async function AuditPage({
   };
   return (
     <>
-      <h1 className="mb-2 text-2xl font-semibold md:text-3xl">Audit log</h1>
+      <h1 className="mb-2 text-h1 font-semibold md:text-display">Audit log</h1>
       <p className="mb-6 text-secondary">
         Who did what and when in this workspace. It never shows messages, notes or answers.
       </p>
@@ -86,7 +86,7 @@ export default async function AuditPage({
                     {when(e.at)}
                   </time>
                   <p className="min-w-0">
-                    <span className="font-medium">{e.actorName ?? 'Kinetic'}</span> · {e.label}
+                    <span className="font-medium">{e.actorName ?? 'Repsy'}</span> · {e.label}
                     {e.clientName && <span className="text-secondary"> · {e.clientName}</span>}
                   </p>
                 </li>

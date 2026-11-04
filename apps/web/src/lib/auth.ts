@@ -111,7 +111,7 @@ export function createAuth(options: CreateAuthOptions = {}) {
           userId: user.id,
           kind: 'auth.reset_password',
           token,
-          subject: 'Reset your Kinetic password',
+          subject: 'Reset your Repsy password',
           text: `Use this link to choose a new password (valid for 1 hour): ${url}`,
         });
         return Promise.resolve();
@@ -127,7 +127,7 @@ export function createAuth(options: CreateAuthOptions = {}) {
           userId: user.id,
           kind: 'auth.verify_email',
           token,
-          subject: 'Verify your Kinetic email',
+          subject: 'Verify your Repsy email',
           text: `Confirm your email address to finish setting up your account: ${url}`,
         });
         return Promise.resolve();
@@ -167,7 +167,7 @@ export function createAuth(options: CreateAuthOptions = {}) {
     plugins: [
       ...(breachedPasswordCheckEnabled(env) ? [haveIBeenPwned()] : []),
       // PRD A8: an authenticator app code (or a one-time backup code) after the password.
-      twoFactor({ issuer: 'Kinetic' }),
+      twoFactor({ issuer: 'Repsy' }),
     ],
     databaseHooks: {
       session: {

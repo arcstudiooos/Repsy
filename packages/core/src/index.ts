@@ -895,6 +895,25 @@ export {
   type LeaderboardEntry,
 } from './challenges/challenges';
 export { getBusinessAnalytics, type BusinessAnalytics, type Cohort } from './analytics/business';
+export {
+  bucketOf,
+  getAdherenceSeries,
+  getCheckinSeries,
+  getClientAdherence,
+  getClientConsistency,
+  getDailySessionStates,
+  getExerciseProgress,
+  getStreak,
+  getWeeklyVolume,
+  pctOf,
+  type AdherenceWeek,
+  type CheckinSeries,
+  type ClientAdherenceRow,
+  type DayStates,
+  type ExerciseProgressPoint,
+  type StateBucket,
+  type StateCounts,
+} from './analytics/series';
 export { CHURN_LABEL, CHURN_REASONS, type ChurnReason } from './clients/churn';
 
 // --- R3 remaining features (2026-11-03) ---

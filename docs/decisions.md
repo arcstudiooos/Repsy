@@ -235,7 +235,7 @@ Status key: **Locked** = agreed with the founder. **Proposed** = recommended def
 
 ## D-008 — R1 scope, rules and numbers
 
-**Status:** Locked (2026-10-29). #16 is subject to legal exceptions; #17 is provisional pending legal review.
+**Status:** Locked (2026-10-29). #16 is subject to legal exceptions; #17 is provisional pending legal review. #1's "no charts" rule for analytics is superseded by D-014 (2026-11-04); the rest of #1 stands.
 **Principle:** Deliver a polished, reliable pilot, not a feature-heavy competitor. R1 priority loop: **invite client → assign program → log workout → identify attention needed → complete check-in → take the next action.** Dropped features return only on validated pilot-coach demand, not speculation.
 
 | #   | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                 | PRD refs / supersedes                                                                                                       |
@@ -676,3 +676,15 @@ snippet — `docs/decisions.md` itself was not edited by the slice).
 14. **Billing and journeys share one package shape.** `billing_packages.onboarding_sequence` is JSONB (`{ sequenceId }` or `{ steps: [...] }`), not the billing slice's original 120-character string, and the package's display field is `title` (journeys originally read `name`). Journeys parse a string value defensively, but new writes are JSON.
 15. **Financial records are retained on client erasure in this PR.** Subscriptions, payments and receipts are not deleted by `eraseClientData`; that retention-vs-erasure decision needs a legal call before merging, and is listed as a PR follow-up. Client-scoped R3 rows (bookings, session packs, package journey runs) are erased.
 16. **New policy actions are added, existing code is not re-pointed yet.** `billing:manage`, `scheduling:read/manage/book`, `domain:manage`, `lapse:read/record` exist in `policies.ts`; R3 routes/core still use the older actions they were built with, so behaviour does not change in this PR.
+
+## D-014 — Charts and the UI/UX redesign (2026-11-04)
+
+**Status:** Approved by the founder (2026-11-04). Source: `Docs/ui-redesign-plan.md` (sections 6 and 8).
+**Supersedes:** the analytics part of D-008 #1 ("No charts or cohorts on `/app/analytics`"). The messaging part of D-008 #1 and the CSV export are unchanged. Cohorts stay out of scope.
+
+1. **Charts are allowed** in analytics, the coach dashboard, client views and the client portal.
+2. **Every chart keeps the numbers visible:** numerator, denominator and period are shown with the chart (label, tooltip or caption), and every chart has a "View as table" option. This keeps D-008 #1's transparency intent.
+3. **Accessibility:** each chart has a visible title, a legend or direct labels, and a one-sentence text alternative. Status and series are never told apart by colour alone. WCAG 2.2 AA, 44px targets and reduced motion stay as before.
+4. **Libraries:** interactive line, bar and area charts use Recharts 3, pinned to an exact version and wrapped in `apps/web/src/components/charts/`; pages never import it directly, and colours come only from tokens. Small charts (sparkline, ring, donut, week dots, heatmap) are server-rendered SVG, so offline portal pages need no chart JavaScript.
+5. **Privacy:** wellbeing answers shown in charts stay in-app. No analytics event (PostHog) carries answer values.
+6. **Visual direction "Midnight & Ember"**, light and dark themes, following the system setting with a Light / Dark / System choice saved per user on the device. The user-facing product name is **Repsy**; internal package names (`@kinetic/*`), env vars and database identifiers are unchanged.

@@ -154,7 +154,7 @@ export function TrendChart({
               }}
               className={cn(
                 'min-h-11 rounded-control px-3 text-sm font-medium md:min-h-9',
-                r === range ? 'bg-ink text-surface' : 'text-secondary hover:bg-canvas',
+                r === range ? 'bg-ink text-surface' : 'text-secondary hover:bg-surface-2',
               )}
             >
               {r}w

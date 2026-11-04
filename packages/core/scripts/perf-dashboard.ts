@@ -10,6 +10,13 @@ import {
   countOpenFlags,
   countRecentMissed,
   evaluateRules,
+  getAdherenceSeries,
+  getAnalytics,
+  getClientAdherence,
+  getDailySessionStates,
+  getPersonalRecords,
+  isoWeekOf,
+  listCheckinsAwaitingReview,
   getReviewCounts,
   listFlags,
   unreadMessageCount,
@@ -51,6 +58,32 @@ async function main() {
           await listFlags(tx, org.coach);
           await unreadMessageCount(tx, org.coach);
           await countRecentMissed(tx, org.coach, later);
+          // The redesigned dashboard (Docs/ui-redesign-plan.md §4.2): KPI tiles, This week, client pulse, activity.
+          await listCheckinsAwaitingReview(tx, org.coach, { limit: 5 });
+          await getAdherenceSeries(tx, org.coach, { weeks: 8, now: later });
+          await getDailySessionStates(tx, org.coach, { now: later });
+          const wk = isoWeekOf(later.toISOString().slice(0, 10));
+          await getAnalytics(tx, org.coach, { from: wk.start, to: wk.end }, { now: later });
+          await getAnalytics(tx, org.coach, { from: wk.start, to: wk.end }, { now: later });
+          const active = await tx.client.findMany({
+            where: { status: 'active' },
+            select: { id: true },
+            take: 200,
+          });
+          await getClientAdherence(
+            tx,
+            org.coach,
+            active.map((c) => c.id),
+            { days: 28, now: later },
+          );
+          const recent = await tx.workoutSession.findMany({
+            where: { state: 'completed' },
+            orderBy: { completedAt: 'desc' },
+            take: 8,
+            select: { clientId: true },
+          });
+          for (const id of new Set(recent.map((r) => r.clientId)))
+            await getPersonalRecords(tx, org.coach, id);
         },
         prisma,
         { userId: org.coach.userId },

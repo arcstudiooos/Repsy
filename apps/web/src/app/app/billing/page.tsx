@@ -13,7 +13,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Billing | Kinetic' };
+export const metadata: Metadata = { title: 'Billing | Repsy' };
 
 async function createPackageAction(data: FormData) {
   'use server';
@@ -75,7 +75,7 @@ export default async function BillingPage() {
     .join(', ');
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Billing</h1>
+      <h1 className="mb-6 text-h1 font-semibold md:text-display">Billing</h1>
       <div className="flex flex-col gap-6">
         <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
@@ -338,7 +338,10 @@ export default async function BillingPage() {
                   />
                 </div>
               </div>
-              <button type="submit" className="self-start rounded bg-accent px-4 py-2 text-white">
+              <button
+                type="submit"
+                className="self-start rounded bg-accent-fill px-4 py-2 text-on-accent"
+              >
                 Create package
               </button>
             </form>
@@ -425,7 +428,10 @@ export default async function BillingPage() {
                   className="w-full rounded border p-2 text-base"
                 />
               </div>
-              <button type="submit" className="self-start rounded bg-accent px-4 py-2 text-white">
+              <button
+                type="submit"
+                className="self-start rounded bg-accent-fill px-4 py-2 text-on-accent"
+              >
                 Record payment
               </button>
             </form>

@@ -28,7 +28,7 @@ export function DialogContent({
         {children}
         <DialogPrimitive.Close
           aria-label="Close"
-          className="absolute top-2 right-2 inline-flex size-11 items-center justify-center rounded-control text-secondary hover:bg-canvas hover:text-ink"
+          className="absolute top-2 right-2 inline-flex size-11 items-center justify-center rounded-control text-secondary hover:bg-surface-2 hover:text-ink"
         >
           <X aria-hidden className="size-5" />
         </DialogPrimitive.Close>

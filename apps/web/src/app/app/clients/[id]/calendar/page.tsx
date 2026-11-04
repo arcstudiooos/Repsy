@@ -5,7 +5,7 @@ import { ErrorState } from '@/components/states/ErrorState';
 import { withServerTenant } from '@/server/serverActor';
 import { loadClient } from '../data';
 
-export const metadata: Metadata = { title: 'Calendar | Kinetic' };
+export const metadata: Metadata = { title: 'Calendar | Repsy' };
 
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 

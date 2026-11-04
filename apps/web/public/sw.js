@@ -1,5 +1,5 @@
 /*
- * Kinetic portal service worker (S3-3, D-004). Scope /portal (the home and every page under it). Minimal:
+ * Repsy portal service worker (S3-3, D-004). Scope /portal (the home and every page under it). Minimal:
  * - /_next/static/* is cache-first (content-hashed build assets);
  * - navigations under /portal are network-first; only /portal and the workout pages the app asked for
  *   ("cache-workout" on Start, "keep-upcoming" for the next 7 days from the portal home, PRD D4) are stored, and
@@ -230,8 +230,8 @@ self.addEventListener('fetch', (event) => {
  */
 self.addEventListener('push', (event) => {
   event.waitUntil(
-    self.registration.showNotification('Kinetic', {
-      body: 'You have something new. Open Kinetic to see it.',
+    self.registration.showNotification('Repsy', {
+      body: 'You have something new. Open Repsy to see it.',
       tag: 'kinetic',
       icon: '/icon-192.png',
     }),

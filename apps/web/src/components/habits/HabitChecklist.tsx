@@ -57,14 +57,14 @@ export function HabitChecklist({ view }: { view: HabitsView }) {
           disabled={pending === h.id}
           onClick={() => toggle(h, !done)}
           className={cn(
-            'flex min-h-11 flex-1 items-center gap-3 rounded-control px-2 text-left hover:bg-canvas',
+            'flex min-h-11 flex-1 items-center gap-3 rounded-control px-2 text-left hover:bg-surface-2',
           )}
         >
           <span
             aria-hidden
             className={cn(
               'flex size-7 shrink-0 items-center justify-center rounded-full border-2',
-              done ? 'border-accent bg-accent text-white' : 'border-input-border',
+              done ? 'border-accent bg-accent-fill text-on-accent' : 'border-input-border',
             )}
           >
             {done && <Check className="size-4" />}

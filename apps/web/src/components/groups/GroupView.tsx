@@ -275,7 +275,7 @@ export function GroupView({
             aria-current={tab === t ? 'page' : undefined}
             className={cn(
               'inline-flex min-h-11 items-center rounded-full px-4',
-              tab === t ? 'bg-accent text-white' : 'border border-divider',
+              tab === t ? 'bg-accent-fill text-on-accent' : 'border border-divider',
             )}
           >
             {t === 'feed' ? 'Feed' : 'Chat'}

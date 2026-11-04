@@ -3,7 +3,7 @@ import { getClientCalendar } from '@kinetic/core';
 import { CalendarMonth } from '@/components/calendar/CalendarMonth';
 import { withPortalTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Calendar | Kinetic' };
+export const metadata: Metadata = { title: 'Calendar | Repsy' };
 
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 
@@ -18,7 +18,7 @@ export default async function PortalCalendarPage({
   const calendar = await withPortalTenant((tx, actor) => getClientCalendar(tx, actor, { month }));
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Calendar</h1>
+      <h1 className="mb-6 text-h1 font-semibold md:text-display">Calendar</h1>
       <CalendarMonth
         calendar={calendar}
         basePath="/portal/calendar"

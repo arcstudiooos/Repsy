@@ -4,7 +4,7 @@ import { CHURN_LABEL, getBusinessAnalytics } from '@kinetic/core';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Business analytics | Kinetic' };
+export const metadata: Metadata = { title: 'Business analytics | Repsy' };
 
 const monthLabel = (m: string) =>
   new Intl.DateTimeFormat('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' }).format(
@@ -25,7 +25,7 @@ export default async function BusinessAnalyticsPage() {
       >
         Back to analytics
       </Link>
-      <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Business analytics</h1>
+      <h1 className="mb-6 text-h1 font-semibold md:text-display">Business analytics</h1>
       <div className="flex flex-col gap-6">
         <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[

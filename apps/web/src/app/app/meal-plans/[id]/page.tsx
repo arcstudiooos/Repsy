@@ -5,7 +5,7 @@ import { withServerTenant } from '@/server/serverActor';
 import { ArchiveButton } from '../ArchiveButton';
 import { MealPlanEditor } from '../MealPlanEditor';
 
-export const metadata: Metadata = { title: 'Meal plan | Kinetic' };
+export const metadata: Metadata = { title: 'Meal plan | Repsy' };
 
 export default async function MealPlanPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

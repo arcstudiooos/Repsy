@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { formatSessionDate } from '@/lib/session-format';
 import { withPortalTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Check-ins | Kinetic' };
+export const metadata: Metadata = { title: 'Check-ins | Repsy' };
 
 const STATUS = { open: 'To do', overdue: 'Past due', submitted: 'Sent' } as const;
 
@@ -25,7 +25,7 @@ export default async function PortalCheckins() {
   });
   return (
     <>
-      <h1 className="mb-2 text-2xl font-semibold md:text-3xl">Check-ins</h1>
+      <h1 className="mb-2 text-h1 font-semibold md:text-display">Check-ins</h1>
       <p className="mb-6 text-secondary">
         {streak > 0
           ? `${streak} on time in a row. Keep it going.`

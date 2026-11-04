@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -41,8 +41,11 @@ export function FinishDialog({
   disabled,
   submit,
   onDone,
+  summary,
 }: {
   kind: 'complete' | 'skip';
+  /** Shown above the comment: what the client is about to finish (sets, volume, time). */
+  summary?: ReactNode;
   sessionId: string;
   disabled?: boolean;
   /** Replaces the direct API call (the portal queues it in the device outbox, S3-3). */
@@ -97,6 +100,7 @@ export function FinishDialog({
           <DialogTitle>{copy.title}</DialogTitle>
           <DialogDescription>{copy.body}</DialogDescription>
         </DialogHeader>
+        {summary}
         <div className="flex flex-col gap-1">
           <label htmlFor={commentId} className="text-sm font-medium">
             Comment (optional)

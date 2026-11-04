@@ -19,7 +19,7 @@ import { formatSessionDate, plural } from '@/lib/session-format';
 import { cn } from '@/lib/utils';
 import { withPortalTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Workouts | Kinetic' };
+export const metadata: Metadata = { title: 'Workouts | Repsy' };
 
 const first = (v: string | string[] | undefined): string | undefined =>
   (Array.isArray(v) ? v[0] : v) || undefined;
@@ -57,7 +57,7 @@ export default async function PortalWorkouts({
     if (error instanceof DomainError && error.code === 'VALIDATION') {
       return (
         <>
-          <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Workouts</h1>
+          <h1 className="mb-6 text-h1 font-semibold md:text-display">Workouts</h1>
           <EmptyState
             title="That page link is no longer valid"
             action={
@@ -75,7 +75,7 @@ export default async function PortalWorkouts({
   return (
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold md:text-3xl">Workouts</h1>
+        <h1 className="text-h1 font-semibold md:text-display">Workouts</h1>
         <Link href="/portal/workouts/extra" className={buttonVariants({ variant: 'secondary' })}>
           Log an extra workout
         </Link>
@@ -130,7 +130,7 @@ export default async function PortalWorkouts({
             <li key={s.id}>
               <Link
                 href={`/portal/workouts/${s.id}`}
-                className="flex flex-col gap-2 rounded-card bg-surface p-4 shadow-card transition-colors duration-[var(--k-motion-fast)] hover:bg-canvas"
+                className="flex flex-col gap-2 rounded-card bg-surface p-4 shadow-card transition-colors duration-[var(--k-motion-fast)] hover:bg-surface-2"
               >
                 <span className="text-sm text-secondary">
                   {formatSessionDate(s.scheduledLocalDate, data.today)}

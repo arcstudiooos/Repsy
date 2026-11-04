@@ -27,6 +27,8 @@ export interface NavItem {
   icon: LucideIcon;
   /** Match only the exact path (for index routes like /app). */
   exact?: boolean;
+  /** Shows a count badge (open review items, unread messages). */
+  badge?: 'review' | 'messages';
 }
 
 /** Coach desktop left nav, in order. Settings is pinned at the bottom (see CoachNav). */
@@ -34,8 +36,8 @@ export const coachDesktopItems: NavItem[] = [
   { label: 'Overview', href: '/app', icon: LayoutDashboard, exact: true },
   { label: 'Clients', href: '/app/clients', icon: Users },
   { label: 'Programs', href: '/app/programs', icon: Dumbbell },
-  { label: 'Review', href: '/app/review', icon: ClipboardCheck },
-  { label: 'Messages', href: '/app/messages', icon: MessageSquare },
+  { label: 'Review', href: '/app/review', icon: ClipboardCheck, badge: 'review' },
+  { label: 'Messages', href: '/app/messages', icon: MessageSquare, badge: 'messages' },
   { label: 'Analytics', href: '/app/analytics', icon: ChartColumn },
   { label: 'Resources', href: '/app/resources', icon: BookOpen },
   { label: 'Courses', href: '/app/courses', icon: GraduationCap },
@@ -52,18 +54,22 @@ export const coachSettingsItem: NavItem = { label: 'Settings', href: '/settings'
 export const coachMobileItems: NavItem[] = [
   { label: 'Home', href: '/app', icon: House, exact: true },
   { label: 'Clients', href: '/app/clients', icon: Users },
-  { label: 'Review', href: '/app/review', icon: ClipboardCheck },
-  { label: 'Messages', href: '/app/messages', icon: MessageSquare },
+  { label: 'Review', href: '/app/review', icon: ClipboardCheck, badge: 'review' },
+  { label: 'Messages', href: '/app/messages', icon: MessageSquare, badge: 'messages' },
   { label: 'More', href: '/app/more', icon: Ellipsis },
 ];
 
+/** Portal tab bar. Workouts sits in the centre as the raised primary action on phones. */
 export const portalItems: NavItem[] = [
   { label: 'Home', href: '/portal', icon: House, exact: true },
-  { label: 'Workouts', href: '/portal/workouts', icon: Dumbbell },
   { label: 'Check-ins', href: '/portal/check-ins', icon: CalendarCheck },
+  { label: 'Workouts', href: '/portal/workouts', icon: Dumbbell },
   { label: 'Messages', href: '/portal/messages', icon: MessageSquare },
   { label: 'Profile', href: '/portal/profile', icon: User },
 ];
+
+/** The raised centre tab on phones. */
+export const PORTAL_PRIMARY_HREF = '/portal/workouts';
 
 export function isActive(pathname: string, item: NavItem): boolean {
   return item.exact

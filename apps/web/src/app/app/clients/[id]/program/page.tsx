@@ -11,17 +11,37 @@ import { formatDate } from '../../StatusBadge';
 import { loadClient } from '../data';
 import { AssignDialog } from './AssignDialog';
 import { PhaseQueue } from './PhaseQueue';
+import { bucketOf } from '@kinetic/core';
+import { STATE_COLOR, STATE_LABEL } from '@/components/charts/palette';
+import { Section } from '@/components/ui/section';
 
-export const metadata: Metadata = { title: 'Program | Kinetic' };
+export const metadata: Metadata = { title: 'Program | Repsy' };
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 export default async function ClientProgramPage({ params }: { params: Promise<{ id: string }> }) {
   const client = await loadClient((await params).id);
-  const { summary, templates, capped, phases } = await withServerTenant(async (tx, actor) => {
+  const { summary, templates, capped, phases, grid } = await withServerTenant(async (tx, actor) => {
     const all = await loadAllTemplates(tx, actor);
+    const summary = await getAssignmentSummary(tx, actor, client.id);
+    // The week × day overview: every planned session of the active assignment by its slot.
+    const grid = summary
+      ? await tx.workoutSession.findMany({
+          where: { assignmentId: summary.assignmentId, state: { not: 'cancelled' } },
+          orderBy: [{ slotWeekIndex: 'asc' }, { slotDayIndex: 'asc' }],
+          select: {
+            id: true,
+            slotWeekIndex: true,
+            slotDayIndex: true,
+            state: true,
+            scheduledLocalDate: true,
+            workoutVersion: { select: { title: true } },
+          },
+        })
+      : [];
     return {
-      summary: await getAssignmentSummary(tx, actor, client.id),
+      grid,
+      summary,
       phases: await listPhases(tx, actor, client.id),
       capped: all.capped,
       templates: all.items.flatMap((p) =>
@@ -31,6 +51,9 @@ export default async function ClientProgramPage({ params }: { params: Promise<{ 
       ),
     };
   });
+
+  const weeks = [...new Set(grid.map((g) => g.slotWeekIndex ?? 0))].sort((a, b) => a - b);
+  const days = [...new Set(grid.map((g) => g.slotDayIndex ?? 0))].sort((a, b) => a - b);
 
   const dialog = (label: string, variant: 'default' | 'secondary', hasActive: boolean) => (
     <AssignDialog
@@ -125,6 +148,67 @@ export default async function ClientProgramPage({ params }: { params: Promise<{ 
           </div>
         </CardContent>
       </Card>
+      {grid.length > 0 && (
+        <Section
+          title="Program overview"
+          description="Every workout by week and training day, coloured by how it went."
+        >
+          <div className="overflow-x-auto rounded-card border border-border bg-surface shadow-e1">
+            <table className="w-full min-w-[32rem] text-left text-sm">
+              <caption className="sr-only">Program overview by week and training day</caption>
+              <thead className="bg-surface-2">
+                <tr>
+                  <th scope="col" className="label-micro px-3 py-2 text-secondary">
+                    Week
+                  </th>
+                  {days.map((d) => (
+                    <th key={d} scope="col" className="label-micro px-3 py-2 text-secondary">
+                      Day {d + 1}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {weeks.map((w) => (
+                  <tr key={w} className="border-t border-border">
+                    <th scope="row" className="px-3 py-2 font-medium">
+                      {w + 1}
+                    </th>
+                    {days.map((d) => {
+                      const cell = grid.find((g) => g.slotWeekIndex === w && g.slotDayIndex === d);
+                      if (!cell)
+                        return (
+                          <td key={d} className="px-3 py-2 text-secondary">
+                            –
+                          </td>
+                        );
+                      // Final states as they are; scheduled or in progress shows as due (the sweep marks missed ones).
+                      const b = bucketOf(cell.state, false);
+                      return (
+                        <td key={d} className="px-2 py-2">
+                          <Link
+                            href={`/app/clients/${client.id}/sessions/${cell.id}`}
+                            className="flex flex-col gap-1 rounded-md border-l-4 bg-surface-2 px-2 py-1.5 hover:bg-accent-soft"
+                            style={{ borderLeftColor: b ? STATE_COLOR[b] : 'var(--k-border)' }}
+                          >
+                            <span className="font-medium break-words">
+                              {cell.workoutVersion?.title ?? `Day ${d + 1}`}
+                            </span>
+                            <span className="text-caption text-secondary">
+                              {formatDate(cell.scheduledLocalDate.toISOString().slice(0, 10))} ·{' '}
+                              {b ? STATE_LABEL[b] : 'Cancelled'}
+                            </span>
+                          </Link>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Section>
+      )}
       <PhaseQueue
         clientId={client.id}
         phases={phases}

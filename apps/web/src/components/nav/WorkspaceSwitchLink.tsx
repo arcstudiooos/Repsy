@@ -16,7 +16,7 @@ export async function WorkspaceSwitchLink({ className }: { className?: string })
     <Link
       href="/select-org"
       className={cn(
-        'flex min-h-11 items-center gap-3 rounded-control px-3 text-base text-secondary transition-colors duration-[var(--k-motion-fast)] hover:bg-canvas hover:text-ink',
+        'flex min-h-11 items-center gap-3 rounded-control px-3 text-base text-secondary transition-colors duration-[var(--k-motion-fast)] hover:bg-surface-2 hover:text-ink',
         className,
       )}
     >

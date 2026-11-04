@@ -4,7 +4,7 @@ import { MealPlanDisplay } from '@/components/nutrition/MealPlanDisplay';
 import { EmptyState } from '@/components/states/EmptyState';
 import { withPortalTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Meal plan | Kinetic' };
+export const metadata: Metadata = { title: 'Meal plan | Repsy' };
 
 /** PRD G8: the client's meal plan, its recipes and a shopping list. */
 export default async function PortalMealsPage() {

@@ -52,7 +52,7 @@ export function PublicPageSection({
         <form onSubmit={submit} noValidate className="flex flex-col gap-3">
           <fieldset disabled={!canEdit} className="flex flex-col gap-3">
             <label htmlFor={`${id}-slug`} className="text-sm font-medium">
-              Address (kinetic…/join/your-name)
+              Address (repsy…/join/your-name)
             </label>
             <Input id={`${id}-slug`} name="slug" defaultValue={initial.slug ?? ''} maxLength={40} />
             <label htmlFor={`${id}-bio`} className="text-sm font-medium">
