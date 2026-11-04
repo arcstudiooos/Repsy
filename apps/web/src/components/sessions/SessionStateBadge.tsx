@@ -1,39 +1,70 @@
 import type { SessionState } from '@kinetic/core';
+import {
+  AlarmClock,
+  Ban,
+  CalendarClock,
+  CheckCircle2,
+  CircleDashed,
+  CircleSlash,
+  CircleX,
+  Pause,
+  PencilLine,
+  Play,
+  Plus,
+  UserCheck,
+  type LucideIcon,
+} from 'lucide-react';
+import { Badge, type BadgeTone } from '@/components/ui/badge';
 import { sessionStateLabel } from '@/lib/session-format';
-import { cn } from '@/lib/utils';
 
-const badge = 'inline-flex items-center rounded-control border px-2 py-0.5 text-sm font-medium';
+const STATE: Record<SessionState, { tone: BadgeTone; icon: LucideIcon }> = {
+  scheduled: { tone: 'info', icon: CalendarClock },
+  in_progress: { tone: 'brand', icon: Play },
+  completed: { tone: 'success', icon: CheckCircle2 },
+  skipped: { tone: 'warning', icon: CircleSlash },
+  missed: { tone: 'danger', icon: CircleX },
+  incomplete: { tone: 'warning', icon: CircleDashed },
+  cancelled: { tone: 'neutral', icon: Ban },
+  paused: { tone: 'neutral', icon: Pause },
+} as Record<SessionState, { tone: BadgeTone; icon: LucideIcon }>;
 
-/** Text label always shown, so state never relies on color alone. */
+/** Icon + text + colour; the text always names the state. */
 export function SessionStateBadge({ state, overdue }: { state: SessionState; overdue: boolean }) {
   const label = sessionStateLabel(state, overdue);
+  const s =
+    label === 'Overdue'
+      ? { tone: 'warning' as const, icon: AlarmClock }
+      : (STATE[state] ?? { tone: 'neutral' as const, icon: CalendarClock });
   return (
-    <span
-      className={cn(
-        badge,
-        label === 'Overdue'
-          ? 'border-warning text-warning'
-          : state === 'completed' || state === 'in_progress'
-            ? 'border-accent text-accent'
-            : 'border-input-border text-secondary',
-      )}
-    >
+    <Badge tone={s.tone} icon={s.icon} className="text-sm">
       {label}
-    </span>
+    </Badge>
   );
 }
 
 /** D-008 #7: shown to the coach and the client alike. */
 export function LoggedByCoachBadge() {
-  return <span className={cn(badge, 'border-input-border text-ink')}>Logged by coach</span>;
+  return (
+    <Badge tone="outline" icon={UserCheck} className="text-sm">
+      Logged by coach
+    </Badge>
+  );
 }
 
 /** PRD D13: logged unplanned by the client; not part of adherence. */
 export function ExtraWorkoutBadge() {
-  return <span className={cn(badge, 'border-input-border text-ink')}>Extra</span>;
+  return (
+    <Badge tone="outline" icon={Plus} className="text-sm">
+      Extra
+    </Badge>
+  );
 }
 
 /** S3-4: a set changed after the workout was finished ("Edited", "Corrected by your coach"). */
 export function RevisionMark({ label }: { label: string }) {
-  return <span className={cn(badge, 'border-input-border text-secondary')}>{label}</span>;
+  return (
+    <Badge tone="neutral" icon={PencilLine} className="text-sm">
+      {label}
+    </Badge>
+  );
 }
