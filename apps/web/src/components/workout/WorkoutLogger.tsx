@@ -19,6 +19,7 @@ import {
   SessionStateBadge,
 } from '@/components/sessions/SessionStateBadge';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/toast';
 import { formatSessionDate } from '@/lib/session-format';
@@ -871,10 +872,32 @@ export function WorkoutLogger({
     );
   }
 
+  // Progress through the workout: rows with any value, of the rows on screen.
+  const plannedRows = workout.exercises.reduce((n, e) => n + rowCount(e), 0);
+  const filledRows = Object.values(drafts).filter((d) =>
+    Object.values(d ?? {}).some((v) => v !== '' && v !== null && v !== undefined),
+  ).length;
   return (
     <>
       {header}
       {syncPanel}
+      {plannedRows > 0 && (
+        <div className="sticky top-14 z-20 -mx-4 mb-4 border-b border-border bg-surface/95 px-4 py-2 backdrop-blur md:top-0 md:mx-0 md:rounded-md md:border">
+          <div className="mb-1 flex items-center justify-between text-caption">
+            <span className="font-medium">{workout.title}</span>
+            <span className="tabular text-secondary">
+              {Math.min(filledRows, plannedRows)} of {plannedRows} sets logged
+            </span>
+          </div>
+          <Progress
+            size="sm"
+            value={Math.min(filledRows, plannedRows)}
+            max={plannedRows}
+            label="Sets logged"
+            valueText={`${Math.min(filledRows, plannedRows)} of ${plannedRows}`}
+          />
+        </div>
+      )}
       <ol className="flex flex-col gap-4">
         {workout.exercises.map((e, i) => {
           const prev = detail.previous[e.exerciseId];
@@ -1033,7 +1056,7 @@ export function WorkoutLogger({
           Some sets aren&apos;t synced yet. Fix or retry them before you finish.
         </p>
       )}
-      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+      <div className="sticky bottom-20 z-10 mt-6 -mx-4 flex flex-col gap-3 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur sm:flex-row md:static md:mx-0 md:border-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none">
         <FinishDialog
           kind="complete"
           sessionId={session.id}
@@ -1068,9 +1091,7 @@ const isBlankDraft = (d: SetDraft | undefined) =>
 /** Where a workout section starts (PRD C9): "Warm-up", "Conditioning"... */
 function SectionLabel({ label }: { label: string | null }) {
   if (!label) return null;
-  return (
-    <p className="mb-2 text-sm font-semibold tracking-wide text-secondary uppercase">{label}</p>
-  );
+  return <p className="label-micro mb-2 text-secondary">{label}</p>;
 }
 
 /** Where a block starts (PRD C8): "B · Superset · 3 rounds". */
