@@ -11,7 +11,6 @@ import { formatDate } from '../../StatusBadge';
 import { loadClient } from '../data';
 import { AssignDialog } from './AssignDialog';
 import { PhaseQueue } from './PhaseQueue';
-import { connection } from 'next/server';
 import { bucketOf } from '@kinetic/core';
 import { STATE_COLOR, STATE_LABEL } from '@/components/charts/palette';
 import { Section } from '@/components/ui/section';
@@ -20,52 +19,39 @@ export const metadata: Metadata = { title: 'Program | Repsy' };
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
-/** The clock, read per request (the page already reads request data). */
-async function requestNowMs() {
-  await connection();
-  return Date.now();
-}
-
 export default async function ClientProgramPage({ params }: { params: Promise<{ id: string }> }) {
   const client = await loadClient((await params).id);
-  const { summary, templates, capped, phases, grid, graceMs } = await withServerTenant(
-    async (tx, actor) => {
-      const all = await loadAllTemplates(tx, actor);
-      const summary = await getAssignmentSummary(tx, actor, client.id);
-      // The week × day overview: every planned session of the active assignment by its slot.
-      const grid = summary
-        ? await tx.workoutSession.findMany({
-            where: { assignmentId: summary.assignmentId, state: { not: 'cancelled' } },
-            orderBy: [{ slotWeekIndex: 'asc' }, { slotDayIndex: 'asc' }],
-            select: {
-              id: true,
-              slotWeekIndex: true,
-              slotDayIndex: true,
-              state: true,
-              scheduledLocalDate: true,
-              dueAt: true,
-              workoutVersion: { select: { title: true } },
-            },
-          })
-        : [];
-      const graceHours =
-        (await tx.organization.findFirst({ select: { graceHours: true } }))?.graceHours ?? 24;
-      return {
-        grid,
-        graceMs: graceHours * 3_600_000,
-        summary,
-        phases: await listPhases(tx, actor, client.id),
-        capped: all.capped,
-        templates: all.items.flatMap((p) =>
-          p.versionNo !== null && p.daysPerWeek
-            ? [{ id: p.id, title: p.title, daysPerWeek: p.daysPerWeek }]
-            : [],
-        ),
-      };
-    },
-  );
+  const { summary, templates, capped, phases, grid } = await withServerTenant(async (tx, actor) => {
+    const all = await loadAllTemplates(tx, actor);
+    const summary = await getAssignmentSummary(tx, actor, client.id);
+    // The week × day overview: every planned session of the active assignment by its slot.
+    const grid = summary
+      ? await tx.workoutSession.findMany({
+          where: { assignmentId: summary.assignmentId, state: { not: 'cancelled' } },
+          orderBy: [{ slotWeekIndex: 'asc' }, { slotDayIndex: 'asc' }],
+          select: {
+            id: true,
+            slotWeekIndex: true,
+            slotDayIndex: true,
+            state: true,
+            scheduledLocalDate: true,
+            workoutVersion: { select: { title: true } },
+          },
+        })
+      : [];
+    return {
+      grid,
+      summary,
+      phases: await listPhases(tx, actor, client.id),
+      capped: all.capped,
+      templates: all.items.flatMap((p) =>
+        p.versionNo !== null && p.daysPerWeek
+          ? [{ id: p.id, title: p.title, daysPerWeek: p.daysPerWeek }]
+          : [],
+      ),
+    };
+  });
 
-  const nowMs = await requestNowMs();
   const weeks = [...new Set(grid.map((g) => g.slotWeekIndex ?? 0))].sort((a, b) => a - b);
   const days = [...new Set(grid.map((g) => g.slotDayIndex ?? 0))].sort((a, b) => a - b);
 
@@ -196,7 +182,8 @@ export default async function ClientProgramPage({ params }: { params: Promise<{ 
                             –
                           </td>
                         );
-                      const b = bucketOf(cell.state, cell.dueAt.getTime() < nowMs - graceMs);
+                      // Final states as they are; scheduled or in progress shows as due (the sweep marks missed ones).
+                      const b = bucketOf(cell.state, false);
                       return (
                         <td key={d} className="px-2 py-2">
                           <Link

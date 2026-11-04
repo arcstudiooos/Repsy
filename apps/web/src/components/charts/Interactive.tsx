@@ -99,7 +99,11 @@ export function LineChart({
   return (
     <div aria-hidden style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <RLine data={data} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
+        <RLine
+          accessibilityLayer={false}
+          data={data}
+          margin={{ top: 8, right: 8, bottom: 0, left: -12 }}
+        >
           <CartesianGrid stroke={GRID} strokeDasharray="3 4" vertical={false} />
           <XAxis dataKey={x} {...axisProps} />
           <YAxis {...axisProps} width={48} />
@@ -156,7 +160,11 @@ export function AreaChart({
   return (
     <div aria-hidden style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <RArea data={data} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
+        <RArea
+          accessibilityLayer={false}
+          data={data}
+          margin={{ top: 8, right: 8, bottom: 0, left: -12 }}
+        >
           <defs>
             {series.map((s, i) => (
               <linearGradient key={s.key} id={`area-${s.key}`} x1="0" y1="0" x2="0" y2="1">
@@ -207,7 +215,11 @@ export function BarChart({
   return (
     <div aria-hidden style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <RBar data={data} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
+        <RBar
+          accessibilityLayer={false}
+          data={data}
+          margin={{ top: 8, right: 8, bottom: 0, left: -12 }}
+        >
           <CartesianGrid stroke={GRID} strokeDasharray="3 4" vertical={false} />
           <XAxis dataKey={x} {...axisProps} />
           <YAxis {...axisProps} width={48} allowDecimals={false} />

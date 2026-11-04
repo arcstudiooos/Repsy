@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { isoWeekOf, listSessions, todayInZone, type SessionSummary } from '@kinetic/core';
+import { bucketOf, isoWeekOf, listSessions, todayInZone, type SessionSummary } from '@kinetic/core';
 import { weekdayShort } from '@/lib/relative-time';
+import { STATE_COLOR } from '@/components/charts/palette';
+import { sessionStateLabel } from '@/lib/session-format';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/states/EmptyState';
 import {
@@ -141,15 +143,15 @@ export default async function ClientSessionsPage({ params }: { params: Promise<{
                     <Link
                       key={s.id}
                       href={`/app/clients/${client.id}/sessions/${s.id}`}
-                      className="flex min-w-0 flex-col gap-1 rounded-sm bg-surface-2 p-1 text-micro hover:bg-accent-soft"
+                      aria-label={`${weekdayShort(d)}: ${s.title}, ${sessionStateLabel(s.state, s.overdue)}`}
+                      title={s.title}
+                      className="flex min-h-9 items-center justify-center rounded-sm bg-surface-2 p-1 hover:bg-accent-soft"
                     >
-                      <span className="line-clamp-2 font-medium break-words text-ink">
-                        {s.title}
-                      </span>
-                      <span className="hidden sm:block">
-                        <SessionStateBadge state={s.state} overdue={s.overdue} />
-                      </span>
-                      <span className="sr-only sm:hidden">, {s.state.replace('_', ' ')}</span>
+                      <span
+                        aria-hidden
+                        className="h-2 w-full rounded-full"
+                        style={{ background: STATE_COLOR[bucketOf(s.state, s.overdue) ?? 'due'] }}
+                      />
                     </Link>
                   ))
                 )}

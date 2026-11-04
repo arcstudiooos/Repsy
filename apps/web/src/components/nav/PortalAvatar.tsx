@@ -14,10 +14,11 @@ export async function PortalAvatar() {
   return (
     <Link
       href="/portal/profile"
-      aria-label={`Your profile (${name})`}
+      title="Your profile"
       className="hidden rounded-full md:inline-flex"
     >
       <Avatar name={name} size="sm" />
+      <span className="sr-only">Your profile</span>
     </Link>
   );
 }
