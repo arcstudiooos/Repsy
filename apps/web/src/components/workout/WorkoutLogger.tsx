@@ -1,5 +1,6 @@
 'use client';
 
+import { ListChecks, Timer, Trophy, Weight } from 'lucide-react';
 import Link from 'next/link';
 import { blockLayout } from '@kinetic/core/workout-blocks';
 import { sectionStart } from '@kinetic/core/workout-sections';
@@ -60,7 +61,8 @@ import {
 import { FinishDialog, type FinishBody } from './FinishDialog';
 import { PlateHelper } from './PlateHelper';
 import { RestTimer } from './RestTimer';
-import { SetRow, type RowStatus } from './SetRow';
+import { ElapsedMinutes } from './ElapsedMinutes';
+import { SetRow, SetTableHeader, type RowStatus } from './SetRow';
 import { ExerciseNotes } from './ExerciseNotes';
 import { SwapButton, SwapNote } from './SwapControls';
 
@@ -770,34 +772,33 @@ export function WorkoutLogger({
           </Card>
         )}
         {summary && (
-          <Card className="mb-4">
-            <CardHeader className="mb-2">
-              <CardTitle as={titleLevel}>Workout summary</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <div>
-                  <dt className="text-sm text-secondary">Sets</dt>
-                  <dd className="text-lg font-semibold">{summary.sets}</dd>
+          <Card variant="hero" className="mb-4">
+            <h3 className="text-h3 font-semibold">
+              <span className="label-micro mb-1 block text-cyan">Workout summary</span>
+              Nice work.
+            </h3>
+            <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {(
+                [
+                  ['Sets', String(summary.sets), ListChecks],
+                  [
+                    'Volume',
+                    summary.volumeKg > 0 ? `${toDisplay(summary.volumeKg, units)} ${units}` : '–',
+                    Weight,
+                  ],
+                  ['Duration', summary.minutes !== null ? `${summary.minutes} min` : '–', Timer],
+                  ['Personal records', String(summary.prs), Trophy],
+                ] as const
+              ).map(([label, value, Icon]) => (
+                <div key={label} className="rounded-md bg-midnight-2 p-3">
+                  <dt className="flex items-center gap-1.5 text-caption text-on-midnight-muted">
+                    <Icon aria-hidden className="size-3.5" />
+                    {label}
+                  </dt>
+                  <dd className="tabular mt-1 text-h2 font-semibold">{value}</dd>
                 </div>
-                <div>
-                  <dt className="text-sm text-secondary">Volume</dt>
-                  <dd className="text-lg font-semibold">
-                    {summary.volumeKg > 0 ? `${toDisplay(summary.volumeKg, units)} ${units}` : '–'}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-sm text-secondary">Duration</dt>
-                  <dd className="text-lg font-semibold">
-                    {summary.minutes !== null ? `${summary.minutes} min` : '–'}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-sm text-secondary">Personal records</dt>
-                  <dd className="text-lg font-semibold">{summary.prs}</dd>
-                </div>
-              </dl>
-            </CardContent>
+              ))}
+            </dl>
           </Card>
         )}
         <ol className="flex flex-col gap-3">
@@ -874,6 +875,12 @@ export function WorkoutLogger({
 
   // Progress through the workout: rows with any value, of the rows on screen.
   const plannedRows = workout.exercises.reduce((n, e) => n + rowCount(e), 0);
+  // Volume so far in the viewer's units: weight × reps of rows with both.
+  const liveVolume = Object.values(drafts).reduce((v, d) => {
+    const w = Number(d?.weight);
+    const r = Number(d?.reps);
+    return Number.isFinite(w) && Number.isFinite(r) && w > 0 && r > 0 ? v + w * r : v;
+  }, 0);
   const filledRows = Object.values(drafts).filter((d) =>
     Object.values(d ?? {}).some((v) => v !== '' && v !== null && v !== undefined),
   ).length;
@@ -959,6 +966,7 @@ export function WorkoutLogger({
                         <ExerciseDemo url={e.mediaUrl} name={e.name} />
                       </details>
                     )}
+                    <SetTableHeader trackingType={e.trackingType} units={units} />
                     {Array.from({ length: rowCount(e) }, (_, i) => {
                       const key = rowKey(e.id, i);
                       return (
@@ -969,6 +977,11 @@ export function WorkoutLogger({
                             units={units}
                             draft={drafts[key] ?? EMPTY_DRAFT}
                             placeholder={draftFromTarget(e.sets[i], units)}
+                            previous={
+                              prev?.sets[i]
+                                ? describeSet(e.trackingType, prev.sets[i], units)
+                                : null
+                            }
                             status={shownStatus(key)}
                             onChange={(d) => onDraftChange(key, d)}
                             onCommit={() => void save(e, i)}
@@ -1059,6 +1072,28 @@ export function WorkoutLogger({
       <div className="sticky bottom-20 z-10 mt-6 -mx-4 flex flex-col gap-3 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur sm:flex-row md:static md:mx-0 md:border-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none">
         <FinishDialog
           kind="complete"
+          summary={
+            <dl className="grid grid-cols-3 gap-2 rounded-md bg-surface-2 p-3 text-center">
+              <div>
+                <dt className="text-caption text-secondary">Sets</dt>
+                <dd className="tabular text-h3 font-semibold">
+                  {Math.min(filledRows, plannedRows)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-caption text-secondary">Volume</dt>
+                <dd className="tabular text-h3 font-semibold">
+                  {liveVolume > 0 ? `${Math.round(liveVolume)} ${units}` : '–'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-caption text-secondary">Time</dt>
+                <dd className="tabular text-h3 font-semibold">
+                  <ElapsedMinutes since={session.startedAt} />
+                </dd>
+              </div>
+            </dl>
+          }
           sessionId={session.id}
           disabled={unsynced}
           submit={deviceFirst ? queueFinish('complete') : undefined}
