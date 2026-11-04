@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation';
 import { Suspense, type ReactNode } from 'react';
 import Link from 'next/link';
 import { isCoachRole, twoFactorStatus } from '@kinetic/core';
-import { CoachNav } from '@/components/nav/CoachNav';
 import { CoachNavServer } from '@/components/nav/CoachNavServer';
 import { NoticeBanner } from '@/components/nav/NoticeBanner';
 import { PathBreadcrumbs } from '@/components/nav/PathBreadcrumbs';
@@ -119,7 +118,7 @@ export function CoachShell({
         Skip to content
       </a>
       {/* usePathname() is runtime data: keep it out of the prerendered shell for dynamic routes. */}
-      <Suspense fallback={<CoachNav />}>
+      <Suspense fallback={<div aria-hidden className="hidden bg-midnight md:block md:h-dvh" />}>
         <CoachNavServer
           switcher={
             <Suspense fallback={null}>

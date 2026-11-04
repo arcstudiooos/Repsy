@@ -46,6 +46,7 @@ import { formatSessionDate, plural, SAFETY_REMINDER } from '@/lib/session-format
 import { cn } from '@/lib/utils';
 import { KeepUpcoming } from '@/portal/offline/KeepUpcoming';
 import { withPortalTenant } from '@/server/serverActor';
+import { connection } from 'next/server';
 
 export const metadata: Metadata = { title: 'Home | Repsy' };
 
@@ -54,6 +55,8 @@ export const metadata: Metadata = { title: 'Home | Repsy' };
 const requestNow = () => new Date();
 
 export default async function PortalHome() {
+  // The clock is request data: render per request, never at build time.
+  await connection();
   const now = requestNow();
   const {
     org,

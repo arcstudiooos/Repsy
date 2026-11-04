@@ -57,22 +57,18 @@ export function CommandPalette() {
           get(`/api/v1/programs?q=${encodeURIComponent(term)}`),
         ]);
         setHits([
-          ...clients
-            .slice(0, 6)
-            .map((c) => ({
-              id: c.id,
-              label: c.name ?? '',
-              href: `/app/clients/${c.id}`,
-              kind: 'client' as const,
-            })),
-          ...programs
-            .slice(0, 6)
-            .map((p) => ({
-              id: p.id,
-              label: p.title ?? '',
-              href: `/app/programs/${p.id}/edit`,
-              kind: 'program' as const,
-            })),
+          ...clients.slice(0, 6).map((c) => ({
+            id: c.id,
+            label: c.name ?? '',
+            href: `/app/clients/${c.id}`,
+            kind: 'client' as const,
+          })),
+          ...programs.slice(0, 6).map((p) => ({
+            id: p.id,
+            label: p.title ?? '',
+            href: `/app/programs/${p.id}/edit`,
+            kind: 'program' as const,
+          })),
         ]);
       } catch {
         // Aborted or offline: keep the page results only.

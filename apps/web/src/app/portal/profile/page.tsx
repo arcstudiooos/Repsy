@@ -30,6 +30,7 @@ import { CalendarLink } from '@/portal/CalendarLink';
 import { PushToggle } from '@/portal/PushToggle';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { withPortalTenant } from '@/server/serverActor';
+import { connection } from 'next/server';
 
 export const metadata: Metadata = { title: 'Profile | Repsy' };
 
@@ -38,6 +39,8 @@ export const metadata: Metadata = { title: 'Profile | Repsy' };
 const requestNow = () => new Date();
 
 export default async function PortalProfile() {
+  // The clock is request data: render per request, never at build time.
+  await connection();
   const now = requestNow();
   const { settings, exports, deletion, twoFactor, calendar, progress } = await withPortalTenant(
     async (tx, actor) => ({

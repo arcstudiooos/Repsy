@@ -41,6 +41,7 @@ import { Section } from '@/components/ui/section';
 import { StatTile } from '@/components/ui/stat-tile';
 import { greeting, longDay, relativeDay, weekdayShort } from '@/lib/relative-time';
 import { getServerSession, withServerTenant } from '@/server/serverActor';
+import { connection } from 'next/server';
 
 export const metadata: Metadata = { title: 'Dashboard | Repsy' };
 
@@ -56,6 +57,8 @@ const pts = (v: number) => `${v} ${v === 1 ? 'pt' : 'pts'}`;
 
 // Access is enforced by src/proxy.ts and the membership gate in layout.tsx.
 export default async function AppHome() {
+  // The clock is request data: render per request, never at build time.
+  await connection();
   const now = requestNow();
   const { user } = await getServerSession();
   const data = await withServerTenant(async (tx, actor) => {
