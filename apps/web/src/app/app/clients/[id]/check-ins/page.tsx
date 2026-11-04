@@ -157,6 +157,25 @@ export default async function ClientCheckinsPage({ params }: { params: Promise<{
                         questions={c.questions}
                         answers={c.answers}
                         units={units}
+                        previous={
+                          sent.find((x) => x.periodLocalDate < c.periodLocalDate)?.answers ?? null
+                        }
+                        history={Object.fromEntries(
+                          c.questions
+                            .filter((q) => q.type === 'scale_1_5')
+                            .map((q) => [
+                              q.id,
+                              sent
+                                .filter((x) => x.periodLocalDate <= c.periodLocalDate)
+                                .slice(0, 8)
+                                .reverse()
+                                .map((x) =>
+                                  typeof x.answers[q.id] === 'number'
+                                    ? (x.answers[q.id] as number)
+                                    : null,
+                                ),
+                            ]),
+                        )}
                       />
                       <CheckinCompare
                         current={sent.find((x) => x.id === c.id)!}
