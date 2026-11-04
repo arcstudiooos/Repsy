@@ -21,7 +21,7 @@ export function CountUp({
   const done = useRef(false);
   useEffect(() => {
     if (done.current) {
-      setShown(value);  
+      setShown(value);
       return;
     }
     done.current = true;

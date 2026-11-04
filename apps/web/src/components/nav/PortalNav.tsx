@@ -23,7 +23,7 @@ export function PortalNav() {
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'flex min-h-14 flex-col items-center justify-center gap-1 text-micro transition-colors duration-[var(--k-motion-fast)] md:min-h-10 md:flex-row md:gap-2 md:rounded-md md:px-3 md:text-sm',
+                  'flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 px-0.5 text-micro transition-colors duration-[var(--k-motion-fast)] md:min-h-10 md:flex-row md:gap-2 md:rounded-md md:px-3 md:text-sm',
                   active
                     ? 'font-semibold text-accent-ink md:bg-accent-soft'
                     : 'text-secondary md:hover:bg-surface-2 md:hover:text-ink',
@@ -48,7 +48,7 @@ export function PortalNav() {
                     <item.icon aria-hidden className={cn('size-5', active && 'text-accent')} />
                   </span>
                 )}
-                {item.label}
+                <span className="max-w-full truncate">{item.label}</span>
               </Link>
             </li>
           );

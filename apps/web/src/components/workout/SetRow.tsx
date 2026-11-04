@@ -39,7 +39,7 @@ const HEAD: Record<keyof SetDraft, (units: Units) => string> = {
 /** The shared grid: set number, previous, one column per field, status. */
 export const setGrid = (n: number) =>
   ({
-    gridTemplateColumns: `2rem minmax(3.5rem,5rem) repeat(${n}, minmax(0,1fr)) 2.75rem`,
+    gridTemplateColumns: `1.75rem minmax(2.5rem,4.5rem) repeat(${n}, minmax(3rem,1fr)) 1.75rem`,
   }) as const;
 
 /** The column header for a set table. Decorative: each input names its set and field itself. */
@@ -54,7 +54,7 @@ export function SetTableHeader({
   return (
     <div
       aria-hidden
-      className="label-micro grid items-end gap-2 px-1 pb-1 text-secondary"
+      className="label-micro grid items-end gap-1.5 px-1 pb-1 text-secondary sm:gap-2"
       style={setGrid(fields.length)}
     >
       <span>Set</span>
@@ -108,11 +108,11 @@ export function SetRow({
       )}
     >
       <legend className="sr-only">Set {index + 1}</legend>
-      <div className="grid items-center gap-2" style={setGrid(fields.length)}>
+      <div className="grid items-center gap-1.5 sm:gap-2" style={setGrid(fields.length)}>
         <span
           aria-hidden
           className={cn(
-            'tabular flex size-8 items-center justify-center rounded-full text-sm font-semibold',
+            'tabular flex size-7 items-center justify-center rounded-full text-sm font-semibold',
             done ? 'bg-success text-on-accent' : 'bg-surface-2 text-secondary',
           )}
         >
@@ -135,7 +135,7 @@ export function SetRow({
             aria-label={`Set ${index + 1} ${LABELS[f](units)}`}
             inputMode={f === 'reps' || f === 'durationSeconds' ? 'numeric' : 'decimal'}
             autoComplete="off"
-            className="tabular min-h-12 px-2 text-center text-lg font-medium"
+            className="tabular min-h-12 px-1 text-center text-base font-medium sm:text-lg"
             placeholder={placeholder[f]}
             value={draft[f]}
             aria-invalid={(status.kind === 'invalid' && status.field === f) || undefined}
