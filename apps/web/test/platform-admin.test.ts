@@ -56,6 +56,7 @@ const WITH_SYSTEM_ALLOWED: Record<string, string> = {
 // The platform-admin console reaches system scope only through `withPlatformAdmin`.
 const WITH_PLATFORM_ADMIN_ALLOWED: Record<string, string> = {
   'server/routes/privacy.ts': 'web server/routes/privacy.ts',
+  'server/routes/lapse.ts': 'web server/routes/lapse.ts',
   'app/admin/page.tsx': 'web app/admin/page.tsx',
   'app/admin/support/[clientId]/page.tsx': 'web app/admin/support/[clientId]/page.tsx',
 };
