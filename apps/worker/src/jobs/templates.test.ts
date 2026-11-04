@@ -8,7 +8,7 @@ describe('coach digest email (PRD H14)', () => {
       { orgName: 'Fit <Co>', checkins: 2, unread: 0, flags: 1 },
       'https://app.example/',
     );
-    expect(r.subject).toBe('Your Repsy daily digest');
+    expect(r.subject).toBe('Your Kinetic daily digest');
     expect(r.text).toContain('- 2 check-ins waiting for your review');
     expect(r.text).toContain('- 1 item that needs review');
     expect(r.text).not.toContain('unread');

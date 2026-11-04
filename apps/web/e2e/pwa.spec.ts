@@ -24,6 +24,6 @@ test.describe('installable portal (PRD L1)', () => {
       'href',
       '/manifest.webmanifest',
     );
-    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#4f46e5');
+    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#1c7666');
   });
 });

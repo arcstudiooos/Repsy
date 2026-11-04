@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { TRIAL_CLIENT_LIMIT, TRIAL_DAYS } from '@kinetic/core';
 
-export const metadata: Metadata = { title: 'Plan and fair-billing charter | Repsy' };
+export const metadata: Metadata = { title: 'Plan and fair-billing charter | Kinetic' };
 
 const CHARTER = [
   ['One price, everything included', 'No add-ons, no feature tiers, no per-client surprises.'],

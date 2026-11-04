@@ -4,7 +4,7 @@ import { withServerTenant } from '@/server/serverActor';
 import { loadClient } from '../data';
 import { NotesPanel } from './NotesPanel';
 
-export const metadata: Metadata = { title: 'Notes | Repsy' };
+export const metadata: Metadata = { title: 'Notes | Kinetic' };
 
 export default async function ClientNotesPage({ params }: { params: Promise<{ id: string }> }) {
   const client = await loadClient((await params).id);

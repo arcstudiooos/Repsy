@@ -3,7 +3,7 @@ import { connection } from 'next/server';
 import { Suspense } from 'react';
 import { readNotices, RELIABILITY_TARGETS } from '@kinetic/core';
 
-export const metadata: Metadata = { title: 'Service status | Repsy' };
+export const metadata: Metadata = { title: 'Service status | Kinetic' };
 
 const LABEL = { maintenance: 'Maintenance', degraded: 'Degraded', outage: 'Outage' } as const;
 const fmt = (iso: string) =>

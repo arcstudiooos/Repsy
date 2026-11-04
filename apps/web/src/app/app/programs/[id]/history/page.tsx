@@ -5,7 +5,7 @@ import { DomainError, getProgram, getSettings, listProgramVersions } from '@kine
 import { EmptyState } from '@/components/states/EmptyState';
 import { withServerTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Version history | Repsy' };
+export const metadata: Metadata = { title: 'Version history | Kinetic' };
 
 /** A commit time as an org-local date and time, e.g. "30 Oct 2026, 14:05". */
 function formatSavedAt(iso: string, timeZone: string): string {

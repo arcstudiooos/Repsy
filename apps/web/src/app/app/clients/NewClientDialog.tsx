@@ -1,6 +1,5 @@
 'use client';
 
-import { UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useId, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
@@ -150,10 +149,7 @@ export function NewClientDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button>
-          <UserPlus aria-hidden className="size-4" />
-          Add client
-        </Button>
+        <Button>Add client</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

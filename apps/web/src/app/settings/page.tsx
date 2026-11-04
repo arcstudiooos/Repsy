@@ -26,13 +26,11 @@ import { MessagingSection } from '@/components/settings/MessagingSection';
 import { NotificationsSection } from '@/components/settings/NotificationsSection';
 import { ReviewRulesSection } from '@/components/settings/ReviewRulesSection';
 import { PilotAccessCard } from '@/components/settings/PilotAccessCard';
-import { SettingsNav } from '@/components/settings/SettingsNav';
-import { PageHeader } from '@/components/ui/page-header';
 import { SecuritySection } from '@/components/settings/SecuritySection';
 import { TwoFactorSection } from '@/components/settings/TwoFactorSection';
 import { withServerTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Settings | Repsy' };
+export const metadata: Metadata = { title: 'Settings | Kinetic' };
 
 // Access is enforced by src/proxy.ts and the coach shell in the settings layout.
 export default async function SettingsPage() {
@@ -64,117 +62,44 @@ export default async function SettingsPage() {
   // Owners and admins run the workspace settings (PRD A10); only the owner exports its data.
   const isOwner = isManager(actor.role);
 
-  const groups = [
-    {
-      id: 'account',
-      label: 'Your account',
-      description: 'How you appear, and how you sign in.',
-      body: (
-        <>
-          <ProfileSection profile={settings.profile} />
-          <TwoFactorSection enabled={twoFactor.enabled} required={twoFactor.required} />
-          <SecuritySection />
-        </>
-      ),
-    },
-    {
-      id: 'workspace',
-      label: 'Workspace',
-      description: 'Your business name, look, and plan.',
-      body: (
-        <>
-          <OrganizationSection org={settings.org} canEdit={isOwner} />
-          <BrandingSection branding={branding} canEdit={isOwner} />
-          <PilotAccessCard
-            count={settings.org.activeClientCount}
-            limit={settings.org.activeClientLimit}
-          />
-        </>
-      ),
-    },
-    {
-      id: 'coaching',
-      label: 'Coaching',
-      description: 'Defaults, alerts and replies that shape your day-to-day.',
-      body: (
-        <>
-          <TrainingDefaultsSection graceHours={settings.org.graceHours} canEdit={isOwner} />
-          <NotificationsSection notifications={settings.notifications} coach />
-          <MessagingSection expectations={expectations} replies={replies} canEdit={isOwner} />
-          {reviewRules && <ReviewRulesSection settings={reviewRules} canEdit={isOwner} />}
-        </>
-      ),
-    },
-    {
-      id: 'clients',
-      label: 'Clients and public',
-      description: 'What new clients agree to, and where people find you.',
-      body: (
-        <>
-          <AgreementsSection agreements={agreements} canEdit={isOwner} />
-          <PublicPageSection initial={publicPage} canEdit={isOwner} />
-        </>
-      ),
-    },
-    {
-      id: 'data',
-      label: 'Team and data',
-      description: 'Exports, people and the record of changes.',
-      body: (
-        <>
-          {isOwner && <DataExportSection scope="org" initial={exports} />}
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {isOwner && (
-              <>
-                <li>
-                  <Link href="/app/team" className={tileLink}>
-                    <span className="font-medium">Team</span>
-                    <span className="text-sm text-secondary">Invite coaches and set roles.</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/app/audit" className={tileLink}>
-                    <span className="font-medium">Audit log</span>
-                    <span className="text-sm text-secondary">Who changed what, and when.</span>
-                  </Link>
-                </li>
-              </>
-            )}
-            <li>
-              <Link href="/app/support" className={tileLink}>
-                <span className="font-medium">Help and support</span>
-                <span className="text-sm text-secondary">Guides, and a way to reach us.</span>
-              </Link>
-            </li>
-          </ul>
-        </>
-      ),
-    },
-  ];
-
   return (
     <>
-      <PageHeader
-        title="Settings"
-        description="Your account, your workspace, and how coaching runs. Changes save per section."
-      />
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-10">
-        <SettingsNav groups={groups.map(({ id, label }) => ({ id, label }))} />
-        <div className="flex max-w-3xl min-w-0 flex-col gap-10">
-          {groups.map((g) => (
-            <div key={g.id} id={g.id} className="flex scroll-mt-6 flex-col gap-4">
-              <div>
-                <p className="text-lg font-semibold text-ink">{g.label}</p>
-                <p className="text-sm text-secondary">{g.description}</p>
-              </div>
-              {g.body}
-            </div>
-          ))}
-        </div>
+      <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Settings</h1>
+      <div className="flex max-w-2xl flex-col gap-6">
+        <ProfileSection profile={settings.profile} />
+        <OrganizationSection org={settings.org} canEdit={isOwner} />
+        <BrandingSection branding={branding} canEdit={isOwner} />
+        <TrainingDefaultsSection graceHours={settings.org.graceHours} canEdit={isOwner} />
+        <NotificationsSection notifications={settings.notifications} coach />
+        <MessagingSection expectations={expectations} replies={replies} canEdit={isOwner} />
+        {reviewRules && <ReviewRulesSection settings={reviewRules} canEdit={isOwner} />}
+        <AgreementsSection agreements={agreements} canEdit={isOwner} />
+        <PublicPageSection initial={publicPage} canEdit={isOwner} />
+        <PilotAccessCard
+          count={settings.org.activeClientCount}
+          limit={settings.org.activeClientLimit}
+        />
+        {isOwner && <DataExportSection scope="org" initial={exports} />}
+        {isOwner && (
+          <p className="text-secondary">
+            <Link href="/app/team" className="text-accent underline">
+              Team
+            </Link>{' '}
+            · Who changed what, and when:{' '}
+            <Link href="/app/audit" className="text-accent underline">
+              Audit log
+            </Link>
+          </p>
+        )}
+        <TwoFactorSection enabled={twoFactor.enabled} required={twoFactor.required} />
+        <SecuritySection />
+        <p className="text-secondary">
+          Need help?{' '}
+          <Link href="/app/support" className="text-accent underline">
+            Help and support
+          </Link>
+        </p>
       </div>
     </>
   );
 }
-
-const tileLink =
-  'flex h-full flex-col gap-0.5 rounded-card border border-border bg-surface p-4 shadow-card transition-colors duration-[var(--k-motion-fast)] hover:border-accent/40 hover:bg-surface-muted/50';

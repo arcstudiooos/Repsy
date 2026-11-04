@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';
 import { loadClient } from '../data';
 
-export const metadata: Metadata = { title: 'Nutrition | Repsy' };
+export const metadata: Metadata = { title: 'Nutrition | Kinetic' };
 
 /** A client's nutrition targets and daily totals (PRD G6/G7), and their meal plan (G8). */
 export default async function ClientNutritionPage({ params }: { params: Promise<{ id: string }> }) {

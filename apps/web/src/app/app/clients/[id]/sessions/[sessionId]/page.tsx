@@ -8,7 +8,7 @@ import { WorkoutLogger } from '@/components/workout/WorkoutLogger';
 import { withServerTenant } from '@/server/serverActor';
 import { loadClient } from '../../data';
 
-export const metadata: Metadata = { title: 'Log workout | Repsy' };
+export const metadata: Metadata = { title: 'Log workout | Kinetic' };
 
 /** D-008 #7: a coach logs a workout on the client's behalf. The session must belong to the client in the URL. */
 export default async function CoachSessionPage({

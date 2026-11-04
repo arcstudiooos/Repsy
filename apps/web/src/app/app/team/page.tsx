@@ -4,7 +4,7 @@ import { withServerTenant } from '@/server/serverActor';
 import { CoverManager } from './CoverManager';
 import { TeamManager } from './TeamManager';
 
-export const metadata: Metadata = { title: 'Team | Repsy' };
+export const metadata: Metadata = { title: 'Team | Kinetic' };
 
 /** PRD A10: who is on the workspace's team, and (for owners and admins) inviting more. */
 export default async function TeamPage() {

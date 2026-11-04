@@ -11,7 +11,7 @@ const TOPICS = [
   ['idea', 'An idea or request'],
   ['billing', 'Plan or billing'],
   ['privacy', 'Privacy or my data'],
-  ['migration', 'Move my clients and programs to Repsy'],
+  ['migration', 'Move my clients and programs to Kinetic'],
 ] as const;
 type Topic = (typeof TOPICS)[number][0];
 

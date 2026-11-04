@@ -10,7 +10,7 @@ import { withServerTenant } from '@/server/serverActor';
 import { PrintButton } from './PrintButton';
 import { extraTargets, repsText } from '@/lib/target-text';
 
-export const metadata: Metadata = { title: 'Print program | Repsy' };
+export const metadata: Metadata = { title: 'Print program | Kinetic' };
 
 function describeSet(s: SetTarget, units: Units): string {
   const parts: string[] = [];

@@ -4,7 +4,7 @@ import { ResourceList } from '@/components/resources/ResourceList';
 import { EmptyState } from '@/components/states/EmptyState';
 import { withPortalTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Resources | Repsy' };
+export const metadata: Metadata = { title: 'Resources | Kinetic' };
 
 /** Links and notes your coach shared with you (PRD G5). */
 export default async function PortalResourcesPage() {

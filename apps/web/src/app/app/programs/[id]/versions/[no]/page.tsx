@@ -8,7 +8,7 @@ import { extraTargets, repsText } from '@/lib/target-text';
 import { blockLayout } from '@kinetic/core/workout-blocks';
 import { sectionStart } from '@kinetic/core/workout-sections';
 
-export const metadata: Metadata = { title: 'Program version | Repsy' };
+export const metadata: Metadata = { title: 'Program version | Kinetic' };
 
 /** One target set as read-only text, e.g. "5 reps · 60 kg · RPE 8 · Rest 90 s". */
 function describeSet(s: SetTarget, units: Units): string {

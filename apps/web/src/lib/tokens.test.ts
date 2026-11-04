@@ -28,27 +28,6 @@ describe('design tokens', () => {
     expect(contrastRatio(tokens.danger, tokens.surface)).toBeGreaterThanOrEqual(4.5);
   });
 
-  it('the newer state colours stay readable (accent ink on its tint, success, secondary on a well)', () => {
-    expect(contrastRatio(tokens.accentInk, tokens.accentSoft)).toBeGreaterThanOrEqual(4.5);
-    expect(contrastRatio(tokens.success, tokens.surface)).toBeGreaterThanOrEqual(4.5);
-    expect(contrastRatio(tokens.secondary, tokens.surfaceMuted)).toBeGreaterThanOrEqual(4.5);
-    expect(contrastRatio(tokens.ink, tokens.surfaceMuted)).toBeGreaterThanOrEqual(4.5);
-  });
-
-  it('status inks stay readable on their tints, and energy ink on surface', () => {
-    expect(contrastRatio(tokens.successInk, tokens.successSoft)).toBeGreaterThanOrEqual(4.5);
-    expect(contrastRatio(tokens.warningInk, tokens.warningSoft)).toBeGreaterThanOrEqual(4.5);
-    expect(contrastRatio(tokens.dangerInk, tokens.dangerSoft)).toBeGreaterThanOrEqual(4.5);
-    expect(contrastRatio(tokens.energyInk, tokens.surface)).toBeGreaterThanOrEqual(4.5);
-    expect(contrastRatio(tokens.warning, tokens.surface)).toBeGreaterThanOrEqual(4.5);
-    expect(contrastRatio(tokens.success, tokens.surface)).toBeGreaterThanOrEqual(4.5);
-  });
-
-  it('chart series are distinguishable from the surface (3:1, non-text)', () => {
-    for (const c of [tokens.chart1, tokens.chart2, tokens.chart3, tokens.chart4, tokens.chart5])
-      expect(contrastRatio(c, tokens.surface)).toBeGreaterThanOrEqual(2.5);
-  });
-
   it('tokens.css mirrors tokens.ts', () => {
     const css = readFileSync(
       new URL('../styles/tokens.css', import.meta.url),
@@ -65,24 +44,6 @@ describe('design tokens', () => {
       ['--k-input-border', tokens.inputBorder],
       ['--k-warning', tokens.warning],
       ['--k-danger', tokens.danger],
-      ['--k-surface-muted', tokens.surfaceMuted],
-      ['--k-accent-soft', tokens.accentSoft],
-      ['--k-accent-ink', tokens.accentInk],
-      ['--k-border', tokens.border],
-      ['--k-success', tokens.success],
-      ['--k-energy', tokens.energy],
-      ['--k-energy-ink', tokens.energyInk],
-      ['--k-success-soft', tokens.successSoft],
-      ['--k-success-ink', tokens.successInk],
-      ['--k-warning-soft', tokens.warningSoft],
-      ['--k-warning-ink', tokens.warningInk],
-      ['--k-danger-soft', tokens.dangerSoft],
-      ['--k-danger-ink', tokens.dangerInk],
-      ['--k-chart-1', tokens.chart1],
-      ['--k-chart-2', tokens.chart2],
-      ['--k-chart-3', tokens.chart3],
-      ['--k-chart-4', tokens.chart4],
-      ['--k-chart-5', tokens.chart5],
     ];
     for (const [name, hex] of pairs) expect(css).toContain(`${name}: ${hex.toLowerCase()};`);
   });

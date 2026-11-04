@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Breadcrumbs } from '@/components/nav/Breadcrumbs';
 import { ImportClients } from './ImportClients';
 
-export const metadata: Metadata = { title: 'Import clients | Repsy' };
+export const metadata: Metadata = { title: 'Import clients | Kinetic' };
 
 /** Bring a roster over from another platform (PRD B17). */
 export default function ImportClientsPage() {

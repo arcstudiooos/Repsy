@@ -3,7 +3,7 @@ import { cancelSubscription, formatMoneyMinor, getBillingSelfService } from '@ki
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'My billing | Repsy' };
+export const metadata: Metadata = { title: 'My billing | Kinetic' };
 
 async function cancelAction(data: FormData) {
   'use server';

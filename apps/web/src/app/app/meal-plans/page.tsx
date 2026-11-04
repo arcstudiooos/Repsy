@@ -4,7 +4,7 @@ import { listMealPlans, listRecipes } from '@kinetic/core';
 import { buttonVariants } from '@/components/ui/button';
 import { withServerTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Meal plans | Repsy' };
+export const metadata: Metadata = { title: 'Meal plans | Kinetic' };
 
 const kcal = (v: number | null) => (v === null ? '' : ` · ${v} kcal`);
 

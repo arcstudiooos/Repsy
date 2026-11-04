@@ -3,7 +3,7 @@ import { getSettings } from '@kinetic/core';
 import { withServerTenant } from '@/server/serverActor';
 import { ImportProgram } from './ImportProgram';
 
-export const metadata: Metadata = { title: 'Import a program | Repsy' };
+export const metadata: Metadata = { title: 'Import a program | Kinetic' };
 
 /** Paste a program as text or from a spreadsheet; review the matches; save as a new template (PRD C14). */
 export default async function ImportProgramPage() {

@@ -2,8 +2,6 @@ import { redirect } from 'next/navigation';
 import { Suspense, type ReactNode } from 'react';
 import Link from 'next/link';
 import { isCoachRole, twoFactorStatus } from '@kinetic/core';
-import { BrandMark } from '@/components/nav/BrandMark';
-import { CoachIdentity, CoachWorkspaceName } from '@/components/nav/CoachIdentity';
 import { CoachNav } from '@/components/nav/CoachNav';
 import { NoticeBanner } from '@/components/nav/NoticeBanner';
 import { PathBreadcrumbs } from '@/components/nav/PathBreadcrumbs';
@@ -59,7 +57,7 @@ async function TrialBanner() {
   if (!org?.trialEndsAt) return null;
   const left = Math.ceil((org.trialEndsAt.getTime() - Date.now()) / 86_400_000);
   return (
-    <div role="status" className="mb-6 rounded-card border border-accent/20 bg-accent-soft p-4">
+    <div role="status" className="mb-6 rounded-card bg-surface p-4 shadow-card ring-1 ring-accent">
       <p className="font-medium">
         {left > 0
           ? `Free trial: ${left} ${left === 1 ? 'day' : 'days'} left`
@@ -84,7 +82,7 @@ async function TwoFactorRequiredBanner() {
   );
   if (!status?.required || status.enabled) return null;
   return (
-    <div role="status" className="mb-6 rounded-card border border-warning/25 bg-warning-soft p-4">
+    <div role="status" className="mb-6 rounded-card bg-surface p-4 shadow-card ring-1 ring-warning">
       <p className="font-medium">Turn on two-step sign-in</p>
       <p className="text-sm text-secondary">
         Your workspace has more than one coach, so the owner account needs a code from an
@@ -111,7 +109,7 @@ export function CoachShell({
   noMembershipPath: string;
 }) {
   return (
-    <div className="min-h-dvh md:grid md:grid-cols-[15.5rem_minmax(0,1fr)] print:block">
+    <div className="min-h-dvh md:grid md:grid-cols-[15rem_minmax(0,1fr)] print:block">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-control focus:bg-surface focus:px-4 focus:py-3"
@@ -121,11 +119,6 @@ export function CoachShell({
       {/* usePathname() is runtime data: keep it out of the prerendered shell for dynamic routes. */}
       <Suspense fallback={null}>
         <CoachNav
-          identity={
-            <Suspense fallback={null}>
-              <CoachIdentity />
-            </Suspense>
-          }
           switcher={
             <Suspense fallback={null}>
               <WorkspaceSwitchLink />
@@ -134,20 +127,15 @@ export function CoachShell({
         />
       </Suspense>
       <div className="flex min-w-0 flex-col">
-        <header className="sticky top-0 z-30 flex min-h-14 items-center justify-between gap-3 border-b border-border bg-surface/95 px-4 backdrop-blur md:hidden print:hidden">
-          <div className="flex min-w-0 items-center gap-3">
-            <BrandMark className="text-base" />
-            <Suspense fallback={null}>
-              <CoachWorkspaceName />
-            </Suspense>
-          </div>
+        <header className="flex items-center justify-between gap-2 border-b border-divider bg-surface px-4 py-2 md:hidden print:hidden">
+          <p className="text-lg font-semibold">Kinetic</p>
           <Suspense fallback={null}>
-            <WorkspaceSwitchLink className="shrink-0 px-2 text-sm" />
+            <WorkspaceSwitchLink className="text-sm" />
           </Suspense>
         </header>
         <main
           id="main"
-          className="mx-auto w-full max-w-6xl flex-1 px-4 pt-5 pb-28 md:px-8 md:pt-8 md:pb-12 xl:px-10"
+          className="mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-24 md:px-8 md:pt-8 md:pb-8"
         >
           <div className="print:hidden">
             <Suspense fallback={null}>

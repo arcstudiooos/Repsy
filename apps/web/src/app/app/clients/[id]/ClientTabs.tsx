@@ -23,11 +23,8 @@ export function ClientTabs({ clientId }: { clientId: string }) {
   const pathname = usePathname();
   const base = `/app/clients/${clientId}`;
   return (
-    <nav
-      aria-label="Client sections"
-      className="-mx-4 overflow-x-auto border-b border-border px-4 md:mx-0 md:px-0"
-    >
-      <ul className="flex gap-0.5">
+    <nav aria-label="Client sections" className="overflow-x-auto border-b border-divider">
+      <ul className="flex gap-1">
         {TABS.map((tab) => {
           const href = tab.segment ? `${base}/${tab.segment}` : base;
           const active = pathname === href;
@@ -37,10 +34,10 @@ export function ClientTabs({ clientId }: { clientId: string }) {
                 href={href}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  '-mb-px inline-flex min-h-11 items-center border-b-2 px-3 text-[0.9375rem] font-medium whitespace-nowrap transition-colors duration-[var(--k-motion-fast)]',
+                  'inline-flex min-h-11 items-center border-b-2 px-4 text-base font-medium whitespace-nowrap transition-colors duration-[var(--k-motion-fast)]',
                   active
-                    ? 'border-accent text-accent-ink'
-                    : 'border-transparent text-secondary hover:border-divider hover:text-ink',
+                    ? 'border-accent text-ink'
+                    : 'border-transparent text-secondary hover:text-ink',
                 )}
               >
                 {tab.label}

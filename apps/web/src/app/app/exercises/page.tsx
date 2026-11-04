@@ -10,7 +10,7 @@ import { withServerTenant } from '@/server/serverActor';
 import { ExerciseLibrary } from './ExerciseLibrary';
 import { NewExerciseDialog } from './NewExerciseDialog';
 
-export const metadata: Metadata = { title: 'Exercise library | Repsy' };
+export const metadata: Metadata = { title: 'Exercise library | Kinetic' };
 
 const first = (v: string | string[] | undefined): string | undefined =>
   (Array.isArray(v) ? v[0] : v) || undefined;

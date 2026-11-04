@@ -19,7 +19,7 @@ import { PushToggle } from '@/portal/PushToggle';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { withPortalTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Profile | Repsy' };
+export const metadata: Metadata = { title: 'Profile | Kinetic' };
 
 // Access is enforced by src/proxy.ts and the portal layout's client gate.
 export default async function PortalProfile() {

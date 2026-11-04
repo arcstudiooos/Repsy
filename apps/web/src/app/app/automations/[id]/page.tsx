@@ -13,7 +13,7 @@ import { withServerTenant } from '@/server/serverActor';
 import { ArchiveSequence } from '../ArchiveSequence';
 import { SequenceEditor } from '../SequenceEditor';
 
-export const metadata: Metadata = { title: 'Automation | Repsy' };
+export const metadata: Metadata = { title: 'Automation | Kinetic' };
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 

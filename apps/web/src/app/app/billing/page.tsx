@@ -1,9 +1,5 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { buttonVariants } from '@/components/ui/button';
-import { ChartColumn, Download, Repeat, TrendingDown, Undo2, Wallet } from 'lucide-react';
-import { PageHeader } from '@/components/ui/page-header';
-import { StatStrip } from '@/components/ui/stat';
 import {
   cancelSubscription,
   formatMoneyMinor,
@@ -17,7 +13,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Billing | Repsy' };
+export const metadata: Metadata = { title: 'Billing | Kinetic' };
 
 async function createPackageAction(data: FormData) {
   'use server';
@@ -79,62 +75,49 @@ export default async function BillingPage() {
     .join(', ');
   return (
     <>
-      <PageHeader
-        title="Billing"
-        description="Packages, subscriptions and what came in."
-        actions={
-          <>
-            <Link
-              href="/api/v1/billing/analytics?format=csv"
-              className={buttonVariants({ variant: 'secondary' })}
-            >
-              <Download aria-hidden className="size-4" />
-              Download revenue CSV
-            </Link>
-            <Link
-              href="/app/analytics/business"
-              className={buttonVariants({ variant: 'secondary' })}
-            >
-              <ChartColumn aria-hidden className="size-4" />
-              Business analytics
-            </Link>
-          </>
-        }
-      />
+      <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Billing</h1>
       <div className="flex flex-col gap-6">
-        <StatStrip
-          label="Revenue summary"
-          items={[
-            { label: 'Monthly recurring revenue', icon: Wallet, value: mrr || '–' },
-            {
-              label: 'Active subscriptions',
-              icon: Repeat,
-              value: String(analytics.summary.activeSubscriptions),
-            },
-            {
-              label: 'Churn, last 30 days',
-              icon: TrendingDown,
-              value:
-                analytics.summary.churnPercent30d === null
-                  ? '–'
-                  : `${analytics.summary.churnPercent30d}%`,
-            },
-            {
-              label: 'Refunded',
-              icon: Undo2,
-              value: formatMoneyMinor(
+        <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            ['Monthly recurring revenue', mrr || '–'],
+            ['Active subscriptions', String(analytics.summary.activeSubscriptions)],
+            [
+              'Churn, last 30 days',
+              analytics.summary.churnPercent30d === null
+                ? '–'
+                : `${analytics.summary.churnPercent30d}%`,
+            ],
+            [
+              'Refunded',
+              formatMoneyMinor(
                 analytics.summary.refundsMinor,
                 analytics.summary.revenueByCurrency[0]?.currency ?? 'USD',
               ),
-            },
-          ]}
-        />
+            ],
+          ].map(([k, v]) => (
+            <div key={k} className="rounded-card bg-surface p-4 shadow-card">
+              <dt className="text-sm text-secondary">{k}</dt>
+              <dd className="text-3xl font-semibold">{v}</dd>
+            </div>
+          ))}
+        </dl>
         <p className="text-sm text-secondary">
           <Link
+            href="/api/v1/billing/analytics?format=csv"
+            className="text-accent underline underline-offset-4"
+          >
+            Download revenue CSV
+          </Link>
+          {' · '}
+          <Link
             href="/app/billing/self-service"
-            className="font-medium text-accent-ink hover:underline"
+            className="text-accent underline underline-offset-4"
           >
             Client billing self-service
+          </Link>
+          {' · '}
+          <Link href="/app/analytics/business" className="text-accent underline underline-offset-4">
+            Business analytics
           </Link>
         </p>
 

@@ -8,7 +8,7 @@ export const LOGO_URL_MAX = 500;
 
 export interface Branding {
   name: string;
-  /** #rrggbb, or null for Repsy's own accent. */
+  /** #rrggbb, or null for Kinetic's own accent. */
   accent: string | null;
   /** The accent's hover shade, when an accent is set. */
   accentHover: string | null;
@@ -43,7 +43,7 @@ export async function updateBranding(
   if (input.accent !== undefined) {
     if (input.accent === null || input.accent === '') data.brandAccent = null;
     else {
-      if (typeof input.accent !== 'string') throw invalid('accent', 'Use a colour like #4f46e5.');
+      if (typeof input.accent !== 'string') throw invalid('accent', 'Use a colour like #1c7666.');
       const problem = accentProblem(input.accent);
       if (problem) throw invalid('accent', problem);
       data.brandAccent = input.accent.trim().toLowerCase();

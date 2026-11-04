@@ -19,13 +19,12 @@ export function ProgramActions({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className="flex flex-wrap gap-2">
       {!archived && (
         <Button
           type="button"
-          variant="ghost"
+          variant="secondary"
           disabled={busy}
-          size="sm"
           aria-label={`Duplicate ${title}`}
           onClick={async () => {
             setBusy(true);
@@ -44,10 +43,8 @@ export function ProgramActions({
       )}
       <Button
         type="button"
-        variant="ghost"
+        variant="secondary"
         disabled={busy}
-        size="sm"
-        className="text-secondary"
         aria-label={`${archived ? 'Restore' : 'Archive'} ${title}`}
         onClick={async () => {
           setBusy(true);

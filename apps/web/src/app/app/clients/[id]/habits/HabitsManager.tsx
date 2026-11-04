@@ -154,7 +154,7 @@ function NewHabitForm({ clientId, today }: { clientId: string; today: string }) 
             ))}
           </div>
           <p className="text-sm text-secondary">
-            Supplements: agree what to take with your client (and their doctor). Repsy gives no
+            Supplements: agree what to take with your client (and their doctor). Kinetic gives no
             dosing advice; the habit only tracks that they took it.
           </p>
         </div>

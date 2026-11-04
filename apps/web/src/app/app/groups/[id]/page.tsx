@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { loadActiveClients } from '@/server/selectOptions';
 import { withServerTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Group | Repsy' };
+export const metadata: Metadata = { title: 'Group | Kinetic' };
 
 export default async function CoachGroupPage({
   params,

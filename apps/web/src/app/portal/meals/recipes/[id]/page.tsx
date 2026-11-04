@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { DomainError, getRecipe } from '@kinetic/core';
 import { withPortalTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Recipe | Repsy' };
+export const metadata: Metadata = { title: 'Recipe | Kinetic' };
 
 /** PRD G9: a recipe from the client's meal plan. */
 export default async function PortalRecipePage({ params }: { params: Promise<{ id: string }> }) {

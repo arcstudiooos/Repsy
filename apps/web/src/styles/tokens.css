@@ -1,49 +1,20 @@
 /* Design tokens (PRD §6.2). Keep in sync with src/lib/tokens.ts (tokens.test.ts enforces it). */
 :root {
-  --k-canvas: #f6f7fb;
+  --k-canvas: #f7f8f6;
   --k-surface: #ffffff;
-  /* A quiet well inside a surface: grouped rows, stat strips, inputs at rest. */
-  --k-surface-muted: #f1f3f9;
-  --k-ink: #0f172a;
-  /* Primary: electric indigo. Buttons, links, the active state. */
-  --k-accent: #4f46e5;
-  --k-accent-hover: #4338ca;
-  /* Selected and active states: a tint of the accent, with its own readable ink. */
-  --k-accent-soft: #eef0ff;
-  --k-accent-ink: #3730a3;
-  /* Energy: the brand's second colour. Highlights, streaks, the .fit in the wordmark. Text uses the ink. */
-  --k-energy: #f97316;
-  --k-energy-ink: #c2410c;
-  --k-secondary: #5b6477;
+  --k-ink: #152825;
+  --k-accent: #1c7666;
+  --k-accent-hover: #145b50;
+  --k-secondary: #60716e;
   /* Decorative only: not a boundary for inputs or controls. */
-  --k-divider: #e8eaf2;
-  /* Hairline round cards and panels (decorative, like the divider). */
-  --k-border: #e4e7ef;
-  --k-input-border: #7e879b;
-  --k-warning: #b45309;
-  --k-danger: #dc2626;
-  --k-success: #15803d;
-  /* Status tints, each with an ink that stays readable on it. */
-  --k-success-soft: #eaf7ef;
-  --k-success-ink: #166534;
-  --k-warning-soft: #fef3e2;
-  --k-warning-ink: #92400e;
-  --k-danger-soft: #fdecec;
-  --k-danger-ink: #b91c1c;
-  /* Data series, in order. Never the only signal: lines and bars are labelled. */
-  --k-chart-1: #4f46e5;
-  --k-chart-2: #f97316;
-  --k-chart-3: #0ea5e9;
-  --k-chart-4: #db2777;
-  --k-chart-5: #64748b;
+  --k-divider: #e1e8e4;
+  --k-input-border: #7d8c87;
+  --k-warning: #8f5a26;
+  --k-danger: #b64743;
 
-  --k-radius-card: 16px;
-  --k-radius-control: 10px;
-  --k-shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 2px 8px rgba(15, 23, 42, 0.04);
-  /* Popovers, dialogs and anything that floats over the page. */
-  --k-shadow-raised: 0 16px 40px rgba(15, 23, 42, 0.14), 0 2px 6px rgba(15, 23, 42, 0.06);
-  /* The brand gradient: hero surfaces only. */
-  --k-gradient-brand: linear-gradient(135deg, #4f46e5 0%, #6d28d9 100%);
+  --k-radius-card: 12px;
+  --k-radius-control: 8px;
+  --k-shadow-card: 0 4px 18px rgba(16, 36, 30, 0.05);
 
   /* Spacing scale: 4 / 8 / 12 / 16 / 24 / 32 (Tailwind 1, 2, 3, 4, 6, 8). */
   --k-space-1: 4px;

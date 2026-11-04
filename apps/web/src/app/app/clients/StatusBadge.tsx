@@ -1,18 +1,11 @@
 import type { ClientStatus, InviteStatus } from '@kinetic/core';
-import { Pill, type PillTone } from '@/components/ui/pill';
+import { cn } from '@/lib/utils';
 
 const LABEL: Record<ClientStatus, string> = {
   invited: 'Invited',
   active: 'Active',
   paused: 'Paused',
   archived: 'Archived',
-};
-
-const TONE: Record<ClientStatus, PillTone> = {
-  invited: 'accent',
-  active: 'success',
-  paused: 'warning',
-  archived: 'neutral',
 };
 
 /** Text label always shown, so status never relies on color alone. */
@@ -31,9 +24,14 @@ export function StatusBadge({
 }) {
   const suffix = status === 'invited' && inviteStatus ? INVITE_SUFFIX[inviteStatus] : undefined;
   return (
-    <Pill tone={TONE[status]} dot>
+    <span
+      className={cn(
+        'inline-flex items-center rounded-control border px-2 py-0.5 text-sm font-medium',
+        status === 'active' ? 'border-accent text-accent' : 'border-input-border text-secondary',
+      )}
+    >
       {suffix ? `${LABEL[status]} · ${suffix}` : LABEL[status]}
-    </Pill>
+    </span>
   );
 }
 

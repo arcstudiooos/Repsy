@@ -224,7 +224,7 @@ export class PdfDoc {
       4,
       '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>',
     );
-    obj(5, `<< /Title ${hexText(this.title)} /Producer (Repsy) >>`);
+    obj(5, `<< /Title ${hexText(this.title)} /Producer (Kinetic) >>`);
     for (const img of images) {
       const cs =
         img.info.components === 1

@@ -524,7 +524,7 @@ export const PORTABLE_FORMAT_VERSION = 1;
 
 /**
  * Every program (templates and client copies) at its current version, as JSON (PRD M3). Each program's `weeks`
- * has the shape `POST /api/v1/programs/import` takes, so it re-imports into Repsy; exercise names come alongside
+ * has the shape `POST /api/v1/programs/import` takes, so it re-imports into Kinetic; exercise names come alongside
  * ids so another tool can map them.
  */
 async function programsJson(

@@ -30,5 +30,5 @@ export const ROADMAP: { title: string; detail: string }[] = [
     detail: 'Uploads with compare views and form-check videos.',
   },
   { title: 'Push notifications', detail: 'Messages and reminders on your phone.' },
-  { title: 'Payments', detail: 'Take client payments inside Repsy.' },
+  { title: 'Payments', detail: 'Take client payments inside Kinetic.' },
 ];

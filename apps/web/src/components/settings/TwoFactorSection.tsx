@@ -172,7 +172,7 @@ export function TwoFactorSection({ enabled, required }: { enabled: boolean; requ
           <>
             <ol className="flex list-decimal flex-col gap-3 pl-5">
               <li>
-                Add Repsy to your authenticator app.{' '}
+                Add Kinetic to your authenticator app.{' '}
                 <a href={setup.uri} className="text-accent underline">
                   Open in your authenticator app
                 </a>

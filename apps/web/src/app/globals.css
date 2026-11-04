@@ -4,11 +4,6 @@
 @theme inline {
   --color-canvas: var(--k-canvas);
   --color-surface: var(--k-surface);
-  --color-surface-muted: var(--k-surface-muted);
-  --color-accent-soft: var(--k-accent-soft);
-  --color-accent-ink: var(--k-accent-ink);
-  --color-border: var(--k-border);
-  --color-success: var(--k-success);
   --color-ink: var(--k-ink);
   --color-accent: var(--k-accent);
   --color-accent-hover: var(--k-accent-hover);
@@ -17,26 +12,12 @@
   --color-input-border: var(--k-input-border);
   --color-warning: var(--k-warning);
   --color-danger: var(--k-danger);
-  --color-energy: var(--k-energy);
-  --color-energy-ink: var(--k-energy-ink);
-  --color-success-soft: var(--k-success-soft);
-  --color-success-ink: var(--k-success-ink);
-  --color-warning-soft: var(--k-warning-soft);
-  --color-warning-ink: var(--k-warning-ink);
-  --color-danger-soft: var(--k-danger-soft);
-  --color-danger-ink: var(--k-danger-ink);
-  --color-chart-1: var(--k-chart-1);
-  --color-chart-2: var(--k-chart-2);
-  --color-chart-3: var(--k-chart-3);
-  --color-chart-4: var(--k-chart-4);
-  --color-chart-5: var(--k-chart-5);
 
   --radius-card: var(--k-radius-card);
   --radius-control: var(--k-radius-control);
   --shadow-card: var(--k-shadow-card);
-  --shadow-raised: var(--k-shadow-raised);
 
-  --font-sans: var(--font-sans-brand);
+  --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
   --ease-standard: var(--k-ease);
@@ -51,38 +32,9 @@
     color: var(--k-ink);
     font-family: var(--font-sans), system-ui, sans-serif;
     font-size: 1rem;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
-  }
-  h1,
-  h2,
-  h3 {
-    letter-spacing: -0.02em;
-  }
-  /* Numbers that line up in tables and stats. */
-  .tabular {
-    font-variant-numeric: tabular-nums;
   }
   :focus-visible {
     outline: 2px solid var(--k-accent);
     outline-offset: 2px;
   }
-}
-
-/*
- * Native selects everywhere: a consistent chevron instead of each browser's own. Unlayered on purpose, so it wins over
- * the padding utilities individual selects set (the chevron needs room on the right).
- */
-select:not([multiple]):not([size]) {
-  appearance: none;
-  background-color: var(--k-surface);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235b6477' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  background-position: right 0.75rem center;
-  background-repeat: no-repeat;
-  background-size: 1rem;
-  padding-inline-end: 2.25rem;
-}
-select:not([multiple]):not([size]):hover {
-  border-color: color-mix(in srgb, var(--k-ink) 50%, transparent);
 }

@@ -5,7 +5,7 @@ import { EmptyState } from '@/components/states/EmptyState';
 import { buttonVariants } from '@/components/ui/button';
 import { withServerTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Courses | Repsy' };
+export const metadata: Metadata = { title: 'Courses | Kinetic' };
 
 /** PRD G4: lesson courses that unlock one lesson a day or a week. */
 export default async function CoursesPage() {

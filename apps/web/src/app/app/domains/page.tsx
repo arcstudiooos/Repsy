@@ -10,7 +10,7 @@ import {
 } from '@/components/domains/DomainForms';
 import { withServerTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Custom domains | Repsy' };
+export const metadata: Metadata = { title: 'Custom domains | Kinetic' };
 
 /** PRD L4: custom domains for the portal and join pages, plus branded sending addresses. */
 export default async function DomainsPage() {

@@ -1,10 +1,9 @@
 import { getBranding, type Branding } from '@kinetic/core';
-import { RepsyMark } from '@/components/brand/Logo';
 import { withServerTenant } from '@/server/serverActor';
 
 /**
  * The portal header's workspace name and logo, and the workspace accent (PRD A6). Values are validated on save
- * (#rrggbb, https), so the style tag carries nothing user-shaped beyond two hex colours. Falls back to Repsy.
+ * (#rrggbb, https), so the style tag carries nothing user-shaped beyond two hex colours. Falls back to Kinetic.
  */
 export async function PortalBrand() {
   let brand: Branding | null = null;
@@ -20,7 +19,6 @@ export async function PortalBrand() {
     <>
       {accent && hover && <style>{`:root{--k-accent:${accent};--k-accent-hover:${hover}}`}</style>}
       <p className="flex min-w-0 items-center gap-2 text-lg font-semibold">
-        {!brand?.logoUrl && <RepsyMark className="size-7" />}
         {brand?.logoUrl && (
           // eslint-disable-next-line @next/next/no-img-element -- a coach-hosted https logo; no image optimizer domain to allow-list.
           <img
@@ -32,7 +30,7 @@ export async function PortalBrand() {
             className="size-7 shrink-0 rounded-control object-contain"
           />
         )}
-        <span className="truncate">{brand?.name ?? 'Repsy'}</span>
+        <span className="truncate">{brand?.name ?? 'Kinetic'}</span>
       </p>
     </>
   );

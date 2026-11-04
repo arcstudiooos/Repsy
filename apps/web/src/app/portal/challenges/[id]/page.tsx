@@ -5,7 +5,7 @@ import { challengeDates, challengeStatus } from '@/components/challenges/Challen
 import { Leaderboard, METRIC_LABEL, Participation } from '@/components/challenges/Challenges';
 import { withPortalTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Challenge | Repsy' };
+export const metadata: Metadata = { title: 'Challenge | Kinetic' };
 
 export default async function PortalChallengePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

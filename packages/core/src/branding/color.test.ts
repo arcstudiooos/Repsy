@@ -9,7 +9,7 @@ describe('brand colour checks (PRD A6)', () => {
   it('accepts dark accents and explains light ones', () => {
     expect(accentProblem('#1C7666')).toBeNull();
     expect(accentProblem('#ffcc00')).toMatch(/pick a darker colour/);
-    expect(accentProblem('teal')).toBe('Use a colour like #4f46e5.');
+    expect(accentProblem('teal')).toBe('Use a colour like #1c7666.');
   });
   it('darkens for hover', () => {
     expect(darken('#808080', 0.5)).toBe('#404040');

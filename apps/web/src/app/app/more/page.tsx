@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { SignOutButton } from '@/components/nav/SignOutButton';
 import { Card } from '@/components/ui/card';
 
-export const metadata: Metadata = { title: 'More | Repsy' };
+export const metadata: Metadata = { title: 'More | Kinetic' };
 
 const links = [
   { label: 'Programs', href: '/app/programs' },

@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { formatSessionDate } from '@/lib/session-format';
 import { withPortalTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Check-ins | Repsy' };
+export const metadata: Metadata = { title: 'Check-ins | Kinetic' };
 
 const STATUS = { open: 'To do', overdue: 'Past due', submitted: 'Sent' } as const;
 

@@ -6,7 +6,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { withPortalTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Nutrition | Repsy' };
+export const metadata: Metadata = { title: 'Nutrition | Kinetic' };
 
 /** The client's own nutrition targets and daily totals (PRD G6/G7), and a way to their meal plan (G8). */
 export default async function PortalNutritionPage() {

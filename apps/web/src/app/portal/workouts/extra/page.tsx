@@ -4,7 +4,7 @@ import { listSharedWorkouts } from '@kinetic/core';
 import { ExtraWorkoutStarter } from '@/components/workout/ExtraWorkoutStarter';
 import { withPortalTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Extra workout | Repsy' };
+export const metadata: Metadata = { title: 'Extra workout | Kinetic' };
 
 /** PRD D13: start an unplanned workout, from one the coach shares or from scratch. */
 export default async function ExtraWorkoutPage() {

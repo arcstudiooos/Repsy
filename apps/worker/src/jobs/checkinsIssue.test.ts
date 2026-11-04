@@ -91,7 +91,7 @@ describe('issueCheckins', () => {
     );
     expect(r.subject).toBe('New message from Ana');
     expect(r.text).toBe(
-      'You have a new message from Ana.\n\nRead it in Repsy: https://app.test/portal/messages',
+      'You have a new message from Ana.\n\nRead it in Kinetic: https://app.test/portal/messages',
     );
   });
 });

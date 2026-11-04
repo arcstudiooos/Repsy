@@ -3,7 +3,7 @@ import { Suspense } from 'react';
 import { GoogleButton } from './GoogleButton';
 import { LoginForm } from './LoginForm';
 
-export const metadata: Metadata = { title: 'Sign in | Repsy' };
+export const metadata: Metadata = { title: 'Sign in | Kinetic' };
 
 export default function LoginPage() {
   return (

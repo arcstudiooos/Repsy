@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { withPortalTenant } from '@/server/serverActor';
 import { LessonDone } from './LessonDone';
 
-export const metadata: Metadata = { title: 'Lessons | Repsy' };
+export const metadata: Metadata = { title: 'Lessons | Kinetic' };
 
 const day = (d: string) =>
   new Intl.DateTimeFormat('en-GB', {

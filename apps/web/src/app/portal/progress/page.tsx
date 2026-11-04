@@ -22,7 +22,7 @@ import { ProgressPhotos } from '@/components/progress/ProgressPhotos';
 import { TrainingLoad } from '@/components/progress/TrainingLoad';
 import { withPortalTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Progress | Repsy' };
+export const metadata: Metadata = { title: 'Progress | Kinetic' };
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) || undefined;
 

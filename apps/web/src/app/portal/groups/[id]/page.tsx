@@ -4,7 +4,7 @@ import { DomainError, getGroup, isUuid } from '@kinetic/core';
 import { GroupView } from '@/components/groups/GroupView';
 import { withPortalTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Group | Repsy' };
+export const metadata: Metadata = { title: 'Group | Kinetic' };
 
 export default async function PortalGroupPage({
   params,

@@ -17,7 +17,7 @@ import { maskEmail } from '@/lib/mask-email';
 import { AcceptForm } from './AcceptForm';
 
 export const metadata: Metadata = {
-  title: 'Join your coach | Repsy',
+  title: 'Join your coach | Kinetic',
   // The URL carries a secret: never let it leak through referrers or indexes.
   referrer: 'no-referrer',
   robots: { index: false, follow: false },

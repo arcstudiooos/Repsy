@@ -446,7 +446,7 @@ export function renderProgressReport(
     p.text(
       M,
       A4.height - 30,
-      `Private: for ${data.clientName} and their coach. Made with Repsy on ${data.generatedOn}.`,
+      `Private: for ${data.clientName} and their coach. Made with Kinetic on ${data.generatedOn}.`,
       { size: 8, color: MUTED },
     );
     p.text(M + W - 40, A4.height - 30, `${i + 1} / ${doc.pages.length}`, { size: 8, color: MUTED });

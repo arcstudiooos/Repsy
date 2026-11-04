@@ -7,7 +7,7 @@ import { withServerTenant } from '@/server/serverActor';
 import { ArchiveCourse, EndEnrollment, EnrollClient } from '../CourseActions';
 import { CourseEditor } from '../CourseEditor';
 
-export const metadata: Metadata = { title: 'Course | Repsy' };
+export const metadata: Metadata = { title: 'Course | Kinetic' };
 
 const day = (d: string) =>
   new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(

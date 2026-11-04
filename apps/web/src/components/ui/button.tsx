@@ -8,13 +8,10 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-accent text-white shadow-sm hover:bg-accent-hover active:translate-y-px',
-        secondary:
-          'border border-input-border bg-surface text-ink shadow-sm hover:border-ink/40 hover:bg-surface-muted active:translate-y-px',
-        ghost: 'text-ink hover:bg-surface-muted',
-        /** A quieter call to action: the accent's tint (selected filters, secondary suggestions). */
-        soft: 'bg-accent-soft text-accent-ink hover:bg-accent-soft/70',
-        danger: 'bg-danger text-white shadow-sm hover:bg-danger/90 active:translate-y-px',
+        default: 'bg-accent text-white hover:bg-accent-hover',
+        secondary: 'border border-input-border bg-surface text-ink hover:bg-canvas',
+        ghost: 'text-ink hover:bg-canvas',
+        danger: 'bg-danger text-white hover:bg-danger/90',
       },
       // Tap targets are at least 44px on mobile.
       size: {

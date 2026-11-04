@@ -16,7 +16,7 @@ import {
 import { call } from '@/lib/checkin-api';
 
 const STATUS: Record<DeletionRequestView['status'], string> = {
-  requested: 'Deletion requested. Repsy will verify it, then delete the data.',
+  requested: 'Deletion requested. Kinetic will verify it, then delete the data.',
   verified: 'Deletion verified. The data will be deleted shortly.',
   processing: 'Deleting the data now.',
   done: 'The data was deleted.',
@@ -59,8 +59,8 @@ export function DeletionRequestButton({
           </DialogTitle>
           <DialogDescription>
             {self
-              ? 'Your coach will be told. Repsy verifies the request, then deletes your workouts, logged sets, check-ins and messages in this workspace. Other workspaces you belong to are not affected. This cannot be undone.'
-              : "Repsy verifies the request, then deletes the client's workouts, logged sets, check-ins, messages and your notes about them. This cannot be undone."}
+              ? 'Your coach will be told. Kinetic verifies the request, then deletes your workouts, logged sets, check-ins and messages in this workspace. Other workspaces you belong to are not affected. This cannot be undone.'
+              : "Kinetic verifies the request, then deletes the client's workouts, logged sets, check-ins, messages and your notes about them. This cannot be undone."}
           </DialogDescription>
         </DialogHeader>
         {error && (

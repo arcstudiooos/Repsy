@@ -12,7 +12,7 @@ import { maskEmail } from '@/lib/mask-email';
 import { JoinButton } from './JoinButton';
 
 export const metadata: Metadata = {
-  title: 'Join the team | Repsy',
+  title: 'Join the team | Kinetic',
   // The URL carries a secret.
   referrer: 'no-referrer',
   robots: { index: false, follow: false },
@@ -52,7 +52,7 @@ async function JoinBody({ params }: { params: Promise<{ token: string }> }) {
           </Link>
         </div>
         <p className="mt-4 text-sm text-secondary">
-          New to Repsy?{' '}
+          New to Kinetic?{' '}
           <Link href="/signup" className={linkClass}>
             Create an account
           </Link>{' '}

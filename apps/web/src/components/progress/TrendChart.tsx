@@ -68,8 +68,6 @@ export function TrendChart({
   defaultRange = 12,
 }: TrendChartProps) {
   const id = useId();
-  // SVG url(#…) references need a plain id.
-  const gid = `trend${id.replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const [range, setRange] = useState<RangeWeeks>(defaultRange);
   const [active, setActive] = useState<number | null>(null);
   const box = useRef<HTMLDivElement>(null);
@@ -156,9 +154,7 @@ export function TrendChart({
               }}
               className={cn(
                 'min-h-11 rounded-control px-3 text-sm font-medium md:min-h-9',
-                r === range
-                  ? 'bg-accent-soft text-accent-ink'
-                  : 'text-secondary hover:bg-surface-muted',
+                r === range ? 'bg-ink text-surface' : 'text-secondary hover:bg-canvas',
               )}
             >
               {r}w
@@ -217,7 +213,6 @@ export function TrendChart({
                   y2={y(v)}
                   stroke={GRID}
                   strokeWidth="1"
-                  strokeDasharray="3 4"
                 />
                 <text
                   x={PAD.left - 8}
@@ -265,25 +260,12 @@ export function TrendChart({
                   strokeWidth="2"
                 />
               ))}
-            <defs>
-              <linearGradient id={`${gid}-fill`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stopColor={ACCENT} stopOpacity="0.18" />
-                <stop offset="1" stopColor={ACCENT} stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            {line.length > 1 && (
-              <path
-                d={`${path}L${x(line[line.length - 1]!.date).toFixed(1)},${H - PAD.bottom}L${x(line[0]!.date).toFixed(1)},${H - PAD.bottom}Z`}
-                fill={`url(#${gid}-fill)`}
-                aria-hidden
-              />
-            )}
             {line.length > 1 && (
               <path
                 d={path}
                 fill="none"
                 stroke={ACCENT}
-                strokeWidth="2.5"
+                strokeWidth="2"
                 strokeLinejoin="round"
                 strokeLinecap="round"
               />
