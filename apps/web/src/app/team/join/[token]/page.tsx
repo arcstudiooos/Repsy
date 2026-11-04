@@ -11,9 +11,6 @@ import { getSessionUser } from '@/lib/auth';
 import { maskEmail } from '@/lib/mask-email';
 import { JoinButton } from './JoinButton';
 
-// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
-export const instant = false;
-
 export const metadata: Metadata = {
   title: 'Join the team | Repsy',
   // The URL carries a secret.

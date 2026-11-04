@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import {
   assignFromClientTab,
   buildProgram,
+  clickUntilURL,
   expectNoAxeViolations,
   expectNoHorizontalOverflow,
   onboardClient,
@@ -29,8 +30,11 @@ test.describe('owner audit log (PRD A14)', () => {
       const events = page.getByRole('list', { name: 'Audit events' });
       await expect(events.getByText(/Assigned a program · Aud Itor/)).toBeVisible();
       await expect(events.getByText(/Sent an invite/)).toBeVisible();
-      await page.getByRole('link', { name: 'Assignments' }).click();
-      await expect(page).toHaveURL(/category=assignments/);
+      await clickUntilURL(
+        page,
+        page.getByRole('link', { name: 'Assignments' }),
+        /category=assignments/,
+      );
       await expect(events.getByText(/Sent an invite/)).toHaveCount(0);
       await expect(events.getByText(/Assigned a program/)).toBeVisible();
       for (const width of [375, 1440]) {

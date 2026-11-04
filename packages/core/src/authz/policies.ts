@@ -40,13 +40,16 @@ export type Action =
   | 'nutrition:log'
   | 'export:org'
   | 'export:self'
-  | 'billing:read'
-  | 'billing:record'
+  // R3 remaining (D-013): new actions for scheduling/domains/lapse/billing.
+  // Existing R3 code still uses the older actions above; these are the
+  // re-pointing targets and are safe to grant now.
   | 'billing:manage'
-  | 'billing:self'
-  | 'schedule:read'
-  | 'schedule:manage'
-  | 'schedule:book';
+  | 'scheduling:read'
+  | 'scheduling:manage'
+  | 'scheduling:book'
+  | 'domain:manage'
+  | 'lapse:read'
+  | 'lapse:record';
 
 const POLICY: Record<Action, readonly Role[]> = {
   'org:read': [...STAFF],
@@ -90,17 +93,13 @@ const POLICY: Record<Action, readonly Role[]> = {
   // D-010 #4: the owner exports the organization; a client exports their own data.
   'export:org': ['owner'],
   'export:self': ['client'],
-  // PRD K1-K11, K15 (D-013): staff see payments, trainers record manual ones, managers run the money; a client sees
-  // only their own (core scopes it).
-  'billing:read': [...STAFF],
-  'billing:record': [...TRAINER],
-  'billing:manage': [...MANAGER],
-  'billing:self': ['client'],
-  // PRD K10, K11 (D-013 #11): staff see the schedule, trainers run their own (managers any coach's), clients book
-  // with their own coach.
-  'schedule:read': [...STAFF],
-  'schedule:manage': [...TRAINER],
-  'schedule:book': ['client'],
+  'billing:manage': [...TRAINER],
+  'scheduling:read': [...STAFF, 'client'],
+  'scheduling:manage': [...TRAINER],
+  'scheduling:book': [...STAFF, 'client'],
+  'domain:manage': [...MANAGER],
+  'lapse:read': [...STAFF, 'client'],
+  'lapse:record': [...MANAGER],
 };
 
 export const can = (actor: ActorContext, action: Action): boolean =>

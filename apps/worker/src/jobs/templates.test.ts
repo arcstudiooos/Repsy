@@ -31,29 +31,3 @@ describe('reminder emails (PRD H13, F9)', () => {
     );
   });
 });
-
-describe('billing templates (PRD K6, K7)', () => {
-  it('link to the receipt and the billing page, without amounts', () => {
-    const receipt = renderTemplate('payment_receipt', { paymentId: 'p1' }, 'https://app.test/');
-    expect(receipt?.text).toContain('https://app.test/portal/billing/receipts/p1');
-    const failed = renderTemplate('payment_failed', {}, 'https://app.test');
-    expect(failed?.text).toContain('https://app.test/portal/billing');
-  });
-
-  it('says whether a package renews or ends, and when (J6); the title is escaped in HTML', () => {
-    const renews = renderTemplate(
-      'package_renewal',
-      { title: 'Monthly <b>', dueAt: '2026-12-04T15:00:00.000Z', ending: false },
-      'https://app.test',
-    );
-    expect(renews?.subject).toBe('Monthly <b> renews soon');
-    expect(renews?.text).toContain('renews on 4 December 2026');
-    expect(renews?.html).toContain('Monthly &#60;b&#62;');
-    const ends = renderTemplate(
-      'package_renewal',
-      { title: 'Plan', ending: true },
-      'https://app.test',
-    );
-    expect(ends?.text).toContain('Plan ends soon.');
-  });
-});

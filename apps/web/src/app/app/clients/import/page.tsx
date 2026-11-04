@@ -2,9 +2,6 @@ import type { Metadata } from 'next';
 import { Breadcrumbs } from '@/components/nav/Breadcrumbs';
 import { ImportClients } from './ImportClients';
 
-// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
-export const instant = false;
-
 export const metadata: Metadata = { title: 'Import clients | Repsy' };
 
 /** Bring a roster over from another platform (PRD B17). */

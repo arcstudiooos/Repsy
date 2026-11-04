@@ -99,32 +99,6 @@ async function busyClient(): Promise<ClientWorld> {
       recordMetric(tx, w.client, w.clientId, { metric: 'weight', measuredOn, value }, { now: NOW }),
     );
   }
-  // PRD K10: a booked session.
-  await sys(async (tx) => {
-    const type = await tx.sessionType.create({
-      data: {
-        organizationId: w.orgId,
-        coachUserId: w.coach.userId,
-        title: 'Call',
-        kind: 'call',
-        durationMin: 30,
-      },
-    });
-    const at = new Date(NOW.getTime() + 2 * 86_400_000);
-    await tx.booking.create({
-      data: {
-        organizationId: w.orgId,
-        sessionTypeId: type.id,
-        coachUserId: w.coach.userId,
-        clientId: w.clientId,
-        startsAt: at,
-        endsAt: new Date(at.getTime() + 30 * 60_000),
-        blockedFrom: at,
-        blockedTo: new Date(at.getTime() + 30 * 60_000),
-        title: 'Call',
-      },
-    });
-  });
   return w;
 }
 
@@ -141,7 +115,6 @@ const counts = (w: ClientWorld) =>
     metricRevisions: await tx.metricEntryRevision.count({ where: { clientId: w.clientId } }),
     habits: await tx.habit.count({ where: { clientId: w.clientId } }),
     habitLogs: await tx.habitLog.count({ where: { clientId: w.clientId } }),
-    bookings: await tx.booking.count({ where: { clientId: w.clientId } }),
     assignments: await tx.programAssignment.count({ where: { clientId: w.clientId } }),
   }));
 
@@ -164,7 +137,6 @@ describe('deletion (S5-3)', () => {
       metricRevisions: 1,
       habits: 1,
       habitLogs: 1,
-      bookings: 1,
     });
     const id = await verifiedRequest(w);
     const first = await sys((tx) => eraseClientData(tx, id, NOW));
@@ -179,7 +151,6 @@ describe('deletion (S5-3)', () => {
       metricRevisions: 0,
       habits: 0,
       habitLogs: 0,
-      bookings: 0,
       assignments: 0,
     });
     const after = await sys(async (tx) => ({

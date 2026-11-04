@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { clickUntilURL } from './helpers/journey';
 import { signUpVerifiedCoach, waitForEmail } from './helpers/users';
 import { renameOwnerOrg } from './support/db';
 
@@ -51,8 +52,11 @@ test.describe('dual-role workspace switching', () => {
     await page.goto('/app/clients');
     await expect(page).toHaveURL(/\/portal$/);
 
-    await page.getByRole('link', { name: 'Switch workspace' }).click();
-    await expect(page).toHaveURL(/\/select-org$/);
+    await clickUntilURL(
+      page,
+      page.getByRole('link', { name: 'Switch workspace' }),
+      /\/select-org$/,
+    );
     await page.getByRole('button', { name: new RegExp(orgAName) }).click();
     await expect(page).toHaveURL(/\/app$/, { timeout: 20_000 });
     await expect(page.getByRole('heading', { name: 'Coach dashboard' })).toBeVisible();

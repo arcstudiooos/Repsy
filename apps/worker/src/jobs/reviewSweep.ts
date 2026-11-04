@@ -1,10 +1,4 @@
-import {
-  activeOrgWhere,
-  evaluateRules,
-  noopAnalytics,
-  type AnalyticsPort,
-  type Logger,
-} from '@kinetic/core';
+import { evaluateRules, noopAnalytics, type AnalyticsPort, type Logger } from '@kinetic/core';
 import { withSystem, withTenant, type PrismaClient } from '@kinetic/db';
 import { orgHash, systemDistinctId } from '../adapters/analytics';
 import { defineJob, type CaptureException } from './registry';
@@ -32,10 +26,7 @@ export async function sweepReview(
   env: Record<string, string | undefined> = process.env,
   report: { logger?: Pick<Logger, 'error'>; captureException?: CaptureException } = {},
 ): Promise<{ orgs: number; opened: number; resolved: number; reopened: number; failed: number }> {
-  const orgs = await withSystem(
-    (tx) => tx.organization.findMany({ where: activeOrgWhere(now), select: { id: true } }),
-    prisma,
-  );
+  const orgs = await withSystem((tx) => tx.organization.findMany({ select: { id: true } }), prisma);
   const total = { orgs: orgs.length, opened: 0, resolved: 0, reopened: 0, failed: 0 };
   for (const { id } of orgs) {
     let r;

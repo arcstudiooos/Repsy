@@ -1,232 +1,364 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { withSystem, type PrismaClient } from '@kinetic/db';
-import { createTestDb } from '@kinetic/db/testing';
+/**
+ * PRD I10, I11, I12, I14: pure-logic tests. No Postgres, no network, no provider keys. Database
+ * functions are exercised only through hand-written `tx` mocks cast to `TenantTx`; the real
+ * `aiSetting` / `aiDraft` models arrive with migration 20260101000086 (see SCHEMA_SNIPPET_AI.md).
+ */
+import type { TenantTx } from '@kinetic/db';
+import { describe, expect, it } from 'vitest';
 import type { ActorContext } from '../authz/actor';
+import type { CheckinQuestion } from '../checkins/questions';
 import { DomainError } from '../errors';
-import { newClientWorld, newOrg, runAs } from '../sessions/fixtures.test-helpers';
+import { parseProgram } from '../programs/text-import';
+import { AI_LABEL, assertProviderSafe, FakeAiProvider } from './ai';
 import {
-  AI_DAILY_CAP,
-  completeHighlights,
-  completeProgramDraft,
-  draftProgramFromText,
-  highlightsRequest,
-  templateDraftRequest,
-  finishAiRequest,
-  setAiEnabled,
-  startAiRequest,
+  assertNoAdviceRequest,
+  createPasteDraft,
+  createTemplateDraft,
+  getAiSetting,
+  highlightsForCoach,
+  matchToLibrary,
+  parseTemplateInstruction,
+  redactText,
+  savePasteAiDraft,
+  setAiSetting,
+  summarizeCheckinChanges,
 } from './drafting';
-import { filterUnsafe, redactContact } from './guardrails';
-import { FakeAi } from './port';
 
-let prisma: PrismaClient;
-let drop: () => Promise<void>;
-beforeAll(async () => {
-  ({ prisma, drop } = await createTestDb());
+const coach: ActorContext = {
+  userId: 'coach-1',
+  orgId: 'org-1',
+  role: 'coach',
+  isPlatformAdmin: false,
+};
+const owner: ActorContext = {
+  userId: 'owner-1',
+  orgId: 'org-1',
+  role: 'owner',
+  isPlatformAdmin: false,
+};
+const client: ActorContext = {
+  userId: 'client-1',
+  orgId: 'org-1',
+  role: 'client',
+  isPlatformAdmin: false,
+  clientId: 'client-1',
+};
+
+const LIBRARY = [
+  { id: 'ex-bench', name: 'Bench press', equipment: 'Barbell' },
+  { id: 'ex-squat', name: 'Back squat', equipment: 'Barbell' },
+  { id: 'ex-db-press', name: 'Dumbbell press', equipment: 'Dumbbell' },
+];
+
+const mockTx = (
+  setting: { aiEnabled: boolean; provider?: string } | null,
+  draftRow?: unknown,
+): TenantTx =>
+  ({
+    aiSetting: {
+      findFirst: async () =>
+        setting ? { aiEnabled: setting.aiEnabled, provider: setting.provider ?? 'fake' } : null,
+      upsert: async () => ({ aiEnabled: true, provider: 'fake' }),
+    },
+    aiDraft: {
+      create: async () => draftRow,
+      findMany: async () => [],
+    },
+  }) as unknown as TenantTx;
+
+describe('redaction (I14)', () => {
+  it('strips emails, phone numbers and supplied names from stored source text', () => {
+    const out = redactText('Plan for Jane Doe, jane@example.com, call 555-123-4567', ['Jane Doe']);
+    expect(out).not.toContain('jane@example.com');
+    expect(out).not.toContain('555-123-4567');
+    expect(out).not.toContain('Jane');
+    expect(out).toContain('[redacted email]');
+    expect(out).toContain('[redacted phone]');
+  });
 });
-afterAll(async () => {
-  await drop();
-});
 
-const code = (p: Promise<unknown>) =>
-  p.then(
-    () => 'ok',
-    (e: unknown) => (e instanceof DomainError ? e.code : `other:${String(e)}`),
-  );
-
-describe('guardrails (I14)', () => {
-  it('removes contact details but keeps training numbers', () => {
-    const r = redactContact(
-      'Ping jo@example.test or +44 7700 900123, see https://x.test/p\nBench 3x8 @ 60kg RPE 8\nRun 1x5km',
-    );
-    expect(r.text).not.toMatch(/jo@|7700|https:/);
-    expect(r.text).toContain('Bench 3x8 @ 60kg RPE 8');
-    expect(r.text).toContain('Run 1x5km');
-    expect(r.redactions).toBe(3);
+describe('medical / supplement guardrail (I14)', () => {
+  it('refuses injury and supplement advice requests', () => {
+    expect(() =>
+      assertNoAdviceRequest('What supplement should I take for my knee injury?'),
+    ).toThrow(DomainError);
+    expect(() => assertNoAdviceRequest('Bench press 3x8 @ 60kg')).not.toThrow();
   });
 
-  it('removes injury, medical and supplement lines one by one', () => {
-    const r = filterUnsafe(
-      'Day 1: Upper\nBench press 3x8\nSkip if your shoulder hurts or is painful\nTake creatine daily\nRow 3x10',
-    );
-    expect(r.text).toBe('Day 1: Upper\nBench press 3x8\nRow 3x10');
-    expect(r.removed).toBe(2);
-    // Common ways of saying it are caught too (review S5)…
-    for (const line of [
-      'Knee hurting more than last week',
-      'Felt dizzy on Tuesday',
-      'Back is sore',
-    ]) {
-      expect(filterUnsafe(line).removed).toBe(1);
-    }
-    // …while ordinary exercises pass.
-    const program =
-      'Shoulder press 3x8\nKnee raise 3x12\nHill sprint 6x30s\nDrill work 1x10min\nPallof press 3x10';
-    expect(filterUnsafe(program).removed).toBe(0);
-  });
-});
-
-describe('opt-in, roles and the daily cap (I14)', () => {
-  it('is off by default; only the owner turns it on; only trainers use it; 50 a day', async () => {
-    const org = await newOrg(prisma);
-    expect(
-      await code(
-        runAs(prisma, org.coach, (tx) => startAiRequest(tx, org.coach, 'program_from_text', 10)),
-      ),
-    ).toBe('FORBIDDEN');
-    const admin: ActorContext = { ...org.coach, role: 'admin' };
-    expect(await code(runAs(prisma, admin, (tx) => setAiEnabled(tx, admin, true)))).toBe(
-      'FORBIDDEN',
-    );
-    await runAs(prisma, org.coach, (tx) => setAiEnabled(tx, org.coach, true));
-    const assistant: ActorContext = { ...org.coach, role: 'assistant' };
-    expect(
-      await code(
-        runAs(prisma, assistant, (tx) => startAiRequest(tx, assistant, 'program_from_text', 10)),
-      ),
-    ).toBe('FORBIDDEN');
-
-    const { requestId } = await runAs(prisma, org.coach, (tx) =>
-      startAiRequest(tx, org.coach, 'program_from_text', 10),
-    );
-    await runAs(prisma, org.coach, (tx) =>
-      finishAiRequest(tx, org.coach, requestId, {
-        status: 'ok',
-        kind: 'program_from_text',
-        outputChars: 5,
+  it('refuses a paste that asks for injury advice', async () => {
+    await expect(
+      createPasteDraft({
+        provider: new FakeAiProvider(),
+        sourceText: 'Day 1: Rehab for my torn meniscus, what dosage of creatine?',
+        library: LIBRARY,
       }),
-    );
-    await withSystem(
-      (tx) =>
-        tx.aiRequest.createMany({
-          data: Array.from({ length: AI_DAILY_CAP - 1 }, () => ({
-            organizationId: org.orgId,
-            kind: 'program_from_text',
-          })),
-        }),
-      prisma,
-    );
-    expect(
-      await code(
-        runAs(prisma, org.coach, (tx) => startAiRequest(tx, org.coach, 'program_from_text', 10)),
-      ),
-    ).toBe('RATE_LIMITED');
-    // The log holds sizes and outcomes only.
-    const row = await withSystem(
-      (tx) => tx.aiRequest.findUniqueOrThrow({ where: { id: requestId } }),
-      prisma,
-    );
-    expect(row).toMatchObject({ status: 'ok', inputChars: 10, outputChars: 5 });
+    ).rejects.toThrow(DomainError);
   });
 });
 
-describe('drafts (I10, I11, I12)', () => {
-  it('I10: pasted text becomes an import draft; contact details never reach the provider; unsafe lines are removed', async () => {
-    const ai = new FakeAi();
-    ai.extraLines = ['Take ibuprofen if your knee aches'];
-    const d = await draftProgramFromText(ai, {
-      text: 'For Priya Sharma, sam@example.test\nDay 1: Push\n- Bench press 3x8 @ 60kg\n- Push-up 3x12',
-      units: 'kg',
-      library: ['Bench press', 'Push-up'],
-      clientNames: ['Priya Sharma'],
+describe('paste to program (I10)', () => {
+  it('parses text locally, matches the library, and flags unmatched exercises', async () => {
+    const provider = new FakeAiProvider();
+    const { content } = await createPasteDraft({
+      provider,
+      sourceText: 'Day 1: Upper\nBench press 3x8 @ 60kg\nMystery lift 3x10',
+      library: LIBRARY,
     });
-    expect(ai.calls[0]?.prompt).not.toContain('Priya');
-    expect(ai.calls[0]?.prompt).not.toContain('sam@example.test');
-    expect(d.text).not.toMatch(/ibuprofen/);
-    expect(d.removedLines).toBe(1);
-    expect(d.note).toMatch(/1 line was removed/);
-    // The stray first line lands in its own day; the program's exercises follow.
-    expect(d.parsed.weeks[0]?.days.flatMap((day) => day.lines.map((l) => l.name))).toEqual(
-      expect.arrayContaining(['Bench press', 'Push-up']),
-    );
+    expect(content.label).toBe('Drafted with AI');
+    expect(content.weeks[0]?.days[0]?.exercises[0]).toMatchObject({
+      exerciseId: 'ex-bench',
+      name: 'Bench press',
+    });
+    expect(content.unmatched).toEqual([
+      { dayTitle: 'Day 1: Upper', name: 'Mystery lift', reason: 'not_in_library' },
+    ]);
   });
 
-  it('I11: the template’s structure and library names go out, never client details; a refusal is reported', async () => {
-    const w = await newClientWorld(prisma, await newOrg(prisma));
-    const ai = new FakeAi();
-    const input = {
-      templateId: w.templateId,
-      request: '4 days, dumbbells only, 6 weeks',
-      units: 'kg' as const,
-      library: ['Goblet squat'],
-    };
-    const { req } = await runAs(prisma, w.coach, (tx) => templateDraftRequest(tx, w.coach, input));
-    // The provider is called with no transaction open.
-    const d = await completeProgramDraft(ai, req, 'kg');
-    const prompt = ai.calls[0]!.prompt;
-    expect(prompt).toContain("The coach's template:");
-    expect(prompt).toContain('Goblet squat');
-    expect(prompt).not.toMatch(/@example\.test/);
-    expect(d.text).toContain('4 days, dumbbells only, 6 weeks');
-
-    ai.refuse = true;
-    await expect(completeProgramDraft(ai, req, 'kg')).rejects.toMatchObject({
-      name: 'AiUnavailableError',
-      reason: 'refused',
+  it('never sends raw text, notes, emails or names to the provider', async () => {
+    const provider = new FakeAiProvider();
+    await createPasteDraft({
+      provider,
+      sourceText: [
+        'Exercise,Sets,Reps,Load,RPE,Notes',
+        'Bench press,3,8,60,,Call jane@example.com about this secret note',
+      ].join('\n'),
+      library: LIBRARY,
+      clientNames: ['Jane Doe'],
     });
-    // Another workspace's template is not found.
-    const other = await newOrg(prisma);
+    const sent = JSON.stringify(provider.lastRequest);
+    expect(sent).not.toContain('jane@example.com');
+    expect(sent).not.toContain('secret note');
+    expect(sent).not.toContain('Call');
+    expect(sent).toContain('Bench press');
+  });
+
+  it('marks exercises outside the requested kit as unmatched', () => {
+    const parsed = parseProgram('Day 1\nBench press 3x8', 'kg');
+    const { unmatched, days } = matchToLibrary(parsed, LIBRARY, ['Dumbbell']);
+    expect(unmatched).toEqual([{ dayTitle: 'Day 1', name: 'Bench press', reason: 'equipment' }]);
+    expect(days[0]?.exercises[0]?.exerciseId).toBeNull();
+  });
+});
+
+describe('draft from template (I11)', () => {
+  it('parses days, weeks, equipment and template name from one sentence', () => {
     expect(
-      await code(runAs(prisma, other.coach, (tx) => templateDraftRequest(tx, other.coach, input))),
-    ).toBe('NOT_FOUND');
+      parseTemplateInstruction('Like my template Strength Base, 4 days, dumbbells only, 6 weeks'),
+    ).toEqual({
+      templateTitle: 'Strength Base',
+      daysPerWeek: 4,
+      weeks: 6,
+      equipmentFilter: ['Dumbbell'],
+    });
+    const defaults = parseTemplateInstruction('Like my template Strength Base');
+    expect(defaults.daysPerWeek).toBeNull();
+    expect(defaults.weeks).toBe(4);
   });
 
-  it('I12: highlights cite real answers only, unsafe points are dropped, and nothing names the client', async () => {
-    const w = await newClientWorld(prisma, await newOrg(prisma));
-    const questions = [
-      { id: 'q1', type: 'scale_1_5', label: 'Energy this week', optional: true },
-      { id: 'q2', type: 'long_text', label: 'Anything else?', optional: true },
-    ];
-    const ids = await withSystem(async (tx) => {
-      const t = await tx.checkinTemplate.create({
-        data: { organizationId: w.orgId, title: 'Weekly', questionsJson: questions },
-      });
-      const make = (day: string, answers: Record<string, string | number>) =>
-        tx.checkin.create({
-          data: {
-            organizationId: w.orgId,
-            clientId: w.clientId,
-            templateId: t.id,
-            periodLocalDate: new Date(`${day}T00:00:00Z`),
-            questionsJson: questions,
-            issuedAt: new Date(`${day}T08:00:00Z`),
-            dueAt: new Date(`${day}T20:00:00Z`),
-            submittedAt: new Date(`${day}T12:00:00Z`),
-            answersJson: answers,
-            submitIdempotencyKey: `test-${day}`,
-          },
-        });
-      const prev = await make('2026-10-28', { q1: 3, q2: 'Busy week' });
-      const client = await tx.client.findUniqueOrThrow({ where: { id: w.clientId } });
-      const first = client.name.split(' ')[0]!;
-      const cur = await make('2026-11-04', {
-        q1: 5,
-        q2: `Slept well. ${first} here, email me at c@example.test`,
-      });
-      return { prev: prev.id, cur: cur.id };
-    }, prisma);
+  it('drops exercises outside the requested kit and reports them as unmatched', async () => {
+    const provider = new FakeAiProvider();
+    const content = await createTemplateDraft({
+      provider,
+      instruction: 'Like my template Strength Base, 2 days, dumbbells only, 1 week',
+      templateDays: [
+        {
+          title: 'Day 1',
+          exercises: [
+            {
+              exerciseId: 'ex-bench',
+              name: 'Bench press',
+              equipment: 'Barbell',
+              sets: [{ reps: 8 }],
+            },
+            {
+              exerciseId: 'ex-db-press',
+              name: 'Dumbbell press',
+              equipment: 'Dumbbell',
+              sets: [{ reps: 10 }],
+            },
+          ],
+        },
+      ],
+    });
+    expect(content.weeks[0]?.days[0]?.exercises[0]?.exerciseId).toBeNull();
+    expect(content.weeks[0]?.days[0]?.exercises[1]?.exerciseId).toBe('ex-db-press');
+    // The single template day is cycled to fill 2 requested days, so the barbell exercise is
+    // flagged once per cycled day.
+    expect(content.unmatched).toEqual([
+      { dayTitle: 'Day 1', name: 'Bench press', reason: 'equipment' },
+      { dayTitle: 'Day 1', name: 'Bench press', reason: 'equipment' },
+    ]);
+  });
 
-    const ai = new FakeAi();
-    ai.extraLines = ['Consider a magnesium supplement'];
-    const prepared = await runAs(prisma, w.coach, (tx) => highlightsRequest(tx, w.coach, ids.cur));
-    const r = await completeHighlights(ai, prepared);
-    const prompt = ai.calls[0]!.prompt;
-    expect(prompt).toContain('[p:q1] 3');
-    expect(prompt).toContain('[c:q1] 5');
-    expect(prompt).not.toContain('c@example.test');
-    const name = await withSystem(
-      (tx) => tx.client.findUniqueOrThrow({ where: { id: w.clientId }, select: { name: true } }),
-      prisma,
+  it('repeats the template days across the requested weeks', async () => {
+    const provider = new FakeAiProvider();
+    const content = await createTemplateDraft({
+      provider,
+      instruction: 'Like my template Strength Base, 4 days, 6 weeks',
+      templateDays: [
+        {
+          title: 'Day 1',
+          exercises: [{ exerciseId: 'ex-bench', name: 'Bench press', sets: [{ reps: 8 }] }],
+        },
+        {
+          title: 'Day 2',
+          exercises: [{ exerciseId: 'ex-squat', name: 'Back squat', sets: [{ reps: 5 }] }],
+        },
+      ],
+    });
+    expect(content.kind).toBe('template');
+    expect(content.label).toBe('Drafted with AI');
+    expect(content.weeks).toHaveLength(6);
+    expect(content.weeks[0]?.days).toHaveLength(4);
+    // Days cycle when the template has fewer days than requested.
+    expect(content.weeks[0]?.days[2]?.title).toBe('Day 1');
+  });
+});
+
+describe('check-in highlights (I12)', () => {
+  const questions: CheckinQuestion[] = [
+    { id: 'energy', type: 'scale_1_5', label: 'Energy this week', optional: true },
+    { id: 'sleep', type: 'scale_1_5', label: 'Sleep this week', optional: true },
+    { id: 'notes', type: 'short_text', label: 'Anything else?', optional: true },
+  ];
+
+  it('returns only changed answers, each with a link to both source answers', () => {
+    const highlights = summarizeCheckinChanges({
+      clientId: 'client-9',
+      questions,
+      previous: { checkinId: 'prev-1', answers: { energy: 3, sleep: 4, notes: 'same' } },
+      current: { checkinId: 'cur-1', answers: { energy: 4, sleep: 4, notes: 'same' } },
+    });
+    expect(highlights).toHaveLength(1);
+    expect(highlights[0]).toMatchObject({
+      questionId: 'energy',
+      label: 'Energy this week',
+      previous: 3,
+      current: 4,
+      change: 'changed',
+    });
+    expect(highlights[0]?.previousSourceUrl).toBe('/app/clients/client-9/check-ins#prev-1-energy');
+    expect(highlights[0]?.currentSourceUrl).toBe('/app/clients/client-9/check-ins#cur-1-energy');
+  });
+
+  it('marks newly answered and newly blank questions, with a link only where an answer exists', () => {
+    const highlights = summarizeCheckinChanges({
+      clientId: 'client-9',
+      questions,
+      previous: { checkinId: 'prev-1', answers: { energy: 3 } },
+      current: { checkinId: 'cur-1', answers: { notes: 'tired' } },
+    });
+    expect(highlights.map((h) => [h.questionId, h.change, h.previousSourceUrl === null])).toEqual([
+      ['energy', 'removed', false],
+      ['notes', 'added', true],
+    ]);
+  });
+
+  it('is coach-only: a client actor is refused even though checkin:read admits clients', () => {
+    expect(() =>
+      highlightsForCoach(client, {
+        clientId: 'client-9',
+        questions,
+        previous: { checkinId: 'p', answers: { energy: 1 } },
+        current: { checkinId: 'c', answers: { energy: 2 } },
+      }),
+    ).toThrow(DomainError);
+  });
+});
+
+describe('opt-in and draft-only guardrails (I14)', () => {
+  it('is OFF by default when no setting row exists', async () => {
+    await expect(getAiSetting(mockTx(null), coach)).resolves.toEqual({
+      aiEnabled: false,
+      provider: 'fake',
+    });
+  });
+
+  it('refuses to create a draft while opt-in is off', async () => {
+    await expect(
+      savePasteAiDraft(mockTx(null), coach, new FakeAiProvider(), {
+        sourceText: 'Day 1\nBench press 3x8',
+        library: LIBRARY,
+      }),
+    ).rejects.toThrow(/off for this workspace/);
+  });
+
+  it('refuses draft creation for a client actor', async () => {
+    await expect(
+      savePasteAiDraft(mockTx({ aiEnabled: true }), client, new FakeAiProvider(), {
+        sourceText: 'Day 1\nBench press 3x8',
+        library: LIBRARY,
+      }),
+    ).rejects.toThrow(DomainError);
+  });
+
+  it('stores drafts with status draft and the AI label, never as a program', async () => {
+    const content = {
+      label: AI_LABEL,
+      kind: 'paste',
+      title: 'Pasted program',
+      weeks: [],
+      unmatched: [],
+    };
+    const row = {
+      id: 'draft-1',
+      kind: 'paste',
+      status: 'draft',
+      draftJson: content,
+      createdAt: new Date(),
+    };
+    const view = await savePasteAiDraft(
+      mockTx({ aiEnabled: true }, row),
+      coach,
+      new FakeAiProvider(),
+      {
+        sourceText: 'Day 1\nBench press 3x8',
+        library: LIBRARY,
+      },
     );
-    expect(prompt).not.toContain(name.name);
-    // The client's own name, written in an answer, is replaced too (review S4).
-    for (const part of name.name.split(' ').filter((p) => p.length >= 3)) {
-      expect(prompt).not.toMatch(new RegExp(`\\b${part}\\b`));
-    }
-    expect(prompt).toContain('[name] here');
-    expect(r.previousId).toBe(ids.prev);
-    expect(r.points.length).toBe(2);
-    expect(r.points.every((p) => p.sources.length > 0)).toBe(true);
-    expect(r.points[0]?.sources[0]).toMatchObject({ questionId: 'q1', checkin: 'current' });
-    expect(r.removed).toBe(1);
+    expect(view.status).toBe('draft');
+    expect(view.label).toBe('Drafted with AI');
+    expect(view.content.label).toBe('Drafted with AI');
+  });
+
+  it('lets a manager turn the opt-in on', async () => {
+    await expect(setAiSetting(mockTx(null), owner, true)).resolves.toEqual({
+      aiEnabled: true,
+      provider: 'fake',
+    });
+  });
+});
+
+describe('provider port (I14)', () => {
+  it('rejects provider input carrying an email address', () => {
+    expect(() =>
+      assertProviderSafe({
+        kind: 'paste',
+        title: 'x',
+        weeks: 1,
+        days: [{ title: 'Day 1', exercises: [{ exerciseId: null, name: 'a@b.com', sets: [] }] }],
+        equipmentFilter: [],
+      }),
+    ).toThrow(/email/);
+  });
+
+  it('the fake provider is deterministic and records what it received', async () => {
+    const provider = new FakeAiProvider();
+    const first = await provider.generateDraft({
+      kind: 'paste',
+      title: 'T',
+      weeks: 1,
+      days: [{ title: 'Day 1', exercises: [] }],
+      equipmentFilter: [],
+    });
+    const second = await provider.generateDraft({
+      kind: 'paste',
+      title: 'T',
+      weeks: 1,
+      days: [{ title: 'Day 1', exercises: [] }],
+      equipmentFilter: [],
+    });
+    expect(first).toEqual(second);
+    expect(provider.name).toBe('fake');
   });
 });

@@ -30,9 +30,6 @@ const chipOff = 'border-border bg-surface text-secondary hover:border-ink/30 hov
 import { FlagQueue } from './FlagQueue';
 import { MarkSeenButton } from './MarkSeenButton';
 
-// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
-export const instant = false;
-
 export const metadata: Metadata = { title: 'Review | Repsy' };
 
 function Section({

@@ -1,9 +1,6 @@
 import type { Metadata } from 'next';
 import { CHANGELOG, ROADMAP } from '@/content/changelog';
 
-// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
-export const instant = false;
-
 export const metadata: Metadata = { title: 'What’s new | Repsy' };
 
 /** PRD M13: public changelog and roadmap. */

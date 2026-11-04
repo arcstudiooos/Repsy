@@ -1,4 +1,4 @@
-import { brandedFromFor, type EmailMessage, type EmailPort, type Logger } from '@kinetic/core';
+import type { EmailMessage, EmailPort, Logger } from '@kinetic/core';
 import { withSystem, type PrismaClient } from '@kinetic/db';
 import { defineJob, type CaptureException } from './registry';
 import { renderTemplate } from './templates';
@@ -130,11 +130,7 @@ export async function deliverDueEmails(deps: DeliverDeps): Promise<BatchResult> 
       // Recipient: raw address (invitee without an account) or the user's email.
       const to = row.toEmail ?? row.toUser?.email;
       if (!to) throw new Error('outbox row has no recipient');
-      // PRD L4: a workspace with a verified sending domain sends from it.
-      const from = row.organizationId
-        ? await withSystem((tx) => brandedFromFor(tx, row.organizationId!), prisma)
-        : null;
-      await port.send({ ...render(row, to, appBaseUrl), ...(from ? { from } : {}) });
+      await port.send(render(row, to, appBaseUrl));
     } catch (error) {
       const exhausted = row.attempts >= EMAIL_RETRY_LIMIT;
       await withSystem(

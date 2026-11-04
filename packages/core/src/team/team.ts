@@ -1,4 +1,3 @@
-import { orgIsLapsed } from '../lapse/lapse';
 import { appendAudit, withSystem, type PrismaClient, type TenantTx } from '@kinetic/db';
 import { isCoachRole, isManager, STAFF_ROLES, type ActorContext, type Role } from '../authz/actor';
 import { DomainError } from '../errors';
@@ -134,9 +133,10 @@ export async function inviteTeammate(
       expiresAt: new Date(now.getTime() + TEAM_INVITE_DAYS * 86_400_000),
     },
   } as Parameters<typeof tx.teamInvite.create>[0]);
-  // Sequential: a transaction is one connection (pg deprecates overlapping queries on it).
-  const org = await tx.organization.findFirst({ select: { name: true } });
-  const inviter = await tx.user.findFirst({ where: { id: actor.userId }, select: { name: true } });
+  const [org, inviter] = await Promise.all([
+    tx.organization.findFirst({ select: { name: true } }),
+    tx.user.findFirst({ where: { id: actor.userId }, select: { name: true } }),
+  ]);
   await enqueueEmail(tx, {
     kind: 'team_invite',
     toEmail: email,
@@ -302,13 +302,6 @@ export async function acceptTeamInvite(
       where: { tokenHash: hashInviteToken(token) },
     });
     if (!invite || invite.revokedAt || invite.acceptedAt) throw notFound();
-    // PRD M12: a lapsed workspace takes no one new (final review #6).
-    if (await orgIsLapsed(tx, invite.organizationId, now)) {
-      throw new DomainError(
-        'WORKSPACE_LAPSED',
-        'This workspace is not taking new members right now.',
-      );
-    }
     if (invite.expiresAt <= now)
       throw new DomainError('CONFLICT', 'This invite has expired. Ask for a new one.');
     if (!user.emailVerified || user.email.toLowerCase() !== invite.email.toLowerCase()) {

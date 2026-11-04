@@ -1,152 +1,451 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ChartColumn, Check } from 'lucide-react';
-import { PageHeader } from '@/components/ui/page-header';
 import { buttonVariants } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { ChartColumn, Download, Repeat, TrendingDown, Undo2, Wallet } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
+import { StatStrip } from '@/components/ui/stat';
 import {
-  can,
-  getPaymentSettings,
-  listCoupons,
+  cancelSubscription,
+  formatMoneyMinor,
+  getBillingAnalytics,
   listPackages,
-  listPayments,
-  listPrograms,
-  listTags,
+  listSubscriptions,
+  recordManualPayment,
+  retrySubscriptionPayment,
+  savePackage,
 } from '@kinetic/core';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { availableProviders } from '@/server/payments';
 import { withServerTenant } from '@/server/serverActor';
-import { ConnectCard } from './ConnectCard';
-import { CouponsSection } from './CouponsSection';
-import { PackagesSection } from './PackagesSection';
-import { PaymentsTable } from '@/components/billing/PaymentsTable';
-import { SettingsForm } from './SettingsForm';
-
-// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
-export const instant = false;
 
 export const metadata: Metadata = { title: 'Billing | Repsy' };
 
-const DAY = 86_400_000;
-/** The payments window: read per request (a server component, so there is no re-render to keep stable). */
-const last90Days = () => new Date(Date.now() - 90 * DAY);
-
-/** PRD K1-K6, K9, K15: how a workspace takes payments, what it sells and what came in. */
-export default async function BillingPage() {
-  const data = await withServerTenant(async (tx, actor) => {
-    const manager = can(actor, 'billing:manage');
-    return {
-      manager,
-      settings: await getPaymentSettings(tx, actor),
-      packages: await listPackages(tx, actor, { includeArchived: manager }),
-      coupons: manager ? await listCoupons(tx, actor) : [],
-      payments: await listPayments(tx, actor, { from: last90Days() }),
-      tags: manager ? (await listTags(tx, actor)).map((t) => ({ id: t.id, name: t.name })) : [],
-      templates: manager
-        ? (await listPrograms(tx, actor, { kind: 'template' })).items
-            .filter((p) => p.versionNo !== null)
-            .map((p) => ({ id: p.id, title: p.title }))
-        : [],
-    };
-  });
-  const { settings } = data;
-  const currency = settings.currency;
-  // PRD K1-K3: the order a new workspace sets payments up in.
-  const done = [settings.account !== null, currency !== null, data.packages.length > 0];
-  const firstOpen = done.indexOf(false);
-  const steps = ['Connect a payment account', 'Pick your currency', 'Create a package'].map(
-    (label, i) => ({ label, done: done[i]!, current: i === firstOpen }),
+async function createPackageAction(data: FormData) {
+  'use server';
+  await withServerTenant((tx, actor) =>
+    savePackage(tx, actor, {
+      title: String(data.get('title') ?? ''),
+      kind: String(data.get('kind') ?? 'one_off'),
+      interval:
+        String(data.get('kind') ?? '') === 'recurring'
+          ? String(data.get('interval') ?? 'month')
+          : null,
+      amountMinor: Number(data.get('amountMinor') ?? 0),
+      currency: String(data.get('currency') ?? 'USD'),
+      installments:
+        String(data.get('kind') ?? '') === 'payment_plan'
+          ? Number(data.get('installments') ?? 3)
+          : null,
+      trialDays: Number(data.get('trialDays') ?? 0),
+    }),
   );
-  const setupDone = firstOpen === -1;
+}
+
+async function subscriptionAction(data: FormData) {
+  'use server';
+  const id = String(data.get('subscriptionId') ?? '');
+  const action = String(data.get('action') ?? '');
+  await withServerTenant((tx, actor) => {
+    if (action === 'cancel') return cancelSubscription(tx, actor, id).then(() => undefined);
+    return retrySubscriptionPayment(tx, actor, id).then(() => undefined);
+  });
+}
+
+async function manualPaymentAction(data: FormData) {
+  'use server';
+  await withServerTenant((tx, actor) =>
+    recordManualPayment(tx, actor, {
+      packageId: String(data.get('packageId') ?? ''),
+      customerEmail: String(data.get('customerEmail') ?? ''),
+      amountMinor: Number(data.get('amountMinor') ?? 0),
+      currency: String(data.get('currency') ?? 'USD'),
+      method: String(data.get('method') ?? 'cash'),
+      reference: String(data.get('reference') ?? ''),
+    }),
+  );
+}
+
+/** PRD K3, K7, K9, K15: packages, subscriptions, revenue and manual payments. */
+export default async function BillingPage() {
+  const { packages, subscriptions, needsReview, analytics } = await withServerTenant(
+    async (tx, actor) => ({
+      packages: await listPackages(tx, actor),
+      subscriptions: await listSubscriptions(tx, actor),
+      needsReview: await listSubscriptions(tx, actor, { needsReview: true }),
+      analytics: await getBillingAnalytics(tx, actor),
+    }),
+  );
+  const mrr = analytics.summary.mrrByCurrency
+    .map((r) => formatMoneyMinor(r.mrrMinor, r.currency))
+    .join(', ');
   return (
     <>
       <PageHeader
         title="Billing"
-        description="Sell packages, take card and UPI payments, and record cash or bank transfers."
+        description="Packages, subscriptions and what came in."
         actions={
-          <Link href="/app/analytics/business" className={buttonVariants({ variant: 'secondary' })}>
-            <ChartColumn aria-hidden className="size-4" />
-            See revenue
-          </Link>
+          <>
+            <Link
+              href="/api/v1/billing/analytics?format=csv"
+              className={buttonVariants({ variant: 'secondary' })}
+            >
+              <Download aria-hidden className="size-4" />
+              Download revenue CSV
+            </Link>
+            <Link
+              href="/app/analytics/business"
+              className={buttonVariants({ variant: 'secondary' })}
+            >
+              <ChartColumn aria-hidden className="size-4" />
+              Business analytics
+            </Link>
+          </>
         }
       />
-      {data.manager && !setupDone && (
-        <ol
-          aria-label="Set up payments"
-          className="mb-6 grid gap-2 rounded-card border border-border bg-surface p-3 shadow-card sm:grid-cols-3"
-        >
-          {steps.map((step, i) => (
-            <li
-              key={step.label}
-              className={cn(
-                'flex items-center gap-3 rounded-control px-3 py-2',
-                step.current && 'bg-accent-soft/60',
-              )}
-            >
-              <span
-                aria-hidden
-                className={cn(
-                  'flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold',
-                  step.done
-                    ? 'bg-accent text-white'
-                    : step.current
-                      ? 'border-[1.5px] border-accent text-accent-ink'
-                      : 'border-[1.5px] border-input-border text-secondary',
-                )}
-              >
-                {step.done ? <Check className="size-4" strokeWidth={3} /> : i + 1}
-              </span>
-              <span className="text-sm">
-                <span
-                  className={cn(
-                    'block font-medium',
-                    !step.done && !step.current && 'text-secondary',
-                  )}
-                >
-                  {step.label}
-                </span>
-                <span className="text-secondary">
-                  {step.done ? 'Done' : step.current ? 'Next' : 'Later'}
-                </span>
-              </span>
-            </li>
-          ))}
-        </ol>
-      )}
       <div className="flex flex-col gap-6">
-        {data.manager && (
-          <>
-            <ConnectCard account={settings.account} providers={availableProviders()} />
-            <SettingsForm settings={settings} />
-          </>
-        )}
-        {currency ? (
-          <PackagesSection
-            packages={data.packages}
-            currency={currency}
-            manager={data.manager}
-            tags={data.tags}
-            templates={data.templates}
-          />
-        ) : (
+        <StatStrip
+          label="Revenue summary"
+          items={[
+            { label: 'Monthly recurring revenue', icon: Wallet, value: mrr || '–' },
+            {
+              label: 'Active subscriptions',
+              icon: Repeat,
+              value: String(analytics.summary.activeSubscriptions),
+            },
+            {
+              label: 'Churn, last 30 days',
+              icon: TrendingDown,
+              value:
+                analytics.summary.churnPercent30d === null
+                  ? '–'
+                  : `${analytics.summary.churnPercent30d}%`,
+            },
+            {
+              label: 'Refunded',
+              icon: Undo2,
+              value: formatMoneyMinor(
+                analytics.summary.refundsMinor,
+                analytics.summary.revenueByCurrency[0]?.currency ?? 'USD',
+              ),
+            },
+          ]}
+        />
+        <p className="text-sm text-secondary">
+          <Link
+            href="/app/billing/self-service"
+            className="font-medium text-accent-ink hover:underline"
+          >
+            Client billing self-service
+          </Link>
+        </p>
+
+        {needsReview.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Packages</CardTitle>
+              <CardTitle as="h2">Needs review</CardTitle>
               <CardDescription>
-                {data.manager
-                  ? 'Pick your currency above to create packages.'
-                  : 'The workspace owner sets up payments first.'}
+                Failed payments that ran out of retries. Contact the client before access pauses.
               </CardDescription>
             </CardHeader>
+            <CardContent>
+              <ul className="flex flex-col gap-2">
+                {needsReview.map((s) => (
+                  <li key={s.id} className="flex flex-wrap items-center gap-3 text-sm">
+                    <span>
+                      {s.packageTitle} · {formatMoneyMinor(s.amountMinor, s.currency)}
+                    </span>
+                    <form action={subscriptionAction}>
+                      <input type="hidden" name="subscriptionId" value={s.id} />
+                      <input type="hidden" name="action" value="retry" />
+                      <button type="submit" className="text-accent underline underline-offset-4">
+                        Retry payment (test provider)
+                      </button>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
           </Card>
         )}
-        {data.manager && currency && <CouponsSection coupons={data.coupons} currency={currency} />}
+
         <Card>
           <CardHeader>
-            <CardTitle>Payments in the last 90 days</CardTitle>
+            <CardTitle as="h2">Subscriptions</CardTitle>
+            <CardDescription>
+              Cancel runs to the end of the current period; the end date is shown at once.
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <PaymentsTable payments={data.payments} />
+            {subscriptions.length === 0 ? (
+              <p className="text-sm text-secondary">No subscriptions yet.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <caption className="sr-only">Subscriptions</caption>
+                  <thead>
+                    <tr className="text-secondary">
+                      <th scope="col" className="py-1 pr-4 font-medium">
+                        Package
+                      </th>
+                      <th scope="col" className="py-1 pr-4 font-medium">
+                        Status
+                      </th>
+                      <th scope="col" className="py-1 pr-4 font-medium">
+                        Amount
+                      </th>
+                      <th scope="col" className="py-1 pr-4 font-medium">
+                        Next charge
+                      </th>
+                      <th scope="col" className="py-1 pr-4 font-medium">
+                        Ends
+                      </th>
+                      <th scope="col" className="py-1 pr-4 font-medium">
+                        <span className="sr-only">Actions</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {subscriptions.map((s) => (
+                      <tr key={s.id}>
+                        <td className="py-1 pr-4">{s.packageTitle}</td>
+                        <td className="py-1 pr-4">{s.status}</td>
+                        <td className="py-1 pr-4">{formatMoneyMinor(s.amountMinor, s.currency)}</td>
+                        <td className="py-1 pr-4">
+                          {s.nextChargeAt ? new Date(s.nextChargeAt).toLocaleDateString() : '–'}
+                        </td>
+                        <td className="py-1 pr-4">
+                          {s.endsAt ? new Date(s.endsAt).toLocaleDateString() : '–'}
+                        </td>
+                        <td className="py-1 pr-4">
+                          {s.status !== 'cancelled' && s.status !== 'ended' && (
+                            <form action={subscriptionAction}>
+                              <input type="hidden" name="subscriptionId" value={s.id} />
+                              <input type="hidden" name="action" value="cancel" />
+                              <button
+                                type="submit"
+                                className="text-accent underline underline-offset-4"
+                              >
+                                Cancel
+                              </button>
+                            </form>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle as="h2">Packages</CardTitle>
+            <CardDescription>
+              What you sell. A package can invite, tag, start an onboarding sequence and assign a
+              template on purchase — the sequence itself runs in the journeys slice.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {packages.length === 0 ? (
+              <p className="text-sm text-secondary">No packages yet. Create one below.</p>
+            ) : (
+              <ul className="mb-4 flex flex-col gap-2 text-sm">
+                {packages.map((p) => (
+                  <li key={p.id}>
+                    {p.title} · {formatMoneyMinor(p.amountMinor, p.currency)}
+                    {p.kind === 'recurring' ? ` per ${p.interval}` : ''}
+                    {p.kind === 'payment_plan' ? ` × ${p.installments}` : ''}
+                    {p.trialDays > 0 ? ` · ${p.trialDays}-day trial` : ''}
+                    {!p.active ? ' · archived' : ''}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <form action={createPackageAction} className="flex flex-col gap-3">
+              <div>
+                <label htmlFor="pkg-title" className="block text-sm font-medium">
+                  Title
+                </label>
+                <input
+                  id="pkg-title"
+                  name="title"
+                  required
+                  maxLength={120}
+                  className="w-full rounded border p-2 text-base"
+                />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div>
+                  <label htmlFor="pkg-kind" className="block text-sm font-medium">
+                    Kind
+                  </label>
+                  <select id="pkg-kind" name="kind" className="w-full rounded border p-2 text-base">
+                    <option value="one_off">One-off</option>
+                    <option value="recurring">Recurring</option>
+                    <option value="payment_plan">Payment plan</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="pkg-amount" className="block text-sm font-medium">
+                    Amount (cents / paise)
+                  </label>
+                  <input
+                    id="pkg-amount"
+                    name="amountMinor"
+                    type="number"
+                    min={0}
+                    required
+                    className="w-full rounded border p-2 text-base"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="pkg-currency" className="block text-sm font-medium">
+                    Currency
+                  </label>
+                  <input
+                    id="pkg-currency"
+                    name="currency"
+                    defaultValue="USD"
+                    maxLength={3}
+                    className="w-full rounded border p-2 text-base"
+                  />
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div>
+                  <label htmlFor="pkg-interval" className="block text-sm font-medium">
+                    Interval (recurring)
+                  </label>
+                  <select
+                    id="pkg-interval"
+                    name="interval"
+                    className="w-full rounded border p-2 text-base"
+                  >
+                    <option value="month">Monthly</option>
+                    <option value="week">Weekly</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="pkg-installments" className="block text-sm font-medium">
+                    Installments (plan)
+                  </label>
+                  <input
+                    id="pkg-installments"
+                    name="installments"
+                    type="number"
+                    min={2}
+                    max={24}
+                    defaultValue={3}
+                    className="w-full rounded border p-2 text-base"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="pkg-trial" className="block text-sm font-medium">
+                    Free trial (days)
+                  </label>
+                  <input
+                    id="pkg-trial"
+                    name="trialDays"
+                    type="number"
+                    min={0}
+                    max={365}
+                    defaultValue={0}
+                    className="w-full rounded border p-2 text-base"
+                  />
+                </div>
+              </div>
+              <button type="submit" className="self-start rounded bg-accent px-4 py-2 text-white">
+                Create package
+              </button>
+            </form>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle as="h2">Record a manual payment</CardTitle>
+            <CardDescription>
+              Cash or a bank transfer against a package (K15). No provider is involved, and the
+              payment still counts in revenue and gets a branded receipt.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form action={manualPaymentAction} className="flex flex-col gap-3">
+              <div>
+                <label htmlFor="man-package" className="block text-sm font-medium">
+                  Package
+                </label>
+                <select
+                  id="man-package"
+                  name="packageId"
+                  required
+                  className="w-full rounded border p-2 text-base"
+                >
+                  {packages
+                    .filter((p) => p.active)
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.title}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div>
+                  <label htmlFor="man-email" className="block text-sm font-medium">
+                    Client email
+                  </label>
+                  <input
+                    id="man-email"
+                    name="customerEmail"
+                    type="email"
+                    required
+                    className="w-full rounded border p-2 text-base"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="man-amount" className="block text-sm font-medium">
+                    Amount (cents / paise)
+                  </label>
+                  <input
+                    id="man-amount"
+                    name="amountMinor"
+                    type="number"
+                    min={1}
+                    required
+                    className="w-full rounded border p-2 text-base"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="man-method" className="block text-sm font-medium">
+                    Method
+                  </label>
+                  <select
+                    id="man-method"
+                    name="method"
+                    className="w-full rounded border p-2 text-base"
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="bank_transfer">Bank transfer</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label htmlFor="man-ref" className="block text-sm font-medium">
+                  Reference (optional)
+                </label>
+                <input
+                  id="man-ref"
+                  name="reference"
+                  maxLength={120}
+                  className="w-full rounded border p-2 text-base"
+                />
+              </div>
+              <button type="submit" className="self-start rounded bg-accent px-4 py-2 text-white">
+                Record payment
+              </button>
+            </form>
           </CardContent>
         </Card>
       </div>

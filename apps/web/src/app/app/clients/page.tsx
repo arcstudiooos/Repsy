@@ -26,9 +26,6 @@ import { ClientsTable } from './ClientsTable';
 import { JoinLinkDialog } from './JoinLinkDialog';
 import { NewClientDialog } from './NewClientDialog';
 
-// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
-export const instant = false;
-
 export const metadata: Metadata = { title: 'Clients | Repsy' };
 
 const STATUSES: ClientStatus[] = ['invited', 'active', 'paused', 'archived'];

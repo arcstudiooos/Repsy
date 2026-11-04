@@ -1,12 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { can, CHURN_LABEL, getBusinessAnalytics, getRevenue } from '@kinetic/core';
-import { RevenueSection } from './RevenueSection';
+import { CHURN_LABEL, getBusinessAnalytics } from '@kinetic/core';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';
-
-// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
-export const instant = false;
 
 export const metadata: Metadata = { title: 'Business analytics | Repsy' };
 
@@ -19,10 +15,7 @@ const days = (d: number | null) =>
 
 /** PRD I7: retention cohorts, client lifetime and why coaching ended. Every chart has the table it draws. */
 export default async function BusinessAnalyticsPage() {
-  const { a, revenue } = await withServerTenant(async (tx, actor) => ({
-    a: await getBusinessAnalytics(tx, actor),
-    revenue: can(actor, 'billing:read') ? await getRevenue(tx, actor) : null,
-  }));
+  const a = await withServerTenant((tx, actor) => getBusinessAnalytics(tx, actor));
   const peak = Math.max(1, ...a.monthly.flatMap((m) => [m.started, m.ended]));
   return (
     <>
@@ -49,20 +42,8 @@ export default async function BusinessAnalyticsPage() {
         </dl>
         <p className="text-sm text-secondary">
           Average time coached: {days(a.averageLifetimeDays)}. A client starts when they accept
-          their invite and ends when you end coaching.
+          their invite and ends when you end coaching. Revenue appears here once you take payments.
         </p>
-
-        {revenue?.currency ? (
-          <RevenueSection r={revenue} />
-        ) : (
-          <p className="text-sm text-secondary">
-            Revenue appears here once you{' '}
-            <Link href="/app/billing" className="text-accent underline">
-              take payments
-            </Link>
-            .
-          </p>
-        )}
 
         <Card>
           <CardHeader>

@@ -11,12 +11,15 @@ test.describe('message attachments (PRD H2)', () => {
     const portal = client.page;
     try {
       await portal.goto('/portal/messages');
-      await portal.getByLabel('Attach a photo or PDF').setInputFiles({
-        name: 'bloodwork.pdf',
-        mimeType: 'application/pdf',
-        buffer: Buffer.from('%PDF-1.4\n% test\n'),
-      });
-      await expect(portal.getByText('Attached: bloodwork.pdf')).toBeVisible({ timeout: 30_000 });
+      // A file chosen before the page hydrates is not picked up: choose it again until it shows.
+      await expect(async () => {
+        await portal.getByLabel('Attach a photo or PDF').setInputFiles({
+          name: 'bloodwork.pdf',
+          mimeType: 'application/pdf',
+          buffer: Buffer.from('%PDF-1.4\n% test\n'),
+        });
+        await expect(portal.getByText('Attached: bloodwork.pdf')).toBeVisible({ timeout: 10_000 });
+      }).toPass({ timeout: 60_000 });
       await expectNoAxeViolations(portal);
       await portal.getByRole('button', { name: 'Send' }).click();
       const link = portal.getByRole('link', { name: 'PDF attachment' });

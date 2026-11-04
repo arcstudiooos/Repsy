@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useId, useMemo, useState } from 'react';
 import type { ExerciseMatch, WeekInput } from '@kinetic/core';
-import { AiDraftPanel } from '@/components/ai/AiDraftPanel';
 import {
   parseProgram,
   type ImportUnits,
@@ -41,14 +40,7 @@ function describeSets(line: ParsedLine, units: ImportUnits): string {
   return parts.filter(Boolean).join(' ');
 }
 
-export function ImportProgram({
-  defaultUnits,
-  ai,
-}: {
-  defaultUnits: ImportUnits;
-  /** PRD I10, I11: set when AI drafting is on for this coach. */
-  ai?: { templates: { id: string; title: string }[] } | null;
-}) {
+export function ImportProgram({ defaultUnits }: { defaultUnits: ImportUnits }) {
   const router = useRouter();
   const id = useId();
   const [title, setTitle] = useState('');
@@ -59,8 +51,6 @@ export function ImportProgram({
   const [choice, setChoice] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  /** The box holds an AI draft the coach hasn't edited yet (labelled until they do). */
-  const [aiDraft, setAiDraft] = useState<{ note: string | null; redactions: number } | null>(null);
 
   async function read() {
     setError(null);
@@ -145,18 +135,6 @@ export function ImportProgram({
 
   return (
     <div className="flex flex-col gap-6">
-      {ai && (
-        <AiDraftPanel
-          templates={ai.templates}
-          units={units}
-          pasted={text}
-          onDraft={(d) => {
-            setText(d.text);
-            setParsed(null);
-            setAiDraft({ note: d.note, redactions: d.redactions });
-          }}
-        />
-      )}
       <section
         aria-labelledby={`${id}-src`}
         className="rounded-card bg-surface p-4 shadow-card md:p-6"
@@ -197,20 +175,6 @@ export function ImportProgram({
         <label htmlFor={`${id}-text`} className="mb-1 block text-sm font-medium">
           Paste the program
         </label>
-        {aiDraft && (
-          <div id={`${id}-ai`} role="status" className="mb-2 rounded-control bg-canvas p-3 text-sm">
-            <p className="font-medium">
-              Drafted with AI. Check every exercise and number before saving.
-            </p>
-            {aiDraft.note && <p className="text-secondary">{aiDraft.note}</p>}
-            {aiDraft.redactions > 0 && (
-              <p className="text-secondary">
-                {aiDraft.redactions} contact{' '}
-                {aiDraft.redactions === 1 ? 'detail was' : 'details were'} removed before sending.
-              </p>
-            )}
-          </div>
-        )}
         <textarea
           id={`${id}-text`}
           value={text}
@@ -220,7 +184,6 @@ export function ImportProgram({
             setText(e.target.value);
             setParsed(null);
           }}
-          aria-describedby={aiDraft ? `${id}-ai` : undefined}
           placeholder={
             'Week 1\nDay 1: Upper\nBench press 3x8 @ 60kg\nPull-up 3x6\n\nDay 2: Lower\nBack squat 5x5 @ 100kg\nPlank 3x45s'
           }

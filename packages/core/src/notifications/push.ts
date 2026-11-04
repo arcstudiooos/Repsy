@@ -14,7 +14,6 @@ export const PUSH_KINDS = [
   'workout_reminder',
   'checkin_reminder',
   'habit_reminder',
-  'booking_reminder',
 ] as const;
 export type PushKind = (typeof PUSH_KINDS)[number];
 

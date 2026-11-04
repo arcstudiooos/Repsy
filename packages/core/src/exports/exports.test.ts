@@ -88,7 +88,6 @@ describe('exports (S5-2)', () => {
     const other = await newClientWorld(prisma, await newOrg(prisma));
     const { csv } = await exportFor(w, 'coach');
     expect(Object.keys(csv).sort()).toEqual([
-      'bookings.csv',
       'checkins.csv',
       'clients.csv',
       'exercise_swaps.csv',
@@ -97,7 +96,6 @@ describe('exports (S5-2)', () => {
       'habits.csv',
       'metrics.csv',
       'nutrition.csv',
-      'payments.csv',
       'programs.json',
       'sessions.csv',
       'set_logs.csv',
@@ -130,7 +128,6 @@ describe('exports (S5-2)', () => {
     );
     const { csv } = await exportFor(w, 'client');
     expect(Object.keys(csv).sort()).toEqual([
-      'bookings.csv',
       'checkins.csv',
       'exercise_swaps.csv',
       'goals.csv',
@@ -138,7 +135,6 @@ describe('exports (S5-2)', () => {
       'messages.csv',
       'metrics.csv',
       'nutrition.csv',
-      'payments.csv',
       'profile.csv',
       'sessions.csv',
       'set_logs.csv',

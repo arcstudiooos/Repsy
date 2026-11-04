@@ -1,16 +1,16 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { getPublicProfile, getStorefront, lookupJoinLink } from '@kinetic/core';
+import {
+  formatMoneyMinor,
+  getPublicProfile,
+  getPublicStorefront,
+  lookupJoinLink,
+} from '@kinetic/core';
 import { prisma } from '@kinetic/db';
 import { AuthShell } from '@/components/auth-ui';
 import { LoadingState } from '@/components/states/LoadingState';
-import { priceLabel, trialLabel } from '@/lib/billing-format';
 import { ApplyForm } from './ApplyForm';
-import { BuyForm } from './BuyForm';
 import { JoinForm } from './JoinForm';
-
-// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
-export const instant = false;
 
 export const metadata: Metadata = {
   title: 'Join your coach | Repsy',
@@ -22,7 +22,6 @@ export const metadata: Metadata = {
 /** PRD B15: a coach's public page: their bio, offers and an application form. */
 async function PublicPage({ slug }: { slug: string }) {
   const profile = await getPublicProfile(prisma, slug);
-  const store = profile ? await getStorefront(prisma, slug) : null;
   if (!profile) {
     return (
       <AuthShell title="Page not found">
@@ -43,29 +42,41 @@ async function PublicPage({ slug }: { slug: string }) {
           <p className="text-base whitespace-pre-line">{profile.offers}</p>
         </section>
       )}
-      {store && store.packages.length > 0 && (
-        <section aria-labelledby="packages-heading" className="mb-6 flex flex-col gap-4">
-          <h2 id="packages-heading" className="text-lg font-semibold">
-            Packages
-          </h2>
-          {store.packages.map((p) => (
-            <details key={p.id} className="rounded-card border border-input-border p-4">
-              <summary className="flex min-h-11 cursor-pointer flex-col justify-center">
-                <span className="font-semibold">{p.title}</span>
-                <span className="text-sm text-secondary">
-                  {priceLabel(p, p.currency)}
-                  {trialLabel(p) && ` · ${trialLabel(p)}`}
-                </span>
-              </summary>
-              {p.description && <p className="my-3 whitespace-pre-line">{p.description}</p>}
-              <BuyForm slug={slug} packageId={p.id} title={p.title} asksRegion={store.asksRegion} />
-            </details>
-          ))}
-        </section>
-      )}
+      <StorefrontPackages slug={slug} />
       <h2 className="mb-2 text-lg font-semibold">Apply</h2>
       <ApplyForm slug={slug} orgName={profile.orgName} />
     </AuthShell>
+  );
+}
+
+/** PRD K4: the storefront on the public page — active packages and prices. Buying is not open to anonymous visitors: ask the coach for a checkout link (a coach creates it, and the buyer pays on hosted checkout). Nothing here changes the sign-up link path below. */
+async function StorefrontPackages({ slug }: { slug: string }) {
+  const storefront = await getPublicStorefront(prisma, slug);
+  if (!storefront || storefront.packages.length === 0) return null;
+  return (
+    <section aria-labelledby="packages-heading" className="mb-6">
+      <h2 id="packages-heading" className="mb-2 text-lg font-semibold">
+        Packages
+      </h2>
+      <ul className="flex flex-col gap-3">
+        {storefront.packages.map((pkg) => (
+          <li key={pkg.id} className="rounded-card bg-surface p-4 shadow-card">
+            <p className="font-medium">{pkg.title}</p>
+            {pkg.description && <p className="text-sm text-secondary">{pkg.description}</p>}
+            <p className="mt-1 text-base">
+              {formatMoneyMinor(pkg.amountMinor, pkg.currency)}
+              {pkg.kind === 'recurring' && pkg.interval === 'week' && ' per week'}
+              {pkg.kind === 'recurring' && pkg.interval === 'month' && ' per month'}
+              {pkg.kind === 'payment_plan' && pkg.installments && ` × ${pkg.installments} payments`}
+              {pkg.trialDays > 0 && ` · ${pkg.trialDays}-day free trial`}
+            </p>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 text-sm text-secondary">
+        Ask your coach for a checkout link for one of these packages.
+      </p>
+    </section>
   );
 }
 

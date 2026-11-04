@@ -10,9 +10,6 @@ import { Input } from '@/components/ui/input';
 import { withServerTenant } from '@/server/serverActor';
 import { formatDate } from '../clients/StatusBadge';
 
-// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
-export const instant = false;
-
 export const metadata: Metadata = { title: 'Analytics | Repsy' };
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) || undefined;

@@ -1,4 +1,4 @@
-import { activeOrgWhere, issueDueCheckins, type Logger } from '@kinetic/core';
+import { issueDueCheckins, type Logger } from '@kinetic/core';
 import { withSystem, withTenant, type PrismaClient } from '@kinetic/db';
 import { defineJob, type CaptureException } from './registry';
 
@@ -21,12 +21,7 @@ export async function issueCheckins(
   const orgs = await withSystem(
     (tx) =>
       tx.client.findMany({
-        // PRD M12: nothing is issued for a lapsed workspace.
-        where: {
-          status: { in: ['active', 'paused'] },
-          checkinWeekday: { not: null },
-          organization: activeOrgWhere(now),
-        },
+        where: { status: { in: ['active', 'paused'] }, checkinWeekday: { not: null } },
         distinct: ['organizationId'],
         select: { organizationId: true },
       }),

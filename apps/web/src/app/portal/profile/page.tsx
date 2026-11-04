@@ -19,9 +19,6 @@ import { PushToggle } from '@/portal/PushToggle';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { withPortalTenant } from '@/server/serverActor';
 
-// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
-export const instant = false;
-
 export const metadata: Metadata = { title: 'Profile | Repsy' };
 
 // Access is enforced by src/proxy.ts and the portal layout's client gate.
@@ -48,18 +45,6 @@ export default async function PortalProfile() {
         </DataExportSection>
         <TwoFactorSection enabled={twoFactor.enabled} required={false} />
         <SecuritySection />
-        <p className="text-secondary">
-          Book and see sessions with your coach:{' '}
-          <Link href="/portal/sessions" className="text-accent underline">
-            Sessions
-          </Link>
-        </p>
-        <p className="text-secondary">
-          Plans, payments and receipts:{' '}
-          <Link href="/portal/billing" className="text-accent underline">
-            Billing
-          </Link>
-        </p>
         <p className="text-secondary">
           Need help?{' '}
           <Link href="/portal/support" className="text-accent underline">

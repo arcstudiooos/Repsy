@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
-  aiRoleAllowed,
   checkinStreak,
   checkinWeekSummary,
   getSettings,
@@ -20,11 +19,6 @@ import { SendForm } from './SendForm';
 import { CheckinCompare, type CompareCheckin } from '@/components/checkins/CheckinCompare';
 import { WeekSummary } from '@/components/checkins/WeekSummary';
 import { MarkReviewedButton } from './MarkReviewedButton';
-import { CheckinHighlights } from '@/components/ai/CheckinHighlights';
-import { aiPortFromEnv } from '@/server/ai/anthropic';
-
-// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
-export const instant = false;
 
 export const metadata: Metadata = { title: 'Check-ins | Repsy' };
 
@@ -38,7 +32,7 @@ const WITH_ACTIVITY = 12;
 
 export default async function ClientCheckinsPage({ params }: { params: Promise<{ id: string }> }) {
   const client = await loadClient((await params).id);
-  const { items, aiOn, streak, units, metricsAt, templates } = await withServerTenant(
+  const { items, streak, units, metricsAt, templates } = await withServerTenant(
     async (tx, actor) => {
       const checkins = await listCheckins(tx, actor, { clientId: client.id });
       const out = [];
@@ -53,11 +47,6 @@ export default async function ClientCheckinsPage({ params }: { params: Promise<{
       }
       return {
         items: out,
-        // PRD I12: offered only to trainers, when the owner has turned AI drafting on.
-        aiOn:
-          aiRoleAllowed(actor) &&
-          aiPortFromEnv() !== null &&
-          ((await tx.organization.findFirst({ select: { aiEnabled: true } }))?.aiEnabled ?? false),
         streak: await checkinStreak(tx, actor, { clientId: client.id }),
         templates: await listCheckinTemplates(tx, actor),
         units: (await getSettings(tx, actor)).profile?.units ?? client.preferredUnits,
@@ -164,12 +153,10 @@ export default async function ClientCheckinsPage({ params }: { params: Promise<{
                 <CardContent className="grid gap-6 md:grid-cols-[2fr_1fr]">
                   {c.answers ? (
                     <div className="flex flex-col gap-4">
-                      {aiOn && c.status === 'submitted' && <CheckinHighlights checkinId={c.id} />}
                       <CheckinAnswersList
                         questions={c.questions}
                         answers={c.answers}
                         units={units}
-                        anchorPrefix={`a-${c.id}`}
                       />
                       <CheckinCompare
                         current={sent.find((x) => x.id === c.id)!}

@@ -14,7 +14,6 @@ export interface EditorOptions {
   forms: { id: string; title: string }[];
   programs: { id: string; title: string }[];
   courses: { id: string; title: string }[];
-  packages: { id: string; title: string }[];
 }
 
 const SELECT =
@@ -27,11 +26,7 @@ const TRIGGERS: [SequenceTrigger, string][] = [
   ['program_finished', 'A client finishes a program'],
   ['tag_added', 'A client gets a tag'],
   ['stage_changed', 'A client moves to a stage'],
-  ['package_purchased', 'A client buys a package'],
-  ['package_renewal_due', 'A package renews or ends soon'],
-  ['package_ended', 'A package ends'],
 ];
-const isPackageTrigger = (t: SequenceTrigger) => t.startsWith('package_');
 const TYPES: [StepType, string][] = [
   ['message', 'Send a message'],
   ['form', 'Send a form'],
@@ -103,9 +98,7 @@ export function SequenceEditor({
       name,
       trigger,
       triggerValue:
-        trigger === 'tag_added' || trigger === 'stage_changed' || isPackageTrigger(trigger)
-          ? triggerValue || null
-          : null,
+        trigger === 'tag_added' || trigger === 'stage_changed' ? triggerValue || null : null,
       active,
       steps,
     };
@@ -150,10 +143,7 @@ export function SequenceEditor({
             <select
               id={`${uid}-trigger`}
               value={trigger}
-              onChange={(e) => {
-                setTrigger(e.target.value as SequenceTrigger);
-                setTriggerValue('');
-              }}
+              onChange={(e) => setTrigger(e.target.value as SequenceTrigger)}
               className={SELECT}
             >
               {TRIGGERS.map(([v, l]) => (
@@ -178,26 +168,6 @@ export function SequenceEditor({
                 {options.tags.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-          {isPackageTrigger(trigger) && (
-            <div className="flex flex-col gap-1">
-              <label htmlFor={`${uid}-tv`} className="text-sm font-medium">
-                Package
-              </label>
-              <select
-                id={`${uid}-tv`}
-                value={triggerValue}
-                onChange={(e) => setTriggerValue(e.target.value)}
-                className={SELECT}
-              >
-                <option value="">Any package</option>
-                {options.packages.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.title}
                   </option>
                 ))}
               </select>

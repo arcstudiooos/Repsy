@@ -3,6 +3,7 @@ import { countAudits } from './support/db';
 import {
   assignFromClientTab,
   buildProgram,
+  clickUntilURL,
   expectNoAxeViolations,
   expectNoHorizontalOverflow,
   onboardClient,
@@ -35,11 +36,13 @@ test.describe('pause and resume (S3-5)', () => {
       await expect(next.getByText('Today', { exact: true })).toBeVisible({ timeout: 30_000 });
 
       // The coach pauses for the default week; the dialog carries the D-003 copy verbatim.
-      await page
-        .getByRole('navigation', { name: 'Client sections' })
-        .getByRole('link', { name: 'Overview' })
-        .click();
-      await expect(page).toHaveURL(/\/app\/clients\/[0-9a-f-]{36}$/);
+      await clickUntilURL(
+        page,
+        page
+          .getByRole('navigation', { name: 'Client sections' })
+          .getByRole('link', { name: 'Overview' }),
+        /\/app\/clients\/[0-9a-f-]{36}$/,
+      );
       const clientId = new URL(page.url()).pathname.split('/')[3] as string;
       await page.getByRole('button', { name: 'Pause program' }).click();
       const dialog = page.getByRole('dialog', { name: D003_TITLE });
@@ -66,8 +69,8 @@ test.describe('pause and resume (S3-5)', () => {
       expect(await countAudits(clientId, 'client.paused')).toBe(1);
 
       await page.goto('/app/clients');
+      // The status badge comes first; the lifecycle stage under it also reads "Paused".
       await expect(
-        // The status badge (the lifecycle stage below the name can say "Paused" too).
         page
           .getByRole('row', { name: /Pia Pause/ })
           .getByText('Paused', { exact: true })

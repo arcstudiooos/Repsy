@@ -13,15 +13,12 @@ import {
   ShieldCheck,
   Trophy,
   UsersRound,
-  Video,
   type LucideIcon,
 } from 'lucide-react';
 import {
   clientAssessments,
   coverForClient,
   getPortalHome,
-  listBookings,
-  listSessionTypes,
   listChallenges,
   listGroups,
   listHabits,
@@ -38,51 +35,30 @@ import {
 import { buttonVariants } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';
 import { formatSessionDate, plural, SAFETY_REMINDER } from '@/lib/session-format';
-import { formatWhen } from '@/lib/schedule-format';
 import { cn } from '@/lib/utils';
 import { KeepUpcoming } from '@/portal/offline/KeepUpcoming';
 import { withPortalTenant } from '@/server/serverActor';
-
-// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
-export const instant = false;
 
 export const metadata: Metadata = { title: 'Home | Repsy' };
 
 // Access is enforced by src/proxy.ts and the portal layout's client gate.
 export default async function PortalHome() {
-  const {
-    org,
-    home,
-    habits,
-    cover,
-    courses,
-    assessmentsDue,
-    inGroups,
-    challenges,
-    nextBooking,
-    canBook,
-    timezone,
-  } = await withPortalTenant(async (tx, actor) => ({
-    org: await tx.organization.findFirst({ where: { id: actor.orgId }, select: { name: true } }),
-    home: await getPortalHome(tx, actor),
-    habits: await listHabits(tx, actor, actor.clientId as string),
-    // PRD A13: who is covering while the coach is away.
-    cover: await coverForClient(tx, actor.clientId as string),
-    // PRD G4: the next open lesson not done yet.
-    courses: await myCourses(tx, actor),
-    // PRD E5: assessment photos due now.
-    assessmentsDue: (await clientAssessments(tx, actor)).filter((a) => a.due),
-    // PRD H7, H8.
-    inGroups: (await listGroups(tx, actor)).length > 0,
-    // PRD H9: challenges on now or coming up.
-    challenges: (await listChallenges(tx, actor)).filter((c) => c.status !== 'ended').length,
-    // PRD K10: the next booked session, and whether there is anything to book.
-    nextBooking: (await listBookings(tx, actor)).find((b) => b.status === 'booked') ?? null,
-    canBook: (await listSessionTypes(tx, actor)).length > 0,
-    timezone:
-      (await tx.client.findFirst({ where: { id: actor.clientId! }, select: { timezone: true } }))
-        ?.timezone ?? 'UTC',
-  }));
+  const { org, home, habits, cover, courses, assessmentsDue, inGroups, challenges } =
+    await withPortalTenant(async (tx, actor) => ({
+      org: await tx.organization.findFirst({ where: { id: actor.orgId }, select: { name: true } }),
+      home: await getPortalHome(tx, actor),
+      habits: await listHabits(tx, actor, actor.clientId as string),
+      // PRD A13: who is covering while the coach is away.
+      cover: await coverForClient(tx, actor.clientId as string),
+      // PRD G4: the next open lesson not done yet.
+      courses: await myCourses(tx, actor),
+      // PRD E5: assessment photos due now.
+      assessmentsDue: (await clientAssessments(tx, actor)).filter((a) => a.due),
+      // PRD H7, H8.
+      inGroups: (await listGroups(tx, actor)).length > 0,
+      // PRD H9: challenges on now or coming up.
+      challenges: (await listChallenges(tx, actor)).filter((c) => c.status !== 'ended').length,
+    }));
   const lesson = courses
     .flatMap((c) =>
       c.lessons.filter((l) => l.unlocked && !l.done).map((l) => ({ ...l, course: c.title })),
@@ -125,15 +101,6 @@ export default async function PortalHome() {
       title: lesson.title,
       href: '/portal/learn',
       cta: 'Read lesson',
-    });
-  if (nextBooking)
-    todo.push({
-      key: 'booking',
-      icon: Video,
-      eyebrow: 'Next session',
-      title: `${nextBooking.title} · ${formatWhen(nextBooking.startsAt, timezone)}`,
-      href: '/portal/sessions',
-      cta: nextBooking.callLink ? 'Details and call link' : 'Details',
     });
 
   const explore: { label: string; hint: string; href: string; icon: LucideIcon; show: boolean }[] =
@@ -300,13 +267,6 @@ export default async function PortalHome() {
               ))}
             </ul>
           </section>
-        )}
-        {!nextBooking && canBook && (
-          <p>
-            <Link href="/portal/sessions" className="text-accent underline underline-offset-4">
-              Book a session with your coach
-            </Link>
-          </p>
         )}
 
         {week.total > 0 && (

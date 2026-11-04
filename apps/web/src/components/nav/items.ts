@@ -18,8 +18,6 @@ import {
   Salad,
   UsersRound,
   Trophy,
-  CreditCard,
-  CalendarClock,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -40,7 +38,6 @@ export const coachDesktopItems: NavItem[] = [
   { label: 'Programs', href: '/app/programs', icon: Dumbbell, group: 'Coaching' },
   { label: 'Review', href: '/app/review', icon: ClipboardCheck, group: 'Coaching' },
   { label: 'Messages', href: '/app/messages', icon: MessageSquare, group: 'Coaching' },
-  { label: 'Schedule', href: '/app/schedule', icon: CalendarClock, group: 'Coaching' },
   { label: 'Analytics', href: '/app/analytics', icon: ChartColumn, group: 'Coaching' },
   { label: 'Resources', href: '/app/resources', icon: BookOpen, group: 'Content' },
   { label: 'Courses', href: '/app/courses', icon: GraduationCap, group: 'Content' },
@@ -50,7 +47,6 @@ export const coachDesktopItems: NavItem[] = [
   { label: 'Challenges', href: '/app/challenges', icon: Trophy, group: 'Community' },
   { label: 'Leads', href: '/app/leads', icon: Inbox, group: 'Business' },
   { label: 'Automations', href: '/app/automations', icon: Workflow, group: 'Business' },
-  { label: 'Billing', href: '/app/billing', icon: CreditCard, group: 'Business' },
 ];
 export const coachSettingsItem: NavItem = { label: 'Settings', href: '/settings', icon: Settings };
 

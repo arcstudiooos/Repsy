@@ -11,7 +11,6 @@ import {
   type AnalyticsPort,
   type EventName,
   type EventValue,
-  assertWorkspaceAccess,
 } from '@kinetic/core';
 import { prisma as defaultPrisma, withTenant, type PrismaClient, type TenantTx } from '@kinetic/db';
 import { auth as defaultAuth, getSessionUser, type Auth, type SessionUser } from '@/lib/auth';
@@ -96,12 +95,6 @@ export interface RouteDef<S extends z.ZodType | undefined, R extends boolean> {
    * global bucket for this route; omit to use the global per-user default.
    */
   rateLimit?: { capacity: number; refillPerSecond: number };
-  /**
-   * PRD M12 (D-013 #16): `true` is still allowed while a lapsed workspace can be read (requesting an export, a
-   * deletion request, support); `'always'` even after the read window closes (listing and downloading prepared
-   * exports, cancelling a payment plan). Every other write is refused, and reads close after the window.
-   */
-  allowWhenLapsed?: boolean | 'always';
   handler(ctx: RouteCtx<InputOf<S>, R>): unknown;
 }
 
@@ -231,12 +224,6 @@ export function createApiHandler(deps: ApiDeps = {}) {
           if (own) actor.clientId = own.id;
         }
         if (actor && def.can) assertCan(actor, def.can);
-        if (actor) {
-          await assertWorkspaceAccess(deps.prisma ?? defaultPrisma, actor, {
-            write: !SAFE_METHODS.has(request.method),
-            exempt: def.allowWhenLapsed,
-          });
-        }
 
         const input = def.input ? await readInput(request, def.input) : undefined;
 
@@ -284,16 +271,10 @@ export function createApiHandler(deps: ApiDeps = {}) {
           clientHash: (clientId) => clientHash(analyticsHashSecret(), clientId),
         } as RouteCtx<InputOf<S>, R>);
 
-        // A raw response (a file download, an OAuth redirect) passes through with the request id. Copy its headers
-        // first: `Response.redirect()` returns immutable ones, which would throw on set.
+        // A raw response (a file download) passes through with the request id.
         if (result instanceof Response) {
-          const headers = new Headers(result.headers);
-          headers.set('x-request-id', requestId);
-          return new Response(result.body, {
-            status: result.status,
-            statusText: result.statusText,
-            headers,
-          });
+          result.headers.set('x-request-id', requestId);
+          return result;
         }
         const { data, options } =
           result instanceof ApiResult

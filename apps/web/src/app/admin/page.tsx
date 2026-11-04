@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { LapseControl } from './LapseControl';
 import { notFound } from 'next/navigation';
 import {
   listDeletionRequests,
@@ -23,9 +22,6 @@ import {
   RevokeGrant,
 } from './AdminActions';
 import { readNotices } from '@kinetic/core';
-
-// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
-export const instant = false;
 
 export const metadata: Metadata = { title: 'Admin | Repsy' };
 
@@ -128,9 +124,6 @@ export default async function AdminPage({
                   {data.account.memberships.map((m) => (
                     <li key={`${m.organizationId}:${m.role}`}>
                       {m.organizationName}: {m.role} ({m.status})
-                      {m.role === 'owner' && (
-                        <LapseControl orgId={m.organizationId} name={m.organizationName} />
-                      )}
                       {m.clientId && (
                         <>
                           {' '}

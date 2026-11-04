@@ -25,14 +25,14 @@ export function GuideOverlay({ guide }: { guide: Guide }) {
       preserveAspectRatio="none"
       className="pointer-events-none absolute inset-0 size-full text-accent"
     >
-      {lines.map(({ strong, ...l }, i) => (
+      {lines.map((l, i) => (
         <line
           key={i}
           {...l}
           stroke="currentColor"
-          strokeWidth={strong ? 2 : 1}
-          strokeOpacity={strong ? 0.9 : 0.55}
-          strokeDasharray={strong ? undefined : '3 3'}
+          strokeWidth={l.strong ? 2 : 1}
+          strokeOpacity={l.strong ? 0.9 : 0.55}
+          strokeDasharray={l.strong ? undefined : '3 3'}
           vectorEffect="non-scaling-stroke"
         />
       ))}

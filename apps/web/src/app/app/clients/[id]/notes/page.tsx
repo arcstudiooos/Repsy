@@ -4,9 +4,6 @@ import { withServerTenant } from '@/server/serverActor';
 import { loadClient } from '../data';
 import { NotesPanel } from './NotesPanel';
 
-// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
-export const instant = false;
-
 export const metadata: Metadata = { title: 'Notes | Repsy' };
 
 export default async function ClientNotesPage({ params }: { params: Promise<{ id: string }> }) {

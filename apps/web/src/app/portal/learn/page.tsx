@@ -5,9 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { withPortalTenant } from '@/server/serverActor';
 import { LessonDone } from './LessonDone';
 
-// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
-export const instant = false;
-
 export const metadata: Metadata = { title: 'Lessons | Repsy' };
 
 const day = (d: string) =>

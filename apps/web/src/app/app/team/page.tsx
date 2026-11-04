@@ -4,9 +4,6 @@ import { withServerTenant } from '@/server/serverActor';
 import { CoverManager } from './CoverManager';
 import { TeamManager } from './TeamManager';
 
-// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
-export const instant = false;
-
 export const metadata: Metadata = { title: 'Team | Repsy' };
 
 /** PRD A10: who is on the workspace's team, and (for owners and admins) inviting more. */

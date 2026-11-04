@@ -1,4 +1,3 @@
-import { activeOrgWhere } from '../lapse/lapse';
 import { appendAudit, withSystem, withTenant, type PrismaClient, type TenantTx } from '@kinetic/db';
 import { STAFF_ROLES } from '../authz/actor';
 import type { ActorContext } from '../authz/actor';
@@ -169,14 +168,7 @@ export async function sendDueScheduledMessages(
   const due = await withSystem(
     (tx) =>
       tx.scheduledMessage.findMany({
-        where: {
-          sendAt: { lte: now },
-          sentAt: null,
-          cancelledAt: null,
-          failure: null,
-          // PRD M12: held while the workspace is lapsed.
-          organization: activeOrgWhere(now),
-        },
+        where: { sendAt: { lte: now }, sentAt: null, cancelledAt: null, failure: null },
         orderBy: { sendAt: 'asc' },
         take: 200,
         select: { id: true, organizationId: true, threadId: true, senderUserId: true, body: true },

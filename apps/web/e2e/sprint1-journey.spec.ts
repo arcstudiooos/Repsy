@@ -57,7 +57,7 @@ test.describe('Sprint 1 journey', () => {
     await dialog.getByRole('button', { name: 'Assign program', exact: true }).click();
     await expect(dialog).toBeHidden({ timeout: 30_000 });
 
-    // The assignment summary (the phase picker lists the template too, C17).
+    // The program name also appears as an option in the phase queue's "Then run" select.
     await expect(page.getByRole('definition').filter({ hasText: 'Journey block' })).toBeVisible();
     await expect(page.getByText('2 sessions')).toBeVisible();
     await expect(page.getByText('Mon, Thu')).toBeVisible();

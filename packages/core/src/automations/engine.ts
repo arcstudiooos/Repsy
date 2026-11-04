@@ -1,4 +1,3 @@
-import { activeOrgWhere, lapsedSince } from '../lapse/lapse';
 import { appendAudit, withSystem, withTenant, type PrismaClient, type TenantTx } from '@kinetic/db';
 import { TRAINER_ROLES, type ActorContext, type Role } from '../authz/actor';
 import { assignProgram } from '../assignments/assign';
@@ -264,26 +263,17 @@ export async function processClientEvents(
       e.organizationId,
       async (tx) => {
         const detail = (e.detailJson ?? {}) as Record<string, unknown>;
-        // PRD M12: a lapsed workspace starts nothing; its events are consumed so a restore doesn't replay them.
-        const org = await tx.organization.findFirst({
-          select: { lapsedAt: true, plan: true, trialEndsAt: true },
+        const sequences = await tx.sequence.findMany({
+          where: { trigger: e.kind, active: true, archivedAt: null },
+          select: { id: true, triggerValue: true },
         });
-        const sequences =
-          org && lapsedSince(org, now)
-            ? []
-            : await tx.sequence.findMany({
-                where: { trigger: e.kind, active: true, archivedAt: null },
-                select: { id: true, triggerValue: true },
-              });
         for (const s of sequences) {
           const value =
             e.kind === 'tag_added'
               ? detail.tagId
               : e.kind === 'stage_changed'
                 ? detail.stage
-                : e.kind.startsWith('package_')
-                  ? detail.packageId
-                  : null;
+                : null;
           if (s.triggerValue && s.triggerValue !== value) continue;
           if (await startRun(tx, s.id, e.clientId, now)) started += 1;
         }
@@ -303,13 +293,7 @@ export async function runDueSteps(
   const due = await withSystem(
     (tx) =>
       tx.sequenceStepRun.findMany({
-        where: {
-          status: 'pending',
-          dueAt: { lte: now },
-          run: { status: 'active' },
-          // PRD M12: steps wait while the workspace is lapsed.
-          organization: activeOrgWhere(now),
-        },
+        where: { status: 'pending', dueAt: { lte: now }, run: { status: 'active' } },
         orderBy: { dueAt: 'asc' },
         take: 200,
         select: {

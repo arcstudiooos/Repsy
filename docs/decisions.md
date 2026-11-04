@@ -498,118 +498,181 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
     1, 3 or 6 months have passed. Revenue, refunds and average client value come with payments (K9) and will join
     this page then.
 
-## D-013 — R3 completion rulings delegated to the builder (2026-11-02)
+## D-013 — AI drafting rulings (2026-11-03)
 
-**Status:** Accepted, under the same delegation as D-011 and D-012 ("complete R3 remaining features"); each can be revisited.
-**PRD refs:** K1-K11, K15, H15, J4, J6, I10-I12, I14, L4, M12. Plan: `docs/superpowers/plans/2026-11-02-r3-remaining.md`.
+**Status:** Proposed, in the style of D-012; each can be revisited.
+**PRD refs:** I10, I11, I12, I14 (I13 reply drafts stay R4 and are NOT built here).
 
-1. **Providers behind ports, fakes until accounts exist.** Payments (`PaymentsPort`), calendar sync (`CalendarSyncPort`),
-   AI (`AiPort`) and branded sending (the email adapter) each have a deterministic fake used in development and tests.
-   The real adapters (Stripe Connect, Razorpay, Google Calendar, Microsoft Graph, Anthropic, Resend domains) call the
-   providers' REST APIs with `fetch`, add no SDK, and switch on only when their environment variables are set
-   (`.env.example`). They are tested against recorded request and webhook shapes, never live accounts; the founder
-   creates the accounts (D-010 #5). Provider tokens that must be stored (Razorpay, calendar OAuth) are encrypted at
-   rest with `PROVIDER_TOKEN_KEY` (AES-256-GCM).
-2. **Money (K3).** Amounts are integer minor units; a workspace has one ISO 4217 currency, set once. A package is
-   one-off, recurring (every N weeks or months) or a payment plan (N instalments), with an optional free trial. Prices
-   and coupons are computed by Repsy and sent to the provider as inline amounts, so a package edit never rewrites a
-   past purchase (it applies to new purchases).
-3. **Provider events are the source of truth for card payments.** Every webhook is verified (Stripe `Stripe-Signature`
-   HMAC with a 5-minute tolerance, Razorpay `X-Razorpay-Signature` HMAC) and stored once by its provider event id
-   before it is applied; a replay is a no-op. A webhook carries no workspace id that Repsy trusts: the connected
-   account resolves the workspace through `app_org_by_payment_account` (SECURITY DEFINER, like the public slug), and
-   the event is applied in that workspace's tenant scope.
-4. **On purchase (K3, K4).** A purchase creates the client (or links the existing client with that email in the
-   workspace) and sends the invite unless the client is already active; adds the package's tag; and emits
-   `package_purchased` (J4). A package's template is never assigned silently: when the client is active, a "Ready to
-   assign" review item asks the coach to confirm readiness (D-007 #6) and assigns from there.
-5. **Coupons (K5)** take a percentage (1-100) or a fixed amount, an optional expiry and use cap, and discount the first
-   charge only (the whole price of a one-off). A use is counted when the payment succeeds, under a row lock, so the
-   cap holds under concurrent checkouts; an abandoned checkout never uses one up.
-6. **Receipts and tax (K6).** Each successful payment gets a workspace receipt number (`R-000001`, gap-free per
-   workspace under a lock). The receipt shows the workspace's branding, its tax id (for example a GSTIN) and the tax
-   the provider charged: Stripe Tax when the workspace turns it on, or the workspace's GST rate for Razorpay, split
-   into CGST and SGST or shown as IGST by the buyer's state. Receipts are emailed as a link, never as an attachment.
-7. **Failed payments (K7)** leave retries to the provider (Stripe Smart Retries, Razorpay subscription retries). A
-   failure marks the purchase `past_due`, emails the client a link to their billing page, and opens a "Payment
-   failed" review item. After the workspace's grace period (0-30 days, default 7) the portal shows a payment gate,
-   like agreements (D-012 #5), until a payment succeeds or the coach lifts it. Sessions, pauses and history are never
-   changed (D-003).
-8. **Self-service (K8).** `/portal/billing` shows the plan, the next charge, receipts, an "Update card" link (the
-   provider's hosted page) and one-click cancel, which ends a subscription at the period end and shows that date at
-   once. A coach can cancel too, now or at the period end, and refund a payment.
-9. **Revenue (K9)** joins `/app/analytics/business`: MRR (weekly prices × 52 / 12; plans count their instalment
-   while it runs), active subscriptions, subscription churn over the last 30 days, refunds and average client value
-   (net revenue over paying clients), with a CSV. Manual payments count. Figures are per workspace currency.
-10. **Manual payments (K15)** record cash, bank transfer or other against a package for a client: a purchase with
-    provider `manual`, with the same receipts, revenue and journeys. They can be voided (never edited) with a reason.
-11. **Scheduling (K10, H15).** A session type has a kind (call, check-in call, in person), length, buffers before and
-    after, minimum notice, how far ahead it can be booked, an optional call link (https only, H15) or location, and
-    whether it uses a credit. Availability is weekly hours in the coach's time zone plus time off; slots are offered
-    in the client's time zone (DST-safe, as D-010 #1). A booking locks the coach's membership row, so two bookings
-    can never overlap the same coach's time including buffers. Clients cancel up to the session type's cancel
-    window; coaches any time. A reminder email goes 24 hours before (H13 opt-ins and daily cap apply). Bookings join
-    the private ICS feed (D-012 #6). Two-way Google and Outlook sync pushes bookings as events and reads busy times
-    to hide clashing slots; it never imports event details, only busy intervals.
-12. **Session packs (K11)** come from packages with session credits. A booking of a credit-using type takes one
-    credit from the oldest pack with credits left (expired packs skipped) under a row lock; a cancellation inside the
-    window returns it, a late cancellation or no-show keeps it used. The client sees the balance.
-13. **Journeys (J4, J6).** Sequences gain triggers `package_purchased`, `package_renewal_due` and `package_ended`,
-    each optionally narrowed to one package. A daily sweep emits `package_renewal_due` the workspace's renewal
-    notice (1-30 days, default 7) before a recurring purchase renews or a plan or fixed-term package ends, emails the
-    client once per period, and opens a coach follow-up review item; `package_ended` fires when access ends.
-14. **AI drafting (I10-I12, I14).** Off by default; the owner turns it on for the workspace. Only trainers (D-012 #7)
-    use it, only by asking, and the result is always a draft the coach saves, labelled "Drafted with AI". Sent to the
-    provider: pasted program text with emails, phone numbers and URLs removed (I10); a template's structure and the
-    library's exercise names (I11); two check-ins' questions and answers (I12). Contact details and the workspace's
-    client names (the check-in client's name parts and email name, any client's full name in pasted text) are
-    replaced before sending; this is best effort, so the coach is asked not to paste names. Output lines matching a
-    keyword screen for medical, injury, medication or supplement topics are removed one by one with a note saying
-    so; the screen is best effort too, and every draft is reviewed by the coach. Drafts are parsed by the C14 importer or validated against the source answers before they are shown;
-    I12 highlights link every point to its source answer and are not stored. Each workspace has a daily cap (50);
-    each request is audited without content. The Anthropic API does not train on API data; the adapter sends no
-    workspace or user identifiers.
-15. **Custom domains (L4).** A workspace adds a hostname, proves it with a DNS TXT record (`_repsy.<host>`) that a
-    worker job checks, then points a CNAME at the app. A verified domain serves that workspace's public page and
-    storefront only; sign-in, the portal and every API stay on the main domain, so cookies, CSRF origins and OAuth
-    callbacks are unchanged. Branded sending: the workspace's domain is registered with the email provider, and once
-    its DNS records verify, emails to that workspace's clients come from `name@domain`; until then they use the
-    default address.
-16. **Access after a lapse (M12).** A workspace lapses when a platform admin marks it lapsed (paid pilots are invoiced
-    outside the app, D-008 #12) or its trial ends without conversion. From then on every write is refused
-    (`WORKSPACE_LAPSED`) except exports, deletion requests, billing cancellation and signing out; the worker stops
-    issuing check-ins, automations, reminders and charges for it. Clients keep read-only access and export for 90
-    days, staff for 180 days; after that only an export already prepared can be downloaded. Restoring the workspace
-    lifts it at once.
+1. **The provider is a `packages/core` port, and only the fake one ships.** `AiProvider` in
+   `packages/core/src/ai/ai.ts` receives structured input only (library exercise names and ids, set
+   prescriptions, equipment filters). No provider SDK is imported, no key exists, no network call is
+   made, and nothing is sent for training. A real provider later is a new adapter behind the same
+   interface, and it must pass the same `assertProviderSafe` check.
+2. **Paste to program (I10) parses locally first.** The C14 parser (`programs/text-import.ts`) runs
+   in core before any provider call, so pasted text and spreadsheet notes never reach the provider.
+   Lines the library cannot match are kept in the draft as unmatched (with a reason), never silently
+   dropped, and lines the parser cannot read are reported the same way.
+3. **Draft from template (I11) repeats the template's first week.** Days cycle when the coach asks
+   for more days than the template has; an equipment filter (e.g. "dumbbells only") drops exercises
+   whose known library equipment is outside the kit and reports them as unmatched. Exercises with
+   unknown equipment are kept, for the coach to judge in the builder.
+4. **Check-in highlights (I12) are a local diff, not a model call.** Only questions whose answer
+   changed between two submitted check-ins are listed, each with a link to both source answers
+   (`/app/clients/<clientId>/check-ins#<checkinId>-<questionId>`). Client answers therefore never
+   leave the workspace for highlights, and highlights never generate advice.
+5. **Guardrails (I14) live in core, not the UI.** Coach-only means trainer roles (owner, admin,
+   coach): draft creation needs `program:write`, highlights need `checkin:read` plus a trainer-role
+   check (because `checkin:read` alone would also admit clients and assistants). The opt-in toggle
+   needs `settings:org:update` (managers only). Opt-in is off by default: no setting row, and the
+   column default, both mean off. Every draft carries the label "Drafted with AI" and `status:
+'draft'`; nothing here saves a program, assigns one, or sends anything.
+6. **Medical, injury and supplement requests are refused, not softened.** Paste text and template
+   instructions matching the medical patterns in `drafting.ts` throw a validation error telling the
+   coach AI drafts never give that advice. Check-in answers are exempt from this refusal — reviewing
+   what a client already wrote is not advice — but they are never sent to a provider (ruling 4).
+7. **Stored source text is redacted, not raw.** `ai_drafts.source_text` holds the paste with emails,
+   phone-like numbers and supplied client names stripped. It exists so the coach can see what they
+   pasted; it is never sent to a provider.
+8. **Drafts are not programs yet.** An AI draft's weeks use the same day/exercise/set shape as the
+   builder, but no "save draft as program" step is built in this slice: the coach reviews the draft
+   at `/app/ai-drafts` and recreates it in the builder (or pastes it back through the C14 import).
+   Wiring draft → `saveDraft` is the follow-up, not a silent auto-save.
 
-**Amendments made while building (2 to 3 November 2026):**
+# D-013 (snippet) — Billing rulings, payments slice (PRD K1–K9, K15)
 
-- **#1, AI adapter:** the Anthropic adapter uses the official `@anthropic-ai/sdk` (in `apps/web`), not raw `fetch`:
-  the SDK is the supported way to call the Claude API. Core still holds only the port and the fake. It defaults to
-  `claude-opus-5-5` at medium effort with server-side refusal fallback (`fallbacks: "default"`). The fake providers
-  (payments, calendar, AI) are opt-in with `FAKE_PAYMENTS`, `FAKE_CALENDAR` and `FAKE_AI` set to `on`, and never
-  run in production.
-- **#3, webhooks (security review):** a checkout activates only when it is paid (Stripe delayed methods wait for
-  `async_payment_succeeded`; a Razorpay mandate alone activates only a trial). Razorpay events are deduplicated on
-  a hash of the signed body, never the unsigned event-id header, and bodies older than 26 hours are refused.
-- **#5, coupons:** a use is reserved at checkout, atomically against the cap, and given back when the unfinished
-  checkout expires after a day (a late payment still activates it and counts the use again).
-- **#11, scheduling roles:** a coach books and marks only their own sessions; managers any coach's. A coach who has
-  left the workspace takes no bookings. Booking reminders use the workout reminder opt-in (relabelled "and the day
-  before a booked session"), its quiet hours and its three-a-day cap.
-- **#14, AI privacy:** names are replaced as well as contact details (the check-in client's name parts and email
-  name; any workspace client's full name in pasted text and templates). Both this and the output keyword screen are
-  best effort and say so; the coach reviews every draft.
-- **#16, lapse:** "charges" means Repsy's own: the storefront and lead form take nothing new, and renewal notices
-  stop. Payments clients set up with the coach's own Stripe or Razorpay account carry on until they cancel (cancel
-  stays allowed). Contacting support is allowed too. Automation events from a lapsed workspace are consumed without
-  starting runs, so restoring it does not replay them; due steps and scheduled messages wait and resume.
-- **#16, after the final review:** an ended trial lapses 14 days after it ends, with a banner meanwhile; trials that
-  had already ended when this shipped count from the release (migration 092). Exemptions have two levels:
-  requesting an export, a deletion request and support only while the member can still read; listing and
-  downloading prepared exports and cancelling a payment plan even after (`/closed` lists them). Join links and
-  invite acceptance (client and team) refuse a lapsed workspace.
-- **#15, after the final review:** only a verified domain reserves its hostname, so an unproven claim never blocks
-  the owner who proves it; removing one releases it at the email provider. A failed DNS lookup changes nothing and a
-  verified domain is demoted only after three missing answers in a row. A custom domain that isn't serving
-  redirects every path to the main domain; a host that is no custom domain at all is left alone.
+Status: proposed by the billing slice; each ruling can be revisited. Nothing here renames Kinetic to Repsy, and nothing here builds R4.
+
+1. **One port, two providers, one fake.** Stripe Connect (K1) and Razorpay
+   (K2) are the same `PaymentsPort` interface in
+   `packages/core/src/billing/payments.ts`. The only implementation is
+   `FakePaymentsProvider`: deterministic test ids, test checkout/portal URLs
+   (`checkout.test`, `portal.test`), in-memory charges, no SDK, no key, no
+   network call. A real adapter implements the same interface later; nothing
+   in packages, checkout or billing changes. Default provider is Razorpay for
+   INR, Stripe otherwise; the coach's connected account wins when present.
+2. **Money is minor units, always.** Integer cents/paise with a currency
+   code, never a float. Platform fee is 0% in year one (PRD §payments);
+   processor fees are a port field and 0 from the fake provider.
+3. **Tax is a port field, not a service call (K6).** The caller passes a
+   rate; the fake provider defaults INR to 18% GST and everything else to 0.
+   Tax-inclusive amounts split the tax back out. A real adapter may replace
+   the default with a live Stripe Tax / GST quote without changing callers.
+4. **Packages store journey instructions; they do not run them (K3, J4/J6).**
+   `billing_packages.onboarding_sequence`, `renewal_reminder_days`,
+   `invite_on_purchase`, `tags_on_purchase` and `template_id` are stored on
+   purchase and returned by `purchaseSetup` for the journeys slice to execute.
+   Archiving a package never touches existing subscriptions.
+5. **Coupons are validated, then consumed on completion (K5).** Validation
+   checks expiry, usage cap and currency; one use is consumed only in
+   `confirmCheckout`, so an abandoned checkout does not burn a coupon.
+   Percentage coupons round to the nearest minor unit; a fixed coupon never
+   takes a total below zero.
+6. **Failed payments retry 1, 3, then 7 days — then "Needs review" (K7).**
+   Each failure emails the client through the existing outbox in the same
+   transaction. After the last retry the subscription is `past_due` with
+   `needsReview`, never silently cancelled (PRD P4). An optional grace period
+   (0–90 days) keeps access on; only when it expires does `applyGraceExpiry`
+   pause access, and a successful retry restores it.
+7. **Cancel is one click and the end date is shown at once (K8, P4).**
+   Recurring runs to the end of its current period, a trial ends at the trial
+   end, a payment plan stops after installments already paid. Cancelling
+   charges nothing further and issues no refund; refunds are a separate coach
+   action. Card updates go to the provider portal link, so no real payment
+   form is ever rendered in the app.
+8. **No billing action exists in policies yet — existing actions are reused.**
+   This slice must not edit `policies.ts`. Staff billing writes use
+   `client:update`, the revenue dashboard uses `analytics:read`, and a client
+   acting on their own billing reuses `session:read` (reads) / `session:log`
+   (cancel), with core still scoping every read and write to their own
+   subscription (`assertBillingRead` / `assertBillingWrite` in billing.ts).
+   The parent may add a dedicated `billing:manage` action later; those two
+   helpers are the only place that changes.
+9. **MRR has one definition (K9).** Active + trialing recurring subscriptions
+   at their current amount, normalised to a month (monthly as-is, weekly ×
+   52/12). One-off sales and payment plans are revenue, not MRR. Churn is
+   last-30-days cancellations over active-now plus churned. Average client
+   value is net succeeded revenue per distinct paying buyer (client id, else
+   email). Revenue is grouped by currency; nothing converts FX.
+10. **The storefront does not sell to strangers (K4).** `/join/<slug>` lists
+    active packages and prices, but there is no anonymous purchase endpoint:
+    a coach creates the checkout and sends the hosted link. An open purchase
+    endpoint plus invite-on-purchase belongs with the J4 slice, not smuggled
+    in here. The existing sign-up link path on the same page is untouched.
+11. **Manual payments are first-class revenue (K15).** Cash / bank transfer
+    records carry no provider charge id, still get a branded receipt, and
+    still count in revenue and average client value like any succeeded
+    payment.
+12. **Receipts are branded, not generated PDFs (K6).** A receipt carries the
+    workspace name, accent and logo from the same branding the portal uses,
+    plus the tax line. A PDF rendering can reuse the existing PDF writer
+    later; this slice ships the data and the page, not a new renderer.
+13. **`confirmCheckout` is a demo stand-in, not a webhook (K4).** It is
+    coach-only and labelled as a test confirmation. A real adapter must call
+    it from a verified provider webhook, never from a client request; until
+    then, no real money moves anywhere in this slice.
+
+## D-013 — Scheduling, packs, domains, post-lapse access (K10, K11, H15, J4, J6, L4, M12)
+
+**Status:** Proposed by the scheduling slice; not yet accepted (this file is a
+snippet — `docs/decisions.md` itself was not edited by the slice).
+
+1. **Slots are local, storage is UTC (K10).** Availability is weekly
+   wall-clock windows in the coach's zone; every generated slot goes through
+   `zonedTimeToUtc` (gap → after the jump, fold → first occurrence), so a
+   09:00 slot stays 09:00 local across a DST change and only its UTC instant
+   moves. Buffers belong to the session type, not the booking: a candidate is
+   free only when it does not overlap an existing booking expanded by
+   buffer-before/buffer-after, and slots step by duration + buffer-after.
+2. **Packs pay for in-person sessions only (K11).** A booking with a `packId`
+   on a non-in-person type is rejected; cancelling a pack-funded booking
+   refunds exactly one credit and clears `packConsumed`, so a cancelled
+   booking can never refund twice. Balance is `total - used`, clamped at
+   zero; the row status follows it (`exhausted` at zero, `expired` past
+   expiry). Money stays with billing (K1-K9): `purchasePack` records the
+   pack, it does not charge.
+3. **Call links are validated, never trusted (H15).** Only http/https URLs
+   (≤ 2000 chars) are stored; ftp, `javascript:`, and bare hostnames are
+   rejected. The link is shown to coach and client only, as the booking's
+   join link and as the calendar event's location.
+4. **Calendar sync is a port with a fake (K10, L7 follow-up).** No Google or
+   Outlook OAuth, SDK, or key exists in this slice. `CalendarSyncPort` +
+   `FakeCalendarSync` prove the push/update/delete shape; a real provider
+   implements the port, stores tokens per workspace via the secure
+   connection flow, and replaces the fake at the call site. The one-way ICS
+   feed (L7) stays the read-only calendar route until then.
+5. **Package journeys follow the billing JSON (J4, J6).** A package's
+   `onboardingSequence` is either `{ sequenceId }` — delegated to the
+   existing automation engine (`startRun`), so ask-first and history work —
+   or `{ steps: [...] }`, recorded as a lightweight `package_journey_runs`
+   row. A second start for the same (package, client) is a CONFLICT, never a
+   duplicate run. Renewal (J6) is one idempotent outbox email
+   (`package-renewal:<packageId>:<endDate>`) plus one existing coach
+   follow-up (`ReviewFlag` `coach_followup`), due on the reminder day in the
+   client's zone.
+6. **Domain verification is attested, not proven, in this slice (L4).**
+   `markDomainVerified` records the coach's attestation that the TXT record
+   is set; it performs NO DNS lookup. Until a real TXT check replaces it,
+   treat `verified` as coach-attested. Routing matches only the exact
+   verified hostname — never a subdomain, never an unverified domain — and
+   anything else falls back to the default host, so existing routes keep
+   working. Branded sending addresses exist only on verified domains.
+7. **The lapse clock is a row, not a subscription status (M12).** Billing
+   owns subscription status; this slice's `subscription_lapses` row is the
+   access clock, and the latest row wins. Windows are inclusive: a client is
+   read-only through exactly 90 days after `lapsedAt`, a coach through
+   exactly 180 days; after that, access is `expired` (reads and exports stop
+   too). Read-only allows reads AND exports and blocks writes only, via
+   `enforceReadOnly` / `assertWritable`. No existing policy was changed:
+   the slice reuses existing actions (see the snippet in
+   SLICE_REPORT_SCHEDULING.md) and proposes new ones for the parent.
+8. **Reminders ride the outbox (K10, J6).** Booking reminders and renewal
+   reminders are outbox emails with `nextAttemptAt` at the reminder time.
+   The slice assumes the worker sends outbox rows only once `nextAttemptAt`
+   passes; the parent must verify that worker rule before relying on timed
+   reminders (flagged in SLICE_REPORT_SCHEDULING.md).
+
+## D-013 (integration, parent merge, 2026-11-03)
+
+14. **Billing and journeys share one package shape.** `billing_packages.onboarding_sequence` is JSONB (`{ sequenceId }` or `{ steps: [...] }`), not the billing slice's original 120-character string, and the package's display field is `title` (journeys originally read `name`). Journeys parse a string value defensively, but new writes are JSON.
+15. **Financial records are retained on client erasure in this PR.** Subscriptions, payments and receipts are not deleted by `eraseClientData`; that retention-vs-erasure decision needs a legal call before merging, and is listed as a PR follow-up. Client-scoped R3 rows (bookings, session packs, package journey runs) are erased.
+16. **New policy actions are added, existing code is not re-pointed yet.** `billing:manage`, `scheduling:read/manage/book`, `domain:manage`, `lapse:read/record` exist in `policies.ts`; R3 routes/core still use the older actions they were built with, so behaviour does not change in this PR.

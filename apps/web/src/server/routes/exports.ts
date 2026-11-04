@@ -29,8 +29,6 @@ const requestSchema = z.object({
 
 /** `POST /api/v1/exports`: an owner's organization export or a client's own (idempotent per key). */
 export const exportsPostRoute: RouteDef<typeof requestSchema, true> = {
-  // PRD M12: still allowed after the workspace lapses.
-  allowWhenLapsed: true,
   input: requestSchema,
   // Each request queues a full build (PR #2 review C M-11): 5 per hour per user.
   rateLimit: { capacity: 5, refillPerSecond: 5 / 3600 },
@@ -43,15 +41,11 @@ export const exportsPostRoute: RouteDef<typeof requestSchema, true> = {
 
 /** `GET /api/v1/exports`: the acting user's exports. */
 export const exportsListRoute: RouteDef<undefined, true> = {
-  // PRD M12: still allowed after a lapse, even once the read window has closed.
-  allowWhenLapsed: 'always',
   handler: ({ actor, tenant }) => tenant((tx) => listMyExports(tx, actor)),
 };
 
 /** `POST /api/v1/exports/:id/links`: one link per file, valid 15 minutes, for the requester only. */
 export const exportLinksRoute: RouteDef<undefined, true> = {
-  // PRD M12: still allowed after a lapse, even once the read window has closed.
-  allowWhenLapsed: 'always',
   handler: async ({ actor, params, tenant, user }) => {
     const id = params.id ?? '';
     const view = await tenant(async (tx) => {
@@ -88,8 +82,6 @@ const fileSchema = z.object({ token: z.string().min(1).max(2000) });
  * signed-in user must be both the token's user and the export's requester (re-checked on every download).
  */
 export const exportFileRoute: RouteDef<typeof fileSchema, true> = {
-  // PRD M12: still allowed after a lapse, even once the read window has closed.
-  allowWhenLapsed: 'always',
   input: fileSchema,
   handler: async ({ actor, input, params, tenant, user }) => {
     const id = params.id ?? '';

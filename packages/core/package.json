@@ -40,7 +40,6 @@
     "./checkin-conditions": "./src/checkins/conditions.ts",
     "./client-stages": "./src/clients/stage-labels.ts",
     "./progression": "./src/programs/progression.ts",
-    "./churn": "./src/clients/churn.ts",
-    "./money": "./src/payments/money.ts"
+    "./churn": "./src/clients/churn.ts"
   }
 }

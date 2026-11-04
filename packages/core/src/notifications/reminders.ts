@@ -16,8 +16,6 @@ export const REMINDER_HOURS = { workout: 7, checkin: 18, habit: 19 } as const;
 export const QUIET_FROM = 21;
 export const QUIET_UNTIL = 7;
 export const REMINDERS_PER_DAY = 3;
-/** A booked session is reminded from 24 hours before it starts. */
-export const BOOKING_REMINDER_MS = 24 * 3_600_000;
 export type ReminderKind = keyof typeof REMINDER_HOURS;
 
 const localHour = (timeZone: string, now: Date) =>
@@ -111,42 +109,6 @@ export async function queueClientReminders(tx: TenantTx, now: Date): Promise<{ q
           kind: `${r.kind}_reminder`,
           idempotencyKey: keyOf(r.kind, c.id, day),
         });
-      }
-    }
-
-    // PRD K10 (D-013 #11): a booked session within the next 24 hours, under the workout opt-in, the quiet hours and
-    // the daily cap. Each booking is reminded once (it counts as that day's reminder when it goes).
-    if (opt.workout) {
-      const soon = await tx.booking.findMany({
-        where: {
-          clientId: c.id,
-          status: 'booked',
-          reminderSentAt: null,
-          startsAt: { gt: now, lte: new Date(now.getTime() + BOOKING_REMINDER_MS) },
-        },
-        orderBy: { startsAt: 'asc' },
-        select: { id: true },
-      });
-      for (const b of soon) {
-        if (sentToday >= REMINDERS_PER_DAY) break;
-        const key = `reminder:${c.id}:${day}:booking:${b.id}`;
-        const made = await enqueueEmail(tx, {
-          kind: 'booking_reminder',
-          toUserId: userId,
-          templateKey: 'booking_reminder',
-          payload: { bookingId: b.id },
-          idempotencyKey: key,
-        });
-        await tx.booking.updateMany({ where: { id: b.id }, data: { reminderSentAt: now } });
-        if (made) {
-          queued += 1;
-          sentToday += 1;
-          await enqueuePush(tx, {
-            toUserId: userId,
-            kind: 'booking_reminder',
-            idempotencyKey: key,
-          });
-        }
       }
     }
   }

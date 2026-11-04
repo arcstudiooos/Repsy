@@ -4,7 +4,6 @@ import {
   isUuid,
   listCheckinTemplates,
   listCourses,
-  listPackages,
   listSequences,
   listTags,
   SEQUENCE_TEMPLATES,
@@ -13,9 +12,6 @@ import { loadAllTemplates } from '@/server/selectOptions';
 import { withServerTenant } from '@/server/serverActor';
 import { ArchiveSequence } from '../ArchiveSequence';
 import { SequenceEditor } from '../SequenceEditor';
-
-// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
-export const instant = false;
 
 export const metadata: Metadata = { title: 'Automation | Repsy' };
 
@@ -45,10 +41,6 @@ export default async function AutomationPage({
         .filter((p) => p.versionNo !== null)
         .map((p) => ({ id: p.id, title: p.title })),
       courses: (await listCourses(tx, actor)).map((c) => ({ id: c.id, title: c.title })),
-      packages: (await listPackages(tx, actor, { includeArchived: true })).map((p) => ({
-        id: p.id,
-        title: p.title,
-      })),
     },
   }));
   if (id !== 'new' && !data.sequence) notFound();

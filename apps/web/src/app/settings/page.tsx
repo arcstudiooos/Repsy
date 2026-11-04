@@ -12,14 +12,8 @@ import {
   listAgreements,
   isManager,
   getPublicPageSettings,
-  getAiSettings,
-  getCustomDomain,
 } from '@kinetic/core';
 import { AgreementsSection } from '@/components/settings/AgreementsSection';
-import { AiSection } from '@/components/settings/AiSection';
-import { CustomDomainSection } from '@/components/settings/CustomDomainSection';
-import { appOrigin } from '@/server/payments';
-import { aiPortFromEnv } from '@/server/ai/anthropic';
 import { PublicPageSection } from '@/components/settings/PublicPageSection';
 import { BrandingSection } from '@/components/settings/BrandingSection';
 import { DataExportSection } from '@/components/settings/DataExportSection';
@@ -38,9 +32,6 @@ import { SecuritySection } from '@/components/settings/SecuritySection';
 import { TwoFactorSection } from '@/components/settings/TwoFactorSection';
 import { withServerTenant } from '@/server/serverActor';
 
-// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
-export const instant = false;
-
 export const metadata: Metadata = { title: 'Settings | Repsy' };
 
 // Access is enforced by src/proxy.ts and the coach shell in the settings layout.
@@ -56,8 +47,6 @@ export default async function SettingsPage() {
     publicPage,
     branding,
     twoFactor,
-    ai,
-    domain,
   } = await withServerTenant(async (tx, a) => ({
     actor: a,
     settings: a.role === 'client' ? null : await getSettings(tx, a),
@@ -69,11 +58,6 @@ export default async function SettingsPage() {
     publicPage: await getPublicPageSettings(tx),
     branding: await getBranding(tx),
     twoFactor: await twoFactorStatus(tx, a),
-    domain: isManager(a.role) ? await getCustomDomain(tx, a) : null,
-    ai:
-      a.role === 'client'
-        ? null
-        : await getAiSettings(tx, a, { available: aiPortFromEnv() !== null }),
   }));
   // A client who lands here belongs in their portal.
   if (!settings?.profile || !settings.org) redirect('/portal/profile');
@@ -118,7 +102,6 @@ export default async function SettingsPage() {
           <NotificationsSection notifications={settings.notifications} coach />
           <MessagingSection expectations={expectations} replies={replies} canEdit={isOwner} />
           {reviewRules && <ReviewRulesSection settings={reviewRules} canEdit={isOwner} />}
-          {ai && <AiSection settings={ai} isOwner={actor.role === 'owner'} />}
         </>
       ),
     },
@@ -130,13 +113,6 @@ export default async function SettingsPage() {
         <>
           <AgreementsSection agreements={agreements} canEdit={isOwner} />
           <PublicPageSection initial={publicPage} canEdit={isOwner} />
-          {isOwner && (
-            <CustomDomainSection
-              domain={domain}
-              cnameTarget={new URL(appOrigin()).hostname}
-              canEdit={isOwner}
-            />
-          )}
         </>
       ),
     },

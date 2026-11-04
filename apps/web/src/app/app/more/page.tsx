@@ -3,9 +3,6 @@ import Link from 'next/link';
 import { SignOutButton } from '@/components/nav/SignOutButton';
 import { Card } from '@/components/ui/card';
 
-// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
-export const instant = false;
-
 export const metadata: Metadata = { title: 'More | Repsy' };
 
 const links = [
@@ -20,8 +17,6 @@ const links = [
   { label: 'Challenges', href: '/app/challenges' },
   { label: 'Leads', href: '/app/leads' },
   { label: 'Automations', href: '/app/automations' },
-  { label: 'Schedule', href: '/app/schedule' },
-  { label: 'Billing', href: '/app/billing' },
   { label: 'Team', href: '/app/team' },
   { label: 'Audit log', href: '/app/audit' },
   { label: 'Settings', href: '/settings' },

@@ -22,10 +22,7 @@ export type RuleKey =
   | 'engagement_drop'
   | 'phase_ready'
   | 'automation_approval'
-  | 'automation_failed'
-  | 'payment_failed'
-  | 'ready_to_assign'
-  | 'package_renewal';
+  | 'automation_failed';
 
 /** The rule text shown with every flag (F10, §10). Copy is "Needs review", never "At risk". */
 export const RULE_TEXT: Record<RuleKey, string> = {
@@ -44,9 +41,6 @@ export const RULE_TEXT: Record<RuleKey, string> = {
   phase_ready: 'Next program phase is ready to start',
   automation_approval: 'An automation step is waiting for your OK',
   automation_failed: "An automation step couldn't run",
-  payment_failed: "A client's payment didn't go through",
-  ready_to_assign: 'Bought a package with a program: confirm readiness and assign',
-  package_renewal: 'A package renews or ends soon',
 };
 
 export const AUTO_RESOLVED = 'Resolved automatically';
@@ -335,44 +329,7 @@ export const messageUnreadRule: Rule = {
   },
 };
 
-/**
- * D-013 #4: a live purchase whose package offers a template, for a client who is now active, asks the coach to
- * confirm readiness and assign (D-007 #6). Raised once per purchase; resolved once the template is assigned.
- */
-const readyToAssignRule: Rule = {
-  key: 'ready_to_assign',
-  async evaluate(tx) {
-    const rows = await tx.purchase.findMany({
-      where: {
-        status: { in: ['trialing', 'active', 'past_due'] },
-        client: { is: { status: 'active' } },
-        package: { is: { templateProgramId: { not: null } } },
-      },
-      select: { id: true, clientId: true, package: { select: { templateProgramId: true } } },
-    });
-    return rows.flatMap((r) =>
-      r.clientId && r.package.templateProgramId
-        ? [
-            {
-              clientId: r.clientId,
-              ruleKey: 'ready_to_assign' as const,
-              sourceType: 'client' as const,
-              sourceId: r.id,
-              dedupeKey: `ready_to_assign:${r.id}`,
-              evidence: { purchaseId: r.id, templateProgramId: r.package.templateProgramId },
-            },
-          ]
-        : [],
-    );
-  },
-};
-
-export const SWEEP_RULES: Rule[] = [
-  missedWorkoutsRule,
-  checkinOverdueRule,
-  messageUnreadRule,
-  readyToAssignRule,
-];
+export const SWEEP_RULES: Rule[] = [missedWorkoutsRule, checkinOverdueRule, messageUnreadRule];
 
 /**
  * A missed-workouts flag whose cited sessions are no longer all `missed` (a late completion or skip) is resolved
@@ -435,29 +392,6 @@ export async function evaluateRules(
   }
 
   for (const id of await staleOptInFlags(tx, now)) resolved += await autoResolve(tx, { id }, now);
-
-  // D-013 #4: a "Ready to assign" item settles once that template runs for the client (assigned after the purchase).
-  const readyFlags = await tx.reviewFlag.findMany({
-    where: { ruleKey: 'ready_to_assign', state: { in: OPEN } },
-    select: { id: true, clientId: true, sourceId: true, evidenceJson: true, createdAt: true },
-  });
-  for (const f of readyFlags) {
-    const ev = (f.evidenceJson ?? {}) as Record<string, unknown>;
-    const template = typeof ev.templateProgramId === 'string' ? ev.templateProgramId : null;
-    const assigned = template
-      ? await tx.programAssignment.count({
-          where: {
-            clientId: f.clientId,
-            createdAt: { gte: f.createdAt },
-            program: { is: { sourceProgramId: template } },
-          },
-        })
-      : 0;
-    const purchaseLive = await tx.purchase.count({
-      where: { id: f.sourceId ?? '', status: { in: ['trialing', 'active', 'past_due'] } },
-    });
-    if (assigned > 0 || purchaseLive === 0) resolved += await autoResolve(tx, { id: f.id }, now);
-  }
 
   const openedRules: RuleKey[] = [];
   for (const rule of SWEEP_RULES) {

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { Suspense, type ReactNode } from 'react';
 import Link from 'next/link';
-import { isCoachRole, lapseState, twoFactorStatus } from '@kinetic/core';
+import { isCoachRole, twoFactorStatus } from '@kinetic/core';
 import { BrandMark } from '@/components/nav/BrandMark';
 import { CoachIdentity, CoachWorkspaceName } from '@/components/nav/CoachIdentity';
 import { CoachNav } from '@/components/nav/CoachNav';
@@ -48,61 +48,27 @@ async function MembershipGate({
   );
 }
 
-/**
- * PRD A4: days left in a self-serve trial. PRD M12 (D-013 #16): once the workspace has lapsed (an ended trial, or
- * marked by the platform), it is read-only, and the banner says until when people can still read and export.
- */
+/** PRD A4: days left in a self-serve trial, or that it ended (clients and data are kept). */
 async function TrialBanner() {
   const org = await withServerTenant((tx, actor) =>
     tx.organization.findFirst({
       where: { id: actor.orgId },
-      select: { trialEndsAt: true, activeClientLimit: true, lapsedAt: true, plan: true },
+      select: { trialEndsAt: true, activeClientLimit: true },
     }),
   ).catch(() => null);
-  if (!org) return null;
-  const lapse = lapseState(org);
-  if (lapse.lapsed) {
-    return (
-      <div role="status" className="mb-6 rounded-card border border-warning/25 bg-warning-soft p-4">
-        <p className="font-medium">This workspace is read-only</p>
-        <p className="text-sm text-secondary">
-          {org.lapsedAt ? 'Its subscription has lapsed.' : 'Its free trial has ended.'} Nothing can
-          be changed, and check-ins, reminders and automations have stopped. You can read everything
-          until {formatLapseDay(lapse.staffReadUntil)} and your clients until{' '}
-          {formatLapseDay(lapse.clientReadUntil)}.{' '}
-          <Link href="/settings" className="text-accent underline">
-            Export your data
-          </Link>{' '}
-          or{' '}
-          <Link href="/plan" className="text-accent underline">
-            see the plan
-          </Link>
-          .
-        </p>
-      </div>
-    );
-  }
-  if (lapse.trialLapsesAt) {
-    return (
-      <div role="status" className="mb-6 rounded-card border border-warning/25 bg-warning-soft p-4">
-        <p className="font-medium">Your free trial has ended</p>
-        <p className="text-sm text-secondary">
-          Your clients and data are kept, but adding new clients needs a plan. Unless you move to
-          one, this workspace becomes read-only on {formatLapseDay(lapse.trialLapsesAt)}.{' '}
-          <Link href="/plan" className="text-accent underline">
-            See the plan
-          </Link>
-        </p>
-      </div>
-    );
-  }
-  if (!org.trialEndsAt) return null;
+  if (!org?.trialEndsAt) return null;
   const left = Math.ceil((org.trialEndsAt.getTime() - Date.now()) / 86_400_000);
   return (
     <div role="status" className="mb-6 rounded-card border border-accent/20 bg-accent-soft p-4">
-      <p className="font-medium">{`Free trial: ${left} ${left === 1 ? 'day' : 'days'} left`}</p>
+      <p className="font-medium">
+        {left > 0
+          ? `Free trial: ${left} ${left === 1 ? 'day' : 'days'} left`
+          : 'Your free trial has ended'}
+      </p>
       <p className="text-sm text-secondary">
-        Up to {org.activeClientLimit} active clients during the trial.{' '}
+        {left > 0
+          ? `Up to ${org.activeClientLimit} active clients during the trial.`
+          : 'Your clients and data are kept. Adding new clients needs a plan.'}{' '}
         <Link href="/plan" className="text-accent underline">
           See the plan
         </Link>
@@ -110,16 +76,6 @@ async function TrialBanner() {
     </div>
   );
 }
-
-const formatLapseDay = (iso: string | null) =>
-  iso
-    ? new Intl.DateTimeFormat('en-GB', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-        timeZone: 'UTC',
-      }).format(new Date(iso))
-    : '';
 
 /** PRD A8: an owner of a workspace with more than one coach is asked to turn on two-step sign-in. */
 async function TwoFactorRequiredBanner() {

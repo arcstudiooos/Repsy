@@ -1,140 +1,64 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { withSystem, type PrismaClient } from '@kinetic/db';
-import { createTestDb } from '@kinetic/db/testing';
-import type { ActorContext } from '../authz/actor';
-import { DomainError } from '../errors';
-import { emitClientEvent } from '../automations/events';
-import { processClientEvents } from '../automations/engine';
-import { saveSequence } from '../automations/sequences';
-import { newClientWorld, newOrg, runAs } from '../sessions/fixtures.test-helpers';
+import { describe, expect, it } from 'vitest';
 import {
-  assertWorkspaceAccess,
-  clearLapseCache,
-  lapsedSince,
-  lapseState,
-  setWorkspaceLapsed,
+  CLIENT_LAPSE_DAYS,
+  COACH_LAPSE_DAYS,
+  assertWritable,
+  enforceReadOnly,
+  lapseAccess,
 } from './lapse';
 
-let prisma: PrismaClient;
-let drop: () => Promise<void>;
-beforeAll(async () => {
-  ({ prisma, drop } = await createTestDb());
-});
-afterAll(async () => {
-  await drop();
-});
-beforeEach(() => clearLapseCache());
-
+/**
+ * Pure-logic tests only: no database. The M12 windows are 90 days for
+ * clients and 180 days for coaches, inclusive of the final day.
+ */
 const DAY = 86_400_000;
-const NOW = new Date('2026-11-04T15:00:00Z');
-const at = (days: number) => new Date(NOW.getTime() + days * DAY);
-const admin = { userId: '00000000-0000-0000-0000-000000000000', isPlatformAdmin: true };
-const code = (p: Promise<unknown>) =>
-  p.then(
-    () => 'ok',
-    (e: unknown) => (e instanceof DomainError ? e.code : `other:${String(e)}`),
-  );
+const LAPSED = new Date('2026-01-01T00:00:00Z');
 
-describe('lapse rules (M12, D-013 #16)', () => {
-  it('lapses on an admin mark or an ended trial, whichever came first', () => {
-    const base = { lapsedAt: null, plan: 'pilot', trialEndsAt: null };
-    expect(lapsedSince(base, NOW)).toBeNull();
-    expect(lapsedSince({ ...base, plan: 'trial', trialEndsAt: at(1) }, NOW)).toBeNull();
-    // An ended trial lapses 14 days after its end (review #1), and warns meanwhile.
-    expect(lapsedSince({ ...base, plan: 'trial', trialEndsAt: at(-2) }, NOW)).toBeNull();
-    expect(lapseState({ ...base, plan: 'trial', trialEndsAt: at(-2) }, NOW).trialLapsesAt).toBe(
-      at(12).toISOString(),
-    );
-    expect(lapsedSince({ ...base, plan: 'trial', trialEndsAt: at(-20) }, NOW)).toEqual(at(-6));
-    expect(lapsedSince({ plan: 'trial', trialEndsAt: at(-2), lapsedAt: at(-5) }, NOW)).toEqual(
-      at(-5),
-    );
-    expect(lapseState({ ...base, lapsedAt: NOW }, NOW)).toMatchObject({
-      lapsed: true,
-      clientReadUntil: at(90).toISOString(),
-      staffReadUntil: at(180).toISOString(),
-    });
+describe('lapseAccess (M12)', () => {
+  it('is full with no lapse, and before the lapse date', () => {
+    expect(lapseAccess('client', null, LAPSED)).toBe('full');
+    expect(lapseAccess('coach', null, LAPSED)).toBe('full');
+    expect(lapseAccess('client', LAPSED, new Date('2025-12-31T00:00:00Z'))).toBe('full');
   });
 
-  it('refuses writes, allows exempt ones, and closes reads after 90 days for clients and 180 for staff', async () => {
-    const w = await newClientWorld(prisma, await newOrg(prisma));
-    const gate = (actor: ActorContext, write: boolean, now: Date, exempt = false) =>
-      code(assertWorkspaceAccess(prisma, actor, { write, exempt, now }));
-    expect(await gate(w.coach, true, NOW)).toBe('ok');
-    await withSystem((tx) => setWorkspaceLapsed(tx, admin, w.orgId, true, NOW), prisma);
-    clearLapseCache();
-    expect(await gate(w.coach, true, NOW)).toBe('WORKSPACE_LAPSED');
-    expect(await gate(w.client, true, NOW)).toBe('WORKSPACE_LAPSED');
-    expect(await gate(w.coach, true, NOW, true)).toBe('ok');
-    expect(await gate(w.client, false, at(89))).toBe('ok');
-    expect(await gate(w.client, false, at(91))).toBe('WORKSPACE_LAPSED');
-    expect(await gate(w.coach, false, at(179))).toBe('ok');
-    expect(await gate(w.coach, false, at(181))).toBe('WORKSPACE_LAPSED');
-    // After the window: an ordinary exemption ends too; prepared exports and cancelling ('always') don't (review #2).
-    expect(
-      await code(
-        assertWorkspaceAccess(prisma, w.client, { write: true, exempt: true, now: at(91) }),
-      ),
-    ).toBe('WORKSPACE_LAPSED');
-    expect(
-      await code(
-        assertWorkspaceAccess(prisma, w.client, { write: false, exempt: 'always', now: at(400) }),
-      ),
-    ).toBe('ok');
-    // Only a platform admin can change it.
-    expect(
-      await code(
-        withSystem(
-          (tx) => setWorkspaceLapsed(tx, { ...admin, isPlatformAdmin: false }, w.orgId, false),
-          prisma,
-        ),
-      ),
-    ).toBe('NOT_FOUND');
-    // Restoring lifts it at once, and converts an ended trial.
-    await withSystem(
-      (tx) =>
-        tx.organization.update({
-          where: { id: w.orgId },
-          data: { plan: 'trial', trialEndsAt: at(-1) },
-        }),
-      prisma,
+  it('gives clients 90 days of read-only access, inclusive', () => {
+    expect(CLIENT_LAPSE_DAYS).toBe(90);
+    expect(lapseAccess('client', LAPSED, new Date(LAPSED.getTime() + 89 * DAY))).toBe('read_only');
+    expect(lapseAccess('client', LAPSED, new Date(LAPSED.getTime() + 90 * DAY))).toBe('read_only');
+    expect(lapseAccess('client', LAPSED, new Date(LAPSED.getTime() + 90 * DAY + 1))).toBe(
+      'expired',
     );
-    await withSystem((tx) => setWorkspaceLapsed(tx, admin, w.orgId, false, NOW), prisma);
-    clearLapseCache();
-    expect(await gate(w.coach, true, NOW)).toBe('ok');
-    const org = await withSystem(
-      (tx) =>
-        tx.organization.findUniqueOrThrow({
-          where: { id: w.orgId },
-          select: { plan: true, trialEndsAt: true },
-        }),
-      prisma,
-    );
-    expect(org).toEqual({ plan: 'pilot', trialEndsAt: null });
   });
 
-  it('a lapsed workspace starts no automations, and its events are not replayed after a restore', async () => {
-    const w = await newClientWorld(prisma, await newOrg(prisma));
-    await runAs(prisma, w.coach, (tx) =>
-      saveSequence(tx, w.coach, {
-        name: 'Welcome',
-        trigger: 'stage_changed',
-        steps: [{ dayOffset: 0, localTime: '09:00', type: 'followup', config: { title: 'Hi' } }],
-      }),
+  it('gives coaches 180 days of read-only access, inclusive', () => {
+    expect(COACH_LAPSE_DAYS).toBe(180);
+    expect(lapseAccess('coach', LAPSED, new Date(LAPSED.getTime() + 180 * DAY))).toBe('read_only');
+    expect(lapseAccess('coach', LAPSED, new Date(LAPSED.getTime() + 180 * DAY + 1))).toBe(
+      'expired',
     );
-    await withSystem((tx) => setWorkspaceLapsed(tx, admin, w.orgId, true), prisma);
-    clearLapseCache();
-    await runAs(prisma, w.coach, (tx) =>
-      emitClientEvent(tx, w.clientId, 'stage_changed', { stage: 'active' }),
-    );
-    await processClientEvents(prisma);
-    await withSystem((tx) => setWorkspaceLapsed(tx, admin, w.orgId, false), prisma);
-    clearLapseCache();
-    await processClientEvents(prisma);
-    const runs = await withSystem(
-      (tx) => tx.sequenceRun.count({ where: { clientId: w.clientId } }),
-      prisma,
-    );
-    expect(runs).toBe(0);
+    // A coach is still read-only long after a client's window has closed.
+    expect(lapseAccess('coach', LAPSED, new Date(LAPSED.getTime() + 120 * DAY))).toBe('read_only');
+    expect(lapseAccess('client', LAPSED, new Date(LAPSED.getTime() + 120 * DAY))).toBe('expired');
+  });
+});
+
+describe('enforceReadOnly', () => {
+  it('allows reads and exports but blocks writes in read-only mode', () => {
+    expect(enforceReadOnly('read_only', 'read')).toBe(true);
+    expect(enforceReadOnly('read_only', 'export')).toBe(true);
+    expect(enforceReadOnly('read_only', 'write')).toBe(false);
+  });
+
+  it('allows everything when full and nothing when expired', () => {
+    for (const action of ['read', 'write', 'export'] as const) {
+      expect(enforceReadOnly('full', action)).toBe(true);
+      expect(enforceReadOnly('expired', action)).toBe(false);
+    }
+  });
+
+  it('assertWritable throws for read-only and expired access', () => {
+    expect(() => assertWritable('read_only')).toThrow();
+    expect(() => assertWritable('expired')).toThrow();
+    expect(assertWritable('full')).toBe('full');
   });
 });

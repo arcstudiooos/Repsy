@@ -65,7 +65,6 @@ test.describe('app shells', () => {
               'Programs',
               'Review',
               'Messages',
-              'Schedule',
               'Analytics',
               'Resources',
               'Courses',
@@ -75,7 +74,6 @@ test.describe('app shells', () => {
               'Challenges',
               'Leads',
               'Automations',
-              'Billing',
               'Settings',
             ],
       );

@@ -1,170 +1,141 @@
-import { appendAudit, withTenant, type PrismaClient, type SystemTx } from '@kinetic/db';
+import type { TenantTx } from '@kinetic/db';
 import type { ActorContext } from '../authz/actor';
+import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';
 
 /**
- * PRD M12 (D-013 #16): access after a workspace lapses. It lapses when a platform admin marks it lapsed, or 14 days
- * after its trial ends without conversion (the coach is warned meanwhile). From then on it is read-only: every
- * write is refused (`WORKSPACE_LAPSED`) except the few that let people leave cleanly. Clients keep read access for
- * 90 days and staff for 180; after that only prepared exports can be listed and downloaded, and a payment plan can
- * still be cancelled. The worker does nothing for a lapsed workspace. Restoring it lifts all of this at once.
+ * PRD M12: after a coach's subscription lapses, clients keep read-only
+ * access and export for 90 days and the coach for 180 days.
+ *
+ * The clock is the `subscription_lapses` row (migration
+ * 20260101000088_scheduling_domains), not the billing subscription itself:
+ * billing (K1-K9) owns subscription status, and this slice assumes it writes
+ * a lapse row — or the parent wires that call — when a subscription becomes
+ * `lapsed` / `past_due` past its grace (see SLICE_REPORT_SCHEDULING.md).
+ * Until a lapse row exists, access is full. `lapseAccess` is pure so the
+ * windows can be tested without a database; `enforceReadOnly` is the single
+ * gate write paths call.
  */
-export const CLIENT_READ_DAYS = 90;
-export const STAFF_READ_DAYS = 180;
-/** An ended trial lapses this long after it ends; the coach is warned meanwhile (final review #1). */
-export const TRIAL_GRACE_DAYS = 14;
-const DAY = 86_400_000;
+export type LapseActorKind = 'client' | 'coach';
+export type LapseAccess = 'full' | 'read_only' | 'expired';
+export type LapseAction = 'read' | 'write' | 'export';
 
-export interface LapseState {
-  lapsed: boolean;
-  since: string | null;
-  /** Until when this kind of member can still read (null while active). */
-  clientReadUntil: string | null;
-  staffReadUntil: string | null;
-  /** An ended trial not yet lapsed: when it will (for the warning banner). */
-  trialLapsesAt: string | null;
+export const CLIENT_LAPSE_DAYS = 90;
+export const COACH_LAPSE_DAYS = 180;
+const DAY_MS = 86_400_000;
+
+/** Pure: the access level for an actor at `now`, given when the subscription lapsed. */
+export function lapseAccess(
+  actorKind: LapseActorKind,
+  lapsedAt: Date | null,
+  now: Date = new Date(),
+): LapseAccess {
+  if (lapsedAt === null) return 'full';
+  if (now < lapsedAt) return 'full';
+  const windowDays = actorKind === 'client' ? CLIENT_LAPSE_DAYS : COACH_LAPSE_DAYS;
+  const elapsedMs = now.getTime() - lapsedAt.getTime();
+  // The window is inclusive: exactly 90 / 180 days after the lapse is still read-only.
+  if (elapsedMs <= windowDays * DAY_MS) return 'read_only';
+  return 'expired';
 }
 
-type OrgLapseFields = { lapsedAt: Date | null; plan: string; trialEndsAt: Date | null };
-
-/** When an unconverted trial lapses (its end plus the grace period), or null for a non-trial. */
-export function trialLapsesAt(org: OrgLapseFields): Date | null {
-  return org.plan === 'trial' && org.trialEndsAt
-    ? new Date(org.trialEndsAt.getTime() + TRIAL_GRACE_DAYS * DAY)
-    : null;
+/** Pure: what an access level allows. Read-only keeps reads AND exports, and blocks writes only. */
+export function enforceReadOnly(access: LapseAccess, action: LapseAction): boolean {
+  if (access === 'full') return true;
+  if (access === 'read_only') return action === 'read' || action === 'export';
+  return false;
 }
 
-/** When the workspace lapsed, or null: an admin's mark, or a trial's lapse date, whichever came first. */
-export function lapsedSince(org: OrgLapseFields, now: Date = new Date()): Date | null {
-  const lapses = trialLapsesAt(org);
-  const trial = lapses && lapses <= now ? lapses : null;
-  if (org.lapsedAt && trial) return org.lapsedAt < trial ? org.lapsedAt : trial;
-  return org.lapsedAt ?? trial;
+/** Pure gate for write paths: throws FORBIDDEN when the actor may not write. Returns the access level otherwise. */
+export function assertWritable(access: LapseAccess): LapseAccess {
+  if (!enforceReadOnly(access, 'write')) {
+    throw new DomainError(
+      'FORBIDDEN',
+      access === 'expired'
+        ? 'Access ended after the subscription lapse window.'
+        : 'Access is read-only after the subscription lapse.',
+    );
+  }
+  return access;
 }
 
-export function lapseState(org: OrgLapseFields, now: Date = new Date()): LapseState {
-  const since = lapsedSince(org, now);
-  const lapses = trialLapsesAt(org);
-  return {
-    lapsed: since !== null,
-    since: since?.toISOString() ?? null,
-    clientReadUntil: since
-      ? new Date(since.getTime() + CLIENT_READ_DAYS * DAY).toISOString()
-      : null,
-    staffReadUntil: since ? new Date(since.getTime() + STAFF_READ_DAYS * DAY).toISOString() : null,
-    trialLapsesAt:
-      !since && lapses && org.trialEndsAt && org.trialEndsAt <= now ? lapses.toISOString() : null,
+export interface LapseView {
+  organizationId: string;
+  lapsedAt: string | null;
+  reason: string | null;
+  access: LapseAccess;
+  /** Days of read-only access left, null when access is full or expired. */
+  readOnlyDaysLeft: number | null;
+}
+
+/** Structural delegate for the not-yet-generated `subscription_lapses` model. */
+export interface LapseDb {
+  subscriptionLapse: {
+    findFirst(args: unknown): Promise<{ lapsedAt: Date; reason: string | null } | null>;
+    create(args: unknown): Promise<{ id: string }>;
   };
 }
 
-/** A Prisma `where` on organizations: those still active (for worker sweeps). */
-export const activeOrgWhere = (now: Date = new Date()) => ({
-  lapsedAt: null,
-  OR: [
-    { plan: { not: 'trial' } },
-    { trialEndsAt: null },
-    { trialEndsAt: { gt: new Date(now.getTime() - TRIAL_GRACE_DAYS * DAY) } },
-  ],
-});
-
-const lapsedError = (message: string) => new DomainError('WORKSPACE_LAPSED', message);
+const db = (tx: TenantTx): LapseDb => tx as unknown as LapseDb;
 
 /**
- * The request gate (apiHandler and server pages). `write` is any change. `exempt` marks what a lapsed workspace
- * still allows: `true` while the member can still read it (exports, deletion requests, support), `'always'` even
- * after that (listing and downloading prepared exports, cancelling a payment plan) (final review #2).
+ * Records a lapse. Called by billing (or the parent's lapse hook) when a
+ * subscription lapses; the reason is a short fixed label, never free text
+ * about a person. A second lapse row for the same org is a new lapse event
+ * (the latest row wins in `getLapseAccess`).
  */
-export async function assertWorkspaceAccess(
-  prisma: PrismaClient,
+export async function recordSubscriptionLapse(
+  tx: TenantTx,
   actor: ActorContext,
-  opts: { write: boolean; exempt?: boolean | 'always'; now?: Date },
-): Promise<void> {
-  if (actor.isPlatformAdmin) return;
+  input: Record<string, unknown>,
+  opts: { now?: Date } = {},
+): Promise<{ id: string }> {
+  assertCan(actor, 'settings:org:update');
   const now = opts.now ?? new Date();
-  const org = await orgLapseFields(prisma, actor.orgId);
-  if (!org) return;
-  const since = lapsedSince(org, now);
-  if (!since || opts.exempt === 'always') return;
-  const days = actor.role === 'client' ? CLIENT_READ_DAYS : STAFF_READ_DAYS;
-  if (now.getTime() > since.getTime() + days * DAY) {
-    throw lapsedError(
-      'This workspace has closed. You can still download an export you already prepared.',
-    );
-  }
-  if (opts.write && !opts.exempt) {
-    throw lapsedError(
-      'This workspace is read-only because its subscription has lapsed. You can still export your data.',
-    );
-  }
-}
-
-// A short cache: the gate runs on every request, the answer changes rarely.
-const cache = new Map<string, { org: OrgLapseFields | null; until: number }>();
-async function orgLapseFields(prisma: PrismaClient, orgId: string): Promise<OrgLapseFields | null> {
-  const now = Date.now();
-  const hit = cache.get(orgId);
-  if (hit && hit.until > now) return hit.org;
-  // The actor's own organization, read in its tenant scope (no system read on the request path; final review #9).
-  const org = await withTenant(
-    orgId,
-    (tx) =>
-      tx.organization.findFirst({ select: { lapsedAt: true, plan: true, trialEndsAt: true } }),
-    prisma,
-  );
-  // Evict the oldest entry rather than everything at once.
-  if (cache.size >= 5000) cache.delete(cache.keys().next().value!);
-  cache.set(orgId, { org, until: now + 15_000 });
-  return org;
-}
-
-/**
- * Drop cached lapse states. Call it after the transaction that changed one has committed; other instances catch
- * up within 15 seconds (final review #8).
- */
-export const clearLapseCache = (orgId?: string) => (orgId ? cache.delete(orgId) : cache.clear());
-
-/**
- * Platform admin: mark a workspace lapsed, or restore it (which also converts an ended trial to the pilot plan).
- * The caller clears the lapse cache once the transaction commits.
- */
-export async function setWorkspaceLapsed(
-  tx: SystemTx,
-  admin: { userId: string; isPlatformAdmin: boolean },
-  orgId: string,
-  lapsed: boolean,
-  now: Date = new Date(),
-): Promise<void> {
-  if (!admin.isPlatformAdmin) throw new DomainError('NOT_FOUND', 'Not found.');
-  if (!/^[0-9a-f-]{36}$/i.test(orgId)) throw new DomainError('NOT_FOUND', 'Not found.');
-  const { count } = await tx.organization.updateMany({
-    where: { id: orgId },
-    data: lapsed ? { lapsedAt: now } : { lapsedAt: null },
-  });
-  if (count === 0) throw new DomainError('NOT_FOUND', 'Not found.');
-  if (!lapsed) {
-    await tx.organization.updateMany({
-      where: { id: orgId, plan: 'trial', trialEndsAt: { lte: now } },
-      data: { plan: 'pilot', trialEndsAt: null },
+  const reason = typeof input.reason === 'string' ? input.reason.trim().slice(0, 120) : null;
+  const lapsedAt =
+    input.lapsedAt !== undefined && input.lapsedAt !== null
+      ? new Date(input.lapsedAt as string)
+      : now;
+  if (Number.isNaN(lapsedAt.getTime())) {
+    throw new DomainError('VALIDATION', 'Some fields are invalid.', {
+      lapsedAt: ['Pick a valid lapse date.'],
     });
   }
-  await appendAudit(tx, {
-    orgId,
-    actorId: admin.userId,
-    objectType: 'organization',
-    objectId: orgId,
-    action: lapsed ? 'organization.lapsed' : 'organization.restored',
+  const row = await db(tx).subscriptionLapse.create({
+    data: { lapsedAt, reason },
+    select: { id: true },
   });
+  return { id: row.id };
 }
 
-/** Whether a workspace is lapsed, for flows that run before there is an actor (system read by id). */
-export async function orgIsLapsed(
-  tx: SystemTx,
-  orgId: string,
-  now: Date = new Date(),
-): Promise<boolean> {
-  const org = await tx.organization.findUnique({
-    where: { id: orgId },
-    select: { lapsedAt: true, plan: true, trialEndsAt: true },
+/** The workspace's lapse status for the acting user. Clients see their own 90-day clock; staff see the 180-day one. */
+export async function getLapseAccess(
+  tx: TenantTx,
+  actor: ActorContext,
+  opts: { now?: Date } = {},
+): Promise<LapseView> {
+  assertCan(actor, 'session:read');
+  const now = opts.now ?? new Date();
+  const kind: LapseActorKind = actor.role === 'client' ? 'client' : 'coach';
+  const row = await db(tx).subscriptionLapse.findFirst({
+    orderBy: { lapsedAt: 'desc' },
+    select: { lapsedAt: true, reason: true },
   });
-  return org ? lapsedSince(org, now) !== null : false;
+  const access = lapseAccess(kind, row ? row.lapsedAt : null, now);
+  const windowDays = kind === 'client' ? CLIENT_LAPSE_DAYS : COACH_LAPSE_DAYS;
+  const readOnlyDaysLeft =
+    access === 'read_only' && row
+      ? Math.max(
+          0,
+          Math.ceil((row.lapsedAt.getTime() + windowDays * DAY_MS - now.getTime()) / DAY_MS),
+        )
+      : null;
+  return {
+    organizationId: actor.orgId,
+    lapsedAt: row ? row.lapsedAt.toISOString() : null,
+    reason: row ? row.reason : null,
+    access,
+    readOnlyDaysLeft,
+  };
 }

@@ -3,9 +3,6 @@ import { Geist_Mono, Plus_Jakarta_Sans } from 'next/font/google';
 import { Toaster } from '@/components/ui/toast';
 import './globals.css';
 
-// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
-export const instant = false;
-
 // Modern geometric sans for the whole product (ui-ux-pro-max: SaaS, dashboards, friendly and professional).
 const sans = Plus_Jakarta_Sans({
   variable: '--font-sans-brand',

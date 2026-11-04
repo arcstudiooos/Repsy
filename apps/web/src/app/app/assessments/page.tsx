@@ -5,9 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';
 import { ArchiveAssessment, AssessmentForm } from './AssessmentForm';
 
-// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
-export const instant = false;
-
 export const metadata: Metadata = { title: 'Assessments | Repsy' };
 
 /** PRD E5: posture and mobility photo assessments, asked for from a client's Progress tab. */

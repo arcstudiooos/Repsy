@@ -91,16 +91,17 @@ export async function getSettings(tx: TenantTx, actor: ActorContext): Promise<Se
     return { profile: null, notifications, client: own };
   }
 
-  // Sequential: a transaction is one connection (pg deprecates overlapping queries on it).
-  const profile = await tx.coachProfile.findUniqueOrThrow({
-    where: { userId: actor.userId },
-    select: { bio: true, specialties: true, units: true },
-  });
-  const org = await tx.organization.findFirst({
-    where: { id: actor.orgId },
-    select: { name: true, timezone: true, graceHours: true, activeClientLimit: true },
-  });
-  const activeClientCount = await countActiveClients(tx);
+  const [profile, org, activeClientCount] = await Promise.all([
+    tx.coachProfile.findUniqueOrThrow({
+      where: { userId: actor.userId },
+      select: { bio: true, specialties: true, units: true },
+    }),
+    tx.organization.findFirst({
+      where: { id: actor.orgId },
+      select: { name: true, timezone: true, graceHours: true, activeClientLimit: true },
+    }),
+    countActiveClients(tx),
+  ]);
   if (!org) throw new DomainError('NOT_FOUND', 'Not found.');
   return { profile, org: { ...org, activeClientCount }, notifications };
 }

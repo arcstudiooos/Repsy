@@ -1,4 +1,3 @@
-import { orgIsLapsed } from '../lapse/lapse';
 import { appendAudit, withSystem, withTenant, type PrismaClient, type TenantTx } from '@kinetic/db';
 import { STAFF_ROLES, type Role } from '../authz/actor';
 import type { ActorContext } from '../authz/actor';
@@ -175,8 +174,6 @@ export async function joinWithLink(
       select: { id: true, organizationId: true, createdBy: true },
     });
     if (!row) return null;
-    // PRD M12: a lapsed workspace takes no new clients; its links read as closed (final review #6).
-    if (await orgIsLapsed(tx, row.organizationId, now)) return null;
     const member = await tx.membership.findFirst({
       where: {
         userId: row.createdBy,

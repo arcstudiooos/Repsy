@@ -4,9 +4,6 @@ import { ResourceList } from '@/components/resources/ResourceList';
 import { EmptyState } from '@/components/states/EmptyState';
 import { withPortalTenant } from '@/server/serverActor';
 
-// May block on request data (session, params); opts out of Next instant-navigation validation, see HANDOFF.
-export const instant = false;
-
 export const metadata: Metadata = { title: 'Resources | Repsy' };
 
 /** Links and notes your coach shared with you (PRD G5). */

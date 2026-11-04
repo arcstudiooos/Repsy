@@ -1,4 +1,3 @@
-import { orgIsLapsed } from '../lapse/lapse';
 import { appendAudit, findInviteByTokenHash, withSystem } from '@kinetic/db';
 import { emitClientEventAsSystem } from '../automations/events';
 import type { PrismaClient, TenantTx } from '@kinetic/db';
@@ -197,13 +196,6 @@ export async function acceptInvite(
   const lookup = await findInviteByTokenHash(input.tokenHash, prisma);
   const pre = classifyInvite(lookup, now);
   if (pre !== 'ok' || !lookup) throw inviteError(pre === 'ok' ? 'INVITE_INVALID' : pre);
-  // PRD M12: a lapsed workspace takes no one new (final review #6).
-  if (await withSystem((tx) => orgIsLapsed(tx, lookup.orgId, now), prisma)) {
-    throw new DomainError(
-      'WORKSPACE_LAPSED',
-      'This workspace is not taking new clients right now.',
-    );
-  }
 
   try {
     return await withSystem(async (tx) => {

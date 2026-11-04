@@ -58,17 +58,17 @@ enum OutboxStatus {
 }
 
 model User {
-  id               String    @id @default(uuid()) @db.Uuid
-  email            String    @unique
-  name             String
-  image            String?
-  emailVerified    Boolean   @default(false) @map("email_verified")
-  isPlatformAdmin  Boolean   @default(false) @map("is_platform_admin")
-  lastLoginAt      DateTime? @map("last_login_at") @db.Timestamptz(3)
+  id              String    @id @default(uuid()) @db.Uuid
+  email           String    @unique
+  name            String
+  image           String?
+  emailVerified   Boolean   @default(false) @map("email_verified")
+  isPlatformAdmin Boolean   @default(false) @map("is_platform_admin")
+  lastLoginAt     DateTime? @map("last_login_at") @db.Timestamptz(3)
   /// PRD A8: two-step sign-in is on (Better Auth two-factor plugin).
-  twoFactorEnabled Boolean   @default(false) @map("two_factor_enabled")
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  twoFactorEnabled Boolean  @default(false) @map("two_factor_enabled")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   ownedOrganizations       Organization[]
   createdJoinLinks         JoinLink[]              @relation("JoinLinkCreator")
@@ -131,23 +131,12 @@ model User {
   groupComments            GroupComment[]
   groupReactions           GroupReaction[]
   groupReports             GroupReport[]
-  groupMutes               GroupMute[]             @relation("GroupMuter")
-  groupMutedBy             GroupMute[]             @relation("GroupMuted")
+  groupMutes               GroupMute[]              @relation("GroupMuter")
+  groupMutedBy             GroupMute[]              @relation("GroupMuted")
   outboxPushes             OutboxPush[]
-  connectedPaymentAccounts PaymentAccount[]        @relation("PaymentAccountConnector")
-  createdPackages          Package[]               @relation("PackageCreator")
-  createdPurchases         Purchase[]              @relation("PurchaseCreator")
-  sessionTypesCoached      SessionType[]           @relation("SessionTypeCoach")
-  availability             CoachAvailability[]     @relation("AvailabilityCoach")
-  timeOff                  CoachTimeOff[]          @relation("TimeOffCoach")
-  bookingsCoached          Booking[]               @relation("BookingCoach")
-  bookingsCanceled         Booking[]               @relation("BookingCanceler")
-  bookingsCreated          Booking[]               @relation("BookingCreator")
-  calendarConnections      CalendarConnection[]    @relation("CalendarConnectionUser")
-  calendarBusy             CalendarBusy[]          @relation("CalendarBusyUser")
-  recordedPayments         Payment[]               @relation("PaymentRecorder")
-  aiRequests               AiRequest[]
-  customDomains            CustomDomain[]
+  aiDrafts             AiDraft[]
+  coachedSessionTypes SessionType[]
+  coachedBookings     Booking[]
 
   @@map("users")
 }
@@ -229,51 +218,34 @@ model RateLimit {
 }
 
 model Organization {
-  id                     String    @id @default(uuid()) @db.Uuid
-  name                   String
-  timezone               String
+  id                String   @id @default(uuid()) @db.Uuid
+  name              String
+  timezone          String
   /// PRD B15: the public page at /join/<publicSlug>, off until enabled.
-  publicSlug             String?   @unique @map("public_slug")
-  publicBio              String?   @map("public_bio")
-  publicOffers           String?   @map("public_offers")
-  publicPageEnabled      Boolean   @default(false) @map("public_page_enabled")
-  plan                   String    @default("pilot")
-  ownerUserId            String    @map("owner_user_id") @db.Uuid
-  graceHours             Int       @default(24) @map("grace_hours")
-  activeClientLimit      Int       @default(30) @map("active_client_limit")
+  publicSlug        String?  @unique @map("public_slug")
+  publicBio         String?  @map("public_bio")
+  publicOffers      String?  @map("public_offers")
+  publicPageEnabled Boolean  @default(false) @map("public_page_enabled")
+  plan              String   @default("pilot")
+  ownerUserId       String   @map("owner_user_id") @db.Uuid
+  graceHours        Int      @default(24) @map("grace_hours")
+  activeClientLimit Int      @default(30) @map("active_client_limit")
   /// PRD A4: set only for plan "trial" (CHECK in migration 000061).
-  trialEndsAt            DateTime? @map("trial_ends_at") @db.Timestamptz(3)
+  trialEndsAt       DateTime? @map("trial_ends_at") @db.Timestamptz(3)
   /// Reply expectations shown to clients (PRD H16): usual reply time in hours and office hours, both optional.
-  replyTargetHours       Int?      @map("reply_target_hours")
-  officeHours            String?   @map("office_hours")
+  replyTargetHours  Int?     @map("reply_target_hours")
+  officeHours       String?  @map("office_hours")
   /// Opt-in review rules (PRD I3): any of habit_low, program_ending, reply_overdue, weight_change. Off by default.
-  reviewRules            String[]  @default([]) @map("review_rules")
+  reviewRules       String[] @default([]) @map("review_rules")
   /// weight_change: flag a body-weight change of more than this percent over about two weeks (1-20).
-  weightChangeBandPct    Int?      @map("weight_change_band_pct")
+  weightChangeBandPct Int?   @map("weight_change_band_pct")
   /// PRD D14: clients may move an unstarted workout to another day in the same week. Off by default.
-  clientsCanMoveWorkouts Boolean   @default(false) @map("clients_can_move_workouts")
+  clientsCanMoveWorkouts Boolean @default(false) @map("clients_can_move_workouts")
   /// PRD A6: accent colour (#rrggbb, AA against white) and logo (https) shown to clients; null = Kinetic's.
-  brandAccent            String?   @map("brand_accent")
-  logoUrl                String?   @map("logo_url")
-  /// PRD K3 (D-013 #2): ISO 4217 currency for every package and payment; set once, null until payments are set up.
-  currency               String?
-  /// D-013 #7: days a failed payment waits before the portal's payment gate shows (0-30).
-  paymentGraceDays       Int       @default(7) @map("payment_grace_days")
-  /// D-013 #13: days before a renewal or end that the renewal journey starts (1-30).
-  renewalNoticeDays      Int       @default(7) @map("renewal_notice_days")
-  /// D-013 #6: shown on receipts (for example a GSTIN), with the GST rate in basis points and the home region.
-  taxId                  String?   @map("tax_id")
-  taxRateBp              Int?      @map("tax_rate_bp")
-  taxHomeRegion          String?   @map("tax_home_region")
-  stripeTaxEnabled       Boolean   @default(false) @map("stripe_tax_enabled")
-  /// The last receipt number issued; incremented under the row lock, so numbers are gap-free.
-  receiptSeq             Int       @default(0) @map("receipt_seq")
-  /// PRD I14 (D-013 #14): AI drafting, off by default; the owner turns it on.
-  aiEnabled              Boolean   @default(false) @map("ai_enabled")
-  /// PRD M12 (D-013 #16): set by a platform admin when the workspace lapses; null when active.
-  lapsedAt               DateTime? @map("lapsed_at") @db.Timestamptz(3)
-  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt              DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  brandAccent       String?  @map("brand_accent")
+  logoUrl           String?  @map("logo_url")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   owner                   User                     @relation(fields: [ownerUserId], references: [id])
   memberships             Membership[]
@@ -316,59 +288,58 @@ model Organization {
   nutritionTargets        NutritionTarget[]
   nutritionLogs           NutritionLog[]
   savedReplies            SavedReply[]
-  paymentAccounts         PaymentAccount[]
-  packages                Package[]
-  coupons                 Coupon[]
-  purchases               Purchase[]
-  sessionTypes            SessionType[]
-  coachAvailability       CoachAvailability[]
-  coachTimeOff            CoachTimeOff[]
-  bookings                Booking[]
-  calendarConnections     CalendarConnection[]
-  calendarBusy            CalendarBusy[]
-  aiRequests              AiRequest[]
-  customDomains           CustomDomain[]
-  payments                Payment[]
-  paymentEvents           PaymentEvent[]
-  joinLinks               JoinLink[]
-  mediaFiles              MediaFile[]
-  progressPhotos          ProgressPhoto[]
-  outboxPushes            OutboxPush[]
-  scheduledMessages       ScheduledMessage[]
-  portalVisits            PortalVisit[]
-  agreements              Agreement[]
-  agreementAcceptances    AgreementAcceptance[]
-  teamInvites             TeamInvite[]
-  coachCovers             CoachCover[]
-  programPhases           ProgramPhase[]
-  clientEvents            ClientEvent[]
-  sequences               Sequence[]
-  sequenceSteps           SequenceStep[]
-  sequenceRuns            SequenceRun[]
-  sequenceStepRuns        SequenceStepRun[]
-  leads                   Lead[]
-  courses                 Course[]
-  courseLessons           CourseLesson[]
-  courseEnrollments       CourseEnrollment[]
-  lessonCompletions       LessonCompletion[]
-  assessments             Assessment[]
-  clientAssessments       ClientAssessment[]
-  assessmentPhotos        AssessmentPhoto[]
-  progressReports         ProgressReport[]
-  recipes                 Recipe[]
-  mealPlans               MealPlan[]
-  clientMealPlans         ClientMealPlan[]
-  groups                  Group[]
-  groupMembers            GroupMember[]
-  groupPosts              GroupPost[]
-  groupComments           GroupComment[]
-  groupReactions          GroupReaction[]
-  groupReports            GroupReport[]
-  groupMutes              GroupMute[]
-  challenges              Challenge[]
-  challengeParticipants   ChallengeParticipant[]
+  aiSettings         AiSetting[]
+  aiDrafts           AiDraft[]
+  billingPackages    BillingPackage[]
+  coupons            Coupon[]
+  subscriptions      Subscription[]
+  payments           Payment[]
+  receipts           Receipt[]
+  sessionTypes       SessionType[]
+  bookings           Booking[]
+  sessionPacks       SessionPack[]
+  packageJourneyRuns PackageJourneyRun[]
+  customDomains      CustomDomain[]
+  subscriptionLapses SubscriptionLapse[]
 
   @@map("organizations")
+  joinLinks JoinLink[]
+  mediaFiles MediaFile[]
+  progressPhotos ProgressPhoto[]
+  outboxPushes OutboxPush[]
+  scheduledMessages ScheduledMessage[]
+  portalVisits PortalVisit[]
+  agreements Agreement[]
+  agreementAcceptances AgreementAcceptance[]
+  teamInvites TeamInvite[]
+  coachCovers CoachCover[]
+  programPhases ProgramPhase[]
+  clientEvents ClientEvent[]
+  sequences Sequence[]
+  sequenceSteps SequenceStep[]
+  sequenceRuns SequenceRun[]
+  sequenceStepRuns SequenceStepRun[]
+  leads Lead[]
+  courses Course[]
+  courseLessons CourseLesson[]
+  courseEnrollments CourseEnrollment[]
+  lessonCompletions LessonCompletion[]
+  assessments Assessment[]
+  clientAssessments ClientAssessment[]
+  assessmentPhotos AssessmentPhoto[]
+  progressReports ProgressReport[]
+  recipes Recipe[]
+  mealPlans MealPlan[]
+  clientMealPlans ClientMealPlan[]
+  groups Group[]
+  groupMembers GroupMember[]
+  groupPosts GroupPost[]
+  groupComments GroupComment[]
+  groupReactions GroupReaction[]
+  groupReports GroupReport[]
+  groupMutes GroupMute[]
+  challenges Challenge[]
+  challengeParticipants ChallengeParticipant[]
 }
 
 model Membership {
@@ -450,91 +421,91 @@ model OutboxEmail {
 }
 
 model Client {
-  id                String       @id @default(uuid()) @db.Uuid
-  organizationId    String       @map("organization_id") @db.Uuid
-  userId            String?      @map("user_id") @db.Uuid
-  coachUserId       String       @map("coach_user_id") @db.Uuid
-  name              String
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  userId         String?      @map("user_id") @db.Uuid
+  coachUserId    String       @map("coach_user_id") @db.Uuid
+  name           String
   /// Stored lowercased.
-  email             String
-  status            ClientStatus @default(invited)
+  email          String
+  status         ClientStatus @default(invited)
   /// PRD B20: onboarding, active or at_renewal; paused and alumni come from `status`.
-  lifecycleStage    String       @default("onboarding") @map("lifecycle_stage")
+  lifecycleStage String       @default("onboarding") @map("lifecycle_stage")
   /// PRD L7: sha256 of the private calendar feed token; null = no feed.
-  calendarTokenHash String?      @unique @map("calendar_token_hash")
-  startDate         DateTime?    @map("start_date") @db.Date
-  goals             String?
+  calendarTokenHash String?  @unique @map("calendar_token_hash")
+  startDate      DateTime?    @map("start_date") @db.Date
+  goals          String?
   /// Client context card (PRD B7), coaches only: why they came, schedule limits, equipment, preferences.
-  motivation        String?
-  scheduleNotes     String?      @map("schedule_notes")
-  equipmentNotes    String?      @map("equipment_notes")
+  motivation     String?
+  scheduleNotes  String?      @map("schedule_notes")
+  equipmentNotes String?      @map("equipment_notes")
   /// PRD B13: where the client trains (home, commercial_gym, outdoors, other) and the kit they have (EQUIPMENT labels).
-  trainingLocation  String?      @map("training_location")
-  equipment         String[]     @default([])
-  preferences       String?
+  trainingLocation  String?   @map("training_location")
+  equipment         String[]  @default([])
+  preferences    String?
   /// IANA zone; defaults to the organization timezone at creation.
-  timezone          String
-  preferredUnits    Units        @default(kg) @map("preferred_units")
-  consentVersion    String?      @map("consent_version")
-  consentAt         DateTime?    @map("consent_at") @db.Timestamptz(3)
+  timezone       String
+  preferredUnits Units        @default(kg) @map("preferred_units")
+  consentVersion String?      @map("consent_version")
+  consentAt      DateTime?    @map("consent_at") @db.Timestamptz(3)
   /// ISO weekday (1 = Monday ... 7 = Sunday) the weekly check-in is issued on; null = no check-ins (S4-1).
-  checkinWeekday    Int?         @map("checkin_weekday")
+  checkinWeekday    Int?      @map("checkin_weekday")
   /// PRD F4: 1, 2 or 4 (CHECK in migration 000057).
-  checkinEveryWeeks Int          @default(1) @map("checkin_every_weeks") @db.SmallInt
-  checkinTemplateId String?      @map("checkin_template_id") @db.Uuid
+  checkinEveryWeeks Int @default(1) @map("checkin_every_weeks") @db.SmallInt
+  checkinTemplateId String?   @map("checkin_template_id") @db.Uuid
   /// PRD I7: set by a trigger when the status becomes archived; cleared on restore.
-  archivedAt        DateTime?    @map("archived_at") @db.Timestamptz(3)
+  archivedAt     DateTime?    @map("archived_at") @db.Timestamptz(3)
   /// PRD I7: why coaching ended (goal_reached, cost, time, results, moved_on, health, other).
-  churnReason       String?      @map("churn_reason")
-  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt         DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+  churnReason    String?      @map("churn_reason")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  organization          Organization           @relation(fields: [organizationId], references: [id])
-  user                  User?                  @relation("ClientUser", fields: [userId], references: [id])
-  coach                 User                   @relation("ClientCoach", fields: [coachUserId], references: [id])
-  invites               ClientInvite[]
-  programs              Program[]
-  assignments           ProgramAssignment[]
-  workoutSessions       WorkoutSession[]
-  agreementAcceptances  AgreementAcceptance[]
+  organization    Organization        @relation(fields: [organizationId], references: [id])
+  user            User?               @relation("ClientUser", fields: [userId], references: [id])
+  coach           User                @relation("ClientCoach", fields: [coachUserId], references: [id])
+  invites         ClientInvite[]
+  programs        Program[]
+  assignments     ProgramAssignment[]
+  workoutSessions WorkoutSession[]
+  agreementAcceptances AgreementAcceptance[]
   challengeParticipants ChallengeParticipant[]
-  groupMembers          GroupMember[]
-  groupPosts            GroupPost[]
-  groupComments         GroupComment[]
-  groupReports          GroupReport[]
-  clientMealPlans       ClientMealPlan[]
-  progressReports       ProgressReport[]
-  clientAssessments     ClientAssessment[]
-  courseEnrollments     CourseEnrollment[]
-  leads                 Lead[]
-  clientEvents          ClientEvent[]
-  sequenceRuns          SequenceRun[]
-  programPhases         ProgramPhase[]
-  portalVisits          PortalVisit[]
-  pauses                ClientPause[]
+  groupMembers     GroupMember[]
+  groupPosts       GroupPost[]
+  groupComments    GroupComment[]
+  groupReports     GroupReport[]
+  clientMealPlans ClientMealPlan[]
+  progressReports ProgressReport[]
+  clientAssessments ClientAssessment[]
+  courseEnrollments CourseEnrollment[]
+  leads           Lead[]
+  clientEvents    ClientEvent[]
+  sequenceRuns    SequenceRun[]
+  programPhases   ProgramPhase[]
+  portalVisits    PortalVisit[]
+  pauses          ClientPause[]
   /// Composite FK (MATCH SIMPLE: null until a weekday is set) keeps the template in this org.
-  checkinTemplate       CheckinTemplate?       @relation(fields: [checkinTemplateId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  checkins              Checkin[]
-  thread                ConversationThread?
-  reviewFlags           ReviewFlag[]
-  internalNotes         InternalNote[]
-  exportJobs            ExportJob[]
-  deletionRequests      DeletionRequest[]
-  supportGrants         SupportAccessGrant[]
-  metricEntries         MetricEntry[]
-  metricEntryRevisions  MetricEntryRevision[]
-  habits                Habit[]
-  goalRecords           Goal[]
-  resources             Resource[]
-  habitLogs             HabitLog[]
-  tagLinks              ClientTagLink[]
-  nutritionTargets      NutritionTarget[]
-  nutritionLogs         NutritionLog[]
-  purchases             Purchase[]
-  bookings              Booking[]
-  payments              Payment[]
-  mediaFiles            MediaFile[]
-  progressPhotos        ProgressPhoto[]
+  checkinTemplate CheckinTemplate?    @relation(fields: [checkinTemplateId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  checkins        Checkin[]
+  thread          ConversationThread?
+  reviewFlags     ReviewFlag[]
+  internalNotes   InternalNote[]
+  exportJobs      ExportJob[]
+  deletionRequests DeletionRequest[]
+  supportGrants   SupportAccessGrant[]
+  metricEntries   MetricEntry[]
+  metricEntryRevisions MetricEntryRevision[]
+  habits          Habit[]
+  goalRecords     Goal[]
+  resources       Resource[]
+  habitLogs       HabitLog[]
+  tagLinks        ClientTagLink[]
+  nutritionTargets NutritionTarget[]
+  nutritionLogs   NutritionLog[]
+  subscriptions   Subscription[]
+  payments        Payment[]
+  bookings        Booking[]
+  sessionPacks    SessionPack[]
+  packageJourneyRuns PackageJourneyRun[]
 
   @@unique([organizationId, email])
   @@unique([organizationId, userId])
@@ -543,6 +514,8 @@ model Client {
   @@index([organizationId, status])
   @@index([organizationId, createdAt, id])
   @@map("clients")
+  mediaFiles MediaFile[]
+  progressPhotos ProgressPhoto[]
 }
 
 model ClientInvite {
@@ -570,14 +543,14 @@ model ClientInvite {
 /// Forced RLS: a row is visible only to its own user (app.user_id).
 model CoachProfile {
   /// The user's id; one profile per user.
-  userId           String    @id @map("user_id") @db.Uuid
-  bio              String?
-  specialties      String[]
-  units            Units     @default(kg)
+  userId      String   @id @map("user_id") @db.Uuid
+  bio         String?
+  specialties String[]
+  units       Units    @default(kg)
   /// When the coach hid the dashboard setup checklist (PRD A5); null = shown until every step is done.
   setupDismissedAt DateTime? @map("setup_dismissed_at") @db.Timestamptz(3)
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -588,19 +561,19 @@ model CoachProfile {
 /// Forced RLS: a row is visible only to its own user (app.user_id).
 model NotificationPreference {
   /// The user's id; one row per user.
-  userId               String   @id @map("user_id") @db.Uuid
-  messageEmailOptIn    Boolean  @default(false) @map("message_email_opt_in")
-  marketingOptIn       Boolean  @default(false) @map("marketing_opt_in")
+  userId            String   @id @map("user_id") @db.Uuid
+  messageEmailOptIn Boolean  @default(false) @map("message_email_opt_in")
+  marketingOptIn    Boolean  @default(false) @map("marketing_opt_in")
   /// PRD H14: coaches only; one email a day with counts of what needs them. Off by default.
-  digestEmailOptIn     Boolean  @default(false) @map("digest_email_opt_in")
+  digestEmailOptIn  Boolean  @default(false) @map("digest_email_opt_in")
   /// PRD I9: the Monday brief (coaches).
-  weeklyBriefOptIn     Boolean  @default(false) @map("weekly_brief_opt_in")
+  weeklyBriefOptIn  Boolean  @default(false) @map("weekly_brief_opt_in")
   /// PRD H13, F9: clients only; reminder emails, each opt-in.
-  workoutReminderOptIn Boolean  @default(false) @map("workout_reminder_opt_in")
-  checkinReminderOptIn Boolean  @default(false) @map("checkin_reminder_opt_in")
-  habitReminderOptIn   Boolean  @default(false) @map("habit_reminder_opt_in")
-  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  workoutReminderOptIn Boolean @default(false) @map("workout_reminder_opt_in")
+  checkinReminderOptIn Boolean @default(false) @map("checkin_reminder_opt_in")
+  habitReminderOptIn   Boolean @default(false) @map("habit_reminder_opt_in")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -612,26 +585,26 @@ model NotificationPreference {
 /// Case-insensitive name uniqueness per org is an expression index
 /// (exercises_org_lower_name_key) that Prisma cannot model; it lives in the migration.
 model Exercise {
-  id               String       @id @default(uuid()) @db.Uuid
-  organizationId   String?      @map("organization_id") @db.Uuid
-  name             String
-  equipment        String
-  muscleGroup      String       @map("muscle_group")
-  movementType     String       @map("movement_type")
-  trackingType     TrackingType @map("tracking_type")
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String?      @map("organization_id") @db.Uuid
+  name           String
+  equipment      String
+  muscleGroup    String       @map("muscle_group")
+  movementType   String       @map("movement_type")
+  trackingType   TrackingType @map("tracking_type")
   /// Plain text, at most 2000 characters.
-  instructions     String       @default("")
+  instructions   String       @default("")
   /// https only, at most 500 characters.
-  mediaUrl         String?      @map("media_url")
+  mediaUrl       String?      @map("media_url")
   /// PRD C3: secondary muscles (at most 5), one side at a time, difficulty and short coaching cues (at most 6).
-  secondaryMuscles String[]     @default([]) @map("secondary_muscles")
-  unilateral       Boolean      @default(false)
+  secondaryMuscles String[]   @default([]) @map("secondary_muscles")
+  unilateral     Boolean      @default(false)
   /// beginner, intermediate or advanced; null = not set.
-  difficulty       String?
-  cues             String[]     @default([])
+  difficulty     String?
+  cues           String[]     @default([])
   /// PRD C2: an uploaded MP4 demo (custom exercises).
-  demoMediaId      String?      @map("demo_media_id") @db.Uuid
-  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  demoMediaId    String?      @map("demo_media_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
 
   organization            Organization?            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   workoutVersionExercises WorkoutVersionExercise[]
@@ -639,11 +612,11 @@ model Exercise {
   alternativeFor          ExerciseAlternative[]    @relation("AlternativeIs")
   swaps                   SessionExerciseSwap[]
   goals                   Goal[]
-  demoMedia               MediaFile?               @relation(fields: [demoMediaId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, name, id])
   @@index([organizationId, createdAt])
   @@map("exercises")
+  demoMedia MediaFile? @relation(fields: [demoMediaId], references: [id], onDelete: SetNull)
 }
 
 enum ProgramKind {
@@ -664,23 +637,23 @@ enum ProgramStatus {
 /// immutable ProgramVersions; `currentVersionId` points at the latest committed one (null until the first commit).
 /// The row doubles as the lock that serializes commits (D-001 optimistic concurrency).
 model Program {
-  id                String        @id @default(uuid()) @db.Uuid
-  organizationId    String        @map("organization_id") @db.Uuid
+  id               String        @id @default(uuid()) @db.Uuid
+  organizationId   String        @map("organization_id") @db.Uuid
   /// At most 120 characters.
-  title             String
-  kind              ProgramKind   @default(template)
-  clientId          String?       @map("client_id") @db.Uuid
-  sourceProgramId   String?       @map("source_program_id") @db.Uuid
-  sourceVersionId   String?       @map("source_version_id") @db.Uuid
-  currentVersionId  String?       @unique @map("current_version_id") @db.Uuid
-  status            ProgramStatus @default(active)
+  title            String
+  kind             ProgramKind   @default(template)
+  clientId         String?       @map("client_id") @db.Uuid
+  sourceProgramId  String?       @map("source_program_id") @db.Uuid
+  sourceVersionId  String?       @map("source_version_id") @db.Uuid
+  currentVersionId String?       @unique @map("current_version_id") @db.Uuid
+  status           ProgramStatus @default(active)
   /// PRD D13: a template whose workouts clients may start as extra workouts.
-  sharedWithClients Boolean       @default(false) @map("shared_with_clients")
+  sharedWithClients Boolean      @default(false) @map("shared_with_clients")
   /// PRD C20: a house template every coach sees; only owners and admins edit it.
-  house             Boolean       @default(false)
-  createdBy         String        @map("created_by") @db.Uuid
-  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+  house            Boolean       @default(false)
+  createdBy        String        @map("created_by") @db.Uuid
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   organization   Organization        @relation(fields: [organizationId], references: [id])
   /// Composite FK (MATCH SIMPLE: null for templates) keeps a copy in its client's org; RESTRICT, not SET NULL,
@@ -696,7 +669,6 @@ model Program {
   assignments    ProgramAssignment[]
   phases         ProgramPhase[]
   draft          ProgramDraft?
-  packages       Package[]
 
   @@unique([id, organizationId])
   /// Lets the 1:1 currentVersion relation use the composite key; currentVersionId alone stays unique too.
@@ -772,30 +744,29 @@ model WorkoutVersion {
 }
 
 model WorkoutVersionExercise {
-  id                String  @id @default(uuid()) @db.Uuid
-  organizationId    String  @map("organization_id") @db.Uuid
-  workoutVersionId  String  @map("workout_version_id") @db.Uuid
-  exerciseId        String  @map("exercise_id") @db.Uuid
+  id               String  @id @default(uuid()) @db.Uuid
+  organizationId   String  @map("organization_id") @db.Uuid
+  workoutVersionId String  @map("workout_version_id") @db.Uuid
+  exerciseId       String  @map("exercise_id") @db.Uuid
   /// Zero-based order within the workout.
-  position          Int
+  position         Int
   /// Zod-validated set targets (targetSchema).
-  targetJson        Json    @map("target_json")
-  note              String?
+  targetJson       Json    @map("target_json")
+  note             String?
   /// PRD C9: warmup, main, conditioning or cooldown (CHECK in migration 000051).
-  section           String  @default("main")
+  section          String  @default("main")
   /// PRD C8: joins the block of the exercise above (CHECKs in migration 000053).
   groupWithPrevious Boolean @default(false) @map("group_with_previous")
   /// PRD C8: the block's format and settings, on the first exercise of a block only.
-  blockJson         Json?   @map("block_json")
+  blockJson        Json?   @map("block_json")
 
   organization   Organization   @relation(fields: [organizationId], references: [id])
   workoutVersion WorkoutVersion @relation(fields: [workoutVersionId, organizationId], references: [id, organizationId])
   exercise       Exercise       @relation(fields: [exerciseId], references: [id])
   setLogs        SetLog[]
 
-  swaps SessionExerciseSwap[]
-  notes SessionNote[]
-  media SessionMedia[]
+  swaps          SessionExerciseSwap[]
+  notes          SessionNote[]
 
   @@unique([workoutVersionId, position])
   /// Target of set_logs' composite tenant FK.
@@ -803,6 +774,7 @@ model WorkoutVersionExercise {
   @@index([organizationId])
   @@index([exerciseId])
   @@map("workout_version_exercises")
+  media SessionMedia[]
 }
 
 enum AssignmentStatus {
@@ -888,17 +860,16 @@ model WorkoutSession {
   readinessAt        DateTime?    @map("readiness_at") @db.Timestamptz(3)
   createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  organization    Organization          @relation(fields: [organizationId], references: [id])
-  assignment      ProgramAssignment?    @relation(fields: [assignmentId, organizationId], references: [id, organizationId])
-  client          Client                @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  organization   Organization      @relation(fields: [organizationId], references: [id])
+  assignment     ProgramAssignment? @relation(fields: [assignmentId, organizationId], references: [id, organizationId])
+  client         Client            @relation(fields: [clientId, organizationId], references: [id, organizationId])
   /// Composite FK (MATCH SIMPLE: null until locked) keeps the locked version in this org (migration 000017).
-  workoutVersion  WorkoutVersion?       @relation(fields: [workoutVersionId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  loggedBy        User?                 @relation("SessionLogger", fields: [loggedByUserId], references: [id])
-  setLogs         SetLog[]
+  workoutVersion WorkoutVersion?   @relation(fields: [workoutVersionId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  loggedBy       User?             @relation("SessionLogger", fields: [loggedByUserId], references: [id])
+  setLogs        SetLog[]
   setLogRevisions SetLogRevision[]
-  swaps           SessionExerciseSwap[]
-  notes           SessionNote[]
-  media           SessionMedia[]
+  swaps          SessionExerciseSwap[]
+  notes          SessionNote[]
 
   @@unique([assignmentId, slotWeekIndex, slotDayIndex])
   /// Target of set_logs' composite tenant FK.
@@ -912,6 +883,7 @@ model WorkoutSession {
   @@index([assignmentId])
   @@index([workoutVersionId])
   @@map("workout_sessions")
+  media SessionMedia[]
 }
 
 /// One logged set (F08, D-004 #7, D-008 #8): upserted on (session, workout version exercise, set index), so replays
@@ -1037,16 +1009,16 @@ model ClientPause {
 /// PRD F2: kind checkin, form or intake. One default check-in template per organization (partial unique index
 /// checkin_templates_one_default_per_org, migration 000060).
 model CheckinTemplate {
-  id             String    @id @default(uuid()) @db.Uuid
-  organizationId String    @map("organization_id") @db.Uuid
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
   title          String
-  questionsJson  Json      @map("questions_json")
-  isSeeded       Boolean   @default(true) @map("is_seeded")
-  kind           String    @default("checkin")
-  isDefault      Boolean   @default(false) @map("is_default")
+  questionsJson  Json     @map("questions_json")
+  isSeeded       Boolean  @default(true) @map("is_seeded")
+  kind           String   @default("checkin")
+  isDefault      Boolean  @default(false) @map("is_default")
   archivedAt     DateTime? @map("archived_at") @db.Timestamptz(3)
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id])
   clients      Client[]
@@ -1086,9 +1058,9 @@ model Checkin {
   template     CheckinTemplate @relation(fields: [templateId, organizationId], references: [id, organizationId])
   reviewedBy   User?           @relation("CheckinReviewer", fields: [reviewedByUserId], references: [id])
 
-  @@unique([id, organizationId])
   /// One recurring check-in per client per day: partial unique index checkins_one_checkin_per_client_day (000060).
   @@index([clientId, periodLocalDate])
+  @@unique([id, organizationId])
   @@index([organizationId, dueAt])
   @@index([organizationId, submittedAt])
   @@index([templateId])
@@ -1103,9 +1075,9 @@ model ConversationThread {
   coachUserId    String   @map("coach_user_id") @db.Uuid
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  organization Organization       @relation(fields: [organizationId], references: [id])
-  client       Client             @relation(fields: [clientId, organizationId], references: [id, organizationId])
-  coach        User               @relation("ThreadCoach", fields: [coachUserId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  coach        User         @relation("ThreadCoach", fields: [coachUserId], references: [id])
   messages     Message[]
   scheduled    ScheduledMessage[]
 
@@ -1120,30 +1092,30 @@ model ConversationThread {
 /// erasure and never TRUNCATE (migration 000030). The body never reaches logs, analytics or audit.
 /// `clientMessageId` makes a retried send idempotent.
 model Message {
-  id                String    @id @default(uuid()) @db.Uuid
-  organizationId    String    @map("organization_id") @db.Uuid
-  threadId          String    @map("thread_id") @db.Uuid
-  senderUserId      String    @map("sender_user_id") @db.Uuid
-  body              String
-  clientMessageId   String?   @map("client_message_id") @db.Uuid
-  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  readAt            DateTime? @map("read_at") @db.Timestamptz(3)
+  id              String    @id @default(uuid()) @db.Uuid
+  organizationId  String    @map("organization_id") @db.Uuid
+  threadId        String    @map("thread_id") @db.Uuid
+  senderUserId    String    @map("sender_user_id") @db.Uuid
+  body            String
+  clientMessageId String?   @map("client_message_id") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  readAt          DateTime? @map("read_at") @db.Timestamptz(3)
   /// PRD H3: what the message is about (session or checkin), with its label at send time (CHECK in 000058).
-  anchorType        String?   @map("anchor_type")
-  anchorId          String?   @map("anchor_id") @db.Uuid
-  anchorLabel       String?   @map("anchor_label")
+  anchorType      String?   @map("anchor_type")
+  anchorId        String?   @map("anchor_id") @db.Uuid
+  anchorLabel     String?   @map("anchor_label")
   /// PRD H2: an image or PDF sent with the message.
-  attachmentMediaId String?   @map("attachment_media_id") @db.Uuid
+  attachmentMediaId String? @map("attachment_media_id") @db.Uuid
 
   organization Organization       @relation(fields: [organizationId], references: [id])
   thread       ConversationThread @relation(fields: [threadId, organizationId], references: [id, organizationId])
   sender       User               @relation("MessageSender", fields: [senderUserId], references: [id])
-  attachment   MediaFile?         @relation(fields: [attachmentMediaId, organizationId], references: [id, organizationId])
 
   @@unique([threadId, clientMessageId])
   @@index([threadId, createdAt, id])
   @@index([organizationId, readAt])
   @@map("messages")
+  attachment MediaFile? @relation(fields: [attachmentMediaId, organizationId], references: [id, organizationId])
 }
 
 enum ReviewRule {
@@ -1162,9 +1134,6 @@ enum ReviewRule {
   phase_ready
   automation_approval
   automation_failed
-  payment_failed
-  ready_to_assign
-  package_renewal
 
   @@map("review_rule")
 }
@@ -1219,15 +1188,15 @@ model ReviewFlag {
 /// A coach's private note about a client (S4-5, F12). Coach/owner only: never in a client API or portal payload.
 /// Only the author edits or deletes it.
 model InternalNote {
-  id             String    @id @default(uuid()) @db.Uuid
-  organizationId String    @map("organization_id") @db.Uuid
-  clientId       String    @map("client_id") @db.Uuid
-  authorUserId   String    @map("author_user_id") @db.Uuid
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  clientId       String   @map("client_id") @db.Uuid
+  authorUserId   String   @map("author_user_id") @db.Uuid
   body           String
   /// Pinned to the client context card (PRD B7); at most 3 per client, enforced in core.
   pinnedAt       DateTime? @map("pinned_at") @db.Timestamptz(3)
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id])
   client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
@@ -1403,8 +1372,6 @@ model ClientTag {
   resources    Resource[]
 
   /// Target of client_tag_links' composite tenant FK.
-  packages Package[]
-
   @@unique([id, organizationId])
   @@index([organizationId])
   @@map("client_tags")
@@ -1430,16 +1397,16 @@ model ClientTagLink {
 /// Daily nutrition targets a coach sets for a client from a client-local date on (PRD G6). The newest target whose
 /// `effectiveFrom` is on or before a day applies to that day; earlier ones stay as history. Ranges are CHECKs.
 model NutritionTarget {
-  id             String   @id @default(uuid()) @db.Uuid
-  organizationId String   @map("organization_id") @db.Uuid
-  clientId       String   @map("client_id") @db.Uuid
-  effectiveFrom  DateTime @map("effective_from") @db.Date
-  calories       Int?
-  proteinG       Int?     @map("protein_g")
-  carbsG         Int?     @map("carbs_g")
-  fatG           Int?     @map("fat_g")
-  setByUserId    String   @map("set_by_user_id") @db.Uuid
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  clientId        String   @map("client_id") @db.Uuid
+  effectiveFrom   DateTime @map("effective_from") @db.Date
+  calories        Int?
+  proteinG        Int?     @map("protein_g")
+  carbsG          Int?     @map("carbs_g")
+  fatG            Int?     @map("fat_g")
+  setByUserId     String   @map("set_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id])
   client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
@@ -1678,24 +1645,24 @@ enum GoalStatus {
 /// canonical (kg, cm, %); `startValue` is the value when the goal was set. Achieved and on-track are worked out on
 /// read, never stored.
 model Goal {
-  id              String      @id @default(uuid()) @db.Uuid
-  organizationId  String      @map("organization_id") @db.Uuid
-  clientId        String      @map("client_id") @db.Uuid
+  id              String     @id @default(uuid()) @db.Uuid
+  organizationId  String     @map("organization_id") @db.Uuid
+  clientId        String     @map("client_id") @db.Uuid
   kind            GoalKind
   title           String
   metric          BodyMetric?
-  exerciseId      String?     @map("exercise_id") @db.Uuid
+  exerciseId      String?    @map("exercise_id") @db.Uuid
   /// exercise goals: e1rm or heaviest.
-  exerciseMeasure String?     @map("exercise_measure")
-  habitId         String?     @map("habit_id") @db.Uuid
-  startValue      Decimal     @map("start_value") @db.Decimal(12, 3)
-  targetValue     Decimal     @map("target_value") @db.Decimal(12, 3)
-  startDate       DateTime    @map("start_date") @db.Date
-  targetDate      DateTime    @map("target_date") @db.Date
-  status          GoalStatus  @default(active)
-  createdByUserId String      @map("created_by_user_id") @db.Uuid
-  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+  exerciseMeasure String?    @map("exercise_measure")
+  habitId         String?    @map("habit_id") @db.Uuid
+  startValue      Decimal    @map("start_value") @db.Decimal(12, 3)
+  targetValue     Decimal    @map("target_value") @db.Decimal(12, 3)
+  startDate       DateTime   @map("start_date") @db.Date
+  targetDate      DateTime   @map("target_date") @db.Date
+  status          GoalStatus @default(active)
+  createdByUserId String     @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id])
   client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
@@ -1808,16 +1775,16 @@ model MediaFile {
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   erasedAt       DateTime? @map("erased_at") @db.Timestamptz(3)
 
-  organization    Organization     @relation(fields: [organizationId], references: [id])
-  client          Client?          @relation(fields: [clientId, organizationId], references: [id, organizationId])
-  uploader        User             @relation("MediaUploader", fields: [uploadedBy], references: [id])
-  progressPhoto   ProgressPhoto?
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  client         Client?         @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  uploader       User            @relation("MediaUploader", fields: [uploadedBy], references: [id])
+  progressPhoto  ProgressPhoto?
   assessmentPhoto AssessmentPhoto?
   recipes         Recipe[]
   mealPlans       MealPlan[]
-  sessionMedia    SessionMedia?
-  messages        Message[]
-  exercises       Exercise[]
+  sessionMedia   SessionMedia?
+  messages       Message[]
+  exercises      Exercise[]
 
   @@unique([id, organizationId])
   @@index([organizationId, clientId])
@@ -1852,9 +1819,9 @@ model SessionMedia {
   mediaId                  String   @unique @map("media_id") @db.Uuid
   createdAt                DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  session                WorkoutSession          @relation(fields: [sessionId, organizationId], references: [id, organizationId])
+  session               WorkoutSession          @relation(fields: [sessionId, organizationId], references: [id, organizationId])
   workoutVersionExercise WorkoutVersionExercise? @relation(fields: [workoutVersionExerciseId, organizationId], references: [id, organizationId])
-  media                  MediaFile               @relation(fields: [mediaId, organizationId], references: [id, organizationId])
+  media                 MediaFile               @relation(fields: [mediaId, organizationId], references: [id, organizationId])
 
   @@unique([mediaId, organizationId])
   @@index([sessionId])
@@ -2066,7 +2033,7 @@ model Sequence {
   organizationId String    @map("organization_id") @db.Uuid
   name           String
   trigger        String
-  /// tag id (tag_added), stage (stage_changed) or package id (package_*, optional).
+  /// tag id (tag_added) or stage (stage_changed).
   triggerValue   String?   @map("trigger_value")
   active         Boolean   @default(true)
   createdBy      String    @map("created_by") @db.Uuid
@@ -2574,406 +2541,336 @@ model ChallengeParticipant {
   @@map("challenge_participants")
 }
 
-/// PRD K1, K2 (D-013 #1, #3): the provider account a workspace takes payments with. One active per workspace; a
-/// webhook's account resolves its workspace through app_org_by_payment_account.
-model PaymentAccount {
-  id              String   @id @default(uuid()) @db.Uuid
-  organizationId  String   @map("organization_id") @db.Uuid
-  /// stripe | razorpay | fake (development and tests).
-  provider        String
-  /// The provider's account id (Stripe acct_..., Razorpay merchant id).
-  accountRef      String   @map("account_ref")
-  /// active | disconnected.
-  status          String   @default("active")
-  /// AES-256-GCM sealed OAuth tokens where the provider needs them (Razorpay); null for Stripe Connect.
-  tokenCiphertext String?  @map("token_ciphertext")
-  connectedBy     String   @map("connected_by") @db.Uuid
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  organization Organization @relation(fields: [organizationId], references: [id])
-  connector    User         @relation("PaymentAccountConnector", fields: [connectedBy], references: [id])
-
-  @@unique([provider, accountRef])
-  @@index([organizationId])
-  @@map("payment_accounts")
-}
-
-/// PRD K3: something a client buys: one-off (optionally for a fixed number of days), recurring, or a payment plan,
-/// with an optional free trial. On purchase it can tag the client, offer a template to assign (D-013 #4) and give
-/// session credits (K11).
-model Package {
-  id                String   @id @default(uuid()) @db.Uuid
-  organizationId    String   @map("organization_id") @db.Uuid
-  title             String
-  description       String   @default("")
-  /// one_off | recurring | plan.
-  kind              String
-  /// Per charge, in the workspace currency's minor unit.
-  amountMinor       Int      @map("amount_minor")
-  /// week | month, for recurring and plan.
-  intervalUnit      String?  @map("interval_unit")
-  intervalCount     Int?     @map("interval_count")
-  /// plan: the number of instalments.
-  installments      Int?
-  trialDays         Int      @default(0) @map("trial_days")
-  /// one_off: access lasts this many days (null = no end).
-  accessDays        Int?     @map("access_days")
-  /// Shown on the storefront (K4).
-  public            Boolean  @default(false)
-  active            Boolean  @default(true)
-  tagId             String?  @map("tag_id") @db.Uuid
-  templateProgramId String?  @map("template_program_id") @db.Uuid
-  sessionCredits    Int?     @map("session_credits")
-  creditsValidDays  Int?     @map("credits_valid_days")
-  createdBy         String   @map("created_by") @db.Uuid
-  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
-
-  organization Organization @relation(fields: [organizationId], references: [id])
-  creator      User         @relation("PackageCreator", fields: [createdBy], references: [id])
-  tag          ClientTag?   @relation(fields: [tagId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  template     Program?     @relation(fields: [templateProgramId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  purchases    Purchase[]
-
-  @@unique([id, organizationId])
-  @@index([organizationId, active])
-  @@map("packages")
-}
-
-/// PRD K5 (D-013 #5): a code that discounts the first charge. A use counts when the payment succeeds.
-model Coupon {
-  id             String    @id @default(uuid()) @db.Uuid
-  organizationId String    @map("organization_id") @db.Uuid
-  /// Upper case.
-  code           String
-  /// percent | fixed.
-  kind           String
-  value          Int
-  expiresAt      DateTime? @map("expires_at") @db.Timestamptz(3)
-  maxUses        Int?      @map("max_uses")
-  uses           Int       @default(0)
-  active         Boolean   @default(true)
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-
-  organization Organization @relation(fields: [organizationId], references: [id])
-  purchases    Purchase[]
-
-  @@unique([id, organizationId])
-  @@unique([organizationId, code])
-  @@map("coupons")
-}
-
-/// PRD K3, K4, K15: one purchase of a package. `pending` from checkout until the provider confirms it (then a client
-/// is linked); a manual purchase starts active.
-model Purchase {
-  id                 String    @id @default(uuid()) @db.Uuid
-  organizationId     String    @map("organization_id") @db.Uuid
-  packageId          String    @map("package_id") @db.Uuid
-  clientId           String?   @map("client_id") @db.Uuid
-  /// Who checked out, until a client is linked; cleared on erasure.
-  buyerName          String?   @map("buyer_name")
-  buyerEmail         String?   @map("buyer_email")
-  /// The buyer\'s state or region, asked at checkout when the workspace charges GST (D-013 #6).
-  buyerRegion        String?   @map("buyer_region")
-  /// stripe | razorpay | fake | manual.
-  provider           String
-  checkoutRef        String?   @map("checkout_ref")
-  subscriptionRef    String?   @map("subscription_ref")
-  customerRef        String?   @map("customer_ref")
-  /// pending | trialing | active | past_due | canceled | ended | expired.
-  status             String    @default("pending")
-  currency           String
-  /// The package price per charge at the time of purchase.
-  amountMinor        Int       @map("amount_minor")
-  /// The first charge after any coupon.
-  firstChargeMinor   Int       @map("first_charge_minor")
-  couponId           String?   @map("coupon_id") @db.Uuid
-  installmentsPaid   Int       @default(0) @map("installments_paid")
-  currentPeriodEnd   DateTime? @map("current_period_end") @db.Timestamptz(3)
-  accessEndsAt       DateTime? @map("access_ends_at") @db.Timestamptz(3)
-  cancelAtPeriodEnd  Boolean   @default(false) @map("cancel_at_period_end")
-  canceledAt         DateTime? @map("canceled_at") @db.Timestamptz(3)
-  endedAt            DateTime? @map("ended_at") @db.Timestamptz(3)
-  pastDueSince       DateTime? @map("past_due_since") @db.Timestamptz(3)
-  gateLiftedAt       DateTime? @map("gate_lifted_at") @db.Timestamptz(3)
-  /// The renewal or end date the client was last told about (J6), so each period notifies once.
-  renewalNotifiedFor DateTime? @map("renewal_notified_for") @db.Timestamptz(3)
-  /// K11: a session pack's credits (null when the package has none).
-  creditsTotal       Int?      @map("credits_total")
-  creditsUsed        Int       @default(0) @map("credits_used")
-  creditsExpireAt    DateTime? @map("credits_expire_at") @db.Timestamptz(3)
-  createdBy          String?   @map("created_by") @db.Uuid
-  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
-
-  organization Organization @relation(fields: [organizationId], references: [id])
-  package      Package      @relation(fields: [packageId, organizationId], references: [id, organizationId])
-  client       Client?      @relation(fields: [clientId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  coupon       Coupon?      @relation(fields: [couponId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  creator      User?        @relation("PurchaseCreator", fields: [createdBy], references: [id])
-  payments     Payment[]
-  bookings     Booking[]
-
-  @@unique([id, organizationId])
-  @@unique([provider, checkoutRef])
-  @@unique([provider, subscriptionRef])
-  @@index([organizationId, clientId])
-  @@index([organizationId, status])
-  @@map("purchases")
-}
-
-/// One charge (or a recorded manual payment). Succeeded payments carry a gap-free receipt number (D-013 #6); manual
-/// ones get theirs too. Voided, never edited (D-013 #10).
-model Payment {
+/// R3 remaining features (2026-11-03): AI drafting, billing, scheduling, domains, lapse.
+model AiSetting {
   id             String   @id @default(uuid()) @db.Uuid
   organizationId String   @map("organization_id") @db.Uuid
-  purchaseId     String   @map("purchase_id") @db.Uuid
-  clientId       String   @map("client_id") @db.Uuid
-  provider       String
-  providerRef    String?  @map("provider_ref")
-  /// succeeded | failed | refunded | void.
-  status         String
-  /// card | upi | bank | cash | other.
-  method         String
-  currency       String
-  amountMinor    Int      @map("amount_minor")
-  taxMinor       Int      @default(0) @map("tax_minor")
-  refundedMinor  Int      @default(0) @map("refunded_minor")
-  receiptNo      Int?     @map("receipt_no")
-  paidAt         DateTime @map("paid_at") @db.Timestamptz(3)
-  /// A provider's decline code only, never its message.
-  failureCode    String?  @map("failure_code")
-  note           String?
-  voidReason     String?  @map("void_reason")
-  recordedBy     String?  @map("recorded_by") @db.Uuid
+  /// Per-workspace opt-in for AI drafting. OFF by default (I14).
+  aiEnabled      Boolean  @default(false) @map("ai_enabled")
+  /// Only 'fake' is shipped: the fake/local provider. No provider keys exist.
+  provider       String   @default("fake")
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id])
-  purchase     Purchase     @relation(fields: [purchaseId, organizationId], references: [id, organizationId])
-  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
-  recorder     User?        @relation("PaymentRecorder", fields: [recordedBy], references: [id])
 
-  @@unique([provider, providerRef])
-  @@unique([organizationId, receiptNo])
-  @@index([organizationId, paidAt])
-  @@index([organizationId, purchaseId])
+  @@unique([id, organizationId])
+  @@unique([organizationId])
+  @@map("ai_settings")
+}
+
+model AiDraft {
+  id           String   @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  /// The coach who created the draft.
+  coachUserId  String   @map("coach_user_id") @db.Uuid
+  /// 'paste' (I10) or 'template' (I11).
+  kind         String
+  /// Redacted paste only (emails, phones, supplied client names stripped); null for template drafts.
+  sourceText   String?  @map("source_text")
+  /// `AiDraftContent`: label 'Drafted with AI', title, weeks, unmatched exercises.
+  draftJson    Json     @map("draft_json")
+  /// Always 'draft'. A draft is never auto-saved as a program or sent (I14).
+  status       String   @default("draft")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  coach        User         @relation(fields: [coachUserId], references: [id])
+
+  @@unique([id, organizationId])
+  @@index([organizationId])
+  @@index([organizationId, coachUserId])
+  @@map("ai_drafts")
+}
+
+model BillingPackage {
+  id                   String   @id @default(uuid()) @db.Uuid
+  organizationId       String   @map("organization_id") @db.Uuid
+  title                String
+  description          String   @default("")
+  /// one_off, recurring or payment_plan.
+  kind                 String
+  /// week or month; only for recurring.
+  interval             String?
+  /// Minor units per charge (per installment for a payment plan).
+  amountMinor          Int      @map("amount_minor")
+  currency             String
+  /// Only for payment_plan (2-24).
+  installments         Int?
+  trialDays            Int      @default(0) @map("trial_days")
+  active               Boolean  @default(true)
+  /// Stored only; the journeys slice (J4) executes this on purchase.
+  onboardingSequence   Json?    @map("onboarding_sequence")
+  /// Days before renewal to remind; read by the journeys slice (J6).
+  renewalReminderDays  Int      @default(3) @map("renewal_reminder_days")
+  inviteOnPurchase     Boolean  @default(false) @map("invite_on_purchase")
+  tagsOnPurchase       String[] @default([]) @map("tags_on_purchase")
+  /// Program template assigned on purchase; no FK (templates live elsewhere).
+  templateId           String?  @map("template_id") @db.Uuid
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization  Organization   @relation(fields: [organizationId], references: [id])
+  subscriptions Subscription[]
+  payments      Payment[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId])
+  @@map("billing_packages")
+}
+
+model Coupon {
+  id           String    @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  /// Stored uppercased.
+  code         String
+  /// percentage (1-100) or fixed (minor units, needs currency).
+  kind         String
+  value        Int
+  currency     String?
+  expiresAt    DateTime? @map("expires_at") @db.Timestamptz(3)
+  usageCap     Int?      @map("usage_cap")
+  usedCount    Int       @default(0) @map("used_count")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization  Organization   @relation(fields: [organizationId], references: [id])
+  subscriptions Subscription[]
+  payments      Payment[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@map("coupons")
+}
+
+model Subscription {
+  id               String    @id @default(uuid()) @db.Uuid
+  organizationId   String    @map("organization_id") @db.Uuid
+  packageId        String    @map("package_id") @db.Uuid
+  clientId         String?   @map("client_id") @db.Uuid
+  customerEmail    String    @map("customer_email")
+  provider         String
+  /// pending, trialing, active, past_due, grace, paused, cancelled, ended.
+  status           String
+  /// Minor units per charge, including tax.
+  amountMinor      Int       @map("amount_minor")
+  taxMinor         Int       @default(0) @map("tax_minor")
+  taxRateBps       Int       @default(0) @map("tax_rate_bps")
+  currency         String
+  interval         String?
+  installments     Int?
+  installmentsPaid Int       @default(0) @map("installments_paid")
+  trialEndsAt      DateTime? @map("trial_ends_at") @db.Timestamptz(3)
+  currentPeriodStart DateTime? @map("current_period_start") @db.Timestamptz(3)
+  currentPeriodEnd   DateTime? @map("current_period_end") @db.Timestamptz(3)
+  nextChargeAt     DateTime? @map("next_charge_at") @db.Timestamptz(3)
+  nextRetryAt      DateTime? @map("next_retry_at") @db.Timestamptz(3)
+  graceEndsAt      DateTime? @map("grace_ends_at") @db.Timestamptz(3)
+  endsAt           DateTime? @map("ends_at") @db.Timestamptz(3)
+  cancelledAt      DateTime? @map("cancelled_at") @db.Timestamptz(3)
+  failedAttempts   Int       @default(0) @map("failed_attempts")
+  needsReview      Boolean   @default(false) @map("needs_review")
+  couponId         String?   @map("coupon_id") @db.Uuid
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  package      BillingPackage   @relation(fields: [packageId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  client       Client?          @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  coupon       Coupon?          @relation(fields: [couponId, organizationId], references: [id, organizationId])
+  payments     Payment[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId])
+  @@index([organizationId, clientId])
+  @@index([organizationId, needsReview])
+  @@map("subscriptions")
+}
+
+model Payment {
+  id              String    @id @default(uuid()) @db.Uuid
+  organizationId  String    @map("organization_id") @db.Uuid
+  packageId       String?   @map("package_id") @db.Uuid
+  subscriptionId  String?   @map("subscription_id") @db.Uuid
+  clientId        String?   @map("client_id") @db.Uuid
+  customerEmail   String    @map("customer_email")
+  /// stripe, razorpay or manual (K15).
+  provider        String
+  amountMinor     Int       @map("amount_minor")
+  taxMinor        Int       @default(0) @map("tax_minor")
+  taxRateBps      Int       @default(0) @map("tax_rate_bps")
+  currency        String
+  /// pending, succeeded, failed, refunded, partially_refunded.
+  status          String
+  /// one_off, recurring, payment_plan or manual.
+  kind            String
+  /// cash or bank_transfer; only for manual payments.
+  method          String?
+  reference       String?
+  providerChargeId String?  @map("provider_charge_id")
+  failureReason   String?   @map("failure_reason")
+  refundedMinor   Int       @default(0) @map("refunded_minor")
+  couponId        String?   @map("coupon_id") @db.Uuid
+  paidAt          DateTime? @map("paid_at") @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  package      BillingPackage? @relation(fields: [packageId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  subscription Subscription?   @relation(fields: [subscriptionId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  client       Client?         @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  coupon       Coupon?         @relation(fields: [couponId, organizationId], references: [id, organizationId])
+  receipts     Receipt[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId])
   @@index([organizationId, clientId])
   @@map("payments")
 }
 
-/// D-013 #3: every provider webhook event, stored once before it is applied, so a replay is a no-op.
-model PaymentEvent {
-  id             String   @id @default(uuid()) @db.Uuid
-  organizationId String   @map("organization_id") @db.Uuid
-  provider       String
-  eventId        String   @map("event_id")
-  type           String
-  receivedAt     DateTime @default(now()) @map("received_at") @db.Timestamptz(3)
+model Receipt {
+  id            String   @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  paymentId     String   @map("payment_id") @db.Uuid
+  number        String
+  customerEmail String   @map("customer_email")
+  description   String   @default("")
+  amountMinor   Int      @map("amount_minor")
+  taxMinor      Int      @default(0) @map("tax_minor")
+  taxRateBps    Int      @default(0) @map("tax_rate_bps")
+  currency      String
+  issuedAt      DateTime @default(now()) @map("issued_at") @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id])
+  payment      Payment      @relation(fields: [paymentId, organizationId], references: [id, organizationId], onDelete: Restrict)
 
-  @@unique([provider, eventId])
+  @@unique([id, organizationId])
+  @@unique([paymentId, organizationId])
   @@index([organizationId])
-  @@map("payment_events")
+  @@map("receipts")
 }
 
-/// PRD K10, H15 (D-013 #11): what a client can book with a coach.
 model SessionType {
-  id                String   @id @default(uuid()) @db.Uuid
-  organizationId    String   @map("organization_id") @db.Uuid
-  coachUserId       String   @map("coach_user_id") @db.Uuid
-  title             String
-  /// call | checkin_call | in_person.
-  kind              String
-  durationMin       Int      @map("duration_min")
-  bufferBeforeMin   Int      @default(0) @map("buffer_before_min")
-  bufferAfterMin    Int      @default(0) @map("buffer_after_min")
-  minNoticeHours    Int      @default(12) @map("min_notice_hours")
-  maxDaysAhead      Int      @default(30) @map("max_days_ahead")
-  cancelWindowHours Int      @default(24) @map("cancel_window_hours")
-  /// https only (H15).
-  callLink          String?  @map("call_link")
-  location          String?
-  usesCredit        Boolean  @default(false) @map("uses_credit")
-  active            Boolean  @default(true)
-  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id                    String   @id @default(uuid()) @db.Uuid
+  organizationId        String   @map("organization_id") @db.Uuid
+  coachUserId           String?  @map("coach_user_id") @db.Uuid
+  name                  String
+  kind                  String
+  durationMinutes       Int      @map("duration_minutes")
+  bufferBeforeMinutes   Int      @default(0) @map("buffer_before_minutes")
+  bufferAfterMinutes    Int      @default(0) @map("buffer_after_minutes")
+  reminderMinutesBefore Int      @default(60) @map("reminder_minutes_before")
+  location              String?
+  availabilityJson      Json     @default("[]") @map("availability_json")
+  active                Boolean  @default(true)
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id])
-  coach        User         @relation("SessionTypeCoach", fields: [coachUserId], references: [id])
+  coach        User?        @relation(fields: [coachUserId], references: [id])
   bookings     Booking[]
 
   @@unique([id, organizationId])
-  @@index([organizationId, coachUserId])
+  @@index([organizationId])
   @@map("session_types")
 }
 
-/// Weekly hours, as wall-clock times in the coach's zone.
-model CoachAvailability {
-  id             String   @id @default(uuid()) @db.Uuid
+model Booking {
+  id            String    @id @default(uuid()) @db.Uuid
   organizationId String   @map("organization_id") @db.Uuid
-  coachUserId    String   @map("coach_user_id") @db.Uuid
-  /// ISO weekday 1-7.
-  weekday        Int
-  startTime      String   @map("start_time")
-  endTime        String   @map("end_time")
-  timezone       String
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-
-  organization Organization @relation(fields: [organizationId], references: [id])
-  coach        User         @relation("AvailabilityCoach", fields: [coachUserId], references: [id])
-
-  @@index([organizationId, coachUserId])
-  @@map("coach_availability")
-}
-
-model CoachTimeOff {
-  id             String   @id @default(uuid()) @db.Uuid
-  organizationId String   @map("organization_id") @db.Uuid
-  coachUserId    String   @map("coach_user_id") @db.Uuid
+  sessionTypeId  String   @map("session_type_id") @db.Uuid
+  clientId       String   @map("client_id") @db.Uuid
+  coachUserId    String?  @map("coach_user_id") @db.Uuid
   startsAt       DateTime @map("starts_at") @db.Timestamptz(3)
   endsAt         DateTime @map("ends_at") @db.Timestamptz(3)
-  note           String?
+  status         String   @default("booked")
+  callLink       String?  @map("call_link")
+  packId         String?  @map("pack_id") @db.Uuid
+  packConsumed   Boolean  @default(false) @map("pack_consumed")
+  cancelledAt    DateTime? @map("cancelled_at") @db.Timestamptz(3)
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id])
-  coach        User         @relation("TimeOffCoach", fields: [coachUserId], references: [id])
-
-  @@index([organizationId, coachUserId, startsAt])
-  @@map("coach_time_off")
-}
-
-/// PRD K10, K11: a booked session. `blockedFrom`/`blockedTo` include the buffers.
-model Booking {
-  id               String    @id @default(uuid()) @db.Uuid
-  organizationId   String    @map("organization_id") @db.Uuid
-  sessionTypeId    String    @map("session_type_id") @db.Uuid
-  coachUserId      String    @map("coach_user_id") @db.Uuid
-  clientId         String    @map("client_id") @db.Uuid
-  startsAt         DateTime  @map("starts_at") @db.Timestamptz(3)
-  endsAt           DateTime  @map("ends_at") @db.Timestamptz(3)
-  blockedFrom      DateTime  @map("blocked_from") @db.Timestamptz(3)
-  blockedTo        DateTime  @map("blocked_to") @db.Timestamptz(3)
-  /// booked | canceled | completed | no_show.
-  status           String    @default("booked")
-  title            String
-  callLink         String?   @map("call_link")
-  location         String?
-  creditPurchaseId String?   @map("credit_purchase_id") @db.Uuid
-  creditReturned   Boolean   @default(false) @map("credit_returned")
-  canceledAt       DateTime? @map("canceled_at") @db.Timestamptz(3)
-  canceledBy       String?   @map("canceled_by") @db.Uuid
-  reminderSentAt   DateTime? @map("reminder_sent_at") @db.Timestamptz(3)
-  /// none | pending | synced | failed: pushing to the coach's connected calendar.
-  syncState        String    @default("none") @map("sync_state")
-  syncAttempts     Int       @default(0) @map("sync_attempts")
-  calendarEventRef String?   @map("calendar_event_ref")
-  createdBy        String?   @map("created_by") @db.Uuid
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
-
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  sessionType    SessionType  @relation(fields: [sessionTypeId, organizationId], references: [id, organizationId])
-  coach          User         @relation("BookingCoach", fields: [coachUserId], references: [id])
-  client         Client       @relation(fields: [clientId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  creditPurchase Purchase?    @relation(fields: [creditPurchaseId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  canceler       User?        @relation("BookingCanceler", fields: [canceledBy], references: [id], onDelete: SetNull)
-  creator        User?        @relation("BookingCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  sessionType  SessionType  @relation(fields: [sessionTypeId, organizationId], references: [id, organizationId])
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  coach        User?        @relation(fields: [coachUserId], references: [id])
+  pack         SessionPack? @relation(fields: [packId, organizationId], references: [id, organizationId])
 
   @@unique([id, organizationId])
+  @@index([organizationId, clientId])
   @@index([organizationId, coachUserId, startsAt])
-  @@index([organizationId, clientId, startsAt])
   @@map("bookings")
 }
 
-/// A coach's two-way calendar sync (D-013 #11): tokens sealed; only busy intervals are read.
-model CalendarConnection {
-  id              String    @id @default(uuid()) @db.Uuid
-  organizationId  String    @map("organization_id") @db.Uuid
-  userId          String    @map("user_id") @db.Uuid
-  /// google | outlook | fake.
-  provider        String
-  accountEmail    String?   @map("account_email")
-  tokenCiphertext String    @map("token_ciphertext")
-  calendarId      String    @default("primary") @map("calendar_id")
-  /// active | revoked | error.
-  status          String    @default("active")
-  busySyncedAt    DateTime? @map("busy_synced_at") @db.Timestamptz(3)
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
-
-  organization Organization @relation(fields: [organizationId], references: [id])
-  user         User         @relation("CalendarConnectionUser", fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([organizationId, userId])
-  @@map("calendar_connections")
-}
-
-model CalendarBusy {
-  id             String   @id @default(uuid()) @db.Uuid
+model SessionPack {
+  id            String    @id @default(uuid()) @db.Uuid
   organizationId String   @map("organization_id") @db.Uuid
-  userId         String   @map("user_id") @db.Uuid
-  startsAt       DateTime @map("starts_at") @db.Timestamptz(3)
-  endsAt         DateTime @map("ends_at") @db.Timestamptz(3)
-
-  organization Organization @relation(fields: [organizationId], references: [id])
-  user         User         @relation("CalendarBusyUser", fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([organizationId, userId, startsAt])
-  @@map("calendar_busy")
-}
-
-/// PRD I14: one AI drafting request, logged without content; counts toward the workspace's daily cap.
-model AiRequest {
-  id             String   @id @default(uuid()) @db.Uuid
-  organizationId String   @map("organization_id") @db.Uuid
-  userId         String?  @map("user_id") @db.Uuid
-  /// program_from_text | program_from_template | checkin_highlights.
-  kind           String
-  /// pending | ok | refused | error.
-  status         String   @default("pending")
-  inputChars     Int      @default(0) @map("input_chars")
-  outputChars    Int      @default(0) @map("output_chars")
-  removedLines   Int      @default(0) @map("removed_lines")
+  clientId       String   @map("client_id") @db.Uuid
+  name           String
+  totalSessions  Int      @map("total_sessions")
+  usedSessions   Int      @default(0) @map("used_sessions")
+  expiresAt      DateTime? @map("expires_at") @db.Timestamptz(3)
+  status         String   @default("active")
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id])
-  user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
+  bookings     Booking[]
 
-  @@index([organizationId, createdAt])
-  @@map("ai_requests")
+  @@unique([id, organizationId])
+  @@index([organizationId, clientId])
+  @@map("session_packs")
 }
 
-/// PRD L4 (D-013 #15): the workspace's own hostname for its public page, and branded sending from it.
-model CustomDomain {
-  id             String    @id @default(uuid()) @db.Uuid
-  /// One live (not removed) domain per workspace: a partial unique index in migration 092.
-  organizationId String    @map("organization_id") @db.Uuid
-  /// Unique once verified: a partial unique index in migration 092.
-  hostname       String
-  /// The value expected in the `_repsy.<hostname>` TXT record.
-  verifyToken    String    @map("verify_token")
-  /// pending | verified | failed | removed (waiting for the worker to release it at the email provider).
-  status         String    @default("pending")
-  /// Failed checks in a row; a verified domain is demoted only after several.
-  missedChecks   Int       @default(0) @map("missed_checks")
-  verifiedAt     DateTime? @map("verified_at") @db.Timestamptz(3)
-  lastCheckedAt  DateTime? @map("last_checked_at") @db.Timestamptz(3)
-  /// none | pending | verified | failed: the email provider's view of the domain.
-  sendingStatus  String    @default("none") @map("sending_status")
-  sendingRef     String?   @map("sending_ref")
-  /// DNS records the email provider asks for ({ type, name, value }[]).
-  sendingRecords Json?     @map("sending_records")
-  createdBy      String?   @map("created_by") @db.Uuid
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+model PackageJourneyRun {
+  id            String    @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  /// No relation: billing_packages (K3, billing slice) does not exist yet.
+  /// Add `package BillingPackage @relation(...)` when billing lands.
+  packageId     String   @map("package_id") @db.Uuid
+  clientId      String   @map("client_id") @db.Uuid
+  source        String
+  sequenceId    String?  @map("sequence_id") @db.Uuid
+  status        String   @default("active")
+  stepsJson     Json     @default("[]") @map("steps_json")
+  startedAt     DateTime @default(now()) @map("started_at") @db.Timestamptz(3)
+  endedAt       DateTime? @map("ended_at") @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id])
-  creator      User?        @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
 
-  @@index([hostname])
+  @@unique([id, organizationId])
+  @@unique([packageId, clientId])
+  @@index([organizationId, clientId])
+  @@map("package_journey_runs")
+}
+
+model CustomDomain {
+  id               String    @id @default(uuid()) @db.Uuid
+  organizationId   String    @map("organization_id") @db.Uuid
+  hostname         String    @unique
+  status           String    @default("requested")
+  verificationToken String   @map("verification_token")
+  verifiedAt       DateTime? @map("verified_at") @db.Timestamptz(3)
+  brandedFromLocal String?   @map("branded_from_local")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([id, organizationId])
   @@index([organizationId])
   @@map("custom_domains")
+}
+
+model SubscriptionLapse {
+  id            String   @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  lapsedAt      DateTime @map("lapsed_at") @db.Timestamptz(3)
+  reason        String?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([id, organizationId])
+  @@index([organizationId, lapsedAt])
+  @@map("subscription_lapses")
 }

@@ -46,50 +46,6 @@ const TEMPLATES: Record<string, Template> = {
     const html = `<p>${escapeHtml(name)} applied on your Repsy page.</p><p><a href="${escapeHtml(link)}">See your leads</a></p>`;
     return { subject: `New application from ${name}`.replace(/[\r\n]+/g, ' '), text, html };
   },
-  // PRD K6 (D-013 #6): a receipt is a link, never an attachment; amounts stay in the app.
-  payment_receipt: (payload, appBaseUrl) => {
-    const id = str(payload, 'paymentId') ?? '';
-    const link = `${appBaseUrl.replace(/\/+$/, '')}/portal/billing/receipts/${encodeURIComponent(id)}`;
-    const text = `Thanks for your payment.\n\nSee your receipt: ${link}`;
-    const html = `<p>Thanks for your payment.</p><p><a href="${escapeHtml(link)}">See your receipt</a></p>`;
-    return { subject: 'Your payment receipt', text, html };
-  },
-  // PRD K7 (D-013 #7): a failed payment points to the billing page to update the card.
-  payment_failed: (_payload, appBaseUrl) => {
-    const link = `${appBaseUrl.replace(/\/+$/, '')}/portal/billing`;
-    const text =
-      "Your latest payment didn't go through. Your card may have expired or been declined.\n\n" +
-      `Update your payment details: ${link}`;
-    const html =
-      "<p>Your latest payment didn't go through. Your card may have expired or been declined.</p>" +
-      `<p><a href="${escapeHtml(link)}">Update your payment details</a></p>`;
-    return { subject: "Your payment didn't go through", text, html };
-  },
-  // PRD J6 (D-013 #13): a package renews or ends soon.
-  package_renewal: (payload, appBaseUrl) => {
-    const title = str(payload, 'title') ?? 'Your package';
-    const dueAt = str(payload, 'dueAt');
-    const day = dueAt
-      ? new Intl.DateTimeFormat('en-GB', {
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric',
-          timeZone: 'UTC',
-        }).format(new Date(dueAt))
-      : null;
-    const ending = payload.ending === true;
-    const link = `${appBaseUrl.replace(/\/+$/, '')}/portal/billing`;
-    const when = day ? ` on ${day}` : ' soon';
-    const line = ending ? `${title} ends${when}.` : `${title} renews${when}.`;
-    const next = ending
-      ? 'Talk to your coach about what comes next.'
-      : 'Nothing to do if you want to keep going. You can change or cancel it from your billing page.';
-    const text = `${line} ${next}\n\nYour billing page: ${link}`;
-    const html =
-      `<p>${escapeHtml(line)} ${escapeHtml(next)}</p>` +
-      `<p><a href="${escapeHtml(link)}">Your billing page</a></p>`;
-    return { subject: ending ? `${title} ends soon` : `${title} renews soon`, text, html };
-  },
   // PRD A10: an invite to join a workspace's team.
   team_invite: (payload, appBaseUrl) => {
     const orgName = str(payload, 'orgName') ?? 'a workspace';
@@ -142,15 +98,6 @@ const TEMPLATES: Record<string, Template> = {
       subject: 'You have a workout today',
       text: `You have ${what} planned today.\n\nOpen Repsy: ${link}\n\n${OFF}`,
       html: `<p>You have ${what} planned today.</p><p><a href="${escapeHtml(link)}">Open Repsy</a></p><p>${OFF}</p>`,
-    };
-  },
-  // PRD K10: a booked session within a day; no time, title or link to the call in the email (D-007).
-  booking_reminder: (_payload, appBaseUrl) => {
-    const link = `${appBaseUrl.replace(/\/+$/, '')}/portal/sessions`;
-    return {
-      subject: 'You have a session coming up',
-      text: `You have a session with your coach within the next day.\n\nSee the time and how to join: ${link}\n\n${OFF}`,
-      html: `<p>You have a session with your coach within the next day.</p><p><a href="${escapeHtml(link)}">See the time and how to join</a></p><p>${OFF}</p>`,
     };
   },
   checkin_reminder: (_payload, appBaseUrl) => {

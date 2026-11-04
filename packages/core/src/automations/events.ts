@@ -11,10 +11,6 @@ export const CLIENT_EVENTS = [
   'program_finished',
   'tag_added',
   'stage_changed',
-  // PRD J4, J6 (D-013 #4, #13): a purchase starts, a renewal or end is near, access ends.
-  'package_purchased',
-  'package_renewal_due',
-  'package_ended',
 ] as const;
 export type ClientEventKind = (typeof CLIENT_EVENTS)[number];
 

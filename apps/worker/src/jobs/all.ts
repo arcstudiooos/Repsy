@@ -11,9 +11,6 @@ import { phasesAdvanceJob } from './phasesAdvance';
 import { scheduledMessagesJob } from './scheduledMessages';
 import { pausesEndJob } from './pausesEnd';
 import { reviewSweepJob } from './reviewSweep';
-import { billingSweepJob } from './billingSweep';
-import { calendarSyncJob } from './calendarSync';
-import { domainsVerifyJob } from './domainsVerify';
 
 /** Every job the worker runs; shared by the worker and the owner-only pg-boss migration. */
 export const jobs = [
@@ -30,7 +27,4 @@ export const jobs = [
   scheduledMessagesJob,
   phasesAdvanceJob,
   automationsJob,
-  billingSweepJob,
-  calendarSyncJob,
-  domainsVerifyJob,
 ] as const;

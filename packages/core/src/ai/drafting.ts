@@ -1,476 +1,630 @@
-import { appendAudit, type TenantTx } from '@kinetic/db';
-import type { ActorContext } from '../authz/actor';
-import { TRAINER_ROLES } from '../authz/actor';
-import { assertCan } from '../authz/policies';
-import { readQuestions, type CheckinAnswer } from '../checkins/questions';
-import { DomainError } from '../errors';
-import { getProgram, type ProgramDetail } from '../programs/read';
-import { parseProgram, type ParsedProgram } from '../programs/text-import';
-import { todayInZone, zonedTimeToUtc } from '../timezone';
-import { isUuid } from '../uuid';
-import {
-  filterUnsafe,
-  isUnsafe,
-  namePartsOf,
-  redactContact,
-  redactNames,
-  REMOVED_NOTE,
-} from './guardrails';
-import { AiUnavailableError, type AiDraftRequest, type AiPort } from './port';
-
 /**
- * PRD I10-I12, I14 (D-013 #14): AI drafting for trainers, only when the owner has turned it on, only on request,
- * always a draft the coach reviews. Prompts carry program text, exercise names and check-in answers; contact details
- * and the workspace's client names are replaced first (best effort: a name written in an unusual form can get through). Every answer is filtered (injury, medical and supplement lines removed and counted) and
- * checked against its source before it is shown: program drafts go through the C14 importer's review; check-in
- * highlights must cite answers that exist and are never stored.
+ * PRD I10, I11, I12, I14: AI drafting. Pure logic plus thin database wrappers.
  *
- * The provider is called outside any database transaction: `startAiRequest` reserves a slot under the daily cap,
- * the caller makes the call, and `finishAiRequest` records the outcome (sizes only).
+ * Guardrails (I14), enforced here, not in the UI:
+ * - Coach-only: draft creation needs `program:write` (owner, admin, coach only) and highlights need a
+ *   trainer role on top of `checkin:read` (which alone would also admit clients and assistants).
+ * - Per-workspace opt-in, OFF by default: `getAiSetting` returns `aiEnabled: false` when no row exists,
+ *   and every create function refuses while it is off.
+ * - Output is ALWAYS a draft: these functions return an `AiDraftContent` (or store an `ai_drafts` row
+ *   with `status: 'draft'`). Nothing here saves a program, assigns one, or sends anything.
+ * - Labelled: every draft carries `label: 'Drafted with AI'`.
+ * - No client names sent: the provider only ever receives the structured `AiDraftRequest` built below
+ *   from the coach's parsed paste / template days and the exercise library. Pasted source text, notes,
+ *   and check-in answers never reach the provider; check-in highlights are computed locally, with no
+ *   provider call at all.
+ * - No medical / injury / supplement advice: paste text and template instructions matching the
+ *   medical patterns below are refused outright. Highlights never generate advice; they only diff
+ *   answers the client already gave.
+ * - No training on customer data: the port contract in `ai.ts` forbids it, and the only shipped
+ *   provider is the fake/local one, which makes no network call.
+ *
+ * Database functions use `tx.aiSetting` / `tx.aiDraft`. Those models do NOT exist in `schema.prisma`
+ * yet: they arrive with migration `20260101000086_ai_drafts` plus `SCHEMA_SNIPPET_AI.md`. Until the
+ * parent merges the snippet and runs `pnpm db:generate`, the DB functions below are typed through the
+ * `AiTenantTx` cast and must not be called against a live database. Pure functions need no database.
  */
-export const AI_DAILY_CAP = 50;
-export const AI_INPUT_MAX = 20_000;
-export const AI_REQUEST_MAX = 500;
-export type AiKind = 'program_from_text' | 'program_from_template' | 'checkin_highlights';
+
+import type { TenantTx } from '@kinetic/db';
+import { TRAINER_ROLES, type ActorContext } from '../authz/actor';
+import { assertCan } from '../authz/policies';
+import type { CheckinAnswer, CheckinAnswers, CheckinQuestion } from '../checkins/questions';
+import { DomainError } from '../errors';
+import { parseProgram, type ParsedProgram, type ParsedSet } from '../programs/text-import';
+import {
+  AI_LABEL,
+  assertProviderSafe,
+  type AiDraftDay,
+  type AiDraftExercise,
+  type AiDraftRequest,
+  type AiDraftSet,
+  type AiDraftWeek,
+  type AiProvider,
+} from './ai';
 
 const notFound = () => new DomainError('NOT_FOUND', 'Not found.');
 const invalid = (field: string, message: string) =>
   new DomainError('VALIDATION', 'Some fields are invalid.', { [field]: [message] });
+const forbidden = () => new DomainError('FORBIDDEN', 'You do not have access to this.');
 
-// ---------------------------------------------------------------- settings
-
-export interface AiSettings {
-  enabled: boolean;
-  /** Whether this deployment has a provider at all. */
-  available: boolean;
-  usedToday: number;
-  dailyCap: number;
+/** A trainer role (owner, admin, coach) — assistants and clients are never AI-draft users. */
+function assertTrainer(actor: ActorContext): void {
+  if (!(TRAINER_ROLES as readonly string[]).includes(actor.role)) throw forbidden();
 }
 
-async function usedToday(tx: TenantTx, now: Date): Promise<number> {
-  const org = await tx.organization.findFirstOrThrow({ select: { timezone: true } });
-  const start = zonedTimeToUtc(todayInZone(org.timezone, now), '00:00', org.timezone) ?? now;
-  return tx.aiRequest.count({ where: { createdAt: { gte: start } } });
-}
+/* ------------------------------------------------------------------ redaction */
 
-export async function getAiSettings(
-  tx: TenantTx,
-  actor: ActorContext,
-  opts: { available: boolean; now?: Date },
-): Promise<AiSettings> {
-  assertCan(actor, 'org:read');
-  const org = await tx.organization.findFirstOrThrow({ select: { aiEnabled: true } });
-  return {
-    enabled: org.aiEnabled,
-    available: opts.available,
-    usedToday: await usedToday(tx, opts.now ?? new Date()),
-    dailyCap: AI_DAILY_CAP,
-  };
-}
+const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+const PHONE = /\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/g;
 
-/** Only the owner turns AI drafting on or off for the workspace. */
-export async function setAiEnabled(
-  tx: TenantTx,
-  actor: ActorContext,
-  enabled: boolean,
-  opts: { requestId?: string } = {},
-): Promise<void> {
-  if (actor.role !== 'owner')
-    throw new DomainError('FORBIDDEN', 'Only the workspace owner can change this.');
-  await tx.organization.updateMany({ data: { aiEnabled: enabled } });
-  await appendAudit(tx, {
-    orgId: actor.orgId,
-    actorId: actor.userId,
-    objectType: 'organization',
-    objectId: actor.orgId,
-    action: enabled ? 'ai.enabled' : 'ai.disabled',
-    requestId: opts.requestId,
-  });
-}
-
-/** Whether this actor may use AI drafting at all (trainers only, D-012 #7). */
-export const aiRoleAllowed = (actor: ActorContext): boolean =>
-  (TRAINER_ROLES as readonly string[]).includes(actor.role);
-
-// ---------------------------------------------------------------- request log and cap
-
-/** Checks the opt-in, the role and the daily cap, and reserves a request (status pending). */
-export async function startAiRequest(
-  tx: TenantTx,
-  actor: ActorContext,
-  kind: AiKind,
-  inputChars: number,
-  now: Date = new Date(),
-): Promise<{ requestId: string }> {
-  if (!aiRoleAllowed(actor)) {
-    throw new DomainError('FORBIDDEN', 'Only coaches can use AI drafting.');
-  }
-  const org = await tx.organization.findFirstOrThrow({ select: { aiEnabled: true } });
-  if (!org.aiEnabled) {
-    throw new DomainError(
-      'FORBIDDEN',
-      'AI drafting is off for this workspace. The owner can turn it on in Settings.',
-    );
-  }
-  // Serialise the cap check per workspace so concurrent requests can't pass it together.
-  await tx.organization.updateMany({ data: { aiEnabled: true } });
-  if ((await usedToday(tx, now)) >= AI_DAILY_CAP) {
-    throw new DomainError(
-      'RATE_LIMITED',
-      `The workspace has used today's ${AI_DAILY_CAP} AI drafts. Try again tomorrow.`,
-    );
-  }
-  const row = await tx.aiRequest.create({
-    data: { userId: actor.userId, kind, inputChars },
-  } as Parameters<typeof tx.aiRequest.create>[0]);
-  return { requestId: row.id };
-}
-
-export async function finishAiRequest(
-  tx: TenantTx,
-  actor: ActorContext,
-  requestId: string,
-  outcome: {
-    status: 'ok' | 'refused' | 'error';
-    outputChars?: number;
-    removedLines?: number;
-    kind: AiKind;
-  },
-): Promise<void> {
-  await tx.aiRequest.updateMany({
-    where: { id: requestId },
-    data: {
-      status: outcome.status,
-      outputChars: outcome.outputChars ?? 0,
-      removedLines: outcome.removedLines ?? 0,
-    },
-  });
-  // Content-free audit (D-013 #14).
-  await appendAudit(tx, {
-    orgId: actor.orgId,
-    actorId: actor.userId,
-    objectType: 'ai_request',
-    objectId: requestId,
-    action: `ai.${outcome.kind}`,
-    metadata: { status: outcome.status, removedLines: outcome.removedLines ?? 0 },
-  });
-}
-
-/** Every client's full name in the workspace, to keep out of pasted text (security review S4). */
-export async function clientNamesForRedaction(tx: TenantTx): Promise<string[]> {
-  const rows = await tx.client.findMany({ select: { name: true }, take: 5000 });
-  return rows.map((r) => r.name);
-}
-
-/** Contact details, then known client names, out of text bound for the provider. */
-const scrub = (text: string, names: { fullNames?: string[]; nameParts?: string[] }) => {
-  const a = redactContact(text);
-  const b = redactNames(a.text, names);
-  return { text: b.text, redactions: a.redactions + b.redactions };
-};
-
-// ---------------------------------------------------------------- program drafts (I10, I11)
-
-const FORMAT_RULES = [
-  'Write the program in exactly this plain-text format and nothing else:',
-  '- A line "Week N" before each week (only when there is more than one week).',
-  '- A line "Day N: Title" before each workout day.',
-  '- One exercise per line: the exercise name, then sets x reps (3x8), a rep range (3x8-10),',
-  '  a time (3x45s, 1x20min) or a distance (1x5km), then optionally "@ 60kg" and "RPE 8".',
-  'Use the exact exercise names from the library list when one matches. Do not invent exercises.',
-  'Do not write notes, explanations, warnings or advice of any kind.',
-  'Never mention injuries, pain, medical conditions, medication or supplements.',
-].join('\n');
-
-export interface ProgramDraft {
-  /** The draft in the C14 import format, for the import review. */
-  text: string;
-  parsed: ParsedProgram;
-  /** Shown to the coach when the safety filter removed lines. */
-  note: string | null;
-  removedLines: number;
-}
-
-function finishProgramDraft(raw: string, units: 'kg' | 'lb'): ProgramDraft {
-  // Drop any fenced code markers or leading chatter lines a model might add.
-  const cleaned = raw
-    .replace(/```[a-z]*\n?/gi, '')
-    .split('\n')
-    .map((l) => l.trimEnd())
-    .join('\n')
-    .trim();
-  const filtered = filterUnsafe(cleaned);
-  return {
-    text: filtered.text,
-    parsed: parseProgram(filtered.text, units),
-    note: REMOVED_NOTE(filtered.removed),
-    removedLines: filtered.removed,
-  };
-}
-
-/** I10: pasted text (or sheet rows) to a draft in the import format. Contact details never leave. */
-export async function draftProgramFromText(
-  port: AiPort,
-  input: { text: string; units: 'kg' | 'lb'; library: string[]; clientNames?: string[] },
-): Promise<ProgramDraft & { redactions: number }> {
-  if (typeof input.text !== 'string' || input.text.trim().length === 0) {
-    throw invalid('text', 'Paste the program first.');
-  }
-  if (input.text.length > AI_INPUT_MAX)
-    throw invalid('text', `Paste up to ${AI_INPUT_MAX} characters.`);
-  const { text, redactions } = scrub(input.text, { fullNames: input.clientNames });
-  const raw = await port.draft({
-    system: `You turn a fitness coach's pasted training program into a structured draft.\n${FORMAT_RULES}`,
-    prompt: [
-      `Units: ${input.units}.`,
-      'Library exercises:',
-      input.library.slice(0, 300).join('\n'),
-      '',
-      'The pasted program:',
-      '<input>',
-      text,
-      '</input>',
-    ].join('\n'),
-    maxTokens: 8000,
-  });
-  return { ...finishProgramDraft(raw, input.units), redactions };
-}
-
-const fmtNum = (n: number) => (Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100));
-
-/** A template as import-format text (exercise names and sets only: no notes, which may hold client details). */
-export function programToText(p: ProgramDetail, units: 'kg' | 'lb'): string {
-  const lines: string[] = [];
-  p.weeks.forEach((w, wi) => {
-    if (p.weeks.length > 1) lines.push(`Week ${wi + 1}`);
-    w.days.forEach((d, di) => {
-      lines.push(
-        `Day ${di + 1}: ${d.title.replace(/[\r\n]+/g, ' ').slice(0, 60) || `Day ${di + 1}`}`,
-      );
-      for (const e of d.exercises) {
-        const s = e.sets[0];
-        const n = e.sets.length;
-        let rx = `${n}x1`;
-        if (s?.reps !== undefined) rx = `${n}x${s.reps}${s.repsMax ? `-${s.repsMax}` : ''}`;
-        else if (s?.durationSec !== undefined) rx = `${n}x${s.durationSec}s`;
-        else if (s?.distanceM !== undefined) rx = `${n}x${fmtNum(s.distanceM)}m`;
-        const load =
-          s?.loadKg !== undefined
-            ? ` @ ${fmtNum(units === 'lb' ? s.loadKg / 0.45359237 : s.loadKg)}${units}`
-            : '';
-        const rpe = s?.rpe !== undefined ? ` RPE ${s.rpe}` : '';
-        lines.push(`${e.exerciseName} ${rx}${load}${rpe}`);
-      }
-      lines.push('');
-    });
-  });
-  return lines.join('\n').trim();
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /**
- * I11, step 1 (in a transaction): "like my template X, 4 days, dumbbells only" as a provider request. Only the
- * template's structure, the library's exercise names and the coach's request (contact details removed) go in.
+ * Strips emails and phone-like numbers, then every supplied name (full name and each part of at
+ * least 3 characters, case-insensitive). Used for the stored redacted source text; the provider never
+ * sees source text at all, redacted or not.
  */
-export async function templateDraftRequest(
-  tx: TenantTx,
-  actor: ActorContext,
-  input: { templateId: string; request: string; units: 'kg' | 'lb'; library: string[] },
-): Promise<{ req: AiDraftRequest; redactions: number }> {
-  assertCan(actor, 'program:write');
-  if (!isUuid(input.templateId)) throw notFound();
-  const request = typeof input.request === 'string' ? input.request.trim() : '';
-  if (request.length < 3 || request.length > AI_REQUEST_MAX) {
-    throw invalid('request', `Describe what you want in 3-${AI_REQUEST_MAX} characters.`);
+export function redactText(text: string, names: readonly string[] = []): string {
+  let out = text.replace(EMAIL, '[redacted email]').replace(PHONE, '[redacted phone]');
+  const tokens = new Set<string>();
+  for (const name of names) {
+    const trimmed = name.trim();
+    if (trimmed) tokens.add(trimmed);
+    for (const part of trimmed.split(/\s+/)) if (part.length >= 3) tokens.add(part);
   }
-  const template = await getProgram(tx, actor, input.templateId);
-  if (template.kind !== 'template' || template.versionNo === null) throw notFound();
-  const clientNames = await clientNamesForRedaction(tx);
-  const redacted = scrub(request, { fullNames: clientNames });
-  const templateText = redactNames(programToText(template, input.units), {
-    fullNames: clientNames,
-  }).text;
+  for (const token of [...tokens].sort((a, b) => b.length - a.length)) {
+    out = out.replace(new RegExp(`\\b${escapeRegExp(token)}\\b`, 'gi'), '[redacted]');
+  }
+  return out;
+}
+
+/* ------------------------------------------------------- medical-advice guardrail */
+
+/** Requests for medical, injury or supplement advice are refused, never drafted. */
+const MEDICAL_PATTERNS = [
+  /\binjur(?:y|ies|ed)\b/i,
+  /\bpain\b/i,
+  /\bdiagnos(?:is|ed|e)\b/i,
+  /\bmedicat(?:ion|e|ed)\b/i,
+  /\bprescri(?:ption|bed|be)\b/i,
+  /\bsupplement\b/i,
+  /\bcreatine\b/i,
+  /\bdos(?:e|age)\b/i,
+  /\brehab\b/i,
+  /\btear\b/i,
+  /\bfracture\b/i,
+  /\barthritis\b/i,
+  /\bdiabet(?:es|ic)\b/i,
+  /\bshould i take\b/i,
+  /\bis it safe to\b/i,
+];
+
+export function assertNoAdviceRequest(text: string): void {
+  if (MEDICAL_PATTERNS.some((p) => p.test(text))) {
+    throw new DomainError(
+      'VALIDATION',
+      'AI drafts never give medical, injury or supplement advice. Remove that part and try again.',
+    );
+  }
+}
+
+/* ------------------------------------------------------------------ draft shapes */
+
+/** The sets a draft exercise carries: the same subset `ParsedSet` and `SetTarget` share. */
+export function cleanDraftSet(set: {
+  reps?: number;
+  repsMax?: number;
+  loadKg?: number;
+  rpe?: number;
+  durationSec?: number;
+  distanceM?: number;
+}): AiDraftSet {
+  const out: AiDraftSet = {};
+  if (set.reps !== undefined) out.reps = set.reps;
+  if (set.repsMax !== undefined) out.repsMax = set.repsMax;
+  if (set.loadKg !== undefined) out.loadKg = set.loadKg;
+  if (set.rpe !== undefined) out.rpe = set.rpe;
+  if (set.durationSec !== undefined) out.durationSec = set.durationSec;
+  if (set.distanceM !== undefined) out.distanceM = set.distanceM;
+  return out;
+}
+
+export interface UnmatchedExercise {
+  dayTitle: string;
+  name: string;
+  reason: 'not_in_library' | 'equipment';
+}
+
+/** A draft the coach reviews in the builder and explicitly saves; never a program by itself. */
+export interface AiDraftContent {
+  label: typeof AI_LABEL;
+  kind: 'paste' | 'template';
+  title: string;
+  weeks: AiDraftWeek[];
+  /** Pasted / template exercises the library could not match, for the coach to fix. */
+  unmatched: UnmatchedExercise[];
+}
+
+export interface LibraryExercise {
+  id: string;
+  name: string;
+  equipment: string;
+}
+
+const normalizeName = (name: string): string =>
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
+/**
+ * Matches parsed lines to the coach's exercise library by normalized name. Lines with a read error
+ * (see `ParsedLine.error`) are reported as unmatched, never silently dropped. An equipment filter
+ * marks library exercises outside the kit as unmatched with reason `equipment`.
+ */
+export function matchToLibrary(
+  parsed: ParsedProgram,
+  library: readonly LibraryExercise[],
+  equipmentFilter: readonly string[] = [],
+): { days: AiDraftDay[]; unmatched: UnmatchedExercise[] } {
+  const byName = new Map(library.map((e) => [normalizeName(e.name), e]));
+  const wanted = new Set(equipmentFilter.map((e) => e.toLowerCase()));
+  const days: AiDraftDay[] = [];
+  const unmatched: UnmatchedExercise[] = [];
+  for (const week of parsed.weeks) {
+    for (const day of week.days) {
+      const exercises: AiDraftExercise[] = [];
+      for (const line of day.lines) {
+        const found = line.name ? byName.get(normalizeName(line.name)) : undefined;
+        if (!found || line.error) {
+          unmatched.push({
+            dayTitle: day.title,
+            name: line.name || '(unnamed)',
+            reason: 'not_in_library',
+          });
+          exercises.push({
+            exerciseId: null,
+            name: line.name,
+            sets: line.sets.map((s) => cleanDraftSet(s as ParsedSet)),
+          });
+        } else if (wanted.size > 0 && !wanted.has(found.equipment.toLowerCase())) {
+          unmatched.push({ dayTitle: day.title, name: found.name, reason: 'equipment' });
+          exercises.push({
+            exerciseId: null,
+            name: found.name,
+            sets: line.sets.map((s) => cleanDraftSet(s as ParsedSet)),
+          });
+        } else {
+          exercises.push({
+            exerciseId: found.id,
+            name: found.name,
+            sets: line.sets.map((s) => cleanDraftSet(s as ParsedSet)),
+          });
+        }
+      }
+      days.push({ title: day.title, exercises });
+    }
+  }
+  return { days, unmatched };
+}
+
+/* ------------------------------------------------------------------ I10 paste */
+
+export interface PasteDraftInput {
+  provider: AiProvider;
+  /** Raw pasted text or spreadsheet. Parsed locally; never sent to the provider. */
+  sourceText: string;
+  title?: string;
+  units?: 'kg' | 'lb';
+  library: readonly LibraryExercise[];
+  equipmentFilter?: string[];
+  /** Client names to redact from the stored source text (never sent anywhere). */
+  clientNames?: string[];
+}
+
+/** Parses locally, matches to the library, and asks the provider for a structured draft only. */
+export async function createPasteDraft(input: PasteDraftInput): Promise<{
+  content: AiDraftContent;
+  /** The source text with emails, phones and supplied names stripped, for storage only. */
+  redactedSource: string;
+}> {
+  const text = input.sourceText.trim();
+  if (!text) throw invalid('sourceText', 'Paste a program first.');
+  if (text.length > 100_000) throw invalid('sourceText', 'That paste is too long.');
+  assertNoAdviceRequest(text);
+  const parsed = parseProgram(text, input.units ?? 'kg');
+  if (parsed.errors.length > 0 && parsed.weeks.length === 0) {
+    throw invalid('sourceText', parsed.errors[0] ?? 'Could not read that paste.');
+  }
+  const equipmentFilter = input.equipmentFilter ?? [];
+  const { days, unmatched } = matchToLibrary(parsed, input.library, equipmentFilter);
+  const request: AiDraftRequest = {
+    kind: 'paste',
+    title: (input.title ?? 'Pasted program').trim().slice(0, 120) || 'Pasted program',
+    weeks: parsed.weeks.length,
+    days,
+    equipmentFilter,
+  };
+  assertProviderSafe(request);
+  const response = await input.provider.generateDraft(request);
   return {
-    redactions: redacted.redactions,
-    req: {
-      system: `You adapt a fitness coach's own program template into a new draft program, as the coach asks.\n${FORMAT_RULES}\nKeep the template's style. Stay within 12 weeks and 7 days a week.`,
-      prompt: [
-        `Units: ${input.units}.`,
-        'Library exercises (use only these):',
-        input.library.slice(0, 300).join('\n'),
-        '',
-        "The coach's template:",
-        templateText,
-        '',
-        "The coach's request:",
-        '<input>',
-        redacted.text,
-        '</input>',
-      ].join('\n'),
-      maxTokens: 12000,
+    content: {
+      label: AI_LABEL,
+      kind: 'paste',
+      title: response.title,
+      weeks: response.weeks,
+      unmatched,
     },
+    redactedSource: redactText(text, input.clientNames ?? []),
   };
 }
 
-/** I11, step 2 (no transaction open): the provider call, then the same checks as I10. */
-export async function completeProgramDraft(
-  port: AiPort,
-  req: AiDraftRequest,
-  units: 'kg' | 'lb',
-): Promise<ProgramDraft> {
-  return finishProgramDraft(await port.draft(req), units);
+/* ------------------------------------------------------------- I11 template draft */
+
+/** "Like my template X, 4 days, dumbbells only, 6 weeks" — defaults: the template's own days, 4 weeks. */
+export interface TemplateInstruction {
+  templateTitle: string | null;
+  daysPerWeek: number | null;
+  weeks: number;
+  equipmentFilter: string[];
 }
 
-// ---------------------------------------------------------------- check-in highlights (I12)
+const KNOWN_EQUIPMENT = [
+  'Dumbbell',
+  'Barbell',
+  'Kettlebell',
+  'Machine',
+  'Cable',
+  'Band',
+  'Bodyweight',
+  'Cardio machine',
+] as const;
+
+export function parseTemplateInstruction(instruction: string): TemplateInstruction {
+  const text = instruction.trim();
+  if (!text) throw invalid('instruction', 'Describe the draft you want.');
+  assertNoAdviceRequest(text);
+  const titleMatch = /template\s+["']?([^,"']+?)["']?(?:,|$)/i.exec(text);
+  const templateTitle = titleMatch?.[1]?.trim() ? titleMatch[1].trim().slice(0, 120) : null;
+  const daysMatch = /(\d+)\s*days?\b/i.exec(text);
+  const weeksMatch = /(\d+)\s*weeks?\b/i.exec(text);
+  const daysPerWeek = daysMatch ? Number(daysMatch[1]) : null;
+  if (daysPerWeek !== null && (daysPerWeek < 1 || daysPerWeek > 7)) {
+    throw invalid('instruction', 'Use 1-7 days per week.');
+  }
+  const weeks = weeksMatch ? Number(weeksMatch[1]) : 4;
+  if (weeks < 1 || weeks > 104) throw invalid('instruction', 'Use 1-104 weeks.');
+  const onlyMatch = /\bonly\b\s*:?\s*([^,]+)/i.exec(text) ?? /with\s+([^,]+?)\s+only/i.exec(text);
+  const equipmentFilter: string[] = [];
+  const haystack = onlyMatch?.[1] ?? text;
+  for (const equipment of KNOWN_EQUIPMENT) {
+    const stem = equipment.toLowerCase().replace(/e$/, '');
+    if (new RegExp(`\\b${stem}e?s?\\b`, 'i').test(haystack)) equipmentFilter.push(equipment);
+  }
+  return { templateTitle, daysPerWeek, weeks, equipmentFilter };
+}
+
+export interface TemplateDayInput {
+  title: string;
+  exercises: {
+    exerciseId: string | null;
+    name: string;
+    sets: AiDraftSet[];
+    /** Library equipment, when known; used to enforce an equipment filter. */
+    equipment?: string;
+  }[];
+}
+
+export interface TemplateDraftInput {
+  provider: AiProvider;
+  instruction: string;
+  /** The template's first week, as the coach sees it in the builder (days with exercises). */
+  templateDays: readonly TemplateDayInput[];
+  title?: string;
+}
+
+/** Repeats the template's days across the requested weeks; the fake provider does the repeating. */
+export async function createTemplateDraft(input: TemplateDraftInput): Promise<AiDraftContent> {
+  const parsed = parseTemplateInstruction(input.instruction);
+  if (input.templateDays.length === 0)
+    throw invalid('instruction', 'That template has no days to copy.');
+  const daysPerWeek = parsed.daysPerWeek ?? input.templateDays.length;
+  const wanted = new Set(parsed.equipmentFilter.map((e) => e.toLowerCase()));
+  const unmatched: UnmatchedExercise[] = [];
+  const days: AiDraftDay[] = [];
+  for (let i = 0; i < daysPerWeek; i++) {
+    const day = input.templateDays[i % input.templateDays.length]!;
+    days.push({
+      title: day.title,
+      exercises: day.exercises.map((e) => {
+        // An equipment filter drops exercises whose known equipment is outside the kit; exercises
+        // with unknown equipment are kept, for the coach to judge in the builder.
+        if (wanted.size > 0 && e.equipment && !wanted.has(e.equipment.toLowerCase())) {
+          unmatched.push({ dayTitle: day.title, name: e.name, reason: 'equipment' });
+          return { exerciseId: null, name: e.name, sets: e.sets.map((s) => cleanDraftSet(s)) };
+        }
+        return {
+          exerciseId: e.exerciseId,
+          name: e.name,
+          sets: e.sets.map((s) => cleanDraftSet(s)),
+        };
+      }),
+    });
+  }
+  const request: AiDraftRequest = {
+    kind: 'template',
+    title: (input.title ?? parsed.templateTitle ?? 'Template draft').trim().slice(0, 120),
+    weeks: parsed.weeks,
+    days,
+    equipmentFilter: parsed.equipmentFilter,
+    templateTitle: parsed.templateTitle ?? undefined,
+  };
+  assertProviderSafe(request);
+  const response = await input.provider.generateDraft(request);
+  return {
+    label: AI_LABEL,
+    kind: 'template',
+    title: response.title,
+    weeks: response.weeks,
+    unmatched,
+  };
+}
+
+/* ------------------------------------------------------------ I12 check-in highlights */
+
+export interface CheckinSnapshot {
+  checkinId: string;
+  answers: CheckinAnswers | null;
+}
 
 export interface CheckinHighlight {
-  text: string;
-  /** Question ids in this check-in (and the previous one) the point is based on. */
-  sources: { questionId: string; checkin: 'current' | 'previous'; label: string }[];
+  questionId: string;
+  label: string;
+  previous: CheckinAnswer | null;
+  current: CheckinAnswer | null;
+  change: 'added' | 'removed' | 'changed';
+  /** Link to the previous answer on the client's check-ins page. */
+  previousSourceUrl: string | null;
+  /** Link to the current answer on the client's check-ins page. */
+  currentSourceUrl: string | null;
 }
 
-const answerText = (a: CheckinAnswer | undefined): string =>
-  a === undefined || a === ''
-    ? '(no answer)'
-    : Array.isArray(a)
-      ? a.join(', ')
-      : typeof a === 'boolean'
-        ? a
-          ? 'yes'
-          : 'no'
-        : String(a);
+/** Deep link to one answer on the client's check-ins page (anchor: `<checkinId>-<questionId>`). */
+export function checkinAnswerUrl(clientId: string, checkinId: string, questionId: string): string {
+  return `/app/clients/${clientId}/check-ins#${checkinId}-${questionId}`;
+}
 
-type HighlightSource = { questionId: string; checkin: 'current' | 'previous'; label: string };
+function sameAnswer(
+  a: CheckinAnswer | null | undefined,
+  b: CheckinAnswer | null | undefined,
+): boolean {
+  if (a === undefined) a = null;
+  if (b === undefined) b = null;
+  return JSON.stringify(a) === JSON.stringify(b);
+}
 
-export interface HighlightsRequest {
-  req: AiDraftRequest;
-  /** Answer ids as given in the prompt, to the question they belong to. */
-  sources: Record<string, HighlightSource>;
-  previousId: string | null;
+function hasAnswer(a: CheckinAnswer | null | undefined): boolean {
+  return a !== null && a !== undefined && a !== '';
 }
 
 /**
- * I12, step 1 (in a transaction): this check-in's and the previous one's questions and answers, contact details
- * removed, the client never named, each answer tagged with an id the model must cite.
+ * Local diff only — no provider call, so client answers never leave the workspace. Only questions
+ * whose answer changed are returned, each with a link to both source answers. Unchanged questions
+ * and questions answered in neither check-in are left out.
  */
-export async function highlightsRequest(
+export function summarizeCheckinChanges(input: {
+  clientId: string;
+  questions: readonly CheckinQuestion[];
+  previous: CheckinSnapshot;
+  current: CheckinSnapshot;
+}): CheckinHighlight[] {
+  const out: CheckinHighlight[] = [];
+  for (const question of input.questions) {
+    const prev = input.previous.answers?.[question.id] ?? null;
+    const curr = input.current.answers?.[question.id] ?? null;
+    if (sameAnswer(prev, curr)) continue;
+    const change = !hasAnswer(prev) ? 'added' : !hasAnswer(curr) ? 'removed' : 'changed';
+    out.push({
+      questionId: question.id,
+      label: question.label,
+      previous: hasAnswer(prev) ? prev : null,
+      current: hasAnswer(curr) ? curr : null,
+      change,
+      previousSourceUrl: hasAnswer(prev)
+        ? checkinAnswerUrl(input.clientId, input.previous.checkinId, question.id)
+        : null,
+      currentSourceUrl: hasAnswer(curr)
+        ? checkinAnswerUrl(input.clientId, input.current.checkinId, question.id)
+        : null,
+    });
+  }
+  return out;
+}
+
+/* ------------------------------------------------------- database wrappers (I14) */
+
+/**
+ * Minimal shape of the not-yet-generated `aiSetting` / `aiDraft` delegates. The parent replaces this
+ * cast with the generated client after merging `SCHEMA_SNIPPET_AI.md` and running `pnpm db:generate`.
+ */
+interface AiSettingRow {
+  aiEnabled: boolean;
+  provider: string;
+}
+interface AiDraftRow {
+  id: string;
+  kind: string;
+  status: string;
+  draftJson: unknown;
+  createdAt: Date;
+}
+interface AiTenantTx {
+  aiSetting: {
+    findFirst(args: Record<string, unknown>): Promise<AiSettingRow | null>;
+    upsert(args: Record<string, unknown>): Promise<AiSettingRow>;
+  };
+  aiDraft: {
+    create(args: Record<string, unknown>): Promise<AiDraftRow>;
+    findMany(args: Record<string, unknown>): Promise<AiDraftRow[]>;
+  };
+}
+
+function aiTx(tx: TenantTx): AiTenantTx {
+  return tx as unknown as AiTenantTx;
+}
+
+export interface AiSettingView {
+  /** OFF by default: false when no row exists, and false is the column default. */
+  aiEnabled: boolean;
+  provider: string;
+}
+
+export async function getAiSetting(tx: TenantTx, actor: ActorContext): Promise<AiSettingView> {
+  assertCan(actor, 'org:read');
+  const row = await aiTx(tx).aiSetting.findFirst({
+    where: { organizationId: actor.orgId },
+    select: { aiEnabled: true, provider: true },
+  });
+  return row
+    ? { aiEnabled: row.aiEnabled, provider: row.provider }
+    : { aiEnabled: false, provider: 'fake' };
+}
+
+/** Workspace opt-in toggle. Managers only (`settings:org:update`), like other workspace settings. */
+export async function setAiSetting(
   tx: TenantTx,
   actor: ActorContext,
-  checkinId: string,
-): Promise<HighlightsRequest> {
-  assertCan(actor, 'checkin:read');
-  if (!isUuid(checkinId)) throw notFound();
-  const current = await tx.checkin.findFirst({
-    where: { id: checkinId, submittedAt: { not: null } },
-    select: {
-      id: true,
-      clientId: true,
-      kind: true,
-      submittedAt: true,
-      questionsJson: true,
-      answersJson: true,
-    },
+  aiEnabled: boolean,
+): Promise<AiSettingView> {
+  assertCan(actor, 'settings:org:update');
+  const row = await aiTx(tx).aiSetting.upsert({
+    where: { organizationId: actor.orgId },
+    create: { aiEnabled, provider: 'fake' },
+    update: { aiEnabled },
   });
-  if (!current) throw notFound();
-  const previous = await tx.checkin.findFirst({
-    where: {
-      clientId: current.clientId,
-      kind: current.kind,
-      submittedAt: { not: null, lt: current.submittedAt! },
-    },
-    orderBy: { submittedAt: 'desc' },
-    select: { id: true, questionsJson: true, answersJson: true },
-  });
-  const who = await tx.client.findFirst({
-    where: { id: current.clientId },
-    select: { name: true, email: true },
-  });
-  const names = {
-    fullNames: who ? [who.name] : [],
-    nameParts: who ? namePartsOf(who.name, who.email) : [],
-  };
-  const clean = (t: string) => scrub(t, names).text;
-  const qs = readQuestions(current.questionsJson);
-  const answers = (current.answersJson ?? {}) as Record<string, CheckinAnswer>;
-  const prevQs = previous ? readQuestions(previous.questionsJson) : [];
-  const prevAnswers = (previous?.answersJson ?? {}) as Record<string, CheckinAnswer>;
-  const sources: Record<string, HighlightSource> = {};
-  const lines: string[] = [];
-  for (const q of qs.slice(0, 20)) {
-    const label = clean(q.label);
-    lines.push(`Question: ${label}`);
-    sources[`c:${q.id}`] = { questionId: q.id, checkin: 'current', label };
-    lines.push(`[c:${q.id}] ${clean(answerText(answers[q.id])).slice(0, 1500)}`);
-    if (previous && prevQs.some((p) => p.id === q.id)) {
-      sources[`p:${q.id}`] = { questionId: q.id, checkin: 'previous', label };
-      lines.push(`[p:${q.id}] ${clean(answerText(prevAnswers[q.id])).slice(0, 1500)}`);
-    }
-    lines.push('');
+  return { aiEnabled: row.aiEnabled, provider: row.provider };
+}
+
+async function assertAiEnabled(tx: TenantTx, actor: ActorContext): Promise<void> {
+  const setting = await getAiSetting(tx, actor);
+  if (!setting.aiEnabled) {
+    throw new DomainError(
+      'FORBIDDEN',
+      'AI drafting is off for this workspace. An owner or admin can turn it on.',
+    );
   }
+  if (setting.provider !== 'fake') {
+    throw new DomainError('FORBIDDEN', 'Only the fake/local AI provider is available.');
+  }
+}
+
+export interface AiDraftView {
+  id: string;
+  kind: string;
+  status: 'draft';
+  label: typeof AI_LABEL;
+  content: AiDraftContent;
+  createdAt: string;
+}
+
+function toView(row: AiDraftRow): AiDraftView {
+  const content = row.draftJson as AiDraftContent;
   return {
-    sources,
-    previousId: previous?.id ?? null,
-    req: {
-      system: [
-        "You help a fitness coach read a client's check-in quickly.",
-        'List up to 6 short points about what changed since the previous check-in, or what stands out if there is none.',
-        'Each point must cite, in "sources", the ids in square brackets of every answer it is based on: [c:...] is this',
-        'check-in, [p:...] the previous one. Cite only ids that appear. Each point is one plain sentence under 200 characters.',
-        'Do not give advice. Never mention injuries, pain, medical conditions, medication or supplements.',
-      ].join('\n'),
-      prompt: [
-        previous
-          ? 'Answers, this check-in [c:] and the previous one [p:]:'
-          : 'Answers, this check-in only:',
-        '',
-        ...lines,
-      ].join('\n'),
-      maxTokens: 2000,
-    },
+    id: row.id,
+    kind: row.kind,
+    status: 'draft',
+    label: AI_LABEL,
+    content: { ...content, label: AI_LABEL },
+    createdAt: row.createdAt.toISOString(),
   };
 }
 
 /**
- * I12, step 2 (no transaction open): the provider call, then every point is checked. Points citing no answer, or an
- * answer that wasn't given, are dropped, as are points on injury, medical or supplement topics. Never stored.
+ * Stores a paste draft (I10). Coach-only, opt-in-gated, draft-only: the row is never a program and
+ * nothing is assigned or sent. The stored source text is the redacted copy, never the raw paste.
  */
-export async function completeHighlights(
-  port: AiPort,
-  prepared: HighlightsRequest,
-): Promise<{
-  points: CheckinHighlight[];
-  previousId: string | null;
-  note: string | null;
-  removed: number;
-}> {
-  const raw = await port.highlights(prepared.req);
-  let removed = 0;
-  const points: CheckinHighlight[] = [];
-  for (const p of raw.slice(0, 6)) {
-    const text = typeof p.text === 'string' ? p.text.trim().slice(0, 300) : '';
-    const cited = [...new Set(Array.isArray(p.sources) ? p.sources : [])]
-      .map((s) =>
-        Object.hasOwn(prepared.sources, String(s)) ? prepared.sources[String(s)] : undefined,
-      )
-      .filter((s): s is HighlightSource => s !== undefined);
-    if (!text || cited.length === 0) continue;
-    if (isUnsafe(text)) {
-      removed++;
-      continue;
-    }
-    points.push({ text, sources: cited });
-  }
-  return { points, previousId: prepared.previousId, note: REMOVED_NOTE(removed), removed };
+export async function savePasteAiDraft(
+  tx: TenantTx,
+  actor: ActorContext,
+  provider: AiProvider,
+  input: Omit<PasteDraftInput, 'provider'>,
+): Promise<AiDraftView> {
+  assertCan(actor, 'program:write');
+  assertTrainer(actor);
+  await assertAiEnabled(tx, actor);
+  if (provider.name !== 'fake')
+    throw new DomainError('FORBIDDEN', 'Only the fake/local AI provider is available.');
+  const { content, redactedSource } = await createPasteDraft({ ...input, provider });
+  const row = await aiTx(tx).aiDraft.create({
+    data: {
+      coachUserId: actor.userId,
+      kind: 'paste',
+      sourceText: redactedSource,
+      draftJson: content,
+      status: 'draft',
+    },
+    select: { id: true, kind: true, status: true, draftJson: true, createdAt: true },
+  });
+  return toView(row);
 }
 
-export { AiUnavailableError };
-
-/** The exercise names a draft may use (the workspace's own and the shared library), at most 300. */
-export async function exerciseLibraryNames(tx: TenantTx, actor: ActorContext): Promise<string[]> {
-  assertCan(actor, 'exercise:read');
-  const rows = await tx.exercise.findMany({
-    select: { name: true },
-    orderBy: [{ organizationId: { sort: 'desc', nulls: 'last' } }, { name: 'asc' }],
-    take: 300,
+/** Stores a template draft (I11) under the same guardrails as paste drafts. */
+export async function saveTemplateAiDraft(
+  tx: TenantTx,
+  actor: ActorContext,
+  provider: AiProvider,
+  input: Omit<TemplateDraftInput, 'provider'>,
+): Promise<AiDraftView> {
+  assertCan(actor, 'program:write');
+  assertTrainer(actor);
+  await assertAiEnabled(tx, actor);
+  if (provider.name !== 'fake')
+    throw new DomainError('FORBIDDEN', 'Only the fake/local AI provider is available.');
+  const content = await createTemplateDraft({ ...input, provider });
+  const row = await aiTx(tx).aiDraft.create({
+    data: {
+      coachUserId: actor.userId,
+      kind: 'template',
+      sourceText: null,
+      draftJson: content,
+      status: 'draft',
+    },
+    select: { id: true, kind: true, status: true, draftJson: true, createdAt: true },
   });
-  return [...new Set(rows.map((r) => r.name))];
+  return toView(row);
+}
+
+/** Coach-only list of their workspace's AI drafts, newest first. Drafts only — nothing auto-saved. */
+export async function listAiDrafts(tx: TenantTx, actor: ActorContext): Promise<AiDraftView[]> {
+  assertCan(actor, 'program:write');
+  assertTrainer(actor);
+  await assertAiEnabled(tx, actor);
+  const rows = await aiTx(tx).aiDraft.findMany({
+    orderBy: [{ createdAt: 'desc' }],
+    take: 100,
+    select: { id: true, kind: true, status: true, draftJson: true, createdAt: true },
+  });
+  return rows.map(toView);
+}
+
+/**
+ * Check-in highlights (I12) for the coach: the two submitted check-ins are loaded by the caller
+ * (e.g. the route, via `getCheckin`), and this diffs them locally. Coach-only: `checkin:read` alone
+ * would also admit clients and assistants, so the trainer check is what makes it coach-only.
+ */
+export function highlightsForCoach(
+  actor: ActorContext,
+  input: {
+    clientId: string;
+    questions: readonly CheckinQuestion[];
+    previous: CheckinSnapshot;
+    current: CheckinSnapshot;
+  },
+): CheckinHighlight[] {
+  assertCan(actor, 'checkin:read');
+  assertTrainer(actor);
+  if (!input.previous.answers || !input.current.answers) throw notFound();
+  return summarizeCheckinChanges(input);
 }
