@@ -688,4 +688,3 @@ snippet — `docs/decisions.md` itself was not edited by the slice).
 4. **Libraries:** interactive line, bar and area charts use Recharts 3, pinned to an exact version and wrapped in `apps/web/src/components/charts/`; pages never import it directly, and colours come only from tokens. Small charts (sparkline, ring, donut, week dots, heatmap) are server-rendered SVG, so offline portal pages need no chart JavaScript.
 5. **Privacy:** wellbeing answers shown in charts stay in-app. No analytics event (PostHog) carries answer values.
 6. **Visual direction "Midnight & Ember"**, light and dark themes, following the system setting with a Light / Dark / System choice saved per user on the device. The user-facing product name is **Repsy**; internal package names (`@kinetic/*`), env vars and database identifiers are unchanged.
-
