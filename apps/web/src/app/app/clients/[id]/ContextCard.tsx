@@ -173,12 +173,9 @@ export function ContextCard({ context }: { context: ClientContext }) {
   const hasKit = context.trainingLocation !== null || context.equipment.length > 0;
   const empty = filled.length === 0 && context.pinnedNotes.length === 0 && !hasKit;
   return (
-    <section
-      aria-labelledby="context-heading"
-      className="rounded-card border border-input-border bg-surface p-4"
-    >
+    <section aria-labelledby="context-heading" className="">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h2 id="context-heading" className="text-base font-semibold">
+        <h2 id="context-heading" className="label-micro text-secondary">
           Client context
         </h2>
         <EditContext context={context} />
