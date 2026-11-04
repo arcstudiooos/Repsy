@@ -13,7 +13,7 @@ import { formatSessionDate, plural } from '@/lib/session-format';
 import { withServerTenant } from '@/server/serverActor';
 import { loadClient } from '../data';
 
-export const metadata: Metadata = { title: 'Sessions | Kinetic' };
+export const metadata: Metadata = { title: 'Sessions | Repsy' };
 
 function SessionList({
   title,

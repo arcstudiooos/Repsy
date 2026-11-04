@@ -3,7 +3,7 @@ import { getClientCalendar } from '@kinetic/core';
 import { CalendarMonth } from '@/components/calendar/CalendarMonth';
 import { withPortalTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Calendar | Kinetic' };
+export const metadata: Metadata = { title: 'Calendar | Repsy' };
 
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 

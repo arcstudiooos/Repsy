@@ -12,6 +12,7 @@ import { getServerActorOutcome, getServerSession, withServerTenant } from '@/ser
 import { shellRedirect } from '@/server/shellGate';
 import { pendingAgreements, recordPortalVisit } from '@kinetic/core';
 import { AgreementGate } from '@/portal/AgreementGate';
+import { RepsyLogo } from '@/components/brand/Logo';
 
 /**
  * Portal gate (behind src/proxy.ts, which checks session + verified email):
@@ -85,7 +86,13 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
       </a>
       <header className="border-b border-divider bg-surface px-4 py-2 md:border-b-0 md:pb-0">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-2 md:px-8">
-          <Suspense fallback={<p className="text-lg font-semibold">Kinetic</p>}>
+          <Suspense
+            fallback={
+              <p>
+                <RepsyLogo />
+              </p>
+            }
+          >
             <PortalBrand />
           </Suspense>
           <Suspense fallback={null}>

@@ -23,7 +23,7 @@ import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { withServerTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Messages | Kinetic' };
+export const metadata: Metadata = { title: 'Messages | Repsy' };
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) || undefined;
 

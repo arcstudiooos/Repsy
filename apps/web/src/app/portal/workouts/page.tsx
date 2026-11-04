@@ -19,7 +19,7 @@ import { formatSessionDate, plural } from '@/lib/session-format';
 import { cn } from '@/lib/utils';
 import { withPortalTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Workouts | Kinetic' };
+export const metadata: Metadata = { title: 'Workouts | Repsy' };
 
 const first = (v: string | string[] | undefined): string | undefined =>
   (Array.isArray(v) ? v[0] : v) || undefined;

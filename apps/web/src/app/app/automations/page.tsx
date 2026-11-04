@@ -6,7 +6,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Automations | Kinetic' };
+export const metadata: Metadata = { title: 'Automations | Repsy' };
 
 const TRIGGER_TEXT: Record<string, string> = {
   manual: 'Started by hand',

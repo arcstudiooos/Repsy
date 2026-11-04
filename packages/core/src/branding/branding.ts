@@ -8,7 +8,7 @@ export const LOGO_URL_MAX = 500;
 
 export interface Branding {
   name: string;
-  /** #rrggbb, or null for Kinetic's own accent. */
+  /** #rrggbb, or null for Repsy's own accent. */
   accent: string | null;
   /** The accent's hover shade, when an accent is set. */
   accentHover: string | null;

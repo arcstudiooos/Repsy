@@ -30,7 +30,7 @@ import { SecuritySection } from '@/components/settings/SecuritySection';
 import { TwoFactorSection } from '@/components/settings/TwoFactorSection';
 import { withServerTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Settings | Kinetic' };
+export const metadata: Metadata = { title: 'Settings | Repsy' };
 
 // Access is enforced by src/proxy.ts and the coach shell in the settings layout.
 export default async function SettingsPage() {

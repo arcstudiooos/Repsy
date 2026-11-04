@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { withServerTenant } from '@/server/serverActor';
 import { formatDate } from '../clients/StatusBadge';
 
-export const metadata: Metadata = { title: 'Analytics | Kinetic' };
+export const metadata: Metadata = { title: 'Analytics | Repsy' };
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) || undefined;
 const pct = (r: Ratio) => `${Math.round((r.numerator / r.denominator) * 100)}%`;

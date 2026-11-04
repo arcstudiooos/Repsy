@@ -16,7 +16,7 @@ import { ScheduledMessages } from '@/components/messages/ScheduledMessages';
 import { withServerTenant } from '@/server/serverActor';
 import { loadClient } from '../data';
 
-export const metadata: Metadata = { title: 'Messages | Kinetic' };
+export const metadata: Metadata = { title: 'Messages | Repsy' };
 
 export default async function ClientMessagesPage({
   params,

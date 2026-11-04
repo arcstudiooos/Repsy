@@ -23,7 +23,7 @@ import {
 } from './AdminActions';
 import { readNotices } from '@kinetic/core';
 
-export const metadata: Metadata = { title: 'Admin | Kinetic' };
+export const metadata: Metadata = { title: 'Admin | Repsy' };
 
 const when = (iso: string) => new Date(iso).toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) || undefined;

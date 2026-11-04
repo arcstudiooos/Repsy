@@ -2,13 +2,13 @@ import type { MetadataRoute } from 'next';
 
 /**
  * Web app manifest (PRD L1): the client portal installs to the home screen and opens standalone, with offline
- * logging from the portal service worker (D-004). The icon is Kinetic's; a per-workspace icon (the coach's logo)
+ * logging from the portal service worker (D-004). The icon is Repsy's; a per-workspace icon (the coach's logo)
  * needs a per-workspace manifest and waits for that.
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Kinetic',
-    short_name: 'Kinetic',
+    name: 'Repsy',
+    short_name: 'Repsy',
     description: 'Your training plan, workouts and check-ins from your coach.',
     start_url: '/portal',
     scope: '/',

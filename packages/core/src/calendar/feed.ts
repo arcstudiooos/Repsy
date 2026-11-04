@@ -124,10 +124,10 @@ export async function calendarFeed(
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Kinetic//Workouts//EN',
+    'PRODID:-//Repsy//Workouts//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    'X-WR-CALNAME:Kinetic workouts',
+    'X-WR-CALNAME:Repsy workouts',
     'X-PUBLISHED-TTL:PT6H',
   ];
   for (const s of sessions) {

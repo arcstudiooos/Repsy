@@ -10,7 +10,7 @@ import {
 } from '@/components/scheduling/SchedulingForms';
 import { withServerTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Scheduling | Kinetic' };
+export const metadata: Metadata = { title: 'Scheduling | Repsy' };
 
 /** PRD K10, K11, H15: availability, bookings with call links, pack balances. */
 export default async function SchedulingPage() {

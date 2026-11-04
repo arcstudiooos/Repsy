@@ -24,7 +24,7 @@ import { AgreementStatus } from './AgreementStatus';
 import { InviteControls } from './InviteControls';
 import { TagEditor } from './TagEditor';
 
-export const metadata: Metadata = { title: 'Client | Kinetic' };
+export const metadata: Metadata = { title: 'Client | Repsy' };
 
 export default async function ClientOverviewPage({ params }: { params: Promise<{ id: string }> }) {
   const client = await loadClient((await params).id);

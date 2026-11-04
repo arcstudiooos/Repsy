@@ -15,10 +15,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Kinetic',
+  title: 'Repsy',
   description: 'Coaching workspace for coaches and their clients.',
   // PRD L1: installable; iOS reads the touch icon and status bar settings from here.
-  appleWebApp: { capable: true, title: 'Kinetic', statusBarStyle: 'default' },
+  appleWebApp: { capable: true, title: 'Repsy', statusBarStyle: 'default' },
   icons: { icon: '/favicon.ico', apple: '/icon-192.png' },
 };
 

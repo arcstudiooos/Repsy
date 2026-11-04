@@ -4,7 +4,7 @@ import { CHURN_LABEL, getBusinessAnalytics } from '@kinetic/core';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Business analytics | Kinetic' };
+export const metadata: Metadata = { title: 'Business analytics | Repsy' };
 
 const monthLabel = (m: string) =>
   new Intl.DateTimeFormat('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' }).format(

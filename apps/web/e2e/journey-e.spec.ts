@@ -33,7 +33,7 @@ test.describe('Journey E: deletion', () => {
       await expectNoAxeViolations(portal);
       await dialog.getByRole('button', { name: 'Request deletion' }).click();
       await expect(
-        portal.getByText('Deletion requested. Kinetic will verify it, then delete the data.'),
+        portal.getByText('Deletion requested. Repsy will verify it, then delete the data.'),
       ).toBeVisible({ timeout: 15_000 });
 
       // The coach (made a platform admin for this test) works the queue.

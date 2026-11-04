@@ -342,7 +342,7 @@ describe('raw-address recipients and templates', () => {
     expect(result.sent).toBe(1);
     expect(sent[0]).toMatchObject({
       to: 'invitee@example.test',
-      subject: 'Coach <Carl> invited you to Kinetic',
+      subject: 'Coach <Carl> invited you to Repsy',
     });
     expect(sent[0]?.text).toContain('https://app.example.test/invite/tok_123-abc');
     expect(sent[0]?.html).toContain('&#60;Carl&#62;');
@@ -379,7 +379,7 @@ describe('raw-address recipients and templates', () => {
     });
     const message = sent.find((m) => m.to === 'inj@example.test');
     expect(message?.subject).not.toMatch(/[\r\n]/);
-    expect(message?.subject).toBe('Eve Bcc: evil@example.test invited you to Kinetic');
+    expect(message?.subject).toBe('Eve Bcc: evil@example.test invited you to Repsy');
     expect(row.id).toBeTruthy();
   });
 

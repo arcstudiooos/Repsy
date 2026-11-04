@@ -12,7 +12,7 @@ import { loadClient } from '../data';
 import { AssignDialog } from './AssignDialog';
 import { PhaseQueue } from './PhaseQueue';
 
-export const metadata: Metadata = { title: 'Program | Kinetic' };
+export const metadata: Metadata = { title: 'Program | Repsy' };
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 

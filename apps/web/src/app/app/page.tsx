@@ -15,7 +15,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Dashboard | Kinetic' };
+export const metadata: Metadata = { title: 'Dashboard | Repsy' };
 
 const ATTENTION_SHOWN = 5;
 

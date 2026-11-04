@@ -6,7 +6,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { withServerTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Audit log | Kinetic' };
+export const metadata: Metadata = { title: 'Audit log | Repsy' };
 
 const CATEGORY_LABEL: Record<AuditCategory, string> = {
   all: 'All',
@@ -86,7 +86,7 @@ export default async function AuditPage({
                     {when(e.at)}
                   </time>
                   <p className="min-w-0">
-                    <span className="font-medium">{e.actorName ?? 'Kinetic'}</span> · {e.label}
+                    <span className="font-medium">{e.actorName ?? 'Repsy'}</span> · {e.label}
                     {e.clientName && <span className="text-secondary"> · {e.clientName}</span>}
                   </p>
                 </li>

@@ -5,7 +5,7 @@ import { challengeDates, challengeStatus } from '@/components/challenges/Challen
 import { ArchiveChallenge, Leaderboard, METRIC_LABEL } from '@/components/challenges/Challenges';
 import { withServerTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Challenge | Kinetic' };
+export const metadata: Metadata = { title: 'Challenge | Repsy' };
 
 export default async function CoachChallengePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

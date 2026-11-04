@@ -9,7 +9,7 @@ import {
 import { AiDraftsClient } from '@/components/ai/AiDraftsClient';
 import { withServerTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'AI drafts | Kinetic' };
+export const metadata: Metadata = { title: 'AI drafts | Repsy' };
 
 // NOTE (merge step): the ai/* functions above are not exported from `@kinetic/core` yet. Add the
 // export block from SLICE_REPORT_AI.md to `packages/core/src/index.ts` before running this page.

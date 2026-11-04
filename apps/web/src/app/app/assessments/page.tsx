@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';
 import { ArchiveAssessment, AssessmentForm } from './AssessmentForm';
 
-export const metadata: Metadata = { title: 'Assessments | Kinetic' };
+export const metadata: Metadata = { title: 'Assessments | Repsy' };
 
 /** PRD E5: posture and mobility photo assessments, asked for from a client's Progress tab. */
 export default async function AssessmentsPage() {

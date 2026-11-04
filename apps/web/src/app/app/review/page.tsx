@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils';
 import { FlagQueue } from './FlagQueue';
 import { MarkSeenButton } from './MarkSeenButton';
 
-export const metadata: Metadata = { title: 'Review | Kinetic' };
+export const metadata: Metadata = { title: 'Review | Repsy' };
 
 function Section({
   id,

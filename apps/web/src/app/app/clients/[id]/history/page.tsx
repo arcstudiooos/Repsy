@@ -17,7 +17,7 @@ import { loadClient } from '../data';
 import { ClientAutomations } from './ClientAutomations';
 import { ClientCourses } from './ClientCourses';
 
-export const metadata: Metadata = { title: 'History | Kinetic' };
+export const metadata: Metadata = { title: 'History | Repsy' };
 
 const KIND: Record<TimelineKind, string> = {
   assignment: 'Program',

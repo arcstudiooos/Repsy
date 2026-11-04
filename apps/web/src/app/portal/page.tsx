@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils';
 import { KeepUpcoming } from '@/portal/offline/KeepUpcoming';
 import { withPortalTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Home | Kinetic' };
+export const metadata: Metadata = { title: 'Home | Repsy' };
 
 // Access is enforced by src/proxy.ts and the portal layout's client gate.
 export default async function PortalHome() {

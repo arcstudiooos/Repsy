@@ -13,7 +13,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Billing | Kinetic' };
+export const metadata: Metadata = { title: 'Billing | Repsy' };
 
 async function createPackageAction(data: FormData) {
   'use server';

@@ -6,7 +6,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { withServerTenant } from '@/server/serverActor';
 import { LeadBoard } from './LeadBoard';
 
-export const metadata: Metadata = { title: 'Leads | Kinetic' };
+export const metadata: Metadata = { title: 'Leads | Repsy' };
 
 /** PRD B16: applications from the public page, worked from New to Won or Lost. */
 export default async function LeadsPage() {

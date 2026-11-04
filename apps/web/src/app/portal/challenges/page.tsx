@@ -4,7 +4,7 @@ import { ChallengeList } from '@/components/challenges/ChallengeList';
 import { EmptyState } from '@/components/states/EmptyState';
 import { withPortalTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Challenges | Kinetic' };
+export const metadata: Metadata = { title: 'Challenges | Repsy' };
 
 export default async function PortalChallengesPage() {
   const items = await withPortalTenant((tx, actor) => listChallenges(tx, actor));

@@ -27,23 +27,23 @@ const TEMPLATES: Record<string, Template> = {
     const link = `${appBaseUrl.replace(/\/+$/, '')}/invite/${encodeURIComponent(token)}`;
     const where = orgName ? ` (${orgName})` : '';
     const text =
-      `${coachName}${where} invited you to Kinetic.\n\n` +
+      `${coachName}${where} invited you to Repsy.\n\n` +
       `Accept your invite: ${link}\n\n` +
       'This link works once and expires in 7 days.';
     const html =
-      `<p>${escapeHtml(coachName)}${escapeHtml(where)} invited you to Kinetic.</p>` +
+      `<p>${escapeHtml(coachName)}${escapeHtml(where)} invited you to Repsy.</p>` +
       `<p><a href="${escapeHtml(link)}">Accept your invite</a></p>` +
       '<p>This link works once and expires in 7 days.</p>';
     // Names are user-controlled: CR/LF in a subject would allow header injection.
-    const subject = `${coachName} invited you to Kinetic`.replace(/[\r\n]+/g, ' ');
+    const subject = `${coachName} invited you to Repsy`.replace(/[\r\n]+/g, ' ');
     return { subject, text, html };
   },
   // PRD B15: the owner hears that someone applied (their name only, D-007).
   new_lead: (payload, appBaseUrl) => {
     const name = str(payload, 'leadName') ?? 'Someone';
     const link = `${appBaseUrl.replace(/\/+$/, '')}/app/leads`;
-    const text = `${name} applied on your Kinetic page.\n\nSee your leads: ${link}`;
-    const html = `<p>${escapeHtml(name)} applied on your Kinetic page.</p><p><a href="${escapeHtml(link)}">See your leads</a></p>`;
+    const text = `${name} applied on your Repsy page.\n\nSee your leads: ${link}`;
+    const html = `<p>${escapeHtml(name)} applied on your Repsy page.</p><p><a href="${escapeHtml(link)}">See your leads</a></p>`;
     return { subject: `New application from ${name}`.replace(/[\r\n]+/g, ' '), text, html };
   },
   // PRD A10: an invite to join a workspace's team.
@@ -55,14 +55,14 @@ const TEMPLATES: Record<string, Template> = {
     const link = `${appBaseUrl.replace(/\/+$/, '')}/team/join/${encodeURIComponent(token)}`;
     const who = inviter ? `${inviter} invited you` : 'You are invited';
     const text =
-      `${who} to join ${orgName} on Kinetic as ${role === 'admin' ? 'an admin' : `a ${role}`}.\n\n` +
+      `${who} to join ${orgName} on Repsy as ${role === 'admin' ? 'an admin' : `a ${role}`}.\n\n` +
       `Join the team: ${link}\n\n` +
       'Sign in (or create an account) with this email address. The link works once and expires in 7 days.';
     const html =
-      `<p>${escapeHtml(who)} to join ${escapeHtml(orgName)} on Kinetic as ${escapeHtml(role === 'admin' ? 'an admin' : `a ${role}`)}.</p>` +
+      `<p>${escapeHtml(who)} to join ${escapeHtml(orgName)} on Repsy as ${escapeHtml(role === 'admin' ? 'an admin' : `a ${role}`)}.</p>` +
       `<p><a href="${escapeHtml(link)}">Join the team</a></p>` +
       '<p>Sign in (or create an account) with this email address. The link works once and expires in 7 days.</p>';
-    const subject = `Join ${orgName} on Kinetic`.replace(/[\r\n]+/g, ' ');
+    const subject = `Join ${orgName} on Repsy`.replace(/[\r\n]+/g, ' ');
     return { subject, text, html };
   },
   // PRD M13: to the support inbox; the request text is the point of this email.
@@ -96,8 +96,8 @@ const TEMPLATES: Record<string, Template> = {
     const what = n === 1 ? 'a workout' : `${n} workouts`;
     return {
       subject: 'You have a workout today',
-      text: `You have ${what} planned today.\n\nOpen Kinetic: ${link}\n\n${OFF}`,
-      html: `<p>You have ${what} planned today.</p><p><a href="${escapeHtml(link)}">Open Kinetic</a></p><p>${OFF}</p>`,
+      text: `You have ${what} planned today.\n\nOpen Repsy: ${link}\n\n${OFF}`,
+      html: `<p>You have ${what} planned today.</p><p><a href="${escapeHtml(link)}">Open Repsy</a></p><p>${OFF}</p>`,
     };
   },
   checkin_reminder: (_payload, appBaseUrl) => {
@@ -114,8 +114,8 @@ const TEMPLATES: Record<string, Template> = {
     const what = n === 1 ? 'a habit' : `${n} habits`;
     return {
       subject: 'A quick habit check',
-      text: `You still have ${what} to tick today.\n\nOpen Kinetic: ${link}\n\n${OFF}`,
-      html: `<p>You still have ${what} to tick today.</p><p><a href="${escapeHtml(link)}">Open Kinetic</a></p><p>${OFF}</p>`,
+      text: `You still have ${what} to tick today.\n\nOpen Repsy: ${link}\n\n${OFF}`,
+      html: `<p>You still have ${what} to tick today.</p><p><a href="${escapeHtml(link)}">Open Repsy</a></p><p>${OFF}</p>`,
     };
   },
   // S4-1: no answers or questions in the email, only the link (D-007).
@@ -139,10 +139,10 @@ const TEMPLATES: Record<string, Template> = {
     const sender = str(payload, 'senderName') ?? 'your coach';
     const path = payload.toPortal === true ? '/portal/messages' : '/app/messages';
     const link = `${appBaseUrl.replace(/\/+$/, '')}${path}`;
-    const text = `You have a new message from ${sender}.\n\nRead it in Kinetic: ${link}`;
+    const text = `You have a new message from ${sender}.\n\nRead it in Repsy: ${link}`;
     const html =
       `<p>You have a new message from ${escapeHtml(sender)}.</p>` +
-      `<p><a href="${escapeHtml(link)}">Read it in Kinetic</a></p>`;
+      `<p><a href="${escapeHtml(link)}">Read it in Repsy</a></p>`;
     const subject = `New message from ${sender}`.replace(/[\r\n]+/g, ' ');
     return { subject, text, html };
   },
@@ -160,16 +160,16 @@ const TEMPLATES: Record<string, Template> = {
     const link = `${appBaseUrl.replace(/\/+$/, '')}/app`;
     const where = orgName ? ` in ${orgName}` : '';
     const text =
-      `Your Kinetic day${where}:\n\n` +
+      `Your Repsy day${where}:\n\n` +
       lines.map((l) => `- ${l}`).join('\n') +
       `\n\nOpen your dashboard: ${link}\n\n` +
       'You get this because you turned on the daily digest in Settings.';
     const html =
-      `<p>Your Kinetic day${escapeHtml(where)}:</p><ul>` +
+      `<p>Your Repsy day${escapeHtml(where)}:</p><ul>` +
       lines.map((l) => `<li>${escapeHtml(l)}</li>`).join('') +
       `</ul><p><a href="${escapeHtml(link)}">Open your dashboard</a></p>` +
       '<p>You get this because you turned on the daily digest in Settings.</p>';
-    return { subject: 'Your Kinetic daily digest', text, html };
+    return { subject: 'Your Repsy daily digest', text, html };
   },
   // PRD I9: the Monday brief. Counts and a link only, never client names or content (D-007).
   weekly_brief: (payload, appBaseUrl) => {
@@ -213,7 +213,7 @@ const TEMPLATES: Record<string, Template> = {
     const text =
       `Your week ahead${where}:\n\n` +
       shown.map(([h, lines]) => `${h}:\n${lines.map((l) => `- ${l}`).join('\n')}`).join('\n\n') +
-      `\n\nOpen Kinetic: ${link}\n\n` +
+      `\n\nOpen Repsy: ${link}\n\n` +
       'You get this because you turned on the Monday brief in Settings.';
     const html =
       `<p>Your week ahead${escapeHtml(where)}:</p>` +
@@ -223,20 +223,20 @@ const TEMPLATES: Record<string, Template> = {
             `<p><strong>${escapeHtml(h)}</strong></p><ul>${lines.map((l) => `<li>${escapeHtml(l)}</li>`).join('')}</ul>`,
         )
         .join('') +
-      `<p><a href="${escapeHtml(link)}">Open Kinetic</a></p>` +
+      `<p><a href="${escapeHtml(link)}">Open Repsy</a></p>` +
       '<p>You get this because you turned on the Monday brief in Settings.</p>';
-    return { subject: 'Your Kinetic week ahead', text, html };
+    return { subject: 'Your Repsy week ahead', text, html };
   },
   // S5-3: the coach is told a client asked for deletion (D-010 #4). No content beyond the client's name.
   deletion_requested: (payload, appBaseUrl) => {
     const name = str(payload, 'clientName') ?? 'A client';
     const text =
-      `${name} asked for their data in your Kinetic workspace to be deleted.\n\n` +
-      'Kinetic will verify the request and then delete it. You need to do nothing.\n\n' +
+      `${name} asked for their data in your Repsy workspace to be deleted.\n\n` +
+      'Repsy will verify the request and then delete it. You need to do nothing.\n\n' +
       `${appBaseUrl.replace(/\/+$/, '')}/app/clients`;
     const html =
-      `<p>${escapeHtml(name)} asked for their data in your Kinetic workspace to be deleted.</p>` +
-      '<p>Kinetic will verify the request and then delete it. You need to do nothing.</p>';
+      `<p>${escapeHtml(name)} asked for their data in your Repsy workspace to be deleted.</p>` +
+      '<p>Repsy will verify the request and then delete it. You need to do nothing.</p>';
     return { subject: 'A client asked for data deletion', text, html };
   },
 };

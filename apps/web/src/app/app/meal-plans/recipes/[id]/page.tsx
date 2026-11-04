@@ -5,7 +5,7 @@ import { withServerTenant } from '@/server/serverActor';
 import { ArchiveButton } from '../../ArchiveButton';
 import { RecipeEditor } from '../../RecipeEditor';
 
-export const metadata: Metadata = { title: 'Recipe | Kinetic' };
+export const metadata: Metadata = { title: 'Recipe | Repsy' };
 
 export default async function RecipePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

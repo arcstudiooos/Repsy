@@ -5,7 +5,7 @@ import { NewGroupForm } from '@/components/groups/GroupForms';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Groups | Kinetic' };
+export const metadata: Metadata = { title: 'Groups | Repsy' };
 
 /** PRD H7, H8: cohorts and teams with a chat and a feed that you moderate. */
 export default async function GroupsPage() {

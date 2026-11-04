@@ -11,7 +11,7 @@ import { AssignDialog } from '../clients/[id]/program/AssignDialog';
 import { NewProgramDialog } from './NewProgramDialog';
 import { ProgramActions } from './ProgramActions';
 
-export const metadata: Metadata = { title: 'Programs | Kinetic' };
+export const metadata: Metadata = { title: 'Programs | Repsy' };
 
 const first = (v: string | string[] | undefined): string | undefined =>
   (Array.isArray(v) ? v[0] : v) || undefined;

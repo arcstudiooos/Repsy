@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { ResetPasswordForm } from './ResetPasswordForm';
 
-export const metadata: Metadata = { title: 'Reset password | Kinetic' };
+export const metadata: Metadata = { title: 'Reset password | Repsy' };
 
 export default function ResetPasswordPage() {
   return (

@@ -9,6 +9,7 @@ import { WorkspaceSwitchLink } from '@/components/nav/WorkspaceSwitchLink';
 import { LoadingState } from '@/components/states/LoadingState';
 import { getServerActorOutcome, getServerSession, withServerTenant } from '@/server/serverActor';
 import { shellRedirect } from '@/server/shellGate';
+import { RepsyLogo } from '@/components/brand/Logo';
 
 /**
  * Defense in depth behind src/proxy.ts: needs a verified user with an active owner/coach membership, and the
@@ -128,7 +129,9 @@ export function CoachShell({
       </Suspense>
       <div className="flex min-w-0 flex-col">
         <header className="flex items-center justify-between gap-2 border-b border-divider bg-surface px-4 py-2 md:hidden print:hidden">
-          <p className="text-lg font-semibold">Kinetic</p>
+          <p>
+            <RepsyLogo size="sm" />
+          </p>
           <Suspense fallback={null}>
             <WorkspaceSwitchLink className="text-sm" />
           </Suspense>

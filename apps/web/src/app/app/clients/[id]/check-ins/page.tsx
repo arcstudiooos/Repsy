@@ -20,7 +20,7 @@ import { CheckinCompare, type CompareCheckin } from '@/components/checkins/Check
 import { WeekSummary } from '@/components/checkins/WeekSummary';
 import { MarkReviewedButton } from './MarkReviewedButton';
 
-export const metadata: Metadata = { title: 'Check-ins | Kinetic' };
+export const metadata: Metadata = { title: 'Check-ins | Repsy' };
 
 const STATUS = {
   open: 'Waiting for the client',

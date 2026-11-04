@@ -7,7 +7,7 @@ import { WorkoutLogger } from '@/components/workout/WorkoutLogger';
 import { editWindowOpen, formatLocalDateTime } from '@/lib/session-format';
 import { withPortalTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Workout | Kinetic' };
+export const metadata: Metadata = { title: 'Workout | Repsy' };
 
 // Access is enforced by src/proxy.ts and the portal layout's client gate; core scopes the session to this client.
 export default async function PortalWorkout({

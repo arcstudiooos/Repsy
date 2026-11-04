@@ -20,7 +20,7 @@ import { withServerTenant } from '@/server/serverActor';
 import { ProgramEditor, type EditorClient } from './ProgramEditor';
 import { HouseTemplate, ShareWithClients } from './ShareWithClients';
 
-export const metadata: Metadata = { title: 'Edit program | Kinetic' };
+export const metadata: Metadata = { title: 'Edit program | Repsy' };
 
 type Loaded =
   | {

@@ -24,7 +24,7 @@ import { ClientsTable } from './ClientsTable';
 import { JoinLinkDialog } from './JoinLinkDialog';
 import { NewClientDialog } from './NewClientDialog';
 
-export const metadata: Metadata = { title: 'Clients | Kinetic' };
+export const metadata: Metadata = { title: 'Clients | Repsy' };
 
 const STATUSES: ClientStatus[] = ['invited', 'active', 'paused', 'archived'];
 

@@ -7,7 +7,7 @@ import { WeekSummary } from '@/components/checkins/WeekSummary';
 import { formatDate } from '@/app/app/clients/StatusBadge';
 import { withPortalTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Check-in | Kinetic' };
+export const metadata: Metadata = { title: 'Check-in | Repsy' };
 
 export default async function PortalCheckin({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

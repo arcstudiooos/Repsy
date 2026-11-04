@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { NewTemplateForm } from './NewTemplateForm';
 import { TemplateEditor } from './TemplateEditor';
 
-export const metadata: Metadata = { title: 'Check-in questions | Kinetic' };
+export const metadata: Metadata = { title: 'Check-in questions | Repsy' };
 
 const KIND_LABEL: Record<TemplateKind, string> = {
   checkin: 'Recurring check-in',

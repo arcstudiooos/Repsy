@@ -5,7 +5,7 @@ import { withServerTenant } from '@/server/serverActor';
 import { loadClient } from '../data';
 import { HabitsManager } from './HabitsManager';
 
-export const metadata: Metadata = { title: 'Habits | Kinetic' };
+export const metadata: Metadata = { title: 'Habits | Repsy' };
 
 /** A client's habits and tasks (PRD G1-G3). */
 export default async function ClientHabitsPage({ params }: { params: Promise<{ id: string }> }) {

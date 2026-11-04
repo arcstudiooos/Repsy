@@ -12,6 +12,7 @@ import {
   isActive,
   type NavItem,
 } from './items';
+import { RepsyLogo } from '@/components/brand/Logo';
 
 function DesktopLink({ item, pathname }: { item: NavItem; pathname: string }) {
   const active = isActive(pathname, item);
@@ -55,7 +56,9 @@ export function CoachNav({ switcher }: { switcher?: ReactNode }) {
   return (
     <>
       <aside className="hidden border-r border-divider bg-surface md:sticky md:top-0 md:flex md:h-dvh md:flex-col md:overflow-y-auto md:p-4 print:hidden">
-        <p className="mb-6 px-3 text-lg font-semibold text-ink">Kinetic</p>
+        <p className="mb-6 px-3">
+          <RepsyLogo />
+        </p>
         <nav aria-label="Primary" className="flex flex-1 flex-col">
           <ul className="flex flex-col gap-1">
             {coachDesktopItems.map((item) => (

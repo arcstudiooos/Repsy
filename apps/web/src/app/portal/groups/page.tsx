@@ -4,7 +4,7 @@ import { listGroups } from '@kinetic/core';
 import { EmptyState } from '@/components/states/EmptyState';
 import { withPortalTenant } from '@/server/serverActor';
 
-export const metadata: Metadata = { title: 'Groups | Kinetic' };
+export const metadata: Metadata = { title: 'Groups | Repsy' };
 
 /** PRD H7, H8: the groups the client is in. */
 export default async function PortalGroupsPage() {
