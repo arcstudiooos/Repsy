@@ -71,6 +71,9 @@ describe('design tokens', () => {
 
       it('midnight tiles: white and cyan text are readable, ember is a 3:1 fill', () => {
         expect(contrastRatio(t.onMidnight, t.midnight)).toBeGreaterThanOrEqual(4.5);
+        expect(contrastRatio(t.onMidnightMuted, t.midnight)).toBeGreaterThanOrEqual(4.5);
+        expect(contrastRatio(t.onMidnightMuted, t.midnight2)).toBeGreaterThanOrEqual(4.5);
+        expect(contrastRatio(t.onMidnight, t.midnight2)).toBeGreaterThanOrEqual(4.5);
         expect(contrastRatio(t.cyan, t.midnight)).toBeGreaterThanOrEqual(4.5);
         expect(contrastRatio(t.ember, t.midnight)).toBeGreaterThanOrEqual(3);
       });

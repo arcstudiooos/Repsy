@@ -25,6 +25,8 @@
   --k-cyan-strong: #0a7c8c;
   --k-midnight: #101418;
   --k-on-midnight: #ffffff;
+  --k-on-midnight-muted: #a8b0ba;
+  --k-midnight-2: #1b2229;
   --k-success: #0b7a45;
   --k-success-soft: #e3f4ea;
   --k-success-ink: #0b7a45;
@@ -91,6 +93,8 @@
   --k-cyan-strong: #19c3d9;
   --k-midnight: #101418;
   --k-on-midnight: #ffffff;
+  --k-on-midnight-muted: #a8b0ba;
+  --k-midnight-2: #1b2229;
   --k-success: #3dbe7a;
   --k-success-soft: #12291d;
   --k-success-ink: #5bd593;
@@ -138,6 +142,10 @@
     --k-cyan-strong: #19c3d9;
     --k-midnight: #101418;
     --k-on-midnight: #ffffff;
+    --k-on-midnight-muted: #a8b0ba;
+    --k-midnight-2: #1b2229;
+    --k-on-midnight-muted: #a8b0ba;
+    --k-midnight-2: #1b2229;
     --k-success: #3dbe7a;
     --k-success-soft: #12291d;
     --k-success-ink: #5bd593;

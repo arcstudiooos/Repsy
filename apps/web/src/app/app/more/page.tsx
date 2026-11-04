@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { SignOutButton } from '@/components/nav/SignOutButton';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { Card } from '@/components/ui/card';
 
 export const metadata: Metadata = { title: 'More | Repsy' };
@@ -33,7 +34,7 @@ export default function MorePage() {
             <li key={link.href}>
               <Link
                 href={link.href}
-                className="flex min-h-11 items-center rounded-control px-3 text-base hover:bg-canvas"
+                className="flex min-h-11 items-center rounded-control px-3 text-base hover:bg-surface-2"
               >
                 {link.label}
               </Link>
@@ -43,6 +44,10 @@ export default function MorePage() {
             <SignOutButton />
           </li>
         </ul>
+      </Card>
+      <Card className="mt-4">
+        <h2 className="mb-3 text-h3 font-semibold">Theme</h2>
+        <ThemeToggle />
       </Card>
     </>
   );

@@ -96,8 +96,8 @@ test.describe('app shells', () => {
       await expect(nav).toBeVisible();
       await expect(nav.getByRole('link')).toHaveText([
         'Home',
-        'Workouts',
         'Check-ins',
+        'Workouts',
         'Messages',
         'Profile',
       ]);

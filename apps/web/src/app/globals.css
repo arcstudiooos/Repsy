@@ -24,6 +24,8 @@
   --color-cyan-strong: var(--k-cyan-strong);
   --color-midnight: var(--k-midnight);
   --color-on-midnight: var(--k-on-midnight);
+  --color-on-midnight-muted: var(--k-on-midnight-muted);
+  --color-midnight-2: var(--k-midnight-2);
   --color-success: var(--k-success);
   --color-success-soft: var(--k-success-soft);
   --color-success-ink: var(--k-success-ink);
@@ -108,4 +110,9 @@
     text-transform: uppercase;
     font-weight: 600;
   }
+}
+
+/* Coach rail width; the collapse button sets data-rail on <html>. */
+:root[data-rail='collapsed'] {
+  --rail-w: 4.5rem;
 }
