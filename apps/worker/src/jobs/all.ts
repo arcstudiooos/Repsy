@@ -1,3 +1,4 @@
+import { billingSweepJob } from './billingSweep';
 import { checkinsIssueJob } from './checkinsIssue';
 import { clientRemindersJob } from './clientReminders';
 import { coachDigestJob } from './coachDigest';
@@ -27,4 +28,5 @@ export const jobs = [
   scheduledMessagesJob,
   phasesAdvanceJob,
   automationsJob,
+  billingSweepJob,
 ] as const;

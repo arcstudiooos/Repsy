@@ -103,7 +103,20 @@ export interface PacksDb {
     >;
     create(args: unknown): Promise<{ id: string }>;
     update(args: unknown): Promise<unknown>;
+    updateMany(args: unknown): Promise<{ count: number }>;
   };
+}
+
+/**
+ * Takes the pack's row lock until the transaction ends (no raw SQL in TenantTx: a no-op UPDATE locks like
+ * SELECT ... FOR UPDATE), so two bookings spending the same pack run one after the other and each sees the other's
+ * debit instead of both spending the last credit.
+ */
+async function lockPack(tx: TenantTx, packId: string, clientId: string): Promise<void> {
+  await db(tx).sessionPack.updateMany({
+    where: { id: packId, clientId },
+    data: { usedSessions: { increment: 0 } },
+  });
 }
 
 const db = (tx: TenantTx): PacksDb => tx as unknown as PacksDb;
@@ -167,6 +180,7 @@ export async function consumePackCredit(
   opts: { now?: Date } = {},
 ): Promise<PackView> {
   const now = opts.now ?? new Date();
+  await lockPack(tx, packId, clientId);
   const pack = await db(tx).sessionPack.findFirst({
     where: { id: packId, clientId },
     select: {
@@ -199,6 +213,7 @@ export async function refundPackCredit(
   packId: string,
   clientId: string,
 ): Promise<PackView | null> {
+  await lockPack(tx, packId, clientId);
   const pack = await db(tx).sessionPack.findFirst({
     where: { id: packId, clientId },
     select: {

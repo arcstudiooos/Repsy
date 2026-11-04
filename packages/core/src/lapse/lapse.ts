@@ -1,7 +1,9 @@
-import type { TenantTx } from '@kinetic/db';
+import { appendAudit, type SystemTx, type TenantTx } from '@kinetic/db';
+import { assertPlatformAdmin, type PlatformAdmin } from '../admin/admin';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';
+import { isUuid } from '../uuid';
 
 /**
  * PRD M12: after a coach's subscription lapses, clients keep read-only
@@ -73,41 +75,11 @@ export interface LapseDb {
   subscriptionLapse: {
     findFirst(args: unknown): Promise<{ lapsedAt: Date; reason: string | null } | null>;
     create(args: unknown): Promise<{ id: string }>;
+    updateMany(args: unknown): Promise<{ count: number }>;
   };
 }
 
 const db = (tx: TenantTx): LapseDb => tx as unknown as LapseDb;
-
-/**
- * Records a lapse. Called by billing (or the parent's lapse hook) when a
- * subscription lapses; the reason is a short fixed label, never free text
- * about a person. A second lapse row for the same org is a new lapse event
- * (the latest row wins in `getLapseAccess`).
- */
-export async function recordSubscriptionLapse(
-  tx: TenantTx,
-  actor: ActorContext,
-  input: Record<string, unknown>,
-  opts: { now?: Date } = {},
-): Promise<{ id: string }> {
-  assertCan(actor, 'settings:org:update');
-  const now = opts.now ?? new Date();
-  const reason = typeof input.reason === 'string' ? input.reason.trim().slice(0, 120) : null;
-  const lapsedAt =
-    input.lapsedAt !== undefined && input.lapsedAt !== null
-      ? new Date(input.lapsedAt as string)
-      : now;
-  if (Number.isNaN(lapsedAt.getTime())) {
-    throw new DomainError('VALIDATION', 'Some fields are invalid.', {
-      lapsedAt: ['Pick a valid lapse date.'],
-    });
-  }
-  const row = await db(tx).subscriptionLapse.create({
-    data: { lapsedAt, reason },
-    select: { id: true },
-  });
-  return { id: row.id };
-}
 
 /** The workspace's lapse status for the acting user. Clients see their own 90-day clock; staff see the 180-day one. */
 export async function getLapseAccess(
@@ -118,10 +90,7 @@ export async function getLapseAccess(
   assertCan(actor, 'session:read');
   const now = opts.now ?? new Date();
   const kind: LapseActorKind = actor.role === 'client' ? 'client' : 'coach';
-  const row = await db(tx).subscriptionLapse.findFirst({
-    orderBy: { lapsedAt: 'desc' },
-    select: { lapsedAt: true, reason: true },
-  });
+  const row = await openLapse(tx);
   const access = lapseAccess(kind, row ? row.lapsedAt : null, now);
   const windowDays = kind === 'client' ? CLIENT_LAPSE_DAYS : COACH_LAPSE_DAYS;
   const readOnlyDaysLeft =
@@ -138,4 +107,95 @@ export async function getLapseAccess(
     access,
     readOnlyDaysLeft,
   };
+}
+
+/** The latest open (unresolved) lapse in the transaction's organization, or null. */
+async function openLapse(tx: TenantTx): Promise<{ lapsedAt: Date; reason: string | null } | null> {
+  return db(tx).subscriptionLapse.findFirst({
+    where: { resolvedAt: null },
+    orderBy: { lapsedAt: 'desc' },
+    select: { lapsedAt: true, reason: true },
+  });
+}
+
+/**
+ * The single gate every request path calls (M12): throws FORBIDDEN when the workspace's open lapse does not allow
+ * `action` for this actor (clients on the 90-day clock, staff on the 180-day one). Full access when nothing is open.
+ */
+export async function assertLapseAllows(
+  tx: TenantTx,
+  actor: ActorContext,
+  action: LapseAction,
+  now: Date = new Date(),
+): Promise<void> {
+  const row = await openLapse(tx);
+  if (!row) return;
+  const access = lapseAccess(actor.role === 'client' ? 'client' : 'coach', row.lapsedAt, now);
+  if (enforceReadOnly(access, action)) return;
+  if (action === 'write') assertWritable(access);
+  throw new DomainError('FORBIDDEN', 'Access ended after the subscription lapse window.');
+}
+
+/**
+ * Platform admin records a lapse for a workspace, or ends the open one (the workspace subscribed again). A lapse is
+ * never set or cleared by the workspace itself, so an owner cannot lift their own read-only mode. Audited. The reason
+ * is a short fixed label, never free text about a person.
+ */
+export async function setSubscriptionLapse(
+  tx: SystemTx,
+  admin: PlatformAdmin,
+  input: { organizationId?: unknown; action?: unknown; reason?: unknown; lapsedAt?: unknown },
+  now: Date = new Date(),
+): Promise<{ organizationId: string; open: boolean }> {
+  assertPlatformAdmin(admin);
+  if (typeof input.organizationId !== 'string' || !isUuid(input.organizationId)) {
+    throw new DomainError('NOT_FOUND', 'Not found.');
+  }
+  const orgId = input.organizationId;
+  const org = await tx.organization.findUnique({ where: { id: orgId }, select: { id: true } });
+  if (!org) throw new DomainError('NOT_FOUND', 'Not found.');
+  const lapses = (tx as unknown as LapseDb).subscriptionLapse;
+  if (input.action === 'resolve') {
+    const { count } = await lapses.updateMany({
+      where: { organizationId: orgId, resolvedAt: null },
+      data: { resolvedAt: now },
+    });
+    await appendAudit(tx, {
+      orgId,
+      actorId: admin.userId,
+      objectType: 'organization',
+      objectId: orgId,
+      action: 'lapse.resolved',
+      metadata: { resolved: count },
+    });
+    return { organizationId: orgId, open: false };
+  }
+  if (input.action !== 'lapse') {
+    throw new DomainError('VALIDATION', 'Some fields are invalid.', {
+      action: ['Use lapse or resolve.'],
+    });
+  }
+  const reason =
+    typeof input.reason === 'string' ? input.reason.trim().slice(0, 120) || null : null;
+  const lapsedAt =
+    input.lapsedAt !== undefined && input.lapsedAt !== null && input.lapsedAt !== ''
+      ? new Date(input.lapsedAt as string)
+      : now;
+  if (Number.isNaN(lapsedAt.getTime())) {
+    throw new DomainError('VALIDATION', 'Some fields are invalid.', {
+      lapsedAt: ['Pick a valid lapse date.'],
+    });
+  }
+  const row = await lapses.create({
+    data: { organizationId: orgId, lapsedAt, reason },
+    select: { id: true },
+  });
+  await appendAudit(tx, {
+    orgId,
+    actorId: admin.userId,
+    objectType: 'subscription_lapse',
+    objectId: row.id,
+    action: 'lapse.recorded',
+  });
+  return { organizationId: orgId, open: true };
 }

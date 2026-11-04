@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   assertCan,
+  assertLapseAllows,
   DomainError,
   httpStatusFor,
   logger,
@@ -95,6 +96,12 @@ export interface RouteDef<S extends z.ZodType | undefined, R extends boolean> {
    * global bucket for this route; omit to use the global per-user default.
    */
   rateLimit?: { capacity: number; refillPerSecond: number };
+  /**
+   * Post-lapse access (PRD M12). By default a GET is a read and anything else a write: a lapsed workspace is
+   * read-only, then closed. `'export'` marks a route that builds or downloads an export (allowed while read-only);
+   * `'exempt'` skips the check (the lapse status itself, privacy rights, cancelling a client's own subscription).
+   */
+  lapse?: 'export' | 'exempt';
   handler(ctx: RouteCtx<InputOf<S>, R>): unknown;
 }
 
@@ -224,6 +231,11 @@ export function createApiHandler(deps: ApiDeps = {}) {
           if (own) actor.clientId = own.id;
         }
         if (actor && def.can) assertCan(actor, def.can);
+        if (actor && def.lapse !== 'exempt') {
+          const action =
+            def.lapse === 'export' ? 'export' : SAFE_METHODS.has(request.method) ? 'read' : 'write';
+          await runTenant(actor.orgId, (tx) => assertLapseAllows(tx, actor, action));
+        }
 
         const input = def.input ? await readInput(request, def.input) : undefined;
 

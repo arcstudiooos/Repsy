@@ -2,7 +2,7 @@ import type { TenantTx } from '@kinetic/db';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';
-import { canonicalTimezone, zonedTimeToUtc } from '../timezone';
+import { canonicalTimezone, todayInZone, zonedTimeToUtc } from '../timezone';
 import { isUuid } from '../uuid';
 import { consumePackCredit, refundPackCredit } from './packs';
 
@@ -201,6 +201,29 @@ export function generateSlots(input: {
     }
   }
   return slots;
+}
+
+/**
+ * Pure: whether [startsAt, endsAt) lies wholly inside one availability window on the local day it starts, in
+ * `timeZone` (the coach's). DST-safe for the same reason as `generateSlots`: window edges go through
+ * `zonedTimeToUtc` for that day.
+ */
+export function withinAvailability(
+  startsAt: Date,
+  endsAt: Date,
+  availability: AvailabilityWindow[],
+  timeZone: string,
+): boolean {
+  const zone = canonicalTimezone(timeZone);
+  if (!zone) return false;
+  const day = todayInZone(zone, startsAt);
+  const weekday = isoWeekday(day);
+  return availability.some((w) => {
+    if (w.weekday !== weekday) return false;
+    const open = zonedTimeToUtc(day, w.startTime, zone);
+    const close = zonedTimeToUtc(day, w.endTime, zone);
+    return open !== null && close !== null && open <= startsAt && endsAt <= close;
+  });
 }
 
 /** Structural delegate for the not-yet-generated `session_types` / `bookings` models. */
@@ -433,6 +456,18 @@ export async function createBooking(
     // A call link is optional at booking time (the coach may add it later by
     // re-booking), but when present it must be a valid http/https URL.
   }
+  // Only inside the coach's weekly availability, read in the workspace's zone (the coach's zone).
+  const org = await tx.organization.findFirstOrThrow({ select: { timezone: true } });
+  if (!withinAvailability(startsAt, endsAt, type.availabilityJson ?? [], org.timezone)) {
+    throw invalid('startsAt', 'That time is outside the available hours for this session.');
+  }
+  // Serialize bookings for one coach: no raw SQL in TenantTx, so a no-op UPDATE of the coach's active session
+  // types takes their row locks until the transaction ends. A second booking for this coach waits here, then sees
+  // the first one in the clash check below instead of both inserting.
+  await db(tx).sessionType.updateMany({
+    where: { coachUserId: type.coachUserId, active: true },
+    data: { active: true },
+  });
   const clashes = await db(tx).booking.findMany({
     where: {
       coachUserId: type.coachUserId,

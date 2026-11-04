@@ -20,6 +20,7 @@ const requestSchema = z.object({ clientId: z.string().max(64).optional() });
 
 /** `POST /api/v1/deletion-requests`: a client for themselves, an owner for one of their clients (`clientId`). */
 export const deletionRequestPostRoute: RouteDef<typeof requestSchema, true> = {
+  lapse: 'exempt',
   input: requestSchema,
   handler: async ({ actor, input, requestId, tenant }) =>
     new ApiResult(await tenant((tx) => requestDeletion(tx, actor, input, { requestId })), {
