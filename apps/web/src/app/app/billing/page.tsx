@@ -338,7 +338,10 @@ export default async function BillingPage() {
                   />
                 </div>
               </div>
-              <button type="submit" className="self-start rounded bg-accent px-4 py-2 text-white">
+              <button
+                type="submit"
+                className="self-start rounded bg-accent-fill px-4 py-2 text-on-accent"
+              >
                 Create package
               </button>
             </form>
@@ -425,7 +428,10 @@ export default async function BillingPage() {
                   className="w-full rounded border p-2 text-base"
                 />
               </div>
-              <button type="submit" className="self-start rounded bg-accent px-4 py-2 text-white">
+              <button
+                type="submit"
+                className="self-start rounded bg-accent-fill px-4 py-2 text-on-accent"
+              >
                 Record payment
               </button>
             </form>

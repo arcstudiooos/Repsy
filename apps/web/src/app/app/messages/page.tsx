@@ -159,7 +159,7 @@ export default async function MessagesPage({
                       <span className="flex items-center justify-between gap-2">
                         <span className="font-medium break-words">{t.clientName}</span>
                         {t.unread > 0 && (
-                          <span className="rounded-control bg-accent px-2 text-sm text-white">
+                          <span className="rounded-control bg-accent-fill px-2 text-sm text-on-accent">
                             {t.unread} unread
                           </span>
                         )}

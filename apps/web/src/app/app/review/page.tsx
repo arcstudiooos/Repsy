@@ -190,7 +190,7 @@ export default async function ReviewPage({
               className={cn(
                 'inline-flex min-h-11 items-center rounded-control border px-3',
                 scope === value
-                  ? 'border-accent bg-accent text-white'
+                  ? 'border-accent bg-accent-fill text-on-accent'
                   : 'border-input-border bg-surface text-ink',
               )}
             >

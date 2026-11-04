@@ -1056,7 +1056,7 @@ export function WorkoutLogger({
 /** A set that beats the client's earlier bests (PRD D11). */
 function PrBadge() {
   return (
-    <span className="inline-flex w-fit items-center rounded-full bg-accent px-2 py-0.5 text-sm font-medium text-white">
+    <span className="inline-flex w-fit items-center rounded-full bg-accent-fill px-2 py-0.5 text-sm font-medium text-on-accent">
       New personal record
     </span>
   );

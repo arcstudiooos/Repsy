@@ -8,10 +8,10 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-accent text-white hover:bg-accent-hover',
+        default: 'bg-accent-fill text-on-accent hover:bg-accent-hover',
         secondary: 'border border-input-border bg-surface text-ink hover:bg-canvas',
         ghost: 'text-ink hover:bg-canvas',
-        danger: 'bg-danger text-white hover:bg-danger/90',
+        danger: 'bg-danger text-on-accent hover:bg-danger/90',
       },
       // Tap targets are at least 44px on mobile.
       size: {

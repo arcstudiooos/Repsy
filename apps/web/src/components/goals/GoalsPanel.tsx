@@ -27,7 +27,7 @@ const LABEL: Record<GoalLabel, string> = {
 };
 // Status reads from the words; the colour only repeats it.
 const TONE: Record<GoalLabel, string> = {
-  achieved: 'bg-accent text-white',
+  achieved: 'bg-accent-fill text-on-accent',
   on_track: 'bg-canvas text-ink',
   behind: 'bg-canvas text-ink ring-1 ring-warning',
   no_data: 'bg-canvas text-secondary',

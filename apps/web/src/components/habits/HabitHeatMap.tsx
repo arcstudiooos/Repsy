@@ -66,7 +66,7 @@ export function HabitHeatMap({ view }: { view: HabitsView }) {
                           d.future || d.active === 0
                             ? 'bg-canvas text-secondary'
                             : share === 1
-                              ? 'bg-accent font-semibold text-white'
+                              ? 'bg-accent-fill font-semibold text-on-accent'
                               : share >= 0.5
                                 ? 'bg-accent/35 text-ink'
                                 : share > 0

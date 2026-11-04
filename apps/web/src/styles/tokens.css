@@ -1,20 +1,61 @@
-/* Design tokens (PRD §6.2). Keep in sync with src/lib/tokens.ts (tokens.test.ts enforces it). */
+/*
+ * Design tokens, "Midnight & Ember" (Docs/ui-redesign-plan.md §2). Keep in sync with src/lib/tokens.ts
+ * (tokens.test.ts checks every value and every contrast pair, in both themes).
+ * Light is the default; dark applies with data-theme="dark", or with the system setting when no choice is saved.
+ * ember and cyan are fills only on light surfaces (never body text or white text); use accent / cyan-strong as text.
+ * divider and border are decorative only: never the sole boundary of an input or control.
+ */
 :root {
-  --k-canvas: #f7f8f6;
+  --k-canvas: #f7f5f2;
   --k-surface: #ffffff;
-  --k-ink: #152825;
-  --k-accent: #1c7666;
-  --k-accent-hover: #145b50;
-  --k-secondary: #60716e;
-  /* Decorative only: not a boundary for inputs or controls. */
-  --k-divider: #e1e8e4;
-  --k-input-border: #7d8c87;
-  --k-warning: #8f5a26;
-  --k-danger: #b64743;
+  --k-surface-2: #f1eeea;
+  --k-ink: #14110f;
+  --k-secondary: #625b55;
+  --k-divider: #e9e4de;
+  --k-border: #e9e4de;
+  --k-input-border: #8c847c;
+  --k-accent: #c7431c;
+  --k-accent-hover: #a93715;
+  --k-accent-fill: #c7431c;
+  --k-on-accent: #ffffff;
+  --k-accent-soft: #fbe3da;
+  --k-accent-ink: #a93715;
+  --k-ember: #e8552d;
+  --k-cyan: #19c3d9;
+  --k-cyan-strong: #0a7c8c;
+  --k-midnight: #101418;
+  --k-on-midnight: #ffffff;
+  --k-success: #0b7a45;
+  --k-success-soft: #e3f4ea;
+  --k-success-ink: #0b7a45;
+  --k-warning: #9a5b00;
+  --k-warning-soft: #fdf0dc;
+  --k-warning-ink: #8a5100;
+  --k-warning-fill: #ffb547;
+  --k-danger: #c0283c;
+  --k-danger-soft: #fbe6e9;
+  --k-danger-ink: #a8233a;
+  --k-info: #0a7c8c;
+  --k-info-soft: #dff4f7;
+  --k-info-ink: #0a6f7d;
+  --k-chart-1: #e8552d;
+  --k-chart-2: #19c3d9;
+  --k-chart-3: #ffb547;
+  --k-chart-4: #7b61ff;
+  --k-chart-5: #3dbe7a;
+  --k-chart-6: #8c847c;
 
-  --k-radius-card: 12px;
+  --k-radius-sm: 8px;
+  --k-radius-md: 12px;
+  --k-radius-lg: 16px;
+  --k-radius-xl: 24px;
+  /* Older names, kept so existing screens read the same scale. */
+  --k-radius-card: 16px;
   --k-radius-control: 8px;
-  --k-shadow-card: 0 4px 18px rgba(16, 36, 30, 0.05);
+  /* Three elevations: e0 border only, e1 resting card, e2 popovers and dialogs. */
+  --k-shadow-e1: 0 1px 2px rgba(20, 17, 15, 0.04), 0 2px 8px rgba(20, 17, 15, 0.04);
+  --k-shadow-e2: 0 12px 32px rgba(20, 17, 15, 0.16), 0 2px 6px rgba(20, 17, 15, 0.08);
+  --k-shadow-card: var(--k-shadow-e1);
 
   /* Spacing scale: 4 / 8 / 12 / 16 / 24 / 32 (Tailwind 1, 2, 3, 4, 6, 8). */
   --k-space-1: 4px;
@@ -27,6 +68,100 @@
   --k-motion-fast: 120ms;
   --k-motion-base: 180ms;
   --k-ease: cubic-bezier(0.2, 0, 0, 1);
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --k-canvas: #0b0e11;
+  --k-surface: #141a1f;
+  --k-surface-2: #1c232a;
+  --k-ink: #f4f2ef;
+  --k-secondary: #a0a8b3;
+  --k-divider: #262e36;
+  --k-border: #262e36;
+  --k-input-border: #6e7884;
+  --k-accent: #ff6b43;
+  --k-accent-hover: #ff8a66;
+  --k-accent-fill: #e8552d;
+  --k-on-accent: #101418;
+  --k-accent-soft: #33190f;
+  --k-accent-ink: #ff8a66;
+  --k-ember: #e8552d;
+  --k-cyan: #19c3d9;
+  --k-cyan-strong: #19c3d9;
+  --k-midnight: #101418;
+  --k-on-midnight: #ffffff;
+  --k-success: #3dbe7a;
+  --k-success-soft: #12291d;
+  --k-success-ink: #5bd593;
+  --k-warning: #ffb547;
+  --k-warning-soft: #2e2210;
+  --k-warning-ink: #ffc266;
+  --k-warning-fill: #ffb547;
+  --k-danger: #ff6b7d;
+  --k-danger-soft: #331519;
+  --k-danger-ink: #ff8a97;
+  --k-info: #19c3d9;
+  --k-info-soft: #0e2a30;
+  --k-info-ink: #4fd6e8;
+  --k-chart-1: #e8552d;
+  --k-chart-2: #19c3d9;
+  --k-chart-3: #ffb547;
+  --k-chart-4: #8f7bff;
+  --k-chart-5: #3dbe7a;
+  --k-chart-6: #a0a8b3;
+
+  --k-shadow-e1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --k-shadow-e2: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
+}
+
+/* No saved choice and no script yet: follow the system setting. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --k-canvas: #0b0e11;
+    --k-surface: #141a1f;
+    --k-surface-2: #1c232a;
+    --k-ink: #f4f2ef;
+    --k-secondary: #a0a8b3;
+    --k-divider: #262e36;
+    --k-border: #262e36;
+    --k-input-border: #6e7884;
+    --k-accent: #ff6b43;
+    --k-accent-hover: #ff8a66;
+    --k-accent-fill: #e8552d;
+    --k-on-accent: #101418;
+    --k-accent-soft: #33190f;
+    --k-accent-ink: #ff8a66;
+    --k-ember: #e8552d;
+    --k-cyan: #19c3d9;
+    --k-cyan-strong: #19c3d9;
+    --k-midnight: #101418;
+    --k-on-midnight: #ffffff;
+    --k-success: #3dbe7a;
+    --k-success-soft: #12291d;
+    --k-success-ink: #5bd593;
+    --k-warning: #ffb547;
+    --k-warning-soft: #2e2210;
+    --k-warning-ink: #ffc266;
+    --k-warning-fill: #ffb547;
+    --k-danger: #ff6b7d;
+    --k-danger-soft: #331519;
+    --k-danger-ink: #ff8a97;
+    --k-info: #19c3d9;
+    --k-info-soft: #0e2a30;
+    --k-info-ink: #4fd6e8;
+    --k-chart-1: #e8552d;
+    --k-chart-2: #19c3d9;
+    --k-chart-3: #ffb547;
+    --k-chart-4: #8f7bff;
+    --k-chart-5: #3dbe7a;
+    --k-chart-6: #a0a8b3;
+
+    --k-shadow-e1: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --k-shadow-e2: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.4);
+    color-scheme: dark;
+  }
 }
 
 /* Reduced motion: no transitions or animations. */
