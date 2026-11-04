@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
+  countOpenFlags,
   getReviewOverview,
   listFlags,
   RULE_TEXT,
@@ -18,9 +19,12 @@ import {
   SessionStateBadge,
 } from '@/components/sessions/SessionStateBadge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ChipRow, FilterChip } from '@/components/ui/filter-chip';
+import { PageHeader } from '@/components/ui/page-header';
+import { SegmentedLinks } from '@/components/ui/segmented';
+import { Avatar } from '@/components/ui/avatar';
 import { formatSessionDate } from '@/lib/session-format';
 import { withServerTenant } from '@/server/serverActor';
-import { cn } from '@/lib/utils';
 import { FlagQueue } from './FlagQueue';
 import { MarkSeenButton } from './MarkSeenButton';
 
@@ -60,20 +64,21 @@ function Section({
           {section.items.length === 0 ? (
             <p className="text-secondary">{empty}</p>
           ) : (
-            <ul className="flex flex-col divide-y divide-divider">
+            <ul className="flex flex-col divide-y divide-border">
               {section.items.map((item) => (
                 <li key={item.sessionId} className="flex flex-col gap-1 py-3">
                   <div className="flex flex-wrap items-center gap-2">
+                    <Avatar name={item.clientName} size="xs" />
                     <Link
                       href={`/app/clients/${item.clientId}`}
-                      className="font-semibold break-words text-accent underline underline-offset-4"
+                      className="font-semibold break-words hover:text-accent hover:underline"
                     >
                       {item.clientName}
                     </Link>
                     <span aria-hidden>·</span>
                     <Link
                       href={`/app/clients/${item.clientId}/sessions/${item.sessionId}`}
-                      className="break-words underline underline-offset-4"
+                      className="break-words text-accent hover:underline"
                     >
                       {item.title}
                     </Link>
@@ -96,7 +101,7 @@ function Section({
                       </span>
                     )}
                     {item.swapCount > 0 && (
-                      <span className="rounded-full bg-canvas px-2 py-0.5 text-sm text-secondary">
+                      <span className="rounded-full bg-surface-2 px-2 py-0.5 text-sm text-secondary">
                         {item.swapCount === 1
                           ? '1 exercise swapped'
                           : `${item.swapCount} exercises swapped`}
@@ -149,100 +154,82 @@ export default async function ReviewPage({
     const qs = q.toString();
     return qs ? `/app/review?${qs}` : '/app/review';
   };
-  const { review, timezone, flags, scope, team } = await withServerTenant(async (tx, actor) => {
-    // PRD A12: coaches review their own clients by default (and anyone they cover for).
-    const team =
-      (await tx.membership.count({
-        where: { status: 'active', role: { in: [...TRAINER_ROLES] } },
-      })) > 1;
-    const scope = team ? parseScope(actor.role, first(sp.scope)) : 'all';
-    const coachUserIds = await scopeCoachIds(tx, actor, scope);
-    return {
-      scope,
-      team,
-      flags: await listFlags(tx, actor, { filter, rule, coachUserIds }),
-      review: await getReviewOverview(tx, actor, { coachUserIds }),
-      timezone:
-        (
-          await tx.organization.findFirst({
-            where: { id: actor.orgId },
-            select: { timezone: true },
-          })
-        )?.timezone ?? 'UTC',
-    };
-  });
+  const { review, timezone, flags, scope, team, openCounts } = await withServerTenant(
+    async (tx, actor) => {
+      // PRD A12: coaches review their own clients by default (and anyone they cover for).
+      const team =
+        (await tx.membership.count({
+          where: { status: 'active', role: { in: [...TRAINER_ROLES] } },
+        })) > 1;
+      const scope = team ? parseScope(actor.role, first(sp.scope)) : 'all';
+      const coachUserIds = await scopeCoachIds(tx, actor, scope);
+      return {
+        scope,
+        team,
+        flags: await listFlags(tx, actor, { filter, rule, coachUserIds }),
+        openCounts: await countOpenFlags(tx, actor),
+        review: await getReviewOverview(tx, actor, { coachUserIds }),
+        timezone:
+          (
+            await tx.organization.findFirst({
+              where: { id: actor.orgId },
+              select: { timezone: true },
+            })
+          )?.timezone ?? 'UTC',
+      };
+    },
+  );
   const today = todayInZone(timezone, new Date(review.generatedAt));
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Review</h1>
+      <PageHeader
+        title="Review"
+        subtitle="What your review rules flagged, then this week's workout activity."
+      />
       {team && (
-        <nav aria-label="Whose clients" className="mb-4 flex gap-2">
-          {(
+        <SegmentedLinks
+          label="Whose clients"
+          className="mb-4"
+          options={(
             [
               ['mine', 'My clients'],
               ['all', 'All clients'],
             ] as const
-          ).map(([value, label]) => (
-            <Link
-              key={value}
-              href={`/app/review?scope=${value}`}
-              aria-current={scope === value ? 'page' : undefined}
-              className={cn(
-                'inline-flex min-h-11 items-center rounded-control border px-3',
-                scope === value
-                  ? 'border-accent bg-accent-fill text-on-accent'
-                  : 'border-input-border bg-surface text-ink',
-              )}
-            >
-              {label}
-            </Link>
-          ))}
-        </nav>
+          ).map(([value, label]) => ({
+            href: `/app/review?scope=${value}`,
+            label,
+            current: scope === value,
+          }))}
+        />
       )}
       <section aria-labelledby="queue-heading" className="mb-8 flex flex-col gap-4">
-        <h2 id="queue-heading" className="text-lg font-semibold">
+        <h2 id="queue-heading" className="text-h2 font-semibold">
           Needs review
         </h2>
-        <nav aria-label="Queue filters" className="flex flex-wrap gap-2">
-          {FILTERS.map((f) => (
-            <Link
-              key={f.value}
-              href={hrefFor(f.value, rule)}
-              aria-current={f.value === filter ? 'page' : undefined}
-              className={cn(
-                'inline-flex min-h-11 items-center rounded-control border px-3',
-                f.value === filter ? 'border-accent font-semibold' : 'border-input-border',
-              )}
-            >
-              {f.label}
-            </Link>
-          ))}
-        </nav>
-        <nav aria-label="Filter by rule" className="flex flex-wrap gap-2 text-sm">
-          <Link
-            href={hrefFor(filter)}
-            aria-current={!rule ? 'page' : undefined}
-            className={cn(
-              'inline-flex min-h-11 items-center underline-offset-4',
-              !rule ? 'font-semibold' : 'underline',
-            )}
-          >
+        <SegmentedLinks
+          label="Queue filters"
+          options={FILTERS.map((f) => ({
+            href: hrefFor(f.value, rule),
+            label: f.label,
+            current: f.value === filter,
+            count: f.value === 'needs_attention' ? openCounts.total : undefined,
+          }))}
+        />
+        <ChipRow label="Filter by rule">
+          <FilterChip href={hrefFor(filter)} active={!rule} count={openCounts.total}>
             All rules
-          </Link>
+          </FilterChip>
           {RULES.map((r) => (
-            <Link
+            <FilterChip
               key={r}
               href={hrefFor(filter, r)}
-              aria-current={r === rule ? 'page' : undefined}
-              className={cn(
-                'inline-flex min-h-11 items-center underline-offset-4',
-                r === rule ? 'font-semibold' : 'underline',
-              )}
+              active={r === rule}
+              count={openCounts.byRule[r] || undefined}
             >
               {RULE_TEXT[r]}
-            </Link>
+            </FilterChip>
           ))}
-        </nav>
+        </ChipRow>
         <FlagQueue
           key={`${filter}:${rule ?? ''}:${flags.map((f) => f.id).join(',')}`}
           initial={flags}
@@ -250,7 +237,7 @@ export default async function ReviewPage({
           todayLocalDate={today}
         />
       </section>
-      <h2 className="mb-4 text-lg font-semibold">Activity</h2>
+      <h2 className="mb-4 text-h2 font-semibold">Activity</h2>
       <div className="flex flex-col gap-6">
         <Section
           id="new"

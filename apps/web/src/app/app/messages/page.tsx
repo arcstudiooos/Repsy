@@ -1,5 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { MessageSquare } from 'lucide-react';
+import { Avatar } from '@/components/ui/avatar';
+import { PageHeader } from '@/components/ui/page-header';
+import { relativeDay } from '@/lib/relative-time';
 import {
   broadcastAudiences,
   getClientContext,
@@ -28,6 +32,9 @@ export const metadata: Metadata = { title: 'Messages | Repsy' };
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) || undefined;
 
 /** Coach inbox (S4-4): threads on the left, the open one on the right; one view at a time on mobile. */
+/** Read per request (a server component renders once per request). */
+const requestNow = () => new Date();
+
 export default async function MessagesPage({
   searchParams,
 }: {
@@ -71,14 +78,17 @@ export default async function MessagesPage({
     },
   );
 
+  const now = requestNow();
   return (
     <>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold md:text-3xl">Messages</h1>
-        <BroadcastDialog audiences={audiences} />
-      </div>
+      <PageHeader
+        title="Messages"
+        subtitle="Every client conversation in one inbox."
+        actions={<BroadcastDialog audiences={audiences} />}
+      />
       {threads.length === 0 ? (
         <EmptyState
+          icon={MessageSquare}
           title="No conversations yet"
           body="Open a client's Messages tab to start one. Clients can write to you from their portal."
         />
@@ -117,7 +127,7 @@ export default async function MessagesPage({
                     <li key={h.messageId}>
                       <Link
                         href={`/app/messages?thread=${h.threadId}&q=${encodeURIComponent(q ?? '')}`}
-                        className="flex min-h-14 flex-col justify-center gap-0.5 rounded-control px-3 py-2 hover:bg-canvas"
+                        className="flex min-h-14 flex-col justify-center gap-0.5 rounded-control px-3 py-2 hover:bg-surface-2"
                       >
                         <span className="flex items-center justify-between gap-2 text-sm">
                           <span className="font-medium break-words">{h.clientName}</span>
@@ -152,24 +162,46 @@ export default async function MessagesPage({
                       href={`/app/messages?thread=${t.id}`}
                       aria-current={open?.thread.id === t.id ? 'page' : undefined}
                       className={cn(
-                        'flex min-h-14 flex-col justify-center gap-0.5 rounded-control px-3 py-2 hover:bg-canvas',
-                        open?.thread.id === t.id && 'bg-canvas',
+                        'flex min-h-16 items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-surface-2',
+                        open?.thread.id === t.id && 'bg-accent-soft hover:bg-accent-soft',
                       )}
                     >
-                      <span className="flex items-center justify-between gap-2">
-                        <span className="font-medium break-words">{t.clientName}</span>
-                        {t.unread > 0 && (
-                          <span className="rounded-control bg-accent-fill px-2 text-sm text-on-accent">
-                            {t.unread} unread
+                      <Avatar name={t.clientName} />
+                      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <span className="flex items-center justify-between gap-2">
+                          <span
+                            className={cn(
+                              'truncate break-words',
+                              t.unread > 0 ? 'font-semibold' : 'font-medium',
+                            )}
+                          >
+                            {t.clientName}
                           </span>
-                        )}
-                      </span>
-                      {t.lastMessage && (
-                        <span className="truncate text-sm text-secondary">
-                          {t.lastMessage.mine ? 'You: ' : ''}
-                          {t.lastMessage.body}
+                          {t.lastMessageAt && (
+                            <time
+                              dateTime={t.lastMessageAt}
+                              className="shrink-0 text-caption text-secondary"
+                            >
+                              {relativeDay(t.lastMessageAt, now)}
+                            </time>
+                          )}
                         </span>
-                      )}
+                        <span className="flex items-center justify-between gap-2">
+                          {t.lastMessage ? (
+                            <span className="truncate text-sm text-secondary">
+                              {t.lastMessage.mine ? 'You: ' : ''}
+                              {t.lastMessage.body}
+                            </span>
+                          ) : (
+                            <span />
+                          )}
+                          {t.unread > 0 && (
+                            <span className="tabular shrink-0 rounded-full bg-accent-fill px-2 text-caption leading-5 font-semibold text-on-accent">
+                              {t.unread} unread
+                            </span>
+                          )}
+                        </span>
+                      </span>
                     </Link>
                   </li>
                 ))}
@@ -187,7 +219,7 @@ export default async function MessagesPage({
                 </Link>
                 <h2 className="mb-2 text-lg font-semibold break-words">{open.thread.clientName}</h2>
                 {(open.context.goals || open.context.motivation) && (
-                  <dl className="mb-4 grid gap-2 rounded-control bg-canvas p-3 text-sm sm:grid-cols-2">
+                  <dl className="mb-4 grid gap-2 rounded-control bg-surface-2 p-3 text-sm sm:grid-cols-2">
                     {open.context.goals && (
                       <div>
                         <dt className="text-secondary">Goals</dt>
