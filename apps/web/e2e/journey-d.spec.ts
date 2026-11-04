@@ -5,6 +5,7 @@
 import { expect, test } from '@playwright/test';
 import { countAudits, flagIdFor, issueCheckinNow } from './support/db';
 import {
+  clickUntilURL,
   expectNoAxeViolations,
   expectNoHorizontalOverflow,
   onboardClient,
@@ -27,14 +28,23 @@ test.describe('Journey D: the review queue', () => {
     const client = await onboardClient(page, request, browser, CLIENT);
     try {
       await openClientTab(page, CLIENT, 'Check-ins');
-      await page.getByLabel('Check-in day').selectOption({ label: todayWeekday() });
-      await page.getByRole('button', { name: 'Save day' }).click();
+      // A choice made before the page hydrates is shown but not kept in state, so Save stays
+      // disabled: pick again until the button turns on.
+      const day = page.getByLabel('Check-in day');
+      const saveDay = page.getByRole('button', { name: 'Save day' });
+      await expect(async () => {
+        await day.selectOption({ label: 'No weekly check-in' });
+        await day.selectOption({ label: todayWeekday() });
+        await expect(saveDay).toBeEnabled({ timeout: 2_000 });
+      }).toPass({ timeout: 30_000 });
+      await saveDay.click();
       await expect(page.getByText('Check-in day saved')).toBeVisible({ timeout: 15_000 });
       await issueCheckinNow(CLIENT);
 
       const portal = client.page;
       await portal.goto('/portal/check-ins');
-      await portal.getByRole('link', { name: /Fill in check-in/ }).click();
+      // The link reads "Fill in <template title>, <date>".
+      await portal.getByRole('link', { name: /^Fill in / }).click();
       await portal
         .getByRole('group', { name: /Energy this week/ })
         .getByLabel('2')
@@ -50,11 +60,13 @@ test.describe('Journey D: the review queue', () => {
         timeout: 30_000,
       });
       await page.getByRole('link', { name: 'Open the review queue' }).click();
-      await page
-        .getByRole('navigation', { name: 'Filter by rule' })
-        .getByRole('link', { name: 'New check-in sent' })
-        .click();
-      await expect(page).toHaveURL(/rule=checkin_new/);
+      await clickUntilURL(
+        page,
+        page
+          .getByRole('navigation', { name: 'Filter by rule' })
+          .getByRole('link', { name: 'New check-in sent' }),
+        /rule=checkin_new/,
+      );
       const card = page
         .getByRole('listitem')
         .filter({ has: page.getByRole('link', { name: CLIENT }) });
@@ -73,7 +85,7 @@ test.describe('Journey D: the review queue', () => {
 
       // Message the client from the queue.
       await page.goto(reviewUrl);
-      await card.getByRole('link', { name: 'Send message' }).click();
+      await clickUntilURL(page, card.getByRole('link', { name: 'Send message' }), /\/messages$/);
       await page.getByLabel('Message', { exact: true }).fill('Low energy this week? Let us talk.');
       await page.getByRole('button', { name: 'Send' }).click();
       await expect(page.getByText('Low energy this week? Let us talk.')).toBeVisible({

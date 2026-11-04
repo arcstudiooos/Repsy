@@ -497,3 +497,182 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
     for archiving; it was only reachable through the API before. Retention for a cohort is shown only once its
     1, 3 or 6 months have passed. Revenue, refunds and average client value come with payments (K9) and will join
     this page then.
+
+## D-013 — AI drafting rulings (2026-11-03)
+
+**Status:** Proposed, in the style of D-012; each can be revisited.
+**PRD refs:** I10, I11, I12, I14 (I13 reply drafts stay R4 and are NOT built here).
+
+1. **The provider is a `packages/core` port, and only the fake one ships.** `AiProvider` in
+   `packages/core/src/ai/ai.ts` receives structured input only (library exercise names and ids, set
+   prescriptions, equipment filters). No provider SDK is imported, no key exists, no network call is
+   made, and nothing is sent for training. A real provider later is a new adapter behind the same
+   interface, and it must pass the same `assertProviderSafe` check.
+2. **Paste to program (I10) parses locally first.** The C14 parser (`programs/text-import.ts`) runs
+   in core before any provider call, so pasted text and spreadsheet notes never reach the provider.
+   Lines the library cannot match are kept in the draft as unmatched (with a reason), never silently
+   dropped, and lines the parser cannot read are reported the same way.
+3. **Draft from template (I11) repeats the template's first week.** Days cycle when the coach asks
+   for more days than the template has; an equipment filter (e.g. "dumbbells only") drops exercises
+   whose known library equipment is outside the kit and reports them as unmatched. Exercises with
+   unknown equipment are kept, for the coach to judge in the builder.
+4. **Check-in highlights (I12) are a local diff, not a model call.** Only questions whose answer
+   changed between two submitted check-ins are listed, each with a link to both source answers
+   (`/app/clients/<clientId>/check-ins#<checkinId>-<questionId>`). Client answers therefore never
+   leave the workspace for highlights, and highlights never generate advice.
+5. **Guardrails (I14) live in core, not the UI.** Coach-only means trainer roles (owner, admin,
+   coach): draft creation needs `program:write`, highlights need `checkin:read` plus a trainer-role
+   check (because `checkin:read` alone would also admit clients and assistants). The opt-in toggle
+   needs `settings:org:update` (managers only). Opt-in is off by default: no setting row, and the
+   column default, both mean off. Every draft carries the label "Drafted with AI" and `status:
+'draft'`; nothing here saves a program, assigns one, or sends anything.
+6. **Medical, injury and supplement requests are refused, not softened.** Paste text and template
+   instructions matching the medical patterns in `drafting.ts` throw a validation error telling the
+   coach AI drafts never give that advice. Check-in answers are exempt from this refusal — reviewing
+   what a client already wrote is not advice — but they are never sent to a provider (ruling 4).
+7. **Stored source text is redacted, not raw.** `ai_drafts.source_text` holds the paste with emails,
+   phone-like numbers and supplied client names stripped. It exists so the coach can see what they
+   pasted; it is never sent to a provider.
+8. **Drafts are not programs yet.** An AI draft's weeks use the same day/exercise/set shape as the
+   builder, but no "save draft as program" step is built in this slice: the coach reviews the draft
+   at `/app/ai-drafts` and recreates it in the builder (or pastes it back through the C14 import).
+   Wiring draft → `saveDraft` is the follow-up, not a silent auto-save.
+
+# D-013 (snippet) — Billing rulings, payments slice (PRD K1–K9, K15)
+
+Status: proposed by the billing slice; each ruling can be revisited. Nothing here renames Kinetic to Repsy, and nothing here builds R4.
+
+1. **One port, two providers, one fake.** Stripe Connect (K1) and Razorpay
+   (K2) are the same `PaymentsPort` interface in
+   `packages/core/src/billing/payments.ts`. The only implementation is
+   `FakePaymentsProvider`: deterministic test ids, test checkout/portal URLs
+   (`checkout.test`, `portal.test`), in-memory charges, no SDK, no key, no
+   network call. A real adapter implements the same interface later; nothing
+   in packages, checkout or billing changes. Default provider is Razorpay for
+   INR, Stripe otherwise; the coach's connected account wins when present.
+2. **Money is minor units, always.** Integer cents/paise with a currency
+   code, never a float. Platform fee is 0% in year one (PRD §payments);
+   processor fees are a port field and 0 from the fake provider.
+3. **Tax is a port field, not a service call (K6).** The caller passes a
+   rate; the fake provider defaults INR to 18% GST and everything else to 0.
+   Tax-inclusive amounts split the tax back out. A real adapter may replace
+   the default with a live Stripe Tax / GST quote without changing callers.
+4. **Packages store journey instructions; they do not run them (K3, J4/J6).**
+   `billing_packages.onboarding_sequence`, `renewal_reminder_days`,
+   `invite_on_purchase`, `tags_on_purchase` and `template_id` are stored on
+   purchase and returned by `purchaseSetup` for the journeys slice to execute.
+   Archiving a package never touches existing subscriptions.
+5. **Coupons are validated, then consumed on completion (K5).** Validation
+   checks expiry, usage cap and currency; one use is consumed only in
+   `confirmCheckout`, so an abandoned checkout does not burn a coupon.
+   Percentage coupons round to the nearest minor unit; a fixed coupon never
+   takes a total below zero.
+6. **Failed payments retry 1, 3, then 7 days — then "Needs review" (K7).**
+   Each failure emails the client through the existing outbox in the same
+   transaction. After the last retry the subscription is `past_due` with
+   `needsReview`, never silently cancelled (PRD P4). An optional grace period
+   (0–90 days) keeps access on; only when it expires does `applyGraceExpiry`
+   pause access, and a successful retry restores it.
+7. **Cancel is one click and the end date is shown at once (K8, P4).**
+   Recurring runs to the end of its current period, a trial ends at the trial
+   end, a payment plan stops after installments already paid. Cancelling
+   charges nothing further and issues no refund; refunds are a separate coach
+   action. Card updates go to the provider portal link, so no real payment
+   form is ever rendered in the app.
+8. **No billing action exists in policies yet — existing actions are reused.**
+   This slice must not edit `policies.ts`. Staff billing writes use
+   `client:update`, the revenue dashboard uses `analytics:read`, and a client
+   acting on their own billing reuses `session:read` (reads) / `session:log`
+   (cancel), with core still scoping every read and write to their own
+   subscription (`assertBillingRead` / `assertBillingWrite` in billing.ts).
+   The parent may add a dedicated `billing:manage` action later; those two
+   helpers are the only place that changes.
+9. **MRR has one definition (K9).** Active + trialing recurring subscriptions
+   at their current amount, normalised to a month (monthly as-is, weekly ×
+   52/12). One-off sales and payment plans are revenue, not MRR. Churn is
+   last-30-days cancellations over active-now plus churned. Average client
+   value is net succeeded revenue per distinct paying buyer (client id, else
+   email). Revenue is grouped by currency; nothing converts FX.
+10. **The storefront does not sell to strangers (K4).** `/join/<slug>` lists
+    active packages and prices, but there is no anonymous purchase endpoint:
+    a coach creates the checkout and sends the hosted link. An open purchase
+    endpoint plus invite-on-purchase belongs with the J4 slice, not smuggled
+    in here. The existing sign-up link path on the same page is untouched.
+11. **Manual payments are first-class revenue (K15).** Cash / bank transfer
+    records carry no provider charge id, still get a branded receipt, and
+    still count in revenue and average client value like any succeeded
+    payment.
+12. **Receipts are branded, not generated PDFs (K6).** A receipt carries the
+    workspace name, accent and logo from the same branding the portal uses,
+    plus the tax line. A PDF rendering can reuse the existing PDF writer
+    later; this slice ships the data and the page, not a new renderer.
+13. **`confirmCheckout` is a demo stand-in, not a webhook (K4).** It is
+    coach-only and labelled as a test confirmation. A real adapter must call
+    it from a verified provider webhook, never from a client request; until
+    then, no real money moves anywhere in this slice.
+
+## D-013 — Scheduling, packs, domains, post-lapse access (K10, K11, H15, J4, J6, L4, M12)
+
+**Status:** Proposed by the scheduling slice; not yet accepted (this file is a
+snippet — `docs/decisions.md` itself was not edited by the slice).
+
+1. **Slots are local, storage is UTC (K10).** Availability is weekly
+   wall-clock windows in the coach's zone; every generated slot goes through
+   `zonedTimeToUtc` (gap → after the jump, fold → first occurrence), so a
+   09:00 slot stays 09:00 local across a DST change and only its UTC instant
+   moves. Buffers belong to the session type, not the booking: a candidate is
+   free only when it does not overlap an existing booking expanded by
+   buffer-before/buffer-after, and slots step by duration + buffer-after.
+2. **Packs pay for in-person sessions only (K11).** A booking with a `packId`
+   on a non-in-person type is rejected; cancelling a pack-funded booking
+   refunds exactly one credit and clears `packConsumed`, so a cancelled
+   booking can never refund twice. Balance is `total - used`, clamped at
+   zero; the row status follows it (`exhausted` at zero, `expired` past
+   expiry). Money stays with billing (K1-K9): `purchasePack` records the
+   pack, it does not charge.
+3. **Call links are validated, never trusted (H15).** Only http/https URLs
+   (≤ 2000 chars) are stored; ftp, `javascript:`, and bare hostnames are
+   rejected. The link is shown to coach and client only, as the booking's
+   join link and as the calendar event's location.
+4. **Calendar sync is a port with a fake (K10, L7 follow-up).** No Google or
+   Outlook OAuth, SDK, or key exists in this slice. `CalendarSyncPort` +
+   `FakeCalendarSync` prove the push/update/delete shape; a real provider
+   implements the port, stores tokens per workspace via the secure
+   connection flow, and replaces the fake at the call site. The one-way ICS
+   feed (L7) stays the read-only calendar route until then.
+5. **Package journeys follow the billing JSON (J4, J6).** A package's
+   `onboardingSequence` is either `{ sequenceId }` — delegated to the
+   existing automation engine (`startRun`), so ask-first and history work —
+   or `{ steps: [...] }`, recorded as a lightweight `package_journey_runs`
+   row. A second start for the same (package, client) is a CONFLICT, never a
+   duplicate run. Renewal (J6) is one idempotent outbox email
+   (`package-renewal:<packageId>:<endDate>`) plus one existing coach
+   follow-up (`ReviewFlag` `coach_followup`), due on the reminder day in the
+   client's zone.
+6. **Domain verification is attested, not proven, in this slice (L4).**
+   `markDomainVerified` records the coach's attestation that the TXT record
+   is set; it performs NO DNS lookup. Until a real TXT check replaces it,
+   treat `verified` as coach-attested. Routing matches only the exact
+   verified hostname — never a subdomain, never an unverified domain — and
+   anything else falls back to the default host, so existing routes keep
+   working. Branded sending addresses exist only on verified domains.
+7. **The lapse clock is a row, not a subscription status (M12).** Billing
+   owns subscription status; this slice's `subscription_lapses` row is the
+   access clock, and the latest row wins. Windows are inclusive: a client is
+   read-only through exactly 90 days after `lapsedAt`, a coach through
+   exactly 180 days; after that, access is `expired` (reads and exports stop
+   too). Read-only allows reads AND exports and blocks writes only, via
+   `enforceReadOnly` / `assertWritable`. No existing policy was changed:
+   the slice reuses existing actions (see the snippet in
+   SLICE_REPORT_SCHEDULING.md) and proposes new ones for the parent.
+8. **Reminders ride the outbox (K10, J6).** Booking reminders and renewal
+   reminders are outbox emails with `nextAttemptAt` at the reminder time.
+   The slice assumes the worker sends outbox rows only once `nextAttemptAt`
+   passes; the parent must verify that worker rule before relying on timed
+   reminders (flagged in SLICE_REPORT_SCHEDULING.md).
+
+## D-013 (integration, parent merge, 2026-11-03)
+
+14. **Billing and journeys share one package shape.** `billing_packages.onboarding_sequence` is JSONB (`{ sequenceId }` or `{ steps: [...] }`), not the billing slice's original 120-character string, and the package's display field is `title` (journeys originally read `name`). Journeys parse a string value defensively, but new writes are JSON.
+15. **Financial records are retained on client erasure in this PR.** Subscriptions, payments and receipts are not deleted by `eraseClientData`; that retention-vs-erasure decision needs a legal call before merging, and is listed as a PR follow-up. Client-scoped R3 rows (bookings, session packs, package journey runs) are erased.
+16. **New policy actions are added, existing code is not re-pointed yet.** `billing:manage`, `scheduling:read/manage/book`, `domain:manage`, `lapse:read/record` exist in `policies.ts`; R3 routes/core still use the older actions they were built with, so behaviour does not change in this PR.

@@ -8,6 +8,13 @@ Status on 2 November 2026: releases **R1 and R2 are complete**, **R3 is mostly b
 **R4 has not been started** on purpose. Everything below is on `main` in this repository, with the full history
 from the first commit.
 
+> **Branch note (r3-remaining-features, 3 November 2026, not merged):** this branch implements the
+> remaining R3 items from section 5 below — AI drafting (I10–I12, I14), payments and scheduling
+> (K1–K11, K15), call links (H15), package journeys (J4, J6), custom domains (L4) and post-lapse
+> access (M12) — behind fake providers only. See the PR body for what is fake, what was not verified
+> against a database, and the follow-ups before merging (real provider webhooks, real calendar sync,
+> real DNS TXT checks, financial-record retention on erasure, and "save draft as program").
+
 ## 1. Run it locally
 
 Prerequisites: Node 24 (`nvm use`), pnpm (`corepack enable`), Docker.

@@ -28,6 +28,17 @@ Open http://localhost:3000 and sign in as `coach@example.test` (or `admin@exampl
 - `pnpm dev`, `pnpm db:migrate`, `pnpm db:seed`, `pilot-code:create` and `pgboss:migrate` read the root `.env` (Node's built-in env-file loader; variables already set in the shell win). `pnpm test` does not.
 - `pnpm db:down` stops the container (data persists in a named volume).
 
+## R3 remaining (this branch, not yet merged)
+
+This branch adds the remaining R3 features from `docs/competitive/complete-platform-prd.md`:
+
+- **I10–I12, I14 AI drafting:** coach-only, per-workspace opt-in (off by default) drafts at `/app/ai-drafts` — paste to program, draft from template, and check-in highlights. Every draft is labelled "Drafted with AI" and is never auto-saved as a program or sent. The only provider is a fake/local one; no keys, SDKs, or network calls. "Save draft as program" is not yet built.
+- **K1–K9, K15 payments:** one payments port with fake Stripe Connect and Razorpay providers only. Packages, storefront on `/join/<coach>`, coupons, branded receipts/tax, failed-payment retries with "Needs review" and grace, billing self-service, revenue dashboard with CSV, and manual (cash/bank) payments. No real money moves; `confirmCheckout` is a coach-only demo stand-in until a verified provider webhook replaces it.
+- **K10, K11, H15 scheduling:** session types, availability, buffer-aware bookings, session packs, and Zoom/Meet call links. Calendar sync is a fake port only — no real Google/Outlook sync yet.
+- **J4, J6 package journeys:** onboarding sequences start on purchase (stored as JSON on the package) and renewal reminders with a coach follow-up.
+- **L4 custom domains:** domain requests with a TXT verification token and branded sending addresses. Verification in this branch is coach-attested only — no DNS lookup is performed yet, so do not trust a "verified" domain for routing/sending until a real TXT check lands.
+- **M12 post-lapse access:** after a coach subscription lapses, clients keep read-only access plus export for 90 days and the coach for 180 days, enforced by `lapseAccess`/`assertWritable` in core. Financial records are retained (not erased) on client deletion pending a legal decision — see the PR body.
+
 ## What works locally (R2, in progress)
 
 R2 builds the web-platform features in `docs/competitive/complete-platform-prd.md`, one per PR.

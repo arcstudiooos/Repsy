@@ -52,7 +52,9 @@ test.describe('program import from text (PRD C14)', () => {
     await page.getByLabel('Exercise for line 5: Back squat').selectOption({ label: 'Back Squat' });
     await page.getByRole('button', { name: 'Create program (2 of 5 exercises)' }).click();
     await expect(page).toHaveURL(/\/app\/programs\/[0-9a-f-]{36}\/edit$/, { timeout: 30_000 });
-    await expect(page.getByLabel('Program title')).toHaveValue('Pasted block');
+    await expect(page.getByLabel('Your program').getByLabel('Program title')).toHaveValue(
+      'Pasted block',
+    );
     await expect(page.getByText('2 days per week')).toBeVisible();
   });
 });

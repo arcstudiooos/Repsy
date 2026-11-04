@@ -39,7 +39,17 @@ export type Action =
   | 'nutrition:manage'
   | 'nutrition:log'
   | 'export:org'
-  | 'export:self';
+  | 'export:self'
+  // R3 remaining (D-013): new actions for scheduling/domains/lapse/billing.
+  // Existing R3 code still uses the older actions above; these are the
+  // re-pointing targets and are safe to grant now.
+  | 'billing:manage'
+  | 'scheduling:read'
+  | 'scheduling:manage'
+  | 'scheduling:book'
+  | 'domain:manage'
+  | 'lapse:read'
+  | 'lapse:record';
 
 const POLICY: Record<Action, readonly Role[]> = {
   'org:read': [...STAFF],
@@ -83,6 +93,13 @@ const POLICY: Record<Action, readonly Role[]> = {
   // D-010 #4: the owner exports the organization; a client exports their own data.
   'export:org': ['owner'],
   'export:self': ['client'],
+  'billing:manage': [...TRAINER],
+  'scheduling:read': [...STAFF, 'client'],
+  'scheduling:manage': [...TRAINER],
+  'scheduling:book': [...STAFF, 'client'],
+  'domain:manage': [...MANAGER],
+  'lapse:read': [...STAFF, 'client'],
+  'lapse:record': [...MANAGER],
 };
 
 export const can = (actor: ActorContext, action: Action): boolean =>

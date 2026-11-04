@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 import {
+  clickUntilURL,
   expectNoAxeViolations,
   expectNoHorizontalOverflow,
   onboardClient,
@@ -52,8 +53,11 @@ test.describe('assessment photos and retests (PRD E5)', () => {
 
       await portal.goto('/portal');
       await expect(portal.getByText('Assessment photo due')).toBeVisible({ timeout: 30_000 });
-      await portal.getByRole('link', { name: 'Take the photo' }).click();
-      await expect(portal).toHaveURL(/\/portal\/progress$/);
+      await clickUntilURL(
+        portal,
+        portal.getByRole('link', { name: 'Take the photo' }),
+        /\/portal\/progress$/,
+      );
       const section = portal.getByRole('region', { name: TITLE });
       await expect(section.getByText('Due now')).toBeVisible({ timeout: 30_000 });
       for (const days of [-28, 0]) {
