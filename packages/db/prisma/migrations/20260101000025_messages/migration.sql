@@ -106,13 +106,20 @@ CREATE POLICY tenant_isolation ON "messages" FOR ALL
 -- self-only (migration 000011), but the sender must know the recipient's opt-in: this returns that one boolean,
 -- only for a member of app_current_org(), with the bypass scoped to the function call (restored on exit).
 CREATE FUNCTION app_message_email_opt_in(target uuid) RETURNS boolean
-  LANGUAGE sql STABLE
-  SET app.bypass_rls = 'on'
+  LANGUAGE plpgsql VOLATILE
   AS $$
+  DECLARE
+    prior_bypass text := pg_catalog.current_setting('app.bypass_rls', true);
+    result boolean;
+  BEGIN
+    PERFORM pg_catalog.set_config('app.bypass_rls', 'on', true);
     SELECT COALESCE((
       SELECT np.message_email_opt_in FROM notification_preferences np
        WHERE np.user_id = target
          AND EXISTS (SELECT 1 FROM memberships m
                       WHERE m.user_id = target AND m.organization_id = app_current_org())
-    ), false)
+    ), false) INTO result;
+    PERFORM pg_catalog.set_config('app.bypass_rls', COALESCE(prior_bypass, ''), true);
+    RETURN result;
+  END
   $$;

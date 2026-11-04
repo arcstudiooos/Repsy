@@ -53,10 +53,14 @@ DO $do$
 BEGIN
   EXECUTE pg_catalog.format($f$
     CREATE OR REPLACE FUNCTION %1$I.app_message_email_opt_in(target uuid) RETURNS boolean
-      LANGUAGE sql STABLE
-      SET app.bypass_rls = 'on'
+      LANGUAGE plpgsql VOLATILE
       SET search_path = %1$I, pg_temp
       AS $body$
+      DECLARE
+        prior_bypass text := pg_catalog.current_setting('app.bypass_rls', true);
+        result boolean;
+      BEGIN
+        PERFORM pg_catalog.set_config('app.bypass_rls', 'on', true);
         SELECT COALESCE((
           SELECT np.message_email_opt_in FROM %1$I.notification_preferences np
            WHERE np.user_id OPERATOR(pg_catalog.=) target
@@ -64,6 +68,10 @@ BEGIN
                           WHERE m.user_id OPERATOR(pg_catalog.=) target
                             AND m.organization_id OPERATOR(pg_catalog.=) %1$I.app_current_org())
         ), false)
+          INTO result;
+        PERFORM pg_catalog.set_config('app.bypass_rls', COALESCE(prior_bypass, ''), true);
+        RETURN result;
+      END
       $body$
   $f$, pg_catalog.current_schema());
 END

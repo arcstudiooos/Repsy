@@ -73,7 +73,7 @@ Post-pilot target (option b): run migrations from CI with the owner URL stored o
 ## Rollback
 
 - **Application**: Render dashboard > service > Events > roll back to the previous deploy. Redeploys re-run `preDeployCommand`, which is a no-op when no migration is pending.
-- **Migrations are forward-only.** Never edit an applied migration. To undo a schema change, ship a new migration, and keep each release compatible with the previous schema for one deploy (expand, then contract).
+- **Migrations are forward-only.** Never edit an applied migration (the one exception, before any deploy, is D-016). Every migration must apply as a non-superuser owner; `migrateAsOwner.test.ts` checks this. To undo a schema change, ship a new migration, and keep each release compatible with the previous schema for one deploy (expand, then contract).
 - **Secrets**: rotate by changing the dashboard value and redeploying. Rotate the runtime password by re-running `app-role.sql` with the new password, then updating `DATABASE_URL`.
 
 ## Background jobs (worker)

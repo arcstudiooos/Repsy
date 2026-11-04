@@ -328,10 +328,40 @@ describe('row level security', () => {
     const [fn] = await prisma.$queryRaw<{ config: string[] | null; src: string }[]>`
       SELECT p.proconfig AS config, p.prosrc AS src FROM pg_proc p
       WHERE p.pronamespace = ${schema}::regnamespace AND p.proname = 'app_message_email_opt_in'`;
-    expect(fn?.config).toEqual(
-      expect.arrayContaining(['app.bypass_rls=on', `search_path=${schema}, pg_temp`]),
-    );
+    expect(fn?.config).toEqual([`search_path=${schema}, pg_temp`]);
     expect(fn?.src).toContain(`${schema}.memberships`);
+  });
+
+  it('bypass functions switch the bypass on only for their own lookup (managed Postgres, no superuser)', async () => {
+    const fns = await prisma.$queryRaw<{ proname: string; config: string[] | null; src: string }[]>`
+      SELECT p.proname, p.proconfig AS config, p.prosrc AS src FROM pg_proc p
+      WHERE p.pronamespace = ${schema}::regnamespace
+        AND p.proname IN ('app_message_email_opt_in', 'app_email_opt_ins', 'app_org_by_public_slug')`;
+    expect(fns.map((f) => f.proname).sort()).toEqual([
+      'app_email_opt_ins',
+      'app_message_email_opt_in',
+      'app_org_by_public_slug',
+    ]);
+    for (const f of fns) {
+      // A function-level SET of a custom setting needs a superuser to create (Postgres 15+).
+      expect(f.config, f.proname).toEqual([`search_path=${schema}, pg_temp`]);
+      expect(f.src, f.proname).toContain("set_config('app.bypass_rls', 'on', true)");
+      expect(f.src, f.proname).toContain(
+        "set_config('app.bypass_rls', COALESCE(prior_bypass, ''), true)",
+      );
+    }
+    const after = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.org_id', ${orgB}, true)`;
+      await tx.$queryRaw`SELECT app_message_email_opt_in(gen_random_uuid())`;
+      await tx.$queryRaw`SELECT * FROM app_email_opt_ins(gen_random_uuid())`;
+      await tx.$queryRaw`SELECT app_org_by_public_slug('no-such-page')`;
+      const [row] = await tx.$queryRaw<{ bypass: boolean; leaked: number }[]>`
+        SELECT app_rls_bypass() AS bypass,
+               (SELECT count(*)::int FROM ${Prisma.raw(`"${schema}".audit_events`)}
+                 WHERE organization_id <> ${orgB}::uuid) AS leaked`;
+      return row;
+    });
+    expect(after).toEqual({ bypass: false, leaked: 0 });
   });
 
   it('helper functions are schema-qualified and immune to search_path', async () => {
