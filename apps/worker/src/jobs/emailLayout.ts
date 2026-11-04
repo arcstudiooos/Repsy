@@ -35,19 +35,21 @@ function button(href: string, label: string): string {
 /** Inline styles for the small set of tags templates use. The first lone link paragraph becomes the button. */
 function styleBody(html: string): string {
   let buttons = 0;
-  return html
-    .replace(/<p><a href="([^"]*)">([^<]*)<\/a><\/p>/g, (whole, href: string, label: string) =>
-      buttons++ === 0 ? button(href, label) : whole,
-    )
-    .replace(/<p>/g, `<p style="margin:0 0 16px;font-size:16px;line-height:24px;color:${C.ink}">`)
-    .replace(
-      /<p style="white-space:pre-wrap">/g,
-      `<p style="margin:0 0 16px;font-size:16px;line-height:24px;color:${C.ink};white-space:pre-wrap">`,
-    )
-    .replace(/<ul>/g, `<ul style="margin:0 0 16px;padding-left:20px;color:${C.ink}">`)
-    .replace(/<li>/g, '<li style="margin:0 0 6px;font-size:16px;line-height:24px">')
-    // Template links only: the button and its fallback link are written as `<a target…` / `<a style…`.
-    .replace(/<a href="/g, `<a style="color:${C.accent};font-weight:600" href="`);
+  return (
+    html
+      .replace(/<p><a href="([^"]*)">([^<]*)<\/a><\/p>/g, (whole, href: string, label: string) =>
+        buttons++ === 0 ? button(href, label) : whole,
+      )
+      .replace(/<p>/g, `<p style="margin:0 0 16px;font-size:16px;line-height:24px;color:${C.ink}">`)
+      .replace(
+        /<p style="white-space:pre-wrap">/g,
+        `<p style="margin:0 0 16px;font-size:16px;line-height:24px;color:${C.ink};white-space:pre-wrap">`,
+      )
+      .replace(/<ul>/g, `<ul style="margin:0 0 16px;padding-left:20px;color:${C.ink}">`)
+      .replace(/<li>/g, '<li style="margin:0 0 6px;font-size:16px;line-height:24px">')
+      // Template links only: the button and its fallback link are written as `<a target…` / `<a style…`.
+      .replace(/<a href="/g, `<a style="color:${C.accent};font-weight:600" href="`)
+  );
 }
 
 export function brandEmail(input: {
