@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
+  assertLapseAllows,
   cancelSubscription,
   formatMoneyMinor,
   getBillingAnalytics,
@@ -17,8 +18,9 @@ export const metadata: Metadata = { title: 'Billing | Repsy' };
 
 async function createPackageAction(data: FormData) {
   'use server';
-  await withServerTenant((tx, actor) =>
-    savePackage(tx, actor, {
+  await withServerTenant(async (tx, actor) => {
+    await assertLapseAllows(tx, actor, 'write');
+    return savePackage(tx, actor, {
       title: String(data.get('title') ?? ''),
       kind: String(data.get('kind') ?? 'one_off'),
       interval:
@@ -32,32 +34,35 @@ async function createPackageAction(data: FormData) {
           ? Number(data.get('installments') ?? 3)
           : null,
       trialDays: Number(data.get('trialDays') ?? 0),
-    }),
-  );
+    });
+  });
 }
 
 async function subscriptionAction(data: FormData) {
   'use server';
   const id = String(data.get('subscriptionId') ?? '');
   const action = String(data.get('action') ?? '');
-  await withServerTenant((tx, actor) => {
+  await withServerTenant(async (tx, actor) => {
     if (action === 'cancel') return cancelSubscription(tx, actor, id).then(() => undefined);
+    // Cancel stays open after a lapse (M12); a retry is an ordinary write.
+    await assertLapseAllows(tx, actor, 'write');
     return retrySubscriptionPayment(tx, actor, id).then(() => undefined);
   });
 }
 
 async function manualPaymentAction(data: FormData) {
   'use server';
-  await withServerTenant((tx, actor) =>
-    recordManualPayment(tx, actor, {
+  await withServerTenant(async (tx, actor) => {
+    await assertLapseAllows(tx, actor, 'write');
+    return recordManualPayment(tx, actor, {
       packageId: String(data.get('packageId') ?? ''),
       customerEmail: String(data.get('customerEmail') ?? ''),
       amountMinor: Number(data.get('amountMinor') ?? 0),
       currency: String(data.get('currency') ?? 'USD'),
       method: String(data.get('method') ?? 'cash'),
       reference: String(data.get('reference') ?? ''),
-    }),
-  );
+    });
+  });
 }
 
 /** PRD K3, K7, K9, K15: packages, subscriptions, revenue and manual payments. */
@@ -107,13 +112,6 @@ export default async function BillingPage() {
             className="text-accent underline underline-offset-4"
           >
             Download revenue CSV
-          </Link>
-          {' · '}
-          <Link
-            href="/app/billing/self-service"
-            className="text-accent underline underline-offset-4"
-          >
-            Client billing self-service
           </Link>
           {' · '}
           <Link href="/app/analytics/business" className="text-accent underline underline-offset-4">

@@ -2,7 +2,7 @@ import type { TenantTx } from '@kinetic/db';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';
-import { canonicalTimezone, zonedTimeToUtc } from '../timezone';
+import { canonicalTimezone, todayInZone, zonedTimeToUtc } from '../timezone';
 import { isUuid } from '../uuid';
 import { consumePackCredit, refundPackCredit } from './packs';
 
@@ -136,6 +136,23 @@ function addDays(date: string, n: number): string {
   return new Date(new Date(`${date}T00:00:00Z`).getTime() + n * DAY_MS).toISOString().slice(0, 10);
 }
 
+/**
+ * Pure: whether two bookings (with their own buffers, in minutes) are too close. Whichever comes first, the gap to
+ * the other must be at least the larger of its buffer after and the other's buffer before.
+ */
+export function bookingsClash(
+  a: { startsAt: Date; endsAt: Date; before: number; after: number },
+  b: { startsAt: Date; endsAt: Date; before: number; after: number },
+): boolean {
+  const min = 60_000;
+  const aFirstGap = Math.max(a.after, b.before) * min;
+  const bFirstGap = Math.max(b.after, a.before) * min;
+  return (
+    a.startsAt.getTime() < b.endsAt.getTime() + bFirstGap &&
+    b.startsAt.getTime() < a.endsAt.getTime() + aFirstGap
+  );
+}
+
 /** Pure: do two half-open [start, end) spans overlap? Touching spans do not. */
 export function spansOverlap(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date): boolean {
   return aStart < bEnd && bStart < aEnd;
@@ -143,7 +160,7 @@ export function spansOverlap(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date)
 
 /**
  * Pure: generate bookable slots for `dateFrom..dateTo` (inclusive, YYYY-MM-DD)
- * in `timeZone`. Slots step by duration + bufferAfter, start on the window
+ * in `timeZone`. Slots step by duration + bufferAfter + bufferBefore, start on the window
  * start, and never cross the window end. A slot is dropped when it overlaps an
  * existing booking expanded by bufferBefore before it and bufferAfter after
  * it, so back-to-back bookings always keep their buffers. DST-safe: every
@@ -179,7 +196,8 @@ export function generateSlots(input: {
   for (let date = input.dateFrom; date <= input.dateTo; date = addDays(date, 1)) {
     const weekday = isoWeekday(date);
     for (const w of windows.filter((x) => x.weekday === weekday)) {
-      const step = duration + after;
+      // Back-to-back slots keep both buffers: this slot's after and the next one's before.
+      const step = duration + after + before;
       for (
         let start = minutesOf(w.startTime);
         start + duration <= minutesOf(w.endTime);
@@ -201,6 +219,29 @@ export function generateSlots(input: {
     }
   }
   return slots;
+}
+
+/**
+ * Pure: whether [startsAt, endsAt) lies wholly inside one availability window on the local day it starts, in
+ * `timeZone` (the coach's). DST-safe for the same reason as `generateSlots`: window edges go through
+ * `zonedTimeToUtc` for that day.
+ */
+export function withinAvailability(
+  startsAt: Date,
+  endsAt: Date,
+  availability: AvailabilityWindow[],
+  timeZone: string,
+): boolean {
+  const zone = canonicalTimezone(timeZone);
+  if (!zone) return false;
+  const day = todayInZone(zone, startsAt);
+  const weekday = isoWeekday(day);
+  return availability.some((w) => {
+    if (w.weekday !== weekday) return false;
+    const open = zonedTimeToUtc(day, w.startTime, zone);
+    const close = zonedTimeToUtc(day, w.endTime, zone);
+    return open !== null && close !== null && open <= startsAt && endsAt <= close;
+  });
 }
 
 /** Structural delegate for the not-yet-generated `session_types` / `bookings` models. */
@@ -249,6 +290,7 @@ export interface SchedulingDb {
   };
   outboxEmail: {
     createMany(args: unknown): Promise<unknown>;
+    deleteMany(args: unknown): Promise<{ count: number }>;
   };
 }
 
@@ -433,15 +475,50 @@ export async function createBooking(
     // A call link is optional at booking time (the coach may add it later by
     // re-booking), but when present it must be a valid http/https URL.
   }
-  const clashes = await db(tx).booking.findMany({
+  // Only inside the coach's weekly availability, read in the workspace's zone (the coach's zone).
+  const org = await tx.organization.findFirstOrThrow({ select: { timezone: true } });
+  if (!withinAvailability(startsAt, endsAt, type.availabilityJson ?? [], org.timezone)) {
+    throw invalid('startsAt', 'That time is outside the available hours for this session.');
+  }
+  // Serialize bookings for one coach: no raw SQL in TenantTx, so a no-op UPDATE of the coach's active session
+  // types takes their row locks until the transaction ends. A second booking for this coach waits here, then sees
+  // the first one in the clash check below instead of both inserting.
+  await db(tx).sessionType.updateMany({
+    where: { coachUserId: type.coachUserId, active: true },
+    data: { active: true },
+  });
+  // Both sides' buffers count: the gap between two bookings must cover the earlier one's buffer after and the
+  // later one's buffer before. Buffers are at most 120 minutes each, so this window holds every possible clash.
+  const reach = 240 * 60_000;
+  const nearby = (await db(tx).booking.findMany({
     where: {
       coachUserId: type.coachUserId,
       status: 'booked',
-      startsAt: { lt: new Date(endsAt.getTime() + type.bufferAfterMinutes * 60_000) },
-      endsAt: { gt: new Date(startsAt.getTime() - type.bufferBeforeMinutes * 60_000) },
+      startsAt: { lt: new Date(endsAt.getTime() + reach) },
+      endsAt: { gt: new Date(startsAt.getTime() - reach) },
     },
-    select: { id: true },
-  });
+    select: {
+      id: true,
+      startsAt: true,
+      endsAt: true,
+      sessionType: { select: { bufferBeforeMinutes: true, bufferAfterMinutes: true } },
+    },
+  })) as unknown as {
+    startsAt: Date;
+    endsAt: Date;
+    sessionType: { bufferBeforeMinutes: number; bufferAfterMinutes: number } | null;
+  }[];
+  const clashes = nearby.filter((b) =>
+    bookingsClash(
+      { startsAt, endsAt, before: type.bufferBeforeMinutes, after: type.bufferAfterMinutes },
+      {
+        startsAt: new Date(b.startsAt),
+        endsAt: new Date(b.endsAt),
+        before: b.sessionType?.bufferBeforeMinutes ?? 0,
+        after: b.sessionType?.bufferAfterMinutes ?? 0,
+      },
+    ),
+  );
   if (clashes.length > 0) {
     throw new DomainError('CONFLICT', 'That slot is no longer free (buffers included).');
   }
@@ -522,6 +599,10 @@ export async function cancelBooking(
   await db(tx).booking.update({
     where: { id: booking.id },
     data: { status: 'cancelled', packConsumed: false, cancelledAt: now },
+  });
+  // The reminder for a cancelled session must not go out. Only a queued one: one already sent or being sent stays.
+  await db(tx).outboxEmail.deleteMany({
+    where: { idempotencyKey: `booking-reminder:${booking.id}`, status: 'pending' },
   });
 }
 

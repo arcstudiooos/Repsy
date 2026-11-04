@@ -319,6 +319,8 @@ export type SystemTx = Prisma.TransactionClient;
  * - web server/routes/privacy.ts admin routes (`requirePlatformAdmin`, checked right after authentication): pilot
  *   codes (list, create), account lookup, the deletion queue (list, verify / reject / hold), support grants (list,
  *   grant, revoke) and the grant-gated support read of one client.
+ * - web server/routes/lapse.ts admin route (`requirePlatformAdmin`): record or end a workspace's subscription lapse
+ *   (PRD M12), audited by `core/lapse`.
  * - web app/admin/page.tsx (the console: pilot codes, account lookup, deletion queue, own grants) and
  *   web app/admin/support/[clientId]/page.tsx (the grant-gated support read); each calls `notFound()` first.
  * A client's or owner's own deletion request is a tenant operation (`withTenant`), not system scope.

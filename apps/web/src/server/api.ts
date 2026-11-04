@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   assertCan,
+  assertLapseAllows,
   DomainError,
   httpStatusFor,
   logger,
@@ -20,6 +21,7 @@ import { orgCookieSecret, serializeOrgCookie } from './orgCookie';
 import { defaultLimiter, InMemoryRateLimiter, type RateLimiter } from './rateLimit';
 import { clientIp } from './clientIp';
 import { getRequestId } from './requestId';
+import { featureEnabled, type FeatureName } from './features';
 import { analyticsHashSecret, clientHash, defaultAnalytics, eventFor } from './analytics';
 
 export interface ApiDeps {
@@ -32,6 +34,8 @@ export interface ApiDeps {
   limiter?: RateLimiter;
   /** Product analytics (S5-4); the PostHog adapter (no-op without POSTHOG_KEY) by default. */
   analytics?: AnalyticsPort;
+  /** Env for feature switches (server/features.ts); defaults to process.env. */
+  env?: Record<string, string | undefined>;
 }
 
 type InputOf<S> = S extends z.ZodType ? z.output<S> : undefined;
@@ -90,11 +94,19 @@ export interface RouteDef<S extends z.ZodType | undefined, R extends boolean> {
    * database access (memberships, system scope) or input validation. Requires `requireOrg: false`.
    */
   requirePlatformAdmin?: boolean;
+  /** Feature switch (server/features.ts). While it is off the route answers 404 NOT_FOUND before anything else. */
+  feature?: FeatureName;
   /**
    * Per-route token bucket (per user, or per IP when anonymous). Replaces the
    * global bucket for this route; omit to use the global per-user default.
    */
   rateLimit?: { capacity: number; refillPerSecond: number };
+  /**
+   * Post-lapse access (PRD M12). By default a GET is a read and anything else a write: a lapsed workspace is
+   * read-only, then closed. `'export'` marks a route that builds or downloads an export (allowed while read-only);
+   * `'exempt'` skips the check (the lapse status itself, privacy rights, cancelling a client's own subscription).
+   */
+  lapse?: 'export' | 'exempt';
   handler(ctx: RouteCtx<InputOf<S>, R>): unknown;
 }
 
@@ -182,6 +194,9 @@ export function createApiHandler(deps: ApiDeps = {}) {
     const routeLimiter = def.rateLimit ? new InMemoryRateLimiter(def.rateLimit) : undefined;
     return async (request, context) => {
       const requestId = getRequestId(request);
+      if (def.feature && !featureEnabled(def.feature, deps.env)) {
+        return fail('NOT_FOUND', 'Not found.', requestId);
+      }
       try {
         if (!SAFE_METHODS.has(request.method)) {
           // CSRF: browsers always send Origin on cross-site mutations.
@@ -224,6 +239,11 @@ export function createApiHandler(deps: ApiDeps = {}) {
           if (own) actor.clientId = own.id;
         }
         if (actor && def.can) assertCan(actor, def.can);
+        if (actor && def.lapse !== 'exempt') {
+          const action =
+            def.lapse === 'export' ? 'export' : SAFE_METHODS.has(request.method) ? 'read' : 'write';
+          await runTenant(actor.orgId, (tx) => assertLapseAllows(tx, actor, action));
+        }
 
         const input = def.input ? await readInput(request, def.input) : undefined;
 
@@ -296,6 +316,14 @@ export function createApiHandler(deps: ApiDeps = {}) {
             fieldErrors: error.fieldErrors,
             details: error.details,
           });
+        }
+        // A unique-key race or duplicate the handler did not map itself: a conflict the caller can fix, not a 500.
+        if (
+          typeof error === 'object' &&
+          error !== null &&
+          (error as { code?: unknown }).code === 'P2002'
+        ) {
+          return fail('CONFLICT', 'That already exists.', requestId);
         }
         // Never log err.message: it can carry client PII (e.g. Prisma echoes values).
         // Stack goes to logs only, never to the response.

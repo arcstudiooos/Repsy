@@ -239,7 +239,64 @@ const TEMPLATES: Record<string, Template> = {
       '<p>Repsy will verify the request and then delete it. You need to do nothing.</p>';
     return { subject: 'A client asked for data deletion', text, html };
   },
+  // PRD K7: a failed payment. The reason is a short provider label; the next retry date when there is one.
+  billing_payment_failed: (payload, appBaseUrl) => {
+    const reason = str(payload, 'reason') ?? 'Payment failed.';
+    const retry = str(payload, 'nextRetryAt');
+    const when = retry ? formatDay(retry) : null;
+    const link = `${appBaseUrl.replace(/\/+$/, '')}/portal`;
+    const next = when
+      ? `We will try again on ${when}.`
+      : 'We will not try again automatically. Your coach will be in touch.';
+    const text =
+      `A payment for your coaching did not go through.\n\nReason: ${reason}\n\n${next}\n\n` +
+      `Open Repsy: ${link}`;
+    const html =
+      '<p>A payment for your coaching did not go through.</p>' +
+      `<p>Reason: ${escapeHtml(reason)}</p><p>${escapeHtml(next)}</p>` +
+      `<p><a href="${escapeHtml(link)}">Open Repsy</a></p>`;
+    return { subject: 'Your payment did not go through', text, html };
+  },
+  // PRD K10: a session reminder. Session type name only, no notes (D-007).
+  booking_reminder: (payload, appBaseUrl) => {
+    const name = str(payload, 'sessionTypeName') ?? 'session';
+    const link = `${appBaseUrl.replace(/\/+$/, '')}/portal`;
+    const text = `Reminder: your ${name} with your coach is coming up.\n\nOpen Repsy: ${link}`;
+    const html =
+      `<p>Reminder: your ${escapeHtml(name)} with your coach is coming up.</p>` +
+      `<p><a href="${escapeHtml(link)}">Open Repsy</a></p>`;
+    return { subject: `Reminder: ${name}`.replace(/[\r\n]+/g, ' '), text, html };
+  },
+  // PRD J6: a package renews or ends soon.
+  package_renewal_reminder: (payload, appBaseUrl) => {
+    const name = str(payload, 'packageName') ?? 'Your coaching package';
+    const ends = str(payload, 'endsAt');
+    const when = ends ? formatDay(ends) : null;
+    const link = `${appBaseUrl.replace(/\/+$/, '')}/portal`;
+    const line = when ? `${name} renews or ends on ${when}.` : `${name} renews or ends soon.`;
+    const text = `${line}\n\nTalk to your coach about what comes next.\n\nOpen Repsy: ${link}`;
+    const html =
+      `<p>${escapeHtml(line)}</p><p>Talk to your coach about what comes next.</p>` +
+      `<p><a href="${escapeHtml(link)}">Open Repsy</a></p>`;
+    return { subject: `${name} renews or ends soon`.replace(/[\r\n]+/g, ' '), text, html };
+  },
 };
+
+/** `2026-11-04T…` to "4 Nov 2026" (UTC); the raw value when it is not a date. */
+function formatDay(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+/** Whether `templateKey` has its own template (otherwise the payload must carry subject/text/html). */
+export const hasTemplate = (templateKey: string): boolean =>
+  Object.prototype.hasOwnProperty.call(TEMPLATES, templateKey);
 
 export function renderTemplate(
   templateKey: string,

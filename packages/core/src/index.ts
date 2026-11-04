@@ -993,6 +993,11 @@ export { getPublicStorefront } from './billing/storefront';
 export {
   accessPaused,
   applyGraceExpiry,
+  clientBillingPaused,
+  chargeDueRenewal,
+  expireGraces,
+  periodAfterCharge,
+  retryDueSubscription,
   cancelSubscription,
   confirmCheckout,
   cancellationEndDate,
@@ -1022,7 +1027,9 @@ export {
 export {
   cancelBooking,
   createBooking,
+  bookingsClash,
   generateSlots,
+  withinAvailability,
   listBookings,
   listSessionTypes,
   saveSessionType,
@@ -1077,14 +1084,16 @@ export {
   type CustomDomainView,
 } from './domains/domains';
 export {
+  assertLapseAllows,
   assertWritable,
   CLIENT_LAPSE_DAYS,
   COACH_LAPSE_DAYS,
   enforceReadOnly,
   getLapseAccess,
   lapseAccess,
-  recordSubscriptionLapse,
+  setSubscriptionLapse,
   type LapseAccess,
+  type LapseAction,
   type LapseActorKind,
   type LapseView,
 } from './lapse/lapse';

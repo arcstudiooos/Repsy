@@ -323,6 +323,9 @@ describe('deletion (S5-3)', () => {
             claimedAt: data.status === 'running' ? NOW : null,
             expiresAt: data.status === 'done' ? new Date(NOW.getTime() + 7 * 86_400_000) : null,
             filesJson: data.status === 'done' ? [{ name: 'a.csv', key: 'k', rows: 1 }] : undefined,
+            // Built before the erasure at NOW. Not the wall clock: once it passes NOW an org export would look newer
+            // than the erasure and stop being expired.
+            createdAt: new Date(NOW.getTime() - 60_000),
             idempotencyKey: crypto.randomUUID(),
           },
         }),

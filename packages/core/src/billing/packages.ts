@@ -416,11 +416,23 @@ export async function saveCoupon(
   const db = billingTx(tx);
   if (input.id !== undefined) {
     if (!isUuid(input.id)) throw notFound();
-    const { count } = await db.coupon.updateMany({ where: { id: input.id }, data });
+    const { count } = await db.coupon
+      .updateMany({ where: { id: input.id }, data })
+      .catch((error: unknown) => {
+        if ((error as { code?: unknown } | null)?.code === 'P2002') {
+          throw invalid('code', 'A coupon with this code already exists.');
+        }
+        throw error;
+      });
     if (count === 0) throw notFound();
     return { id: input.id as string };
   }
-  const row = await db.coupon.create({ data, select: { id: true } });
+  const row = await db.coupon.create({ data, select: { id: true } }).catch((error: unknown) => {
+    if ((error as { code?: unknown } | null)?.code === 'P2002') {
+      throw invalid('code', 'A coupon with this code already exists.');
+    }
+    throw error;
+  });
   return { id: row.id as string };
 }
 
@@ -516,6 +528,26 @@ export async function createCheckout(
   let amountMinor = pkg.amountMinor as number;
   if (typeof input.couponCode === 'string' && input.couponCode.trim() !== '') {
     const checked = await validateCoupon(tx, input.couponCode, amountMinor, pkg.currency, now);
+    if (checked.coupon.usageCap !== null) {
+      // A use is consumed only when a purchase is confirmed, so checkouts still open hold one each. Under the
+      // coupon's row lock (no-op UPDATE), so two buyers cannot both take the last use.
+      await db.coupon.updateMany({
+        where: { id: checked.coupon.id },
+        data: { usedCount: { increment: 0 } },
+      });
+      const held =
+        (await db.payment.count({ where: { couponId: checked.coupon.id, status: 'pending' } })) +
+        (await db.subscription.count({
+          where: { couponId: checked.coupon.id, status: 'pending' },
+        }));
+      const fresh = await db.coupon.findFirst({
+        where: { id: checked.coupon.id },
+        select: { usedCount: true },
+      });
+      if ((fresh?.usedCount ?? 0) + held >= checked.coupon.usageCap) {
+        throw new DomainError('CONFLICT', 'This coupon has been used up.');
+      }
+    }
     coupon = { id: checked.coupon.id };
     amountMinor = checked.totalMinor;
     // Consume one use only when the purchase completes (see confirmCheckout).
@@ -563,6 +595,9 @@ export async function createCheckout(
         provider: providerKind,
         status: trialDays > 0 ? 'trialing' : 'pending',
         amountMinor: tax.totalMinor,
+        // Stored so every receipt for this subscription shows the tax it includes (K6).
+        taxMinor: tax.taxMinor,
+        taxRateBps: tax.rateBps,
         currency: pkg.currency,
         interval: pkg.interval ?? null,
         installments,

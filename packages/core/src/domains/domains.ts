@@ -3,6 +3,7 @@ import type { TenantTx } from '@kinetic/db';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';
+import { isUuid } from '../uuid';
 
 /**
  * PRD L4: a custom domain (coach.example.com) for the portal and join pages,
@@ -189,10 +190,19 @@ export async function requestCustomDomain(
   });
   if (existing) throw new DomainError('CONFLICT', 'That domain is already requested.');
   const token = generateVerificationToken();
-  const row = await db(tx).customDomain.create({
-    data: { hostname, status: 'requested', verificationToken: token, brandedFromLocal: null },
-    select: { id: true },
-  });
+  // Hostnames are unique across every workspace, but RLS only shows this one's rows above: another workspace's
+  // claim surfaces as a unique violation here.
+  const row = await db(tx)
+    .customDomain.create({
+      data: { hostname, status: 'requested', verificationToken: token, brandedFromLocal: null },
+      select: { id: true },
+    })
+    .catch((error: unknown) => {
+      if ((error as { code?: unknown } | null)?.code === 'P2002') {
+        throw new DomainError('CONFLICT', 'That domain is already in use by another workspace.');
+      }
+      throw error;
+    });
   return toView({
     id: row.id,
     hostname,
@@ -217,6 +227,7 @@ export async function markDomainVerified(
 ): Promise<CustomDomainView> {
   assertCan(actor, 'settings:org:update');
   const now = opts.now ?? new Date();
+  if (!isUuid(domainId)) throw notFound();
   const existing = await db(tx).customDomain.findFirst({
     where: { id: domainId },
     select: {
@@ -244,7 +255,7 @@ export async function setBrandedSender(
 ): Promise<CustomDomainView> {
   assertCan(actor, 'settings:org:update');
   const local = cleanLocalPart(input.brandedFromLocal);
-  if (typeof input.domainId !== 'string') throw notFound();
+  if (typeof input.domainId !== 'string' || !isUuid(input.domainId)) throw notFound();
   const existing = await db(tx).customDomain.findFirst({
     where: { id: input.domainId },
     select: {

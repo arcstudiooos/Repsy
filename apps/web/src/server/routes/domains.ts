@@ -13,12 +13,14 @@ const domainSchema = z.object({ hostname: z.string().max(253) });
 
 /** `GET /api/v1/domains` (PRD L4). Managers only (settings:org:update). */
 export const domainsListRoute: RouteDef<undefined, true> = {
+  feature: 'customDomains',
   can: 'settings:org:update',
   handler: ({ actor, tenant }) => tenant((tx) => listCustomDomains(tx, actor)),
 };
 
 /** `POST /api/v1/domains` (PRD L4): request a domain, get its TXT token. */
 export const domainsPostRoute: RouteDef<typeof domainSchema, true> = {
+  feature: 'customDomains',
   can: 'settings:org:update',
   input: domainSchema,
   handler: async ({ actor, input, tenant }) =>
@@ -30,6 +32,7 @@ export const domainsPostRoute: RouteDef<typeof domainSchema, true> = {
  * that DNS is set. It does NOT check DNS — see packages/core/src/domains/domains.ts.
  */
 export const domainVerifyRoute: RouteDef<undefined, true> = {
+  feature: 'customDomains',
   can: 'settings:org:update',
   handler: ({ actor, params, tenant }) =>
     tenant((tx) => markDomainVerified(tx, actor, params.id ?? '')),
@@ -42,6 +45,7 @@ const senderSchema = z.object({
 
 /** `POST /api/v1/domains/sender` (PRD L4): branded sending address on a verified domain. */
 export const domainSenderRoute: RouteDef<typeof senderSchema, true> = {
+  feature: 'customDomains',
   can: 'settings:org:update',
   input: senderSchema,
   handler: ({ actor, input, tenant }) => tenant((tx) => setBrandedSender(tx, actor, input)),

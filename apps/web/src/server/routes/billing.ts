@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   archivePackage,
+  assertLapseAllows,
   billingCsv,
   cancelSubscription,
   confirmCheckout,
@@ -131,17 +132,21 @@ const subscriptionActionSchema = z.object({
 /**
  * `POST /api/v1/billing/subscriptions`: cancel in one click (K8, client or
  * staff), retry a past-due subscription, or record a failure (K7, staff).
+ * Exempt from the route-level lapse gate so cancel always works; retry/fail check it in the handler.
  * Route-level `session:log` lets a client reach cancel; core still enforces
  * staff-only writes for retry/fail and scopes cancel to the client's own
  * subscription (see billing.ts `assertBillingWrite`).
  */
 export const billingSubscriptionsPostRoute: RouteDef<typeof subscriptionActionSchema, true> = {
+  lapse: 'exempt',
   can: 'session:log',
   input: subscriptionActionSchema,
   handler: async ({ actor, input, tenant }) => {
     if (input.action === 'cancel') {
       return tenant((tx) => cancelSubscription(tx, actor, input.subscriptionId));
     }
+    // Cancelling stays open after a lapse (M12: no charge a client cannot stop); retry/fail are ordinary writes.
+    await tenant((tx) => assertLapseAllows(tx, actor, 'write'));
     if (input.action === 'retry') {
       return tenant((tx) => retrySubscriptionPayment(tx, actor, input.subscriptionId));
     }

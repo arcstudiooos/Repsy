@@ -11,8 +11,9 @@ import { PortalDevice } from '@/portal/offline/PortalDevice';
 import { ServiceWorker } from '@/portal/offline/ServiceWorker';
 import { getServerActorOutcome, getServerSession, withServerTenant } from '@/server/serverActor';
 import { shellRedirect } from '@/server/shellGate';
-import { pendingAgreements, recordPortalVisit } from '@kinetic/core';
+import { clientBillingPaused, pendingAgreements, recordPortalVisit } from '@kinetic/core';
 import { AgreementGate } from '@/portal/AgreementGate';
+import { BillingSelfService } from '@/portal/BillingSelfService';
 import { RepsyLogo } from '@/components/brand/Logo';
 
 /**
@@ -26,23 +27,31 @@ async function ClientGate({ children }: { children: ReactNode }) {
   if (!user) redirect('/login?next=%2Fportal');
   const target = shellRedirect('portal', await getServerActorOutcome(user));
   if (target) redirect(target);
-  const { linked, owner, pending, coachName } = await withServerTenant(async (tx, actor) => {
-    const linked = await tx.client.findFirst({
-      where: { userId: actor.userId },
-      select: { id: true, status: true, timezone: true },
-    });
-    // PRD I4: one row per local day the client opens the portal.
-    if (linked && linked.status !== 'archived') await recordPortalVisit(tx, linked);
-    // PRD B14: terms and waivers still to accept (again, after a change).
-    const pending = linked ? await pendingAgreements(tx, { ...actor, clientId: linked.id }) : [];
-    const org = pending.length ? await tx.organization.findFirst({ select: { name: true } }) : null;
-    return {
-      linked,
-      pending,
-      coachName: org?.name ?? 'Your coach',
-      owner: { userId: actor.userId, orgId: actor.orgId },
-    };
-  });
+  const { linked, owner, pending, coachName, billingPaused } = await withServerTenant(
+    async (tx, actor) => {
+      const linked = await tx.client.findFirst({
+        where: { userId: actor.userId },
+        select: { id: true, status: true, timezone: true },
+      });
+      // PRD I4: one row per local day the client opens the portal.
+      if (linked && linked.status !== 'archived') await recordPortalVisit(tx, linked);
+      // PRD B14: terms and waivers still to accept (again, after a change).
+      const pending = linked ? await pendingAgreements(tx, { ...actor, clientId: linked.id }) : [];
+      const org = pending.length
+        ? await tx.organization.findFirst({ select: { name: true } })
+        : null;
+      // PRD K7: a subscription paused for non-payment (grace over, or no grace) pauses the portal.
+      const billingPaused =
+        linked && linked.status !== 'archived' ? await clientBillingPaused(tx, linked.id) : false;
+      return {
+        linked,
+        pending,
+        billingPaused,
+        coachName: org?.name ?? 'Your coach',
+        owner: { userId: actor.userId, orgId: actor.orgId },
+      };
+    },
+  );
   // D-010 #4: archiving a client ends their access to this coach's organization.
   if (linked?.status === 'archived') {
     return (
@@ -60,6 +69,18 @@ async function ClientGate({ children }: { children: ReactNode }) {
         title="Your profile isn't ready"
         body="We couldn't find your client profile. Ask your coach to send a new invite."
       />
+    );
+  }
+  if (billingPaused) {
+    // The plan and receipts stay visible (and the plan cancellable) while everything else is paused.
+    return (
+      <div className="flex flex-col gap-6">
+        <EmptyState
+          title="Your coaching is paused"
+          body="A payment for your coaching did not go through, so your access is paused. Contact your coach to sort out payment and they can restore it."
+        />
+        <BillingSelfService />
+      </div>
     );
   }
   return (

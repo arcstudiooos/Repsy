@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { connection } from 'next/server';
 // NOTE (slice merge): the parent adds these names to '@kinetic/core' first
 // (see SLICE_REPORT_SCHEDULING.md); the page then compiles unchanged.
 import { listCustomDomains, MANAGER_ROLES } from '@kinetic/core';
@@ -8,12 +10,16 @@ import {
   RequestDomainForm,
   VerifyDomainButton,
 } from '@/components/domains/DomainForms';
+import { featureEnabled } from '@/server/features';
 import { withServerTenant } from '@/server/serverActor';
 
 export const metadata: Metadata = { title: 'Custom domains | Repsy' };
 
 /** PRD L4: custom domains for the portal and join pages, plus branded sending addresses. */
 export default async function DomainsPage() {
+  // On hold (D-015): hidden unless FEATURE_CUSTOM_DOMAINS=true.
+  await connection(); // read the switch at request time, not at build time
+  if (!featureEnabled('customDomains')) notFound();
   const { domains, canManage } = await withServerTenant(async (tx, actor) => ({
     domains: await listCustomDomains(tx, actor),
     canManage: (MANAGER_ROLES as readonly string[]).includes(actor.role),

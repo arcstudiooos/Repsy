@@ -65,6 +65,8 @@ export function AcceptForm(props: AcceptFormProps) {
         }),
       });
       if (res.ok) {
+        // Full navigation on purpose: the new membership and org cookie must reach every server component.
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
         window.location.assign('/portal');
         return;
       }

@@ -151,6 +151,68 @@ export function accessPaused(
   return false;
 }
 
+/**
+ * Whether a client's coaching is paused for non-payment (K7): at least one of their subscriptions is paused (or its
+ * grace period has run out) and none still gives access. A client with no subscriptions (a coach not using payments)
+ * is never paused. Read in the client's tenant scope; no actor, the portal gate calls it for the signed-in client.
+ */
+export async function clientBillingPaused(
+  tx: TenantTx,
+  clientId: string,
+  now: Date = new Date(),
+): Promise<boolean> {
+  const subs: { status: SubscriptionStatus; graceEndsAt: Date | null }[] = await billingTx(
+    tx,
+  ).subscription.findMany({
+    where: { clientId, status: { notIn: ['pending', 'cancelled'] } },
+    select: { status: true, graceEndsAt: true },
+  });
+  if (subs.length === 0) return false;
+  const paused = subs.filter((s) => accessPaused(s, now));
+  return paused.length > 0 && paused.length === subs.length;
+}
+
+/**
+ * Pure: what one successful charge does to a subscription (K3, K7). A recurring package starts a new period of its
+ * interval. A payment plan counts the installment and covers one month (installments are monthly); after the last
+ * one there is no next charge. Anything else has no period.
+ */
+export function periodAfterCharge(
+  sub: { interval: string | null; installments: number | null; installmentsPaid: number },
+  now: Date,
+): {
+  currentPeriodStart: Date;
+  currentPeriodEnd: Date | null;
+  nextChargeAt: Date | null;
+  installmentsPaid: number;
+} {
+  if (sub.interval === 'week' || sub.interval === 'month') {
+    const end = nextChargeDate(now, sub.interval);
+    return {
+      currentPeriodStart: now,
+      currentPeriodEnd: end,
+      nextChargeAt: end,
+      installmentsPaid: sub.installmentsPaid,
+    };
+  }
+  if (sub.installments !== null) {
+    const paid = sub.installmentsPaid + 1;
+    const end = nextChargeDate(now, 'month');
+    return {
+      currentPeriodStart: now,
+      currentPeriodEnd: end,
+      nextChargeAt: paid < sub.installments ? end : null,
+      installmentsPaid: paid,
+    };
+  }
+  return {
+    currentPeriodStart: now,
+    currentPeriodEnd: null,
+    nextChargeAt: null,
+    installmentsPaid: sub.installmentsPaid,
+  };
+}
+
 /** Pure: the date coaching paid for by this subscription ends after cancelling. */
 export function cancellationEndDate(sub: {
   status: SubscriptionStatus;
@@ -164,8 +226,9 @@ export function cancellationEndDate(sub: {
   if (sub.status === 'trialing' && sub.trialEndsAt) return sub.trialEndsAt;
   if (sub.interval) return sub.currentPeriodEnd;
   if (sub.installments !== null) {
-    // A plan stops after what was paid; the next charge never happens.
-    return sub.installmentsPaid > 0 ? sub.nextChargeAt : null;
+    // A plan stops after what was paid: coaching runs to the end of the last paid month; the next charge never
+    // happens.
+    return sub.installmentsPaid > 0 ? sub.currentPeriodEnd : null;
   }
   return sub.currentPeriodEnd;
 }
@@ -280,19 +343,34 @@ export async function confirmCheckout(
     couponId: string | null;
     packageId: string | null;
   } | null = null;
+  let purchase: { packageId: string; clientId: string | null; renewsAt: Date | null } | null = null;
   if (typeof input.subscriptionId === 'string' && isUuid(input.subscriptionId)) {
+    // No raw SQL in TenantTx: a no-op UPDATE takes the row lock, so two confirms of one purchase run one at a time.
+    const locked = await db.subscription.updateMany({
+      where: { id: input.subscriptionId },
+      data: { updatedAt: now },
+    });
+    if (locked.count === 0) throw notFound();
     const sub = await db.subscription.findFirst({ where: { id: input.subscriptionId } });
     if (!sub) throw notFound();
     if (sub.status !== 'pending' && sub.status !== 'trialing') {
       throw new DomainError('CONFLICT', 'This purchase is already confirmed.');
     }
-    const pkg = await db.billingPackage.findFirst({ where: { id: sub.packageId } });
+    // A trial is created as `trialing` and stays `trialing` once confirmed, so the status alone cannot tell a
+    // confirmed trial from an unconfirmed one: an existing payment can.
+    const confirmed = await db.payment.findFirst({
+      where: { subscriptionId: sub.id },
+      select: { id: true },
+    });
+    if (confirmed) throw new DomainError('CONFLICT', 'This purchase is already confirmed.');
+    // A trial keeps the dates set at checkout (the first charge is at the trial's end); a paid start begins its
+    // first period now, so the next charge is one period away, not at once.
+    const trial = Boolean(sub.trialEndsAt);
     await db.subscription.updateMany({
       where: { id: sub.id },
-      data: {
-        status: sub.trialEndsAt ? 'trialing' : 'active',
-        currentPeriodStart: now,
-      },
+      data: trial
+        ? { status: 'trialing', currentPeriodStart: now }
+        : { status: 'active', ...periodAfterCharge(sub, now) },
     });
     payment = await db.payment.create({
       data: {
@@ -300,11 +378,12 @@ export async function confirmCheckout(
         clientId: sub.clientId,
         customerEmail: sub.customerEmail,
         provider: sub.provider,
-        amountMinor: sub.trialEndsAt ? 0 : sub.amountMinor,
-        taxMinor: sub.trialEndsAt ? 0 : (sub.taxMinor ?? 0),
+        amountMinor: trial ? 0 : sub.amountMinor,
+        taxMinor: trial ? 0 : (sub.taxMinor ?? 0),
         taxRateBps: sub.taxRateBps ?? 0,
         currency: sub.currency,
         status: 'succeeded',
+        paidAt: now,
         kind: sub.installments !== null ? 'payment_plan' : 'recurring',
         subscriptionId: sub.id,
         couponId: sub.couponId,
@@ -327,18 +406,34 @@ export async function confirmCheckout(
         data: { usedCount: { increment: 1 } },
       });
     }
-    void pkg;
+    purchase = {
+      packageId: sub.packageId as string,
+      clientId: sub.clientId as string | null,
+      renewsAt: !sub.interval
+        ? null
+        : trial
+          ? ((sub.currentPeriodEnd as Date | null) ?? null)
+          : periodAfterCharge(sub, now).currentPeriodEnd,
+    };
   } else if (typeof input.paymentId === 'string' && isUuid(input.paymentId)) {
     const existing = await db.payment.findFirst({ where: { id: input.paymentId } });
     if (!existing) throw notFound();
-    if (existing.status !== 'pending') {
-      throw new DomainError('CONFLICT', 'This payment is already confirmed.');
-    }
-    await db.payment.updateMany({
-      where: { id: existing.id },
+    // Conditional update: of two concurrent confirms, only one flips `pending` to `succeeded`.
+    const flipped = await db.payment.updateMany({
+      where: { id: existing.id, status: 'pending' },
       data: { status: 'succeeded', paidAt: now },
     });
+    if (flipped.count === 0) {
+      throw new DomainError('CONFLICT', 'This payment is already confirmed.');
+    }
     payment = existing;
+    purchase = existing.packageId
+      ? {
+          packageId: existing.packageId as string,
+          clientId: existing.clientId as string | null,
+          renewsAt: null,
+        }
+      : null;
     if (existing.couponId) {
       await db.coupon.updateMany({
         where: { id: existing.couponId },
@@ -364,7 +459,55 @@ export async function confirmCheckout(
     select: { id: true },
   });
   void org;
+  if (purchase) await startPurchaseJourneys(tx, actor, purchase, now);
   return { receiptId: receipt.id as string };
+}
+
+/**
+ * J4/J6 on purchase: starts the package's onboarding sequence and, for a recurring package, schedules the renewal
+ * reminder for the end of the first period. Only for a purchase tied to a client record. Runs in the confirm
+ * transaction, so a broken onboarding setup rolls the confirmation back rather than half-applying it.
+ */
+async function startPurchaseJourneys(
+  tx: TenantTx,
+  actor: ActorContext,
+  purchase: { packageId: string; clientId: string | null; renewsAt: Date | null },
+  now: Date,
+): Promise<void> {
+  if (!purchase.clientId) return;
+  const pkg = await billingTx(tx).billingPackage.findFirst({
+    where: { id: purchase.packageId },
+    select: { onboardingSequence: true, renewalReminderDays: true },
+  });
+  if (!pkg) return;
+  const { scheduleRenewalReminders, startPackageOnboarding } =
+    await import('../scheduling/journeys');
+  if (pkg.onboardingSequence !== null && pkg.onboardingSequence !== undefined) {
+    const running = await billingTx(tx).packageJourneyRun?.findFirst?.({
+      where: { packageId: purchase.packageId, clientId: purchase.clientId },
+      select: { id: true },
+    });
+    if (!running) {
+      await startPackageOnboarding(
+        tx,
+        actor,
+        { packageId: purchase.packageId, clientId: purchase.clientId },
+        { now },
+      );
+    }
+  }
+  if (purchase.renewsAt && (pkg.renewalReminderDays as number) > 0) {
+    await scheduleRenewalReminders(
+      tx,
+      actor,
+      {
+        packageId: purchase.packageId,
+        clientId: purchase.clientId,
+        endsAt: purchase.renewsAt.toISOString(),
+      },
+      { now },
+    );
+  }
 }
 
 /**
@@ -385,6 +528,20 @@ export async function handleFailedPayment(
   now: Date = new Date(),
 ): Promise<{ nextRetryAt: string | null; needsReview: boolean; graceEndsAt: string | null }> {
   assertCan(actor, 'client:update');
+  return recordPaymentFailure(tx, input, now);
+}
+
+/** `handleFailedPayment` without the actor check: shared by the coach action and the worker's retries. */
+async function recordPaymentFailure(
+  tx: TenantTx,
+  input: {
+    subscriptionId?: unknown;
+    paymentId?: unknown;
+    reason?: unknown;
+    graceDays?: unknown;
+  },
+  now: Date,
+): Promise<{ nextRetryAt: string | null; needsReview: boolean; graceEndsAt: string | null }> {
   const db = billingTx(tx);
   const reason =
     typeof input.reason === 'string' && input.reason.trim() !== ''
@@ -411,14 +568,26 @@ export async function handleFailedPayment(
   }
   const sub = await db.subscription.findFirst({ where: { id: input.subscriptionId } });
   if (!sub) throw notFound();
+  // A cancelled or ended subscription is never charged again, so it cannot fail again either (and must not be
+  // reopened as past due).
+  if (sub.status === 'cancelled' || sub.status === 'ended') {
+    throw new DomainError('CONFLICT', 'This subscription is no longer charged.');
+  }
   const attempt = (sub.failedAttempts as number) + 1;
   const retry = nextRetryAt(now, attempt - 1);
-  const graceEnds = gracePeriodEnd(now, graceDays);
+  // A grace period already running keeps its end date when a later retry fails without a new one.
+  const running = sub.graceEndsAt as Date | null;
+  const graceEnds =
+    input.graceDays === undefined && running && running > now
+      ? running
+      : gracePeriodEnd(now, graceDays);
   const needsReview = retry === null;
   await db.subscription.updateMany({
     where: { id: sub.id },
     data: {
-      status: needsReview ? 'past_due' : graceEnds ? 'grace' : 'past_due',
+      // Access ends at the later of the last retry and the grace period: out of retries with no grace left, the
+      // subscription is paused (and waits for the coach in "Needs review"); with grace left it pauses when that ends.
+      status: graceEnds && graceEnds > now ? 'grace' : needsReview ? 'paused' : 'past_due',
       failedAttempts: attempt,
       nextRetryAt: retry,
       graceEndsAt: graceEnds,
@@ -450,11 +619,49 @@ export async function applyGraceExpiry(
   now: Date = new Date(),
 ): Promise<{ paused: number }> {
   assertCan(actor, 'client:update');
+  return expireGraces(tx, now);
+}
+
+/**
+ * Worker sweep (K7): pauses every subscription in the transaction's organization whose grace period has ended and
+ * marks it "Needs review". No actor: the worker runs it per organization in that organization's tenant scope.
+ */
+export async function expireGraces(
+  tx: TenantTx,
+  now: Date = new Date(),
+): Promise<{ paused: number }> {
   const { count } = await billingTx(tx).subscription.updateMany({
     where: { status: 'grace', graceEndsAt: { lte: now } },
     data: { status: 'paused', needsReview: true },
   });
   return { paused: count };
+}
+
+/**
+ * Worker sweep (K7): retries one subscription whose retry date has arrived. Re-checks under the row lock, so a coach's
+ * manual retry and the sweep never charge twice; returns null when it was no longer due.
+ */
+export async function retryDueSubscription(
+  tx: TenantTx,
+  orgId: string,
+  subscriptionId: string,
+  payments?: PaymentsPort,
+  now: Date = new Date(),
+): Promise<{ status: SubscriptionStatus } | null> {
+  if (!isUuid(subscriptionId)) return null;
+  const db = billingTx(tx);
+  await db.subscription.updateMany({ where: { id: subscriptionId }, data: { updatedAt: now } });
+  const due = await db.subscription.findFirst({
+    where: {
+      id: subscriptionId,
+      status: { in: ['past_due', 'grace'] },
+      needsReview: false,
+      nextRetryAt: { lte: now },
+    },
+    select: { id: true },
+  });
+  if (!due) return null;
+  return chargeRetry(tx, orgId, subscriptionId, payments, now);
 }
 
 /**
@@ -471,30 +678,131 @@ export async function retrySubscriptionPayment(
 ): Promise<{ status: SubscriptionStatus }> {
   assertCan(actor, 'client:update');
   if (!isUuid(subscriptionId)) throw notFound();
-  const db = billingTx(tx);
-  const sub = await db.subscription.findFirst({ where: { id: subscriptionId } });
+  // Row lock first (no raw SQL in TenantTx): a manual retry and the worker's retry run one at a time.
+  await billingTx(tx).subscription.updateMany({
+    where: { id: subscriptionId },
+    data: { updatedAt: now },
+  });
+  return chargeRetry(tx, actor.orgId, subscriptionId, payments, now);
+}
+
+async function chargeRetry(
+  tx: TenantTx,
+  orgId: string,
+  subscriptionId: string,
+  payments: PaymentsPort | undefined,
+  now: Date,
+): Promise<{ status: SubscriptionStatus }> {
+  const sub = await billingTx(tx).subscription.findFirst({ where: { id: subscriptionId } });
   if (!sub) throw notFound();
   if (sub.status !== 'past_due' && sub.status !== 'grace' && sub.status !== 'paused') {
     throw new DomainError('CONFLICT', 'Only a past-due subscription can be retried.');
   }
-  const provider = payments ?? fakePaymentsProvider(sub.provider as ProviderKind);
-  const charge = await provider.createCharge({
-    providerAccountId: `org_${actor.orgId}`,
-    customerEmail: sub.customerEmail as string,
-    amount: { amountMinor: sub.amountMinor as number, currency: sub.currency as string },
+  return chargeSubscription(tx, orgId, sub, payments, now, {
     description: 'Subscription retry',
     idempotencyKey: `retry-${sub.id}-${sub.failedAttempts}`,
   });
+}
+
+/**
+ * Worker sweep (K3, K7): charges one subscription whose next charge date has arrived (a renewal, the next plan
+ * installment, or the first charge after a trial). Re-checks under the row lock; returns null when it was not due.
+ * A failed charge takes the failed-payment path (retries, "Needs review", optional grace).
+ */
+export async function chargeDueRenewal(
+  tx: TenantTx,
+  orgId: string,
+  subscriptionId: string,
+  payments?: PaymentsPort,
+  now: Date = new Date(),
+): Promise<{ status: SubscriptionStatus } | null> {
+  if (!isUuid(subscriptionId)) return null;
+  const db = billingTx(tx);
+  await db.subscription.updateMany({ where: { id: subscriptionId }, data: { updatedAt: now } });
+  const sub = await db.subscription.findFirst({
+    where: {
+      id: subscriptionId,
+      status: { in: ['active', 'trialing'] },
+      nextChargeAt: { lte: now },
+    },
+  });
+  if (!sub) return null;
+  // A trial is created as `trialing` at checkout, before the buyer finishes it: only a confirmed one (it has its
+  // zero-amount payment) is charged when the trial ends.
+  if (sub.status === 'trialing') {
+    const confirmed = await db.payment.findFirst({
+      where: { subscriptionId: sub.id },
+      select: { id: true },
+    });
+    if (!confirmed) return null;
+  }
+  return chargeSubscription(tx, orgId, sub, payments, now, {
+    description: 'Subscription renewal',
+    idempotencyKey: `renew-${sub.id}-${(sub.nextChargeAt as Date).toISOString()}`,
+  });
+}
+
+/**
+ * Charges a subscription through its provider. Success records the payment and a branded receipt (so revenue and the
+ * client's receipts include it), clears any failure state and starts the next period; failure records it.
+ */
+async function chargeSubscription(
+  tx: TenantTx,
+  orgId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sub: any,
+  payments: PaymentsPort | undefined,
+  now: Date,
+  opts: { description: string; idempotencyKey: string },
+): Promise<{ status: SubscriptionStatus }> {
+  const db = billingTx(tx);
+  const provider = payments ?? fakePaymentsProvider(sub.provider as ProviderKind);
+  const charge = await provider.createCharge({
+    providerAccountId: `org_${orgId}`,
+    customerEmail: sub.customerEmail as string,
+    amount: { amountMinor: sub.amountMinor as number, currency: sub.currency as string },
+    description: opts.description,
+    idempotencyKey: opts.idempotencyKey,
+  });
   if (charge.status !== 'succeeded') {
-    await handleFailedPayment(
+    await recordPaymentFailure(
       tx,
-      actor,
       { subscriptionId: sub.id, reason: charge.failureReason ?? 'Payment failed.' },
       now,
     );
     return { status: 'past_due' };
   }
-  const interval = sub.interval as 'week' | 'month' | null;
+  const payment = await db.payment.create({
+    data: {
+      packageId: sub.packageId,
+      clientId: sub.clientId,
+      customerEmail: sub.customerEmail,
+      provider: sub.provider,
+      amountMinor: sub.amountMinor,
+      taxMinor: sub.taxMinor ?? 0,
+      taxRateBps: sub.taxRateBps ?? 0,
+      currency: sub.currency,
+      status: 'succeeded',
+      kind: sub.installments !== null ? 'payment_plan' : 'recurring',
+      subscriptionId: sub.id,
+      providerChargeId: charge.providerChargeId,
+      paidAt: now,
+    },
+    select: { id: true },
+  });
+  await db.receipt.create({
+    data: {
+      paymentId: payment.id,
+      number: `R-${now.getUTCFullYear()}-${(payment.id as string).slice(0, 8).toUpperCase()}`,
+      customerEmail: sub.customerEmail,
+      description: 'Coaching package',
+      amountMinor: sub.amountMinor,
+      taxMinor: sub.taxMinor ?? 0,
+      taxRateBps: sub.taxRateBps ?? 0,
+      currency: sub.currency,
+      issuedAt: now,
+    },
+  });
   await db.subscription.updateMany({
     where: { id: sub.id },
     data: {
@@ -503,11 +811,7 @@ export async function retrySubscriptionPayment(
       nextRetryAt: null,
       graceEndsAt: null,
       needsReview: false,
-      installmentsPaid:
-        sub.installments !== null ? (sub.installmentsPaid as number) + 1 : sub.installmentsPaid,
-      currentPeriodStart: now,
-      currentPeriodEnd: interval ? nextChargeDate(now, interval) : sub.currentPeriodEnd,
-      nextChargeAt: interval ? nextChargeDate(now, interval) : null,
+      ...periodAfterCharge(sub, now),
     },
   });
   return { status: 'active' };
@@ -567,10 +871,17 @@ export async function refundPayment(
     throw invalid('amountMinor', 'Refund a whole number of cents or paise above 0.');
   }
   const db = billingTx(tx);
+  // Row lock first (no-op UPDATE): two refunds of one payment run one after the other, so together they never
+  // exceed it.
+  await db.payment.updateMany({
+    where: { id: input.paymentId },
+    data: { refundedMinor: { increment: 0 } },
+  });
   const payment = await db.payment.findFirst({ where: { id: input.paymentId } });
   if (!payment) throw notFound();
-  if (payment.status !== 'succeeded') {
-    throw new DomainError('CONFLICT', 'Only a succeeded payment can be refunded.');
+  // A partly refunded payment can be refunded again, up to what is left.
+  if (payment.status !== 'succeeded' && payment.status !== 'partially_refunded') {
+    throw new DomainError('CONFLICT', 'Only a paid payment can be refunded.');
   }
   const already = (payment.refundedMinor as number) ?? 0;
   if (already + amount > (payment.amountMinor as number)) {
@@ -626,7 +937,7 @@ export async function getBillingSelfService(
   const portal = sub
     ? await provider.createPortalSession({
         providerCustomerId: `cus_fake_${clientId ?? 'anon'}`,
-        returnUrl: '/app/billing/self-service',
+        returnUrl: '/portal/billing',
       })
     : null;
   return {
@@ -691,6 +1002,16 @@ export async function recordManualPayment(
   const paidAt =
     input.paidAt !== undefined && input.paidAt !== null ? new Date(input.paidAt as string) : now;
   if (Number.isNaN(paidAt.getTime())) throw invalid('paidAt', 'Pick a date.');
+  if (paidAt.getTime() > now.getTime() + 60_000)
+    throw invalid('paidAt', 'Pick today or an earlier date.');
+  const currency =
+    input.currency === undefined || input.currency === null || input.currency === ''
+      ? (pkg.currency as string)
+      : typeof input.currency === 'string' && /^[A-Z]{3}$/.test(input.currency.toUpperCase())
+        ? input.currency.toUpperCase()
+        : (() => {
+            throw invalid('currency', 'Use a 3-letter currency code.');
+          })();
   const payment = await db.payment.create({
     data: {
       packageId: pkg.id,
@@ -701,10 +1022,7 @@ export async function recordManualPayment(
       amountMinor: amount,
       taxMinor: 0,
       taxRateBps: 0,
-      currency:
-        typeof input.currency === 'string'
-          ? input.currency.toUpperCase()
-          : (pkg.currency as string),
+      currency,
       status: 'succeeded',
       kind: 'manual',
       method: input.method,
@@ -722,10 +1040,7 @@ export async function recordManualPayment(
       amountMinor: amount,
       taxMinor: 0,
       taxRateBps: 0,
-      currency:
-        typeof input.currency === 'string'
-          ? input.currency.toUpperCase()
-          : (pkg.currency as string),
+      currency,
       issuedAt: paidAt,
     },
     select: { id: true },
@@ -746,7 +1061,9 @@ export async function getReceipt(
     include: { payment: { select: { clientId: true } } },
   });
   if (!row) throw notFound();
-  if (actor.role === 'client' && row.payment?.clientId !== (await ownClientId(tx, actor))) {
+  // A client sees only receipts for their own payments; a payment with no client record is never theirs.
+  const mine = actor.role === 'client' ? await ownClientId(tx, actor) : null;
+  if (actor.role === 'client' && (!mine || row.payment?.clientId !== mine)) {
     throw notFound();
   }
   const org = await tx.organization.findFirstOrThrow({

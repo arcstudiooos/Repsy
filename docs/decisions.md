@@ -688,3 +688,11 @@ snippet — `docs/decisions.md` itself was not edited by the slice).
 4. **Libraries:** interactive line, bar and area charts use Recharts 3, pinned to an exact version and wrapped in `apps/web/src/components/charts/`; pages never import it directly, and colours come only from tokens. Small charts (sparkline, ring, donut, week dots, heatmap) are server-rendered SVG, so offline portal pages need no chart JavaScript.
 5. **Privacy:** wellbeing answers shown in charts stay in-app. No analytics event (PostHog) carries answer values.
 6. **Visual direction "Midnight & Ember"**, light and dark themes, following the system setting with a Light / Dark / System choice saved per user on the device. The user-facing product name is **Repsy**; internal package names (`@kinetic/*`), env vars and database identifiers are unchanged.
+
+## D-015 — Custom domains (L4) on hold (2026-11-04)
+
+**Status:** Approved by the founder (2026-11-04).
+
+1. **PRD L4 (coach custom domains and branded sending) is on hold.** The planned host's starter plan (Railway Hobby) allows only about 2 custom domains, which our own app uses. Restart once we move to a plan or host that allows many domains (e.g. Railway Pro, about 20).
+2. **The code stays, switched off.** `FEATURE_CUSTOM_DOMAINS` (off unless exactly `true`, see `apps/web/src/server/features.ts`) hides `/app/domains` and every `/api/v1/domains` route with a 404, checked before sign-in or any database work. The `custom_domains` table, core functions and their tests are unchanged, so turning it back on needs no migration.
+3. **Nothing else used it:** there is no nav link, and email sending never read the branded address.
