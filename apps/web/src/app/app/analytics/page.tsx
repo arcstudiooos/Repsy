@@ -40,6 +40,12 @@ const PRESETS = [
   { weeks: 12, label: '12 weeks' },
 ] as const;
 const SORTS = ['name', 'adherence', 'workouts'] as const;
+const FOLLOW_UP_BUCKETS = [
+  { label: 'Under 4 h', under: 4 },
+  { label: '4–24 h', under: 24 },
+  { label: '1–3 days', under: 72 },
+  { label: 'Over 3 days', under: Infinity },
+];
 
 /**
  * Coach analytics (S5-1, D-014): each figure keeps its numerator, denominator and period in text; charts restate
@@ -68,7 +74,16 @@ export default async function AnalyticsPage({
     } catch (error) {
       if (error instanceof DomainError && error.code === 'VALIDATION') {
         const message = Object.values(error.fieldErrors ?? {})[0]?.[0] ?? error.message;
-        return { range, view: null, error: message, trend: [], previous: null, clients: [], weeks };
+        return {
+          range,
+          view: null,
+          error: message,
+          trend: [],
+          previous: null,
+          clients: [],
+          weeks,
+          followUp: [],
+        };
       }
       throw error;
     }
@@ -100,7 +115,25 @@ export default async function AnalyticsPage({
       { days: Math.min(Math.max(len, 7), 366) },
     );
     const clients = roster.map((c) => ({ ...c, row: adh.get(c.id) ?? null }));
-    return { range, view, error: null, trend, previous, clients, weeks };
+    // Time to follow-up, bucketed (the same items getAnalytics takes the median of).
+    const closed = await tx.reviewFlag.findMany({
+      where: {
+        state: { in: ['resolved', 'dismissed'] },
+        resolvedBy: { not: null },
+        resolvedAt: {
+          gte: new Date(`${range.from}T00:00:00Z`),
+          lt: new Date(Date.parse(`${range.to}T00:00:00Z`) + DAY_MS),
+        },
+      },
+      select: { createdAt: true, resolvedAt: true },
+    });
+    const followUp = FOLLOW_UP_BUCKETS.map((b) => ({ label: b.label, count: 0 }));
+    for (const f of closed) {
+      const h = ((f.resolvedAt as Date).getTime() - f.createdAt.getTime()) / 3_600_000;
+      const i = FOLLOW_UP_BUCKETS.findIndex((b) => h < b.under);
+      followUp[i === -1 ? followUp.length - 1 : i]!.count += 1;
+    }
+    return { range, view, error: null, trend, previous, clients, weeks, followUp };
   });
   const { range, view } = result;
   const period = `${formatDate(range.from)} to ${formatDate(range.to)}`;

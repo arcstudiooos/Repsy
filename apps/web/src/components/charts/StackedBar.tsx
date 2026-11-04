@@ -35,7 +35,7 @@ export function StackedBar({
               </span>
               <div
                 className={cn(
-                  'flex w-full max-w-10 flex-col-reverse overflow-hidden rounded-[6px]',
+                  'k-grow-up flex w-full max-w-10 flex-col-reverse overflow-hidden rounded-[6px]',
                   total === 0 && 'h-1 bg-surface-2',
                   col.highlight && 'ring-2 ring-cyan ring-offset-2 ring-offset-surface',
                 )}

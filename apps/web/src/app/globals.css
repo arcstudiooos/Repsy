@@ -116,3 +116,31 @@
 :root[data-rail='collapsed'] {
   --rail-w: 4.5rem;
 }
+
+/* Chart draw-in (plan §2.2). The reduced-motion rule in tokens.css switches every animation off. */
+@keyframes k-ring-draw {
+  from {
+    stroke-dasharray: 0 9999;
+  }
+}
+@keyframes k-grow-up {
+  from {
+    transform: scaleY(0);
+  }
+}
+@keyframes k-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+.k-ring-draw {
+  animation: k-ring-draw 700ms var(--k-ease) both;
+}
+.k-grow-up {
+  transform-origin: bottom;
+  animation: k-grow-up 600ms var(--k-ease) both;
+}
+.k-fade-up {
+  animation: k-fade-up 400ms var(--k-ease) both;
+}

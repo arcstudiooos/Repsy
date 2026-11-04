@@ -7,6 +7,7 @@ import {
   Dumbbell,
   MessageSquare,
   Plus,
+  Trophy,
   UserPlus,
 } from 'lucide-react';
 import { prisma } from '@kinetic/db';
@@ -17,6 +18,7 @@ import {
   getAnalytics,
   getClientAdherence,
   getDailySessionStates,
+  getPersonalRecords,
   getReviewCounts,
   getSetupChecklist,
   isoWeekOf,
@@ -31,6 +33,7 @@ import { ProgressRing } from '@/components/charts/ProgressRing';
 import { StackedBar } from '@/components/charts/StackedBar';
 import { WeekDots } from '@/components/charts/WeekDots';
 import { SetupChecklist } from '@/components/onboarding/SetupChecklist';
+import { FlagActions } from './FlagActions';
 import { EmptyState } from '@/components/states/EmptyState';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -117,6 +120,45 @@ export default async function AppHome() {
           workoutVersion: { select: { title: true } },
         },
       }),
+      // Personal records set in those workouts: a client's best estimated 1RM from one of them.
+      recentPrs: await (async () => {
+        const recent = await tx.workoutSession.findMany({
+          where: { state: 'completed', completedAt: { not: null } },
+          orderBy: { completedAt: 'desc' },
+          take: ACTIVITY_SHOWN,
+          select: {
+            id: true,
+            clientId: true,
+            completedAt: true,
+            client: { select: { name: true } },
+          },
+        });
+        const out: Array<{
+          sessionId: string;
+          clientId: string;
+          clientName: string;
+          at: string;
+          exercise: string;
+          kg: number;
+        }> = [];
+        for (const clientId of [...new Set(recent.map((r) => r.clientId))]) {
+          const records = await getPersonalRecords(tx, actor, clientId).catch(() => []);
+          for (const rec of records) {
+            const best = rec.estimatedOneRepMax;
+            const s = best && recent.find((r) => r.id === best.sessionId);
+            if (best && s)
+              out.push({
+                sessionId: s.id,
+                clientId,
+                clientName: s.client.name,
+                at: s.completedAt!.toISOString(),
+                exercise: rec.name,
+                kg: Math.round(best.valueKg),
+              });
+          }
+        }
+        return out;
+      })(),
       recentCheckins: await tx.checkin.findMany({
         where: { submittedAt: { not: null } },
         orderBy: { submittedAt: 'desc' },
@@ -202,6 +244,14 @@ export default async function AppHome() {
       who: w.client.name,
       what: `finished ${w.workoutVersion?.title ?? 'a workout'}`,
       href: `/app/clients/${w.clientId}/sessions/${w.id}`,
+    })),
+    ...data.recentPrs.map((p) => ({
+      key: `pr-${p.sessionId}-${p.exercise}`,
+      at: p.at,
+      icon: Trophy,
+      who: p.clientName,
+      what: `set a personal record: ${p.exercise} (estimated 1RM ${p.kg} kg)`,
+      href: `/app/clients/${p.clientId}/progress`,
     })),
     ...data.recentCheckins.map((c) => ({
       key: `c-${c.id}`,
@@ -363,6 +413,7 @@ export default async function AppHome() {
                     </p>
                   </div>
                   <div className="flex shrink-0 gap-1">
+                    <FlagActions id={f.id} what={`${f.title ?? f.ruleText}, ${f.clientName}`} />
                     <Link
                       href={`/app/clients/${f.clientId}/messages`}
                       aria-label={`Message ${f.clientName}`}

@@ -1,8 +1,22 @@
 import Link from 'next/link';
 import { ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { CountUp } from '@/components/charts/CountUp';
 import { Sparkline } from '@/components/charts/Sparkline';
 import { cn } from '@/lib/utils';
+
+/** Counts a plain number or "88%" up on first show; anything else renders as given. */
+function animated(value: ReactNode): ReactNode {
+  if (typeof value === 'number') return <CountUp value={value} />;
+  if (typeof value === 'string') {
+    const m = /^(\d+(?:\.\d+)?)(%| h| min)?$/.exec(value);
+    if (m) {
+      const n = Number(m[1]);
+      return <CountUp value={n} decimals={m[1]!.includes('.') ? 1 : 0} suffix={m[2] ?? ''} />;
+    }
+  }
+  return value;
+}
 
 export interface Delta {
   /** Signed change vs the previous period, in the tile's unit. */
@@ -43,7 +57,7 @@ export function StatTile({
     <>
       <p className={cn('label-micro', hero ? 'text-on-midnight/80' : 'text-secondary')}>{label}</p>
       <div className="mt-2 flex items-end justify-between gap-3">
-        <p className="tabular text-display font-semibold tracking-tight">{value}</p>
+        <p className="tabular text-display font-semibold tracking-tight">{animated(value)}</p>
         {spark && spark.filter((v) => v !== null).length > 1 && (
           <Sparkline values={spark} className="mb-1 h-8 w-20" tone={hero ? 'cyan' : 'ember'} />
         )}

@@ -45,6 +45,7 @@ export function Donut({
                 strokeWidth={stroke}
                 strokeDasharray={`${len} ${c - len}`}
                 strokeDashoffset={-offset}
+                className="k-ring-draw"
               />
             );
             offset += len;

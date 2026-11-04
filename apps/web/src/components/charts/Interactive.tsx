@@ -19,6 +19,7 @@ import {
   ReferenceDot,
 } from 'recharts';
 import { AXIS, GRID, SERIES } from './palette';
+import { useSyncExternalStore } from 'react';
 
 export interface Series {
   key: string;
@@ -63,6 +64,19 @@ function TooltipBox({
   );
 }
 
+/** Recharts draws in once unless the viewer asked for reduced motion. */
+function useAnimate(): boolean {
+  return useSyncExternalStore(
+    (cb) => {
+      const m = window.matchMedia('(prefers-reduced-motion: reduce)');
+      m.addEventListener('change', cb);
+      return () => m.removeEventListener('change', cb);
+    },
+    () => !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    () => false,
+  );
+}
+
 const colorOf = (s: Series, i: number) => s.color ?? SERIES[i % SERIES.length]!;
 
 export function LineChart({
@@ -81,6 +95,7 @@ export function LineChart({
   /** Points to mark (personal records): x value + series key. */
   markers?: Array<{ x: string | number; key: string }>;
 }) {
+  const animate = useAnimate();
   return (
     <div aria-hidden style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
@@ -101,7 +116,7 @@ export function LineChart({
               dot={false}
               activeDot={{ r: 5 }}
               connectNulls
-              isAnimationActive={false}
+              isAnimationActive={animate}
             />
           ))}
           {markers?.map((m) => {
@@ -137,6 +152,7 @@ export function AreaChart({
   unit?: string;
   height?: number;
 }) {
+  const animate = useAnimate();
   return (
     <div aria-hidden style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
@@ -163,7 +179,7 @@ export function AreaChart({
               strokeWidth={2.5}
               fill={`url(#area-${s.key})`}
               connectNulls
-              isAnimationActive={false}
+              isAnimationActive={animate}
             />
           ))}
         </RArea>
@@ -187,6 +203,7 @@ export function BarChart({
   height?: number;
   stacked?: boolean;
 }) {
+  const animate = useAnimate();
   return (
     <div aria-hidden style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
@@ -204,7 +221,7 @@ export function BarChart({
               stackId={stacked ? 'stack' : undefined}
               radius={stacked ? 0 : [6, 6, 0, 0]}
               maxBarSize={36}
-              isAnimationActive={false}
+              isAnimationActive={animate}
             />
           ))}
         </RBar>

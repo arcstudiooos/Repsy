@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Dumbbell, Users } from 'lucide-react';
+import { AvatarStack } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { DomainError, listPrograms } from '@kinetic/core';
 import { EmptyState } from '@/components/states/EmptyState';
@@ -42,12 +43,29 @@ export default async function ProgramsPage({
   };
 
   let result: Awaited<ReturnType<typeof listPrograms>>;
+  let usersOf: Record<string, string[]> = {};
   let clientOptions: Awaited<ReturnType<typeof loadActiveClients>>;
   try {
-    [result, clientOptions] = await withServerTenant(async (tx, actor) => [
-      await listPrograms(tx, actor, { kind: 'template', cursor, q, status }),
-      await loadActiveClients(tx, actor),
-    ]);
+    [result, clientOptions, usersOf] = await withServerTenant(async (tx, actor) => {
+      const list = await listPrograms(tx, actor, { kind: 'template', cursor, q, status });
+      // Who runs each template now: active assignments run client copies whose source is the template.
+      const running = await tx.programAssignment.findMany({
+        where: {
+          status: 'active',
+          program: { sourceProgramId: { in: list.items.map((p) => p.id) } },
+        },
+        select: {
+          client: { select: { name: true } },
+          program: { select: { sourceProgramId: true } },
+        },
+      });
+      const names: Record<string, string[]> = {};
+      for (const r of running) {
+        const t = r.program.sourceProgramId;
+        if (t) (names[t] ??= []).push(r.client.name);
+      }
+      return [list, await loadActiveClients(tx, actor), names] as const;
+    });
   } catch (error) {
     // A malformed cursor in the URL is the only user-reachable validation failure.
     if (error instanceof DomainError && error.code === 'VALIDATION') {
@@ -196,7 +214,15 @@ export default async function ProgramsPage({
                       p.activeClientCount === 0 ? 'text-secondary' : 'text-ink',
                     )}
                   >
-                    <Users aria-hidden className="size-4 text-secondary" />
+                    {(usersOf[p.id]?.length ?? 0) > 0 ? (
+                      <AvatarStack
+                        names={usersOf[p.id]!}
+                        max={4}
+                        label={`Run by ${usersOf[p.id]!.join(', ')}`}
+                      />
+                    ) : (
+                      <Users aria-hidden className="size-4 text-secondary" />
+                    )}
                     {p.activeClientCount === 0
                       ? 'Not assigned'
                       : `Used by ${plural(p.activeClientCount, 'client', 'clients')}`}

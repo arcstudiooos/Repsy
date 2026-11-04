@@ -53,6 +53,7 @@ export function ProgressRing({
             strokeWidth={stroke}
             strokeLinecap="round"
             strokeDasharray={`${(pct / 100) * c} ${c}`}
+            className="k-ring-draw"
           />
         )}
       </svg>
