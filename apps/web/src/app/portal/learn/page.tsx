@@ -20,7 +20,7 @@ export default async function PortalLearnPage() {
   const courses = await withPortalTenant((tx, actor) => myCourses(tx, actor));
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Lessons</h1>
+      <h1 className="mb-6 text-h1 font-semibold md:text-display">Lessons</h1>
       {courses.length === 0 ? (
         <EmptyState
           title="No lessons yet"

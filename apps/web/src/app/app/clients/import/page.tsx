@@ -9,7 +9,7 @@ export default function ImportClientsPage() {
   return (
     <>
       <Breadcrumbs items={[{ label: 'Clients', href: '/app/clients' }, { label: 'Import' }]} />
-      <h1 className="mb-2 text-2xl font-semibold md:text-3xl">Import clients</h1>
+      <h1 className="mb-2 text-h1 font-semibold md:text-display">Import clients</h1>
       <p className="mb-6 max-w-prose text-secondary">
         Upload or paste a CSV exported from another coaching app or a spreadsheet. It needs a Name
         (or First and Last name) and an Email column. Goals, Time zone and Units (kg or lb) are

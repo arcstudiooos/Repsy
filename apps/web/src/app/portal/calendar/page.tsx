@@ -18,7 +18,7 @@ export default async function PortalCalendarPage({
   const calendar = await withPortalTenant((tx, actor) => getClientCalendar(tx, actor, { month }));
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Calendar</h1>
+      <h1 className="mb-6 text-h1 font-semibold md:text-display">Calendar</h1>
       <CalendarMonth
         calendar={calendar}
         basePath="/portal/calendar"

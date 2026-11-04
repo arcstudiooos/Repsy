@@ -79,7 +79,7 @@ export default async function PortalProgressPage({
 
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold md:text-3xl">
+      <h1 className="mb-6 text-h1 font-semibold md:text-display">
         {history ? history.exercise.name : 'Progress'}
       </h1>
       {history ? (

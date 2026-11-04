@@ -41,7 +41,7 @@ export default async function PortalMessages({
   );
   return (
     <>
-      <h1 className="mb-2 text-2xl font-semibold md:text-3xl">Messages</h1>
+      <h1 className="mb-2 text-h1 font-semibold md:text-display">Messages</h1>
       <p
         className={
           expectations.replyTargetHours || expectations.officeHours

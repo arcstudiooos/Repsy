@@ -22,14 +22,14 @@ export default async function DomainsPage() {
   if (!canManage) {
     return (
       <>
-        <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Custom domains</h1>
+        <h1 className="mb-6 text-h1 font-semibold md:text-display">Custom domains</h1>
         <p className="text-secondary">Only workspace managers can manage custom domains.</p>
       </>
     );
   }
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Custom domains</h1>
+      <h1 className="mb-6 text-h1 font-semibold md:text-display">Custom domains</h1>
       <div className="flex flex-col gap-6">
         <Card>
           <CardHeader>

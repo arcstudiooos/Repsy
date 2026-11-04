@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import { PanelLeftClose, PanelLeftOpen, Palette } from 'lucide-react';
 import { RepsyLogo, RepsyMark } from '@/components/brand/Logo';
+import { CommandPalette } from '@/components/nav/CommandPalette';
 import { SignOutButton } from '@/components/nav/SignOutButton';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { Avatar } from '@/components/ui/avatar';
@@ -185,6 +186,9 @@ export function CoachNav({
               <PanelLeftClose className="size-5" />
             )}
           </button>
+        </div>
+        <div className={collapsed ? 'hidden' : 'mb-3 px-0.5'}>
+          <CommandPalette />
         </div>
         <nav aria-label="Primary" className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-3">
           <ul className="flex flex-col gap-0.5">

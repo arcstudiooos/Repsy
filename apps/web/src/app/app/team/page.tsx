@@ -22,7 +22,7 @@ export default async function TeamPage() {
     .map((m) => ({ userId: m.userId, name: m.name }));
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Team</h1>
+      <h1 className="mb-6 text-h1 font-semibold md:text-display">Team</h1>
       <div className="flex flex-col gap-6">
         <TeamManager me={me} myRole={role} members={team.members} invites={team.invites} />
         <CoverManager me={me} myRole={role} coaches={coaches} covers={covers} today={today} />

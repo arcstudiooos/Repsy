@@ -63,7 +63,7 @@ export default async function AutomationPage({
   return (
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold md:text-3xl">{s ? s.name : 'New automation'}</h1>
+        <h1 className="text-h1 font-semibold md:text-display">{s ? s.name : 'New automation'}</h1>
         {s && <ArchiveSequence id={s.id} name={s.name} />}
       </div>
       <SequenceEditor id={s?.id ?? null} initial={initial} options={data.options} />

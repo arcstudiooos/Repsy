@@ -44,7 +44,7 @@ export default async function ProgramHistoryPage({ params }: { params: Promise<{
         >
           Back to editor
         </Link>
-        <h1 className="text-2xl font-semibold md:text-3xl">Version history</h1>
+        <h1 className="text-h1 font-semibold md:text-display">Version history</h1>
         <p className="text-sm break-words text-secondary">{program.title}</p>
       </div>
 

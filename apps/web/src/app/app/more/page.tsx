@@ -27,7 +27,7 @@ const links = [
 export default function MorePage() {
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold md:text-3xl">More</h1>
+      <h1 className="mb-6 text-h1 font-semibold md:text-display">More</h1>
       <Card>
         <ul className="flex flex-col">
           {links.map((link) => (

@@ -11,7 +11,7 @@ export default async function PortalResourcesPage() {
   const items = await withPortalTenant((tx, actor) => listResources(tx, actor));
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Resources</h1>
+      <h1 className="mb-6 text-h1 font-semibold md:text-display">Resources</h1>
       {items.length === 0 ? (
         <EmptyState
           title="Nothing here yet"

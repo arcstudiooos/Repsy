@@ -20,7 +20,7 @@ export default async function ChallengesPage() {
   });
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Challenges</h1>
+      <h1 className="mb-6 text-h1 font-semibold md:text-display">Challenges</h1>
       <div className="flex flex-col gap-6">
         {items.length === 0 ? (
           <p className="text-secondary">No challenges yet.</p>

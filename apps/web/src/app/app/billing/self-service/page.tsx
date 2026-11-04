@@ -24,7 +24,7 @@ export default async function SelfServicePage() {
   const sub = view.subscription;
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold md:text-3xl">My billing</h1>
+      <h1 className="mb-6 text-h1 font-semibold md:text-display">My billing</h1>
       <div className="flex flex-col gap-6">
         <Card>
           <CardHeader>

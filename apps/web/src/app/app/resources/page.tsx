@@ -18,7 +18,7 @@ export default async function ResourcesPage() {
   }));
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Resources</h1>
+      <h1 className="mb-6 text-h1 font-semibold md:text-display">Resources</h1>
       <div className="flex max-w-3xl flex-col gap-6">
         <Card>
           <CardHeader>

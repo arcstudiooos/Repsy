@@ -10,7 +10,7 @@ export default async function PortalChallengesPage() {
   const items = await withPortalTenant((tx, actor) => listChallenges(tx, actor));
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold md:text-3xl">Challenges</h1>
+      <h1 className="mb-6 text-h1 font-semibold md:text-display">Challenges</h1>
       {items.length === 0 ? (
         <EmptyState
           title="No challenges right now"

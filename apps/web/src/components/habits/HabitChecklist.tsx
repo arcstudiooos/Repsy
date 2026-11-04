@@ -57,7 +57,7 @@ export function HabitChecklist({ view }: { view: HabitsView }) {
           disabled={pending === h.id}
           onClick={() => toggle(h, !done)}
           className={cn(
-            'flex min-h-11 flex-1 items-center gap-3 rounded-control px-2 text-left hover:bg-canvas',
+            'flex min-h-11 flex-1 items-center gap-3 rounded-control px-2 text-left hover:bg-surface-2',
           )}
         >
           <span

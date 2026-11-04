@@ -24,7 +24,7 @@ export default async function AutomationsPage() {
   return (
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold md:text-3xl">Automations</h1>
+        <h1 className="text-h1 font-semibold md:text-display">Automations</h1>
         <Link href="/app/automations/new" className={buttonVariants()}>
           New automation
         </Link>
@@ -41,7 +41,7 @@ export default async function AutomationsPage() {
               <li key={s.id}>
                 <Link
                   href={`/app/automations/${s.id}`}
-                  className="flex min-h-11 flex-col gap-1 rounded-card bg-surface p-4 shadow-card hover:bg-canvas"
+                  className="flex min-h-11 flex-col gap-1 rounded-card bg-surface p-4 shadow-card hover:bg-surface-2"
                 >
                   <span className="font-semibold">
                     {s.name}

@@ -7,7 +7,7 @@ import { SupportForm } from './SupportForm';
 export function SupportPage({ coach = false }: { coach?: boolean }) {
   return (
     <>
-      <h1 className="mb-2 text-2xl font-semibold md:text-3xl">Help and support</h1>
+      <h1 className="mb-2 text-h1 font-semibold md:text-display">Help and support</h1>
       <p className="mb-6 text-secondary">
         Something unclear or not working? Tell us here.{' '}
         <Link href="/status" className="text-accent underline">

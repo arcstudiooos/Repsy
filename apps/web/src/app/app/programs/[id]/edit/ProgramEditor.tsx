@@ -348,7 +348,7 @@ export function ProgramEditor({
                 >
                   {client ? `Back to ${client.name}` : 'Back to programs'}
                 </Link>
-                <h1 className="text-2xl font-semibold md:text-3xl">
+                <h1 className="text-h1 font-semibold md:text-display">
                   {client ? `Edit ${client.name}'s program` : 'Edit program'}
                 </h1>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-secondary">

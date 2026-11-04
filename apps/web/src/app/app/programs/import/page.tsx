@@ -10,7 +10,7 @@ export default async function ImportProgramPage() {
   const settings = await withServerTenant((tx, actor) => getSettings(tx, actor));
   return (
     <>
-      <h1 className="mb-2 text-2xl font-semibold md:text-3xl">Import a program</h1>
+      <h1 className="mb-2 text-h1 font-semibold md:text-display">Import a program</h1>
       <p className="mb-6 max-w-prose text-secondary">
         Paste a workout plan as text, one exercise per line under day headings (for example{' '}
         <code>Day 1: Upper</code> then <code>Bench press 3x8 @ 60kg</code>), or copy rows from a
