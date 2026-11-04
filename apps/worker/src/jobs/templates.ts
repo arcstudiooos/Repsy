@@ -1,3 +1,5 @@
+import { brandEmail } from './emailLayout';
+
 export interface RenderedBody {
   subject: string;
   text: string;
@@ -20,6 +22,34 @@ const str = (payload: Payload, key: string): string | undefined =>
  * back to payload.subject / text / html (platform emails supply their own).
  */
 const TEMPLATES: Record<string, Template> = {
+  // Account emails from the web app. Older outbox rows carry only subject/text: they fall back below.
+  'auth.verify_email': (payload) => {
+    const url = str(payload, 'url');
+    if (!url) return fromPayload('auth.verify_email', payload);
+    const name = str(payload, 'name');
+    const hello = name ? `Hi ${name},` : 'Hi,';
+    const text =
+      `${hello}\n\nConfirm your email address to finish setting up your Repsy account:\n${url}\n\n` +
+      "This link expires in 1 hour. If you didn't create a Repsy account, you can ignore this email.";
+    const html =
+      `<p>${escapeHtml(hello)}</p>` +
+      '<p>Confirm your email address to finish setting up your Repsy account.</p>' +
+      `<p><a href="${escapeHtml(url)}">Verify my email</a></p>` +
+      "<p>This link expires in 1 hour. If you didn't create a Repsy account, you can ignore this email.</p>";
+    return { subject: 'Verify your Repsy email', text, html };
+  },
+  'auth.reset_password': (payload) => {
+    const url = str(payload, 'url');
+    if (!url) return fromPayload('auth.reset_password', payload);
+    const text =
+      `Someone asked to reset the password for your Repsy account.\n\nChoose a new password: ${url}\n\n` +
+      "This link works for 1 hour. If it wasn't you, ignore this email: your password stays the same.";
+    const html =
+      '<p>Someone asked to reset the password for your Repsy account.</p>' +
+      `<p><a href="${escapeHtml(url)}">Choose a new password</a></p>` +
+      "<p>This link works for 1 hour. If it wasn't you, ignore this email: your password stays the same.</p>";
+    return { subject: 'Reset your Repsy password', text, html };
+  },
   client_invite: (payload, appBaseUrl) => {
     const coachName = str(payload, 'coachName') ?? 'Your coach';
     const orgName = str(payload, 'orgName');
@@ -298,17 +328,25 @@ function formatDay(iso: string): string {
 export const hasTemplate = (templateKey: string): boolean =>
   Object.prototype.hasOwnProperty.call(TEMPLATES, templateKey);
 
+function fromPayload(templateKey: string, payload: Payload): RenderedBody {
+  const text = str(payload, 'text') ?? '';
+  return {
+    subject: str(payload, 'subject') ?? templateKey,
+    text,
+    html: str(payload, 'html') ?? `<p>${escapeHtml(text)}</p>`,
+  };
+}
+
+/** Renders the email and wraps its HTML in the branded layout (emailLayout.ts). */
 export function renderTemplate(
   templateKey: string,
   payload: Payload,
   appBaseUrl: string,
 ): RenderedBody {
   const template = TEMPLATES[templateKey];
-  if (template) return template(payload, appBaseUrl);
-  const text = str(payload, 'text') ?? '';
+  const body = template ? template(payload, appBaseUrl) : fromPayload(templateKey, payload);
   return {
-    subject: str(payload, 'subject') ?? templateKey,
-    text,
-    html: str(payload, 'html') ?? `<p>${escapeHtml(text)}</p>`,
+    ...body,
+    html: brandEmail({ subject: body.subject, bodyHtml: body.html, text: body.text }),
   };
 }

@@ -43,7 +43,7 @@ test('coach signs up with pilot code, verifies, lands on /app', async ({ page, r
     await page.getByLabel('Email').fill(email);
     await page.getByLabel('Password').fill(PASSWORD);
     await page.getByLabel('Business name').fill('Casey Strength');
-    await page.getByLabel('Time zone').fill('Europe/London');
+    await page.getByLabel('Time zone').selectOption('Europe/London');
     await page.getByLabel('Pilot code').fill(code);
     await page.getByRole('button', { name: 'Create account' }).click();
     await expect(page).toHaveURL(/\/verify-email$/, { timeout: 5_000 });
@@ -72,7 +72,7 @@ test('signup rejects an unknown pilot code without creating an account', async (
     await page.getByLabel('Email').fill(`nocode-${Date.now()}@example.test`);
     await page.getByLabel('Password').fill(PASSWORD);
     await page.getByLabel('Business name').fill('Nope Ltd');
-    await page.getByLabel('Time zone').fill('UTC');
+    await page.getByLabel('Time zone').selectOption('UTC');
     await page.getByLabel('Pilot code').fill('NOT-A-CODE');
     await page.getByRole('button', { name: 'Create account' }).click();
     await expect(page.getByText('This pilot code is invalid or has expired.')).toBeVisible();

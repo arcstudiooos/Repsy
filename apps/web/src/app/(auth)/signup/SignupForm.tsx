@@ -2,17 +2,25 @@
 
 import Link from 'next/link';
 import { useActionState } from 'react';
-import { AuthShell, buttonClass, Field, FormMessage, linkClass } from '@/components/auth-ui';
+import {
+  AuthShell,
+  buttonClass,
+  Field,
+  FormMessage,
+  linkClass,
+  RequiredNote,
+} from '@/components/auth-ui';
+import { TimezoneSelect } from '@/components/TimezoneSelect';
 import { signUpCoachAction, type SignupState } from './actions';
 
 export function SignupForm() {
   const [state, action, pending] = useActionState<SignupState, FormData>(signUpCoachAction, {});
   const errors = state.fieldErrors ?? {};
-  const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   return (
     <AuthShell title="Create your coach account">
       <form action={action}>
         {errors.form && <FormMessage tone="error">{errors.form}</FormMessage>}
+        <RequiredNote />
         <Field label="Your name" name="name" autoComplete="name" error={errors.name} />
         <Field label="Email" name="email" type="email" autoComplete="email" error={errors.email} />
         <Field
@@ -25,11 +33,10 @@ export function SignupForm() {
           error={errors.password}
         />
         <Field label="Business name" name="orgName" error={errors.orgName} />
-        <Field
+        <TimezoneSelect
           label="Time zone"
           name="timezone"
-          defaultValue={browserZone}
-          hint="For example Europe/London."
+          hint="Used for reminders and check-in times. We picked yours from this device."
           error={errors.timezone}
         />
         <Field

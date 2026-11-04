@@ -95,6 +95,7 @@ export function Field(props: {
     <div className="mb-4">
       <label htmlFor={name} className="mb-1 block text-sm font-medium">
         {label}
+        {required && <RequiredMark />}
       </label>
       <input
         id={name}
@@ -116,6 +117,24 @@ export function Field(props: {
         </p>
       )}
     </div>
+  );
+}
+
+/** Red asterisk after a required field's label; screen readers hear "required" from the input itself. */
+export function RequiredMark() {
+  return (
+    <span aria-hidden className="ml-0.5 text-danger">
+      *
+    </span>
+  );
+}
+
+/** Shown once above a form that has required fields. */
+export function RequiredNote() {
+  return (
+    <p className="mb-4 text-sm text-secondary">
+      Fields marked <span className="text-danger">*</span> are required.
+    </p>
   );
 }
 

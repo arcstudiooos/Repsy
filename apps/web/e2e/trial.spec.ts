@@ -18,7 +18,7 @@ test.describe('self-serve trial (PRD A4)', () => {
       await page.getByLabel('Email').fill(email);
       await page.getByLabel('Password').fill(E2E_PASSWORD);
       await page.getByLabel('Business name').fill('Trial Gym');
-      await page.getByLabel('Time zone').fill('Europe/London');
+      await page.getByLabel('Time zone').selectOption('Europe/London');
       await expect(page.getByText('No code? You get a free 14-day trial')).toBeVisible();
       await page.getByRole('button', { name: 'Create account' }).click();
       await expect(page).toHaveURL(/\/verify-email$/, { timeout: 20_000 });
