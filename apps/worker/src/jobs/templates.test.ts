@@ -24,7 +24,7 @@ function coreTemplateKeys(): string[] {
 
 describe('templates', () => {
   it('cover every template key core enqueues, so no email goes out blank', () => {
-    // auth.* emails carry their own subject/text/html in the payload.
+    // auth.* emails have templates for the button and fall back to their payload's subject/text.
     const missing = coreTemplateKeys().filter((k) => !k.startsWith('auth.') && !hasTemplate(k));
     expect(missing).toEqual([]);
   });
@@ -88,5 +88,35 @@ describe('reminder emails (PRD H13, F9)', () => {
     expect(renderTemplate('checkin_reminder', {}, 'https://app.example').text).toContain(
       'https://app.example/portal/check-ins',
     );
+  });
+
+  it('wrap every email in the branded layout with a button for the main link', () => {
+    const url = 'https://app.repsy.fit/api/auth/verify-email?token=abc&callbackURL=/app';
+    const r = renderTemplate(
+      'auth.verify_email',
+      { url, name: 'Sam <Coach>' },
+      'https://app.repsy.fit',
+    );
+    expect(r.subject).toBe('Verify your Repsy email');
+    expect(r.text).toContain(url);
+    expect(r.html).toContain('<!doctype html>');
+    expect(r.html).toContain('Repsy<span');
+    expect(r.html).toContain('Verify my email</a></td></tr></table>');
+    expect(r.html).toContain('token=abc&#38;callbackURL');
+    expect(r.html).toContain('Hi Sam &#60;Coach&#62;,');
+    expect(r.html).not.toContain('<Coach>');
+    // Only the first lone link becomes a button; the fallback link is shown under it.
+    expect(r.html.match(/bgcolor="#c7431c"/g)).toHaveLength(1);
+  });
+
+  it('keep old auth outbox rows (no url) readable', () => {
+    const r = renderTemplate(
+      'auth.reset_password',
+      { subject: 'Reset your Repsy password', text: 'Use this link: https://x' },
+      'https://app.repsy.fit',
+    );
+    expect(r.subject).toBe('Reset your Repsy password');
+    expect(r.html).toContain('Use this link: https://x');
+    expect(r.html).toContain('<!doctype html>');
   });
 });

@@ -39,7 +39,16 @@ export function breachedPasswordCheckEnabled(env: AuthEnv): boolean {
 /** Never log or persist the link outside the outbox row: it carries a single-use token. */
 function enqueueAuthEmail(
   prisma: PrismaClient,
-  input: { userId: string; kind: string; token: string; subject: string; text: string },
+  input: {
+    userId: string;
+    kind: string;
+    token: string;
+    subject: string;
+    text: string;
+    /** The action link; the worker renders it as the email's button. */
+    url: string;
+    name?: string;
+  },
 ): void {
   // Not awaited (Better Auth guidance): response timing must not reveal whether an account exists.
   void withSystem(
@@ -48,7 +57,12 @@ function enqueueAuthEmail(
         kind: input.kind,
         toUserId: input.userId,
         templateKey: input.kind,
-        payload: { subject: input.subject, text: input.text },
+        payload: {
+          subject: input.subject,
+          text: input.text,
+          url: input.url,
+          ...(input.name ? { name: input.name } : {}),
+        },
         // Hash of the token: the key is kept forever (unique index), the token must not be.
         idempotencyKey: `${input.kind}:${input.userId}:${createHash('sha256').update(input.token).digest('hex')}`,
       }),
@@ -113,6 +127,7 @@ export function createAuth(options: CreateAuthOptions = {}) {
           token,
           subject: 'Reset your Repsy password',
           text: `Use this link to choose a new password (valid for 1 hour): ${url}`,
+          url,
         });
         return Promise.resolve();
       },
@@ -129,6 +144,8 @@ export function createAuth(options: CreateAuthOptions = {}) {
           token,
           subject: 'Verify your Repsy email',
           text: `Confirm your email address to finish setting up your account: ${url}`,
+          url,
+          name: user.name,
         });
         return Promise.resolve();
       },

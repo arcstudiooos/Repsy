@@ -2,7 +2,14 @@
 
 import Link from 'next/link';
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { AuthShell, buttonClass, Field, FormMessage, linkClass } from '@/components/auth-ui';
+import {
+  AuthShell,
+  buttonClass,
+  Field,
+  FormMessage,
+  linkClass,
+  RequiredNote,
+} from '@/components/auth-ui';
 import { authClient } from '@/lib/auth-client';
 import { safeNext } from '@/lib/safe-next';
 
@@ -114,6 +121,7 @@ export function LoginForm({ google }: { google: ReactNode }) {
     <AuthShell title="Sign in">
       <form onSubmit={onSubmit}>
         {error && <FormMessage tone="error">{error}</FormMessage>}
+        <RequiredNote />
         <Field label="Email" name="email" type="email" autoComplete="email" />
         <Field label="Password" name="password" type="password" autoComplete="current-password" />
         <button type="submit" className={buttonClass} disabled={pending}>

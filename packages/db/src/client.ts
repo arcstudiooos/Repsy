@@ -26,7 +26,25 @@ export function createPrismaClient(
     settings ? { connectionString, options: settings } : { connectionString },
     schema ? { schema } : undefined,
   );
-  return new PrismaClient({ adapter });
+  return new PrismaClient({ adapter, transactionOptions: transactionOptionsFromEnv(process.env) });
+}
+
+/**
+ * Interactive-transaction limits. Prisma's defaults (wait 2 s for a connection, 5 s per transaction) are kept unless
+ * DB_TX_MAX_WAIT_MS / DB_TX_TIMEOUT_MS are set: a small host (Render free, 0.1 CPU) needs more room for the dashboard's
+ * one-transaction read. A per-call `timeout` (withTenant options) still wins.
+ */
+export function transactionOptionsFromEnv(env: Record<string, string | undefined>): {
+  maxWait?: number;
+  timeout?: number;
+} {
+  const ms = (v: string | undefined) => {
+    const n = Number(v);
+    return v?.trim() && Number.isInteger(n) && n > 0 ? n : undefined;
+  };
+  const maxWait = ms(env.DB_TX_MAX_WAIT_MS);
+  const timeout = ms(env.DB_TX_TIMEOUT_MS);
+  return { ...(maxWait ? { maxWait } : {}), ...(timeout ? { timeout } : {}) };
 }
 
 /**
