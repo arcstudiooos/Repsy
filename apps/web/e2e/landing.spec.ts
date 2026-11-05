@@ -62,7 +62,9 @@ test.describe('marketing landing (signed out)', () => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await page.goto('/');
     const toggle = page.getByRole('button', { name: /Pause motion/ });
-    await toggle.click();
+    // Keyboard, not a click: in `next dev` (CI) the Next dev indicator sits bottom-left over this button.
+    await toggle.focus();
+    await page.keyboard.press('Enter');
     await expect(page.locator('html')).toHaveAttribute('data-motion', 'paused');
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('data-motion', 'paused');
