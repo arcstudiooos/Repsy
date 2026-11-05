@@ -1,0 +1,425 @@
+/*
+ * Marketing site: background layers and motion (landing PRD §10). Tokens only (palette 19).
+ * Rule: every element renders its final state without JS. `.mk-js` (set by an inline script) opts into entrances,
+ * and only when motion is allowed. `[data-motion='paused']` on <html> stops every ambient loop (WCAG 2.2.2).
+ */
+
+.mk {
+  --mk-ease-in: cubic-bezier(0.2, 0, 0, 1);
+  --mk-ease-out: cubic-bezier(0.4, 0, 1, 1);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  color: var(--k-ink);
+  background: var(--k-canvas);
+  overflow-x: clip;
+}
+.mk-display {
+  font-family: var(--font-bricolage), var(--font-sans), system-ui, sans-serif;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+.mk-eyebrow {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.mk-eyebrow::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 2px;
+  background: var(--k-acid);
+  box-shadow: 0 0 0 1.5px var(--k-on-acid);
+  vertical-align: 1px;
+}
+.mk-container {
+  width: 100%;
+  max-width: 1264px;
+  margin-inline: auto;
+  padding-inline: 20px;
+}
+@media (min-width: 768px) {
+  .mk-container {
+    padding-inline: 32px;
+  }
+}
+.mk-section {
+  position: relative;
+  padding-block: 72px;
+  isolation: isolate;
+}
+@media (min-width: 768px) {
+  .mk-section {
+    padding-block: 112px;
+  }
+}
+
+/* ---------- Background layers (§10.1) ---------- */
+.mk-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+.mk-dots {
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--k-ink) 7%, transparent) 0.75px,
+    transparent 1px
+  );
+  background-size: 24px 24px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 40%, transparent 85%);
+}
+.mk-dots--light {
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--k-on-midnight) 10%, transparent) 0.75px,
+    transparent 1px
+  );
+}
+.mk-dots--ink {
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--k-on-midnight) 6%, transparent) 0.75px,
+    transparent 1px
+  );
+}
+.mk-loggrid {
+  inset: -120px;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--k-border) 90%, transparent) 1px, transparent 1px),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--k-border) 90%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(color-mix(in srgb, var(--k-border) 60%, transparent) 1px, transparent 1px),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--k-border) 60%, transparent) 1px,
+      transparent 1px
+    );
+  background-size:
+    200px 200px,
+    200px 200px,
+    40px 40px,
+    40px 40px;
+  mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, #000 45%, transparent 80%);
+}
+.mk-grain {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.03;
+  mix-blend-mode: multiply;
+}
+.mk-ruler {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 10px;
+  pointer-events: none;
+  background-image:
+    linear-gradient(90deg, var(--k-border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--k-border) 1px, transparent 1px);
+  background-size:
+    40px 10px,
+    8px 5px;
+  background-repeat: repeat-x;
+}
+
+/* Plate rings: one arc rotates in 60s. */
+.mk-ring-spin {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: mk-spin 60s linear infinite;
+}
+@keyframes mk-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Acid tabs: float ±6px. */
+.mk-tab {
+  position: absolute;
+  border-radius: 4px;
+  background: var(--k-acid);
+  box-shadow: 0 0 0 1.5px var(--k-on-acid);
+  animation: mk-float var(--mk-dur, 7s) ease-in-out infinite alternate;
+  animation-delay: var(--mk-delay, 0s);
+}
+@keyframes mk-float {
+  from {
+    transform: translateY(-6px);
+  }
+  to {
+    transform: translateY(6px);
+  }
+}
+
+/* Floating hero cards bob ±6px on a 7s loop. */
+.mk-float-card {
+  animation: mk-float 7s ease-in-out infinite alternate;
+}
+
+/* Outline numerals. */
+.mk-numeral {
+  font-family: var(--font-bricolage), var(--font-sans), sans-serif;
+  font-weight: 700;
+  color: transparent;
+  -webkit-text-stroke: 1px color-mix(in srgb, var(--k-brand) 18%, transparent);
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Footer wordmark: letters rise in. */
+.mk-wordmark {
+  font-family: var(--font-bricolage), var(--font-sans), sans-serif;
+  font-weight: 700;
+  font-size: 22vw;
+  line-height: 0.8;
+  letter-spacing: -0.04em;
+  color: transparent;
+  -webkit-text-stroke: 1px var(--k-border);
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* ---------- Motion (§10.2, §10.3) ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  .mk-js [data-reveal]:not([data-inview]) {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  .mk-js [data-reveal] {
+    transition:
+      opacity 600ms var(--mk-ease-in),
+      transform 600ms var(--mk-ease-in);
+    transition-delay: calc(var(--mk-i, 0) * 70ms);
+  }
+  /* Line draws (trend lines, chart lines, Repsy column outline). */
+  .mk-js [data-draw]:not([data-inview]) path,
+  .mk-js [data-draw]:not([data-inview]) polyline {
+    stroke-dashoffset: 1;
+  }
+  .mk-js [data-draw] path,
+  .mk-js [data-draw] polyline {
+    stroke-dasharray: 1;
+    transition: stroke-dashoffset 1100ms var(--mk-ease-in);
+  }
+  /* Bars grow from the baseline. */
+  .mk-js [data-grow]:not([data-inview]) > * {
+    transform: scaleY(0.02);
+  }
+  .mk-js [data-grow] > * {
+    transform-origin: bottom;
+    transition: transform 700ms var(--mk-ease-in);
+    transition-delay: calc(var(--mk-i, 0) * 70ms + 300ms);
+  }
+  /* Heatmap cascade. */
+  .mk-js [data-cascade]:not([data-inview]) > * {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  .mk-js [data-cascade] > * {
+    transition:
+      opacity 300ms var(--mk-ease-in),
+      transform 300ms var(--mk-ease-in);
+    transition-delay: calc(var(--mk-i, 0) * 20ms);
+  }
+  /* Acid marker under the hero line. */
+  .mk-js .mk-marker:not([data-inview])::after {
+    transform: scaleX(0);
+  }
+  .mk-marker::after {
+    transition: transform 400ms var(--mk-ease-in) 500ms;
+  }
+}
+.mk-marker {
+  position: relative;
+  white-space: nowrap;
+  z-index: 0;
+}
+.mk-marker::after {
+  content: '';
+  position: absolute;
+  left: -0.06em;
+  right: -0.06em;
+  bottom: 0.08em;
+  height: 0.32em;
+  background: var(--k-acid);
+  border-radius: 4px;
+  transform-origin: left;
+  z-index: -1;
+}
+
+/* Marquee (switch strip): 40s loop, pauses on hover/focus; static row without motion. */
+.mk-marquee {
+  display: flex;
+  width: max-content;
+  gap: 48px;
+  animation: mk-marquee 40s linear infinite;
+}
+.mk-marquee-wrap:hover .mk-marquee,
+.mk-marquee-wrap:focus-within .mk-marquee {
+  animation-play-state: paused;
+}
+@keyframes mk-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Sync pill cycle: Saved on device → Syncing → Synced (labels stay in the DOM for screen readers). */
+.mk-sync > span {
+  grid-area: 1 / 1;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mk-js .mk-sync[data-inview] > [data-state='saved'] {
+    animation: mk-sync-a 3.6s var(--mk-ease-in) 1.3s both;
+  }
+  .mk-js .mk-sync[data-inview] > [data-state='syncing'] {
+    animation: mk-sync-b 3.6s var(--mk-ease-in) 1.3s both;
+  }
+  .mk-js .mk-sync[data-inview] > [data-state='synced'] {
+    animation: mk-sync-c 3.6s var(--mk-ease-in) 1.3s both;
+  }
+}
+.mk-sync > [data-state='saved'],
+.mk-sync > [data-state='syncing'] {
+  opacity: 0;
+}
+@keyframes mk-sync-a {
+  0%,
+  30% {
+    opacity: 1;
+  }
+  36%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes mk-sync-b {
+  0%,
+  30% {
+    opacity: 0;
+  }
+  36%,
+  64% {
+    opacity: 1;
+  }
+  70%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes mk-sync-c {
+  0%,
+  64% {
+    opacity: 0;
+  }
+  70%,
+  100% {
+    opacity: 1;
+  }
+}
+.mk-spinner {
+  animation: mk-spin 0.9s linear infinite;
+}
+
+/* Marching ants on the featured plan (20s loop). */
+.mk-ants {
+  background-image:
+    linear-gradient(90deg, var(--k-acid) 50%, transparent 50%),
+    linear-gradient(90deg, var(--k-acid) 50%, transparent 50%),
+    linear-gradient(0deg, var(--k-acid) 50%, transparent 50%),
+    linear-gradient(0deg, var(--k-acid) 50%, transparent 50%);
+  background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+  background-size:
+    12px 1px,
+    12px 1px,
+    1px 12px,
+    1px 12px;
+  background-position:
+    0 0,
+    0 100%,
+    0 0,
+    100% 0;
+  animation: mk-ants 20s linear infinite;
+}
+@keyframes mk-ants {
+  to {
+    background-position:
+      240px 0,
+      -240px 100%,
+      0 -240px,
+      100% 240px;
+  }
+}
+
+/* Hover lift on cards (240ms). */
+.mk-lift {
+  transition:
+    transform 240ms var(--mk-ease-in),
+    box-shadow 240ms var(--mk-ease-in),
+    border-color 240ms var(--mk-ease-in);
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .mk-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 24px 60px color-mix(in srgb, var(--k-brand) 16%, transparent);
+    border-color: var(--k-brand-soft);
+  }
+}
+
+/* Loop panel swap: 240ms crossfade + 12px slide. */
+@media (prefers-reduced-motion: no-preference) {
+  .mk-panel-in {
+    animation: mk-panel 240ms var(--mk-ease-in) both;
+  }
+}
+@keyframes mk-panel {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+}
+
+/* FAQ: native details with an animated grid row. */
+.mk-faq summary {
+  list-style: none;
+  cursor: pointer;
+}
+.mk-faq summary::-webkit-details-marker {
+  display: none;
+}
+.mk-faq .mk-faq-icon {
+  transition: transform 240ms var(--mk-ease-in);
+}
+.mk-faq[open] .mk-faq-icon {
+  transform: rotate(45deg);
+}
+
+/* Ambient loops stop when paused by the visitor (or off-screen/idle, set by the controller). */
+html[data-motion='paused'] .mk *,
+html[data-motion='paused'] .mk *::before,
+html[data-motion='paused'] .mk *::after {
+  animation-play-state: paused !important;
+}
+
+/* Reduced motion: the global rule in tokens.css removes every animation; the marquee becomes a wrapped row. */
+@media (prefers-reduced-motion: reduce) {
+  .mk-marquee {
+    width: auto;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .mk-marquee [data-dup] {
+    display: none;
+  }
+}
