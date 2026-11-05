@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { signUpVerifiedClient, signUpVerifiedCoach, type E2EUser } from './helpers/users';
 
 const VIEWPORTS = [
+  { width: 320, height: 640 },
   { width: 375, height: 812 },
   { width: 768, height: 1024 },
   { width: 1440, height: 900 },

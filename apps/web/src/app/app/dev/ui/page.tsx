@@ -30,6 +30,28 @@ export const metadata: Metadata = { title: 'UI kit | Repsy' };
 const weeks = ['7 Sep', '14 Sep', '21 Sep', '28 Sep', '5 Oct', '12 Oct', '19 Oct', '26 Oct'];
 const adherence = [62, 70, 68, 75, 81, 78, 84, 88];
 const lift = weeks.map((w, i) => ({ week: w, top: 60 + i * 2.5, e1rm: 72 + i * 3 }));
+const PALETTE: [string, string][] = [
+  ['canvas', 'App background'],
+  ['surface', 'Cards'],
+  ['surface-2', 'Insets, hover'],
+  ['sidebar', 'Sidebar'],
+  ['ink', 'Text'],
+  ['ink-muted', 'Secondary text'],
+  ['brand', 'Buttons, links, nav'],
+  ['brand-soft', 'Selected, chips'],
+  ['acid', 'Highlight fill only'],
+  ['acid-soft', 'Soft highlight'],
+  ['success', 'Completed'],
+  ['warning', 'Due soon'],
+  ['danger', 'Missed'],
+  ['info', 'Scheduled'],
+  ['chart-1', 'Series 1'],
+  ['chart-2', 'Series 2'],
+  ['chart-3', 'Series 3'],
+  ['chart-4', 'Series 4'],
+  ['chart-5', 'Series 5'],
+  ['chart-6', 'Series 6'],
+];
 const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const clients = [
   { id: '1', name: 'Alex Rivers', status: 'Active', adherence: 92 },
@@ -52,6 +74,37 @@ export default function UiKitPage() {
         actions={<ThemeToggle />}
       />
       <div className="flex flex-col gap-10">
+        <Section
+          title="Palette 19, Periwinkle & Acid"
+          description="Live tokens: they follow the theme."
+        >
+          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+            {PALETTE.map(([token, use]) => (
+              <li key={token} className="rounded-md border border-border bg-surface p-2 shadow-e1">
+                <span
+                  aria-hidden
+                  className="block h-12 rounded-sm ring-1 ring-border"
+                  style={{ background: `var(--k-${token})` }}
+                />
+                <p className="mt-2 text-caption font-semibold">{token}</p>
+                <p className="text-micro text-secondary">{use}</p>
+              </li>
+            ))}
+          </ul>
+          <div className="flex flex-wrap gap-3">
+            <Card variant="highlight" className="sm:p-4">
+              <p className="text-caption font-semibold text-acid-ink">New PR</p>
+              <p className="tabular text-h2 font-semibold">105 kg</p>
+            </Card>
+            <Card variant="hero" className="sm:p-4">
+              <p className="label-micro text-acid">Next workout</p>
+              <p className="text-h2 font-semibold">Upper A</p>
+              <span className="mt-3 inline-flex min-h-11 items-center rounded-md bg-acid px-4 font-semibold text-on-acid">
+                Start workout
+              </span>
+            </Card>
+          </div>
+        </Section>
         <Section title="Buttons and badges">
           <div className="flex flex-wrap gap-2">
             <Button>Primary</Button>

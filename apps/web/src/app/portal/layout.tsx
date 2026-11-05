@@ -107,7 +107,7 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
         Skip to content
       </a>
       <header className="sticky top-0 z-30 border-b border-border bg-surface/95 px-4 backdrop-blur">
-        <div className="mx-auto flex min-h-14 max-w-5xl items-center justify-between gap-3 md:px-4">
+        <div className="mx-auto flex min-h-14 max-w-5xl items-center justify-between gap-3 md:min-h-16 md:px-4">
           <Suspense
             fallback={
               <p>
