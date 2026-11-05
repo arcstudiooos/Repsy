@@ -37,39 +37,27 @@ Sources: `apps/web/src`, `docs/screenshots/*`, `docs/decisions.md`, `docs/access
 
 ### 2.1 Colour tokens
 
-Brand and neutrals (light theme). Contrast figures are approximate; `tokens.test.ts` will assert the exact values.
+**Palette 19, "Periwinkle & Acid"** (D-018, 2026-11-05). This replaces the earlier "Midnight & Ember" palette. The exact values live in `apps/web/src/styles/tokens.css` and `src/lib/tokens.ts`, and `tokens.test.ts` asserts every text pair below in both themes.
 
-| Token | Hex | Use | Contrast on white |
+Light
+
+| Token | Hex | Use | Required contrast |
 | --- | --- | --- | --- |
-| `canvas` | `#F7F5F2` | App background (warm off-white) | — |
-| `surface` | `#FFFFFF` | Cards | — |
-| `surface-2` | `#F1EEEA` | Inset areas, table header, hover | — |
-| `ink` | `#14110F` | Primary text | ~19:1 |
-| `ink-muted` | `#625B55` | Secondary text | ~6.7:1 |
-| `border` | `#E9E4DE` | Decorative borders | decorative |
-| `input-border` | `#8C847C` | Control borders | ~3.6:1 (non-text, ≥3:1) |
-| `ember` | `#E8552D` | Chart series, icons, ring fills, logo. **Not for white text or body text** (white on it is ~3.6:1). | fill only |
-| `brand` | `#C7431C` | Primary buttons (white text), links, active nav | ~5.0:1 |
-| `brand-hover` | `#A93715` | Hover/pressed | ~6.5:1 |
-| `brand-soft` | `#FBE3DA` | Selected rows, active chips, ring track | — |
-| `cyan` | `#19C3D9` | Progress, "today", PR highlights. Fill only on light surfaces; text on midnight is fine. | fill only |
-| `cyan-strong` | `#0A7C8C` | Cyan as text on white | ~4.9:1 |
-| `midnight` | `#101418` | Sidebar, hero cards, dark tiles | — |
+| `canvas` / `surface` / `surface-2` / `sidebar` | `#F5F5FF` / `#FFFFFF` / `#EEEEFB` / `#EEEEFC` | Background, cards, insets, sidebar | — |
+| `ink` / `ink-muted` | `#12131F` / `#4A5160` | Text | ≥ 4.5 on canvas, surface, surface-2, sidebar |
+| `border` / `input-border` | `#E2E2F2` / `#8A8CA6` | Decorative / control borders | input ≥ 3 |
+| `brand` / `brand-hover` / `brand-pressed` | `#5B5BD6` / `#4A4AC4` / `#3D3DAE` | Primary buttons (white text), links, active nav, focus ring | ≥ 4.5 vs white and sidebar |
+| `brand-soft` / `brand-ink` | `#E4E4FB` / `#3D3DAE` | Selected rows, chips, ring track / text on it | ≥ 4.5 |
+| `acid` / `acid-soft` / `on-acid` / `acid-ink` | `#E8FF47` / `#F7FFC2` / `#12131F` / `#5C6B00` | Highlights: today, PRs, wins. **Never text, never a lone shape on white**, always with an `on-acid` outline | on-acid ≥ 4.5 on acid; acid-ink ≥ 4.5 on acid-soft |
+| `success` / `warning` / `danger` / `info` (+ `-soft`) | `#0B7A45` / `#9A5B00` / `#C0283C` / `#0A7C8C` | Status | ≥ 4.5 on white and on soft |
 
-Semantic (text-safe on white, each with a `-soft` background tint):
+Dark: canvas `#0E0F1A`, surface `#171828`, surface-2 `#1F2135`, sidebar `#131425`, ink `#F1F1FA` / `#A3A6C2`, borders `#2A2C44` / `#6B6E8C`, brand `#8E8EF5`, with the primary button `#8E8EF5` and `#0E0F1A` text. brand-soft is `#272A52`, and acid is `#E8FF47`, which may be text on dark surfaces. Status colours are `#4ADE80` / `#FBBF24` / `#F87171` / `#22D3EE`, with soft tints at 15 % over the surface.
 
-| Token | Hex | Meaning |
-| --- | --- | --- |
-| `success` | `#0B7A45` | Completed, synced, on track |
-| `warning` | `#9A5B00` | Due soon, not finished, snoozed (fill variant `#FFB547`) |
-| `danger` | `#C0283C` | Missed, overdue, destructive |
-| `info` | `#0A7C8C` | Scheduled, informational |
+Charts, categorical and in this order: `#5B5BD6` periwinkle · `#0E8FA3` teal · `#D6407A` raspberry · `#C27C00` amber · `#2E9E5B` green · `#6B6F86` slate (lighter equivalents in dark). Every one is ≥ 3:1 on the surface. Acid is a highlight only, never a series on light surfaces.
 
-Chart palette (categorical, colour-blind checked; always paired with labels/legend, never colour alone):
+Older token names (`accent*`, `ember`, `cyan*`, `midnight*`, `secondary`) stay as aliases of this palette. `midnight` is now the brand hero surface: the auth brand panel and the portal next-workout card.
 
-`#E8552D` ember · `#19C3D9` cyan · `#FFB547` amber · `#7B61FF` violet · `#3DBE7A` green · `#8C847C` stone.
-
-Dark theme: `canvas #0B0E11`, `surface #141A1F`, `surface-2 #1C232A`, `ink #F4F2EF`, `ink-muted #A0A8B3`, `border #262E36`, `brand #FF6B43` (as text/links), primary buttons `#E8552D` with `midnight` text (~5:1), `cyan` usable as text. All pairs re-validated by `contrastRatio()` in `tokens.test.ts`.
+**Logo deviation:** the brief asked for a periwinkle square with an acid "R". The founder supplied their own gradient "R" (D-017), and that is kept as the mark.
 
 ### 2.2 Type, shape, depth, motion
 - Font: keep **Geist** (already loaded), add tabular numerals (`font-variant-numeric: tabular-nums`) for every metric.
@@ -243,3 +231,5 @@ No phases: everything is built in one continuous pass, on one branch, shipped as
 4. ~~Reverse D-008 #1~~: **approved** (2026-11-04). Step 1 of the build order writes the new decision record in `docs/decisions.md` (charts allowed in analytics, dashboard, client and portal views; every chart keeps numerator, denominator and period visible and has a table view) and marks D-008 #1 as superseded by it.
 5. ~~Chart library~~: **decided, Recharts 3** (2026-11-04) for interactive charts (line, bar, area with tooltips), pinned to an exact version and wrapped in `src/components/charts/` so pages never import it directly. Small charts (sparkline, ring, donut, week dots, heatmap) stay server-rendered SVG, so offline portal pages need no chart JS.
 6. ~~Portal progress charts~~: **decided, in scope now** (2026-11-04). Portal Profile gets "My progress" (strength, volume, consistency) built in step 10, using the same series queries as the coach view, limited to the client's own data. Wellbeing answers are shown to the client in-app only and never sent to analytics.
+
+- **2026-11-05:** the palette changed to palette 19, "Periwinkle & Acid" (§2.1, D-018), from the founder's UI brief. Sidebar, shell and component details follow that brief.

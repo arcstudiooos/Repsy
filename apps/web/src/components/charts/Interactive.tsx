@@ -132,8 +132,9 @@ export function LineChart({
                 x={m.x}
                 y={v}
                 r={5}
-                fill="var(--k-cyan)"
-                stroke="var(--k-surface)"
+                fill="var(--k-acid)"
+                stroke="var(--k-on-acid)"
+                strokeWidth={1.5}
               />
             ) : null;
           })}

@@ -9,8 +9,11 @@ export const cardVariants = cva('rounded-card text-ink', {
       default: 'border border-border bg-surface p-4 shadow-e1 sm:p-6',
       /** A well inside a card or page section. */
       inset: 'bg-surface-2 p-4',
-      /** Midnight hero tile (next workout, KPI hero). Text is white; cyan and ember for accents. */
+      /** Brand hero tile (next workout, KPI hero), 20px radius. Text is white; acid for highlights. */
       hero: 'rounded-xl bg-midnight p-5 text-on-midnight shadow-e2 sm:p-6',
+      /** A win or highlight (PRs, streaks): acid-soft with an acid edge; text stays ink. */
+      highlight:
+        'relative overflow-hidden border border-border bg-acid-soft p-4 shadow-e1 before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-acid before:shadow-[inset_-1px_0_0_var(--k-on-acid)] sm:p-6',
       /** A whole-card link or button target. */
       interactive:
         'border border-border bg-surface p-4 shadow-e1 transition-[border-color,box-shadow] duration-[var(--k-motion-fast)] hover:border-input-border hover:shadow-e2 sm:p-6',

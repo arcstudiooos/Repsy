@@ -1,5 +1,5 @@
 /**
- * Screenshots of the main routes at 375 and 1440 (S5-5, §12). Runs only with SCREENSHOTS_DIR set:
+ * Screenshots of the main routes at 375 and 1440, light and dark (S5-5, §12, D-018). Runs only with SCREENSHOTS_DIR set:
  * `SCREENSHOTS_DIR=../../docs/screenshots pnpm --filter @kinetic/web exec playwright test screenshots`.
  */
 import { join } from 'node:path';
@@ -9,17 +9,28 @@ import { signUpVerifiedCoach } from './helpers/users';
 
 const DIR = process.env.SCREENSHOTS_DIR;
 
+/** Light and dark (D-018), at 375 and 1440. The theme is the saved per-device choice the app itself uses. */
 async function shoot(page: Page, name: string) {
-  for (const width of [375, 1440]) {
-    await page.setViewportSize({ width, height: width === 375 ? 812 : 900 });
-    await page.waitForLoadState('networkidle').catch(() => undefined);
-    await page.screenshot({
-      path: join(DIR as string, `${name}-${width}.jpg`),
-      type: 'jpeg',
-      quality: 60,
-      fullPage: true,
-    });
+  for (const theme of ['light', 'dark'] as const) {
+    await page.evaluate((t) => {
+      window.localStorage.setItem('repsy-theme', t);
+      document.documentElement.dataset.theme = t;
+    }, theme);
+    for (const width of [375, 1440]) {
+      await page.setViewportSize({ width, height: width === 375 ? 812 : 900 });
+      await page.waitForLoadState('networkidle').catch(() => undefined);
+      await page.screenshot({
+        path: join(DIR as string, `${name}${theme === 'dark' ? '-dark' : ''}-${width}.jpg`),
+        type: 'jpeg',
+        quality: 60,
+        fullPage: true,
+      });
+    }
   }
+  await page.evaluate(() => {
+    window.localStorage.setItem('repsy-theme', 'light');
+    document.documentElement.dataset.theme = 'light';
+  });
 }
 
 test.describe('screenshots', () => {

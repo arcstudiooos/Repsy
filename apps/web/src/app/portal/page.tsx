@@ -256,9 +256,9 @@ export default async function PortalHome() {
           <Card variant="hero" className="relative overflow-hidden">
             <div
               aria-hidden
-              className="pointer-events-none absolute -top-20 -right-16 size-64 rounded-full bg-ember/20 blur-2xl"
+              className="pointer-events-none absolute -top-20 -right-16 size-64 rounded-full bg-acid/25 blur-2xl"
             />
-            <p className="label-micro relative text-cyan">Next workout</p>
+            <p className="label-micro relative text-acid">Next workout</p>
             <h2 className="relative mt-1 text-h1 font-semibold break-words">{next.title}</h2>
             <div className="relative mt-2 flex flex-wrap items-center gap-2 text-sm text-on-midnight">
               <span>{formatSessionDate(next.scheduledLocalDate, home.todayLocalDate)}</span>
@@ -288,7 +288,7 @@ export default async function PortalHome() {
             )}
             <Link
               href={`/portal/workouts/${next.id}`}
-              className="relative mt-5 flex min-h-14 w-full items-center justify-center gap-2 rounded-md bg-accent-fill text-lg font-semibold text-on-accent shadow-e1 transition-colors hover:bg-accent-hover"
+              className="relative mt-5 flex min-h-14 w-full items-center justify-center gap-2 rounded-md bg-acid text-lg font-semibold text-on-acid shadow-e1 ring-1 ring-on-acid/10 transition-[filter] duration-[var(--k-motion-fast)] hover:brightness-95"
             >
               <Play aria-hidden className="size-5" />
               {next.state === 'in_progress' || next.state === 'incomplete'
@@ -388,21 +388,20 @@ export default async function PortalHome() {
             </h2>
             <ul className="grid gap-3 sm:grid-cols-3">
               {prs.map((r) => (
-                <li
-                  key={r.exerciseId}
-                  className="rounded-card border border-border bg-surface p-4 shadow-e1"
-                >
-                  <p className="flex items-center gap-1.5 text-caption font-medium text-cyan-strong">
-                    <Trophy aria-hidden className="size-3.5" />
-                    New best
-                  </p>
-                  <p className="mt-1 font-medium break-words">{r.name}</p>
-                  <p className="tabular mt-1 text-h2 font-semibold">
-                    {Math.round(r.estimatedOneRepMax!.valueKg)} kg
-                  </p>
-                  <p className="text-caption text-secondary">
-                    Estimated 1RM · {dayMonth(r.estimatedOneRepMax!.localDate)}
-                  </p>
+                <li key={r.exerciseId}>
+                  <Card variant="highlight" className="h-full sm:p-4">
+                    <p className="flex items-center gap-1.5 text-caption font-medium text-acid-ink">
+                      <Trophy aria-hidden className="size-3.5" />
+                      New best
+                    </p>
+                    <p className="mt-1 font-medium break-words">{r.name}</p>
+                    <p className="tabular mt-1 text-h2 font-semibold">
+                      {Math.round(r.estimatedOneRepMax!.valueKg)} kg
+                    </p>
+                    <p className="text-caption text-secondary">
+                      Estimated 1RM · {dayMonth(r.estimatedOneRepMax!.localDate)}
+                    </p>
+                  </Card>
                 </li>
               ))}
             </ul>

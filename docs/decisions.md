@@ -713,3 +713,12 @@ snippet — `docs/decisions.md` itself was not edited by the slice).
 1. The mark is the founder's gradient "R" (yellow to red). `apps/web/public/brand/repsy-mark.png` is a transparent cut of it, used by `RepsyMark` everywhere in the app. Next to it, the word "Repsy" stays live text, so it follows the light and dark themes.
 2. App icons (`icon-192/512`, maskable, `favicon.ico`) are the R on a midnight tile; the maskable one keeps the R inside the safe zone.
 3. Emails show the full logo with its white wordmark (`repsy-logo-on-dark.png`) on the midnight header, loaded from `APP_BASE_URL`. The alt text is "Repsy" for clients that block images.
+
+## D-018 — Palette 19 "Periwinkle & Acid", and the shell (2026-11-05)
+
+**Status:** Approved by the founder (2026-11-05, UI brief). Supersedes D-014 #6 (Midnight & Ember) for colour.
+
+1. **Palette:** palette 19 "Periwinkle & Acid", in light and dark (values in Docs/ui-redesign-plan.md §2.1, asserted by `tokens.test.ts`). Brand periwinkle carries buttons, links, active nav and focus. Acid is a highlight fill only, outlined in `on-acid` on light surfaces. Older token names alias the new values.
+2. **Charts stay allowed**, superseding D-008 #1 "counts only": every chart keeps its numerator, denominator and period visible and offers "View as table". This restates D-014 #1–#3, which already replaced D-008 #1.
+3. **Shell:** a light sidebar, 248 px expanded and 72 px collapsed. It holds a workspace header, a "Search… ⌘K" button, grouped primary nav, Settings and Help, and a user card whose menu has Profile, Theme, Switch workspace and Sign out. Below 768 px it becomes a top bar plus a bottom tab bar with a "More" sheet.
+4. **Logo:** the founder's gradient R (D-017) stays the mark. It is not replaced by the brief's periwinkle square.

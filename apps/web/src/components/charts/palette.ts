@@ -14,8 +14,8 @@ export const AXIS = 'var(--k-secondary)';
 /** Session-state colours, always shown with their label (legend or text), never alone. */
 export const STATE_COLOR = {
   completed: 'var(--k-success)',
-  skipped: 'var(--k-warning-fill)',
-  notFinished: 'var(--k-chart-4)',
+  skipped: 'var(--k-warning)',
+  notFinished: 'var(--k-unfinished)',
   missed: 'var(--k-danger)',
   due: 'var(--k-surface-2)',
 } as const;

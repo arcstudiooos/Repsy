@@ -39,7 +39,7 @@ export function WeekDots({
               dot,
               d.state === 'rest' && 'border border-dashed border-input-border',
               d.state === 'due' && 'border border-input-border',
-              d.today && 'ring-2 ring-cyan ring-offset-1 ring-offset-surface',
+              d.today && 'ring-2 ring-on-acid ring-offset-2 ring-offset-acid',
             )}
             style={d.state !== 'rest' ? { background: STATE_COLOR[d.state] } : undefined}
           />

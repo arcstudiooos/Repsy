@@ -261,7 +261,7 @@ export default async function ClientOverviewPage({
             legend={[
               { label: 'Top set', color: 'var(--k-chart-1)' },
               { label: 'Estimated 1RM (Epley)', color: 'var(--k-chart-2)', dashed: true },
-              { label: 'Personal record', color: 'var(--k-cyan)' },
+              { label: 'Personal record', color: 'var(--k-acid)' },
             ]}
             table={{
               columns: ['Date', `Top set (${units})`, 'Reps', `Estimated 1RM (${units})`, 'PR'],

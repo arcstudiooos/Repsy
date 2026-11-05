@@ -8,14 +8,14 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-accent-fill text-on-accent shadow-e1 hover:bg-accent-hover',
+        default: 'bg-brand text-on-brand shadow-e1 hover:bg-brand-hover active:bg-brand-pressed',
         secondary: 'border border-input-border bg-surface text-ink hover:bg-surface-2',
         ghost: 'text-ink hover:bg-surface-2',
         /** Tinted: secondary actions that should still read as "do this". */
-        soft: 'bg-accent-soft text-accent-ink hover:bg-accent-soft/70',
+        soft: 'bg-brand-soft text-brand-ink hover:bg-brand-soft/70',
         /** Looks like a link, behaves like a button; for actions inside text and Section headers. */
-        link: 'min-h-0 px-0 font-semibold text-accent underline-offset-4 hover:underline',
-        danger: 'bg-danger text-on-accent hover:bg-danger/90',
+        link: 'min-h-0 px-0 font-semibold text-brand underline-offset-4 hover:underline',
+        danger: 'bg-danger text-on-brand hover:bg-danger/90',
       },
       // Tap targets are at least 44px on mobile.
       size: {

@@ -39,7 +39,7 @@ export function ClientTabs({ clientId }: { clientId: string }) {
                 className={cn(
                   '-mb-px inline-flex min-h-11 items-center border-b-2 px-3 text-[0.9375rem] font-medium whitespace-nowrap transition-colors duration-[var(--k-motion-fast)]',
                   active
-                    ? 'border-ember text-ink'
+                    ? 'border-brand font-semibold text-brand'
                     : 'border-transparent text-secondary hover:border-input-border hover:text-ink',
                 )}
               >

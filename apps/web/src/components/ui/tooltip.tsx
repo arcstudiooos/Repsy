@@ -9,16 +9,16 @@ import type { ReactNode } from 'react';
  */
 export function Tooltip({ content, children }: { content: ReactNode; children: ReactNode }) {
   return (
-    <T.Provider delayDuration={200}>
+    <T.Provider delayDuration={300}>
       <T.Root>
         <T.Trigger asChild>{children}</T.Trigger>
         <T.Portal>
           <T.Content
             sideOffset={6}
-            className="z-50 max-w-xs rounded-sm bg-midnight px-2.5 py-1.5 text-caption text-on-midnight shadow-e2"
+            className="z-50 max-w-xs rounded-sm bg-ink px-2.5 py-1.5 text-caption text-canvas shadow-e2"
           >
             {content}
-            <T.Arrow className="fill-midnight" />
+            <T.Arrow className="fill-ink" />
           </T.Content>
         </T.Portal>
       </T.Root>

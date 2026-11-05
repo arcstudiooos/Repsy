@@ -55,7 +55,7 @@ export function StatTile({
   const hero = tone === 'hero';
   const body = (
     <>
-      <p className={cn('label-micro', hero ? 'text-on-midnight/80' : 'text-secondary')}>{label}</p>
+      <p className={cn('label-micro', hero ? 'text-on-midnight-muted' : 'text-secondary')}>{label}</p>
       <div className="mt-2 flex items-end justify-between gap-3">
         <p className="tabular text-display font-semibold tracking-tight">{animated(value)}</p>
         {spark && spark.filter((v) => v !== null).length > 1 && (
@@ -64,7 +64,7 @@ export function StatTile({
       </div>
       {delta && <DeltaLine delta={delta} hero={hero} />}
       {hint && (
-        <p className={cn('mt-1 text-caption', hero ? 'text-on-midnight/80' : 'text-secondary')}>
+        <p className={cn('mt-1 text-caption', hero ? 'text-on-midnight-muted' : 'text-secondary')}>
           {hint}
         </p>
       )}

@@ -36,7 +36,7 @@ export function RepsyLogo({
       className={cn(
         'inline-flex items-center gap-2 font-semibold tracking-tight',
         text,
-        tone === 'light' ? 'text-white' : 'text-ink',
+        tone === 'light' ? 'text-on-midnight' : 'text-ink',
         className,
       )}
     >

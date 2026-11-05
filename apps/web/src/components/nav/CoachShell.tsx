@@ -5,11 +5,9 @@ import { isCoachRole, twoFactorStatus } from '@kinetic/core';
 import { CoachNavServer } from '@/components/nav/CoachNavServer';
 import { NoticeBanner } from '@/components/nav/NoticeBanner';
 import { PathBreadcrumbs } from '@/components/nav/PathBreadcrumbs';
-import { WorkspaceSwitchLink } from '@/components/nav/WorkspaceSwitchLink';
 import { LoadingState } from '@/components/states/LoadingState';
 import { getServerActorOutcome, getServerSession, withServerTenant } from '@/server/serverActor';
 import { shellRedirect } from '@/server/shellGate';
-import { RepsyLogo } from '@/components/brand/Logo';
 
 /**
  * Defense in depth behind src/proxy.ts: needs a verified user with an active owner/coach membership, and the
@@ -97,7 +95,8 @@ async function TwoFactorRequiredBanner() {
 }
 
 /**
- * Coach shell: left rail on desktop, bottom nav on mobile (375 / 768 / 1440).
+ * Coach shell (D-018): light left rail from 768px, top bar + bottom tab bar on phones. Content is left-aligned,
+ * 1200px max.
  * `noMembershipPath` is where users without a coach membership are sent.
  */
 export function CoachShell({
@@ -118,27 +117,17 @@ export function CoachShell({
         Skip to content
       </a>
       {/* usePathname() is runtime data: keep it out of the prerendered shell for dynamic routes. */}
-      <Suspense fallback={<div aria-hidden className="hidden bg-midnight md:block md:h-dvh" />}>
-        <CoachNavServer
-          switcher={
-            <Suspense fallback={null}>
-              <WorkspaceSwitchLink className="text-on-midnight-muted hover:bg-midnight-2 hover:text-on-midnight" />
-            </Suspense>
-          }
-        />
+      <Suspense
+        fallback={
+          <div aria-hidden className="hidden border-r border-border bg-sidebar md:block md:h-dvh" />
+        }
+      >
+        <CoachNavServer />
       </Suspense>
       <div className="flex min-w-0 flex-col">
-        <header className="sticky top-0 z-30 flex min-h-14 items-center justify-between gap-2 border-b border-border bg-surface/95 px-4 backdrop-blur md:hidden print:hidden">
-          <p>
-            <RepsyLogo size="sm" />
-          </p>
-          <Suspense fallback={null}>
-            <WorkspaceSwitchLink className="text-sm" />
-          </Suspense>
-        </header>
         <main
           id="main"
-          className="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-28 md:px-8 md:pt-8 md:pb-12"
+          className="w-full max-w-[75rem] flex-1 px-4 pt-6 pb-28 md:px-6 md:pt-6 md:pb-12"
         >
           <div className="print:hidden">
             <Suspense fallback={null}>

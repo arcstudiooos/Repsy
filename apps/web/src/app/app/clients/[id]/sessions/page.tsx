@@ -124,14 +124,12 @@ export default async function ClientSessionsPage({ params }: { params: Promise<{
                 key={d}
                 className={cn(
                   'flex min-h-28 min-w-0 flex-col gap-1.5 rounded-md border bg-surface p-1.5 sm:p-2',
-                  isToday ? 'border-cyan ring-1 ring-cyan' : 'border-border',
+                  isToday ? 'border-on-acid bg-acid-soft' : 'border-border',
                 )}
               >
                 <p className="text-center leading-tight">
                   <span className="label-micro block text-secondary">{weekdayShort(d)}</span>
-                  <span
-                    className={cn('tabular text-h3 font-semibold', isToday && 'text-cyan-strong')}
-                  >
+                  <span className={cn('tabular text-h3 font-semibold', isToday && 'text-acid-ink')}>
                     {Number(d.slice(8))}
                   </span>
                   {isToday && <span className="sr-only"> (today)</span>}
