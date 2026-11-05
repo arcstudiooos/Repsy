@@ -9,6 +9,7 @@ import {
   FileDown,
   Lock,
   Minus,
+  Play,
   Accessibility,
   Plus,
   Activity,
@@ -26,6 +27,7 @@ import {
   PROMISES,
   REPSY_CELLS,
   SWITCH_FROM,
+  TOUR_VIDEO,
   TRUST,
 } from '@/content/marketing';
 import {
@@ -158,7 +160,11 @@ function Hero() {
           </p>
           <div data-reveal style={i(3)} className="mt-8 flex flex-wrap gap-3">
             <PrimaryCta>Start free with 3 clients</PrimaryCta>
-            <SecondaryCta href="#loop">See how it works</SecondaryCta>
+            {tourReady ? (
+              <SecondaryCta href="#tour">See a {TOUR_VIDEO.length} tour</SecondaryCta>
+            ) : (
+              <SecondaryCta href="#loop">See how it works</SecondaryCta>
+            )}
           </div>
           <p data-reveal style={i(4)} className="mt-4 text-sm text-secondary">
             No card needed · Import clients from a spreadsheet · Export everything, any time
@@ -247,6 +253,66 @@ function SwitchStrip() {
               </span>
             ))}
           </span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- 3b. Product tour (video slot) ---------- */
+
+/** The player shows only once the video and its captions are set in TOUR_VIDEO. */
+const tourReady = Boolean(TOUR_VIDEO.src && TOUR_VIDEO.captions);
+
+function Tour() {
+  return (
+    <section id="tour" aria-labelledby="tour-title" className="mk-section relative">
+      <DotGrid tone="light" />
+      <div className="mk-container">
+        <Eyebrow>Product tour</Eyebrow>
+        <H2 id="tour-title" className="mt-4 max-w-3xl">
+          See a week of coaching in {TOUR_VIDEO.length}.
+        </H2>
+        <p data-reveal className="mt-4 max-w-2xl text-[17px] text-secondary">
+          A client logs a workout, you review it, a check-in comes in and you act on it, all in
+          Repsy.
+        </p>
+        <div
+          data-reveal
+          className="relative mt-10 aspect-video overflow-hidden rounded-[20px] border border-border bg-surface shadow-e1"
+        >
+          {tourReady ? (
+            <video
+              controls
+              playsInline
+              preload="none"
+              poster={TOUR_VIDEO.poster ?? undefined}
+              className="size-full bg-ink object-cover"
+            >
+              <source src={TOUR_VIDEO.src!} type="video/mp4" />
+              <track
+                kind="captions"
+                srcLang="en"
+                label="English"
+                src={TOUR_VIDEO.captions!}
+                default
+              />
+            </video>
+          ) : (
+            <div className="flex size-full flex-col items-center justify-center gap-4 p-6 text-center">
+              <LogGrid />
+              <span
+                aria-hidden
+                className="relative flex size-16 items-center justify-center rounded-full border border-border bg-canvas text-secondary md:size-20"
+              >
+                <Play className="ml-1 size-7 md:size-8" />
+              </span>
+              <p className="relative text-[15px] font-semibold text-ink">Tour video coming soon</p>
+              <p className="relative max-w-sm text-sm text-secondary">
+                Until then, the walkthrough further down shows each step.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </section>
@@ -840,8 +906,7 @@ function Compare() {
               </a>
               {k < all.length - 1 ? ' · ' : '.'}
             </span>
-          ))}{' '}
-          Repsy&apos;s prices are a proposal and may change before launch.
+          ))}
         </p>
       </div>
     </section>
@@ -880,7 +945,7 @@ function Pricing() {
           </ul>
           <p className="mt-4 text-[13px] text-secondary">
             Over your plan&apos;s limit: $1 per extra active client a month. Paused and archived
-            clients don&apos;t count. Prices are a proposal and may change before launch.
+            clients don&apos;t count.
           </p>
         </div>
       </div>
@@ -1091,6 +1156,7 @@ export function Landing() {
       <main id="main">
         <Hero />
         <SwitchStrip />
+        <Tour />
         <Promises />
         <Loop />
         <ClientExperience />

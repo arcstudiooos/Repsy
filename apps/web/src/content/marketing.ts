@@ -3,7 +3,24 @@
  * Copy follows PRD §8: specific, short, sentence case, no banned words (marketing-content.test.ts checks).
  */
 
-/** Plans: the proposal from docs/competitive/complete-platform-prd.md §Pricing (not final; PRD §13 #1). */
+/** Plans: set by the founder on 2026-11-05 (from docs/competitive/complete-platform-prd.md §Pricing). */
+/**
+ * Product tour (PRD §5 hero, §9). Put the files in apps/web/public/tour/ and set the paths: the slot on the page
+ * switches from "coming soon" to the player, and the hero's second button becomes "See a 2-minute tour".
+ * Captions are required (WCAG 1.2.2), so the player only shows when `captions` is set too.
+ */
+export const TOUR_VIDEO: {
+  src: string | null;
+  captions: string | null;
+  poster: string | null;
+  length: string;
+} = {
+  src: null, // e.g. '/tour/repsy-tour.mp4'
+  captions: null, // e.g. '/tour/repsy-tour.en.vtt'
+  poster: null, // e.g. '/tour/repsy-tour-poster.jpg'
+  length: '2 minutes',
+};
+
 export const PLANS = [
   {
     id: 'free',
@@ -189,7 +206,7 @@ export type CompareRowId = (typeof COMPARE_ROWS)[number]['id'];
 
 /** Repsy's own column: what ships today. */
 export const REPSY_CELLS: Record<CompareRowId, string> = {
-  base: '$39 (proposed)',
+  base: '$39',
   automation: 'Included',
   payments: 'Coming soon',
   nutrition: 'Included',
