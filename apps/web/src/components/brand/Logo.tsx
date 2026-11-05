@@ -1,24 +1,21 @@
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
 /**
- * The Repsy mark: a midnight tile with three rising ember rep bars and a cyan dot for the next rep.
+ * The Repsy mark: the founder's gradient "R" (public/brand/repsy-mark.png, transparent, cut from the full logo).
  * Decorative unless given a title; the wordmark or a label always sits next to it in the app.
  */
 export function RepsyMark({ className, title }: { className?: string; title?: string }) {
   return (
-    <svg
-      viewBox="0 0 32 32"
-      className={cn('size-8 shrink-0', className)}
-      role={title ? 'img' : undefined}
+    <Image
+      src="/brand/repsy-mark.png"
+      width={128}
+      height={128}
+      alt={title ?? ''}
       aria-hidden={title ? undefined : true}
-      aria-label={title}
-    >
-      <rect width="32" height="32" rx="9" fill="#101418" />
-      <rect x="7.5" y="16" width="4" height="9" rx="2" fill="#E8552D" fillOpacity="0.55" />
-      <rect x="14" y="12" width="4" height="13" rx="2" fill="#E8552D" fillOpacity="0.8" />
-      <rect x="20.5" y="11" width="4" height="14" rx="2" fill="#E8552D" />
-      <circle cx="22.5" cy="6.75" r="2.5" fill="#19C3D9" />
-    </svg>
+      className={cn('size-8 shrink-0 object-contain', className)}
+      priority
+    />
   );
 }
 
@@ -43,7 +40,7 @@ export function RepsyLogo({
         className,
       )}
     >
-      <RepsyMark className={cn(mark, tone === 'light' && 'rounded-[9px] ring-1 ring-white/15')} />
+      <RepsyMark className={mark} />
       Repsy
     </span>
   );

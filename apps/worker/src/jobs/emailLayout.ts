@@ -58,6 +58,8 @@ export function brandEmail(input: {
   bodyHtml: string;
   /** Plain text; its first line becomes the inbox preview. */
   text: string;
+  /** Absolute URL of the header logo (served by the web app at /brand/repsy-logo-on-dark.png). */
+  logoUrl: string;
 }): string {
   const preheader = input.text.split('\n').find((l) => l.trim()) ?? '';
   const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -73,8 +75,10 @@ export function brandEmail(input: {
     '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px">' +
     // Header: wordmark on midnight with an ember accent bar.
     `<tr><td bgcolor="${C.midnight}" style="border-radius:16px 16px 0 0;padding:24px 32px">` +
-    `<span style="font-family:${FONT};font-size:22px;font-weight:700;letter-spacing:-0.3px;color:#ffffff">` +
-    `Repsy<span style="color:${C.ember}">.</span></span></td></tr>` +
+    // The founder's logo (white wordmark, for dark backgrounds). Clients that block images show the alt text.
+    `<img src="${esc(input.logoUrl)}" width="150" height="48" alt="Repsy" style="display:block;border:0;` +
+    `outline:none;height:48px;width:150px;font-family:${FONT};font-size:22px;font-weight:700;color:#ffffff">` +
+    '</td></tr>' +
     `<tr><td bgcolor="${C.ember}" style="height:4px;line-height:4px;font-size:0">&nbsp;</td></tr>` +
     // Card
     `<tr><td bgcolor="${C.surface}" style="padding:32px;font-family:${FONT};border-left:1px solid ${C.divider};` +

@@ -100,7 +100,8 @@ describe('reminder emails (PRD H13, F9)', () => {
     expect(r.subject).toBe('Verify your Repsy email');
     expect(r.text).toContain(url);
     expect(r.html).toContain('<!doctype html>');
-    expect(r.html).toContain('Repsy<span');
+    expect(r.html).toContain('<img src="https://app.repsy.fit/brand/repsy-logo-on-dark.png"');
+    expect(r.html).toContain('alt="Repsy"');
     expect(r.html).toContain('Verify my email</a></td></tr></table>');
     expect(r.html).toContain('token=abc&#38;callbackURL');
     expect(r.html).toContain('Hi Sam &#60;Coach&#62;,');
