@@ -81,7 +81,7 @@ async function signUpAndVerify(
     await page.getByLabel('Email').fill(user.email);
     await page.getByLabel('Password').fill(user.password);
     await page.getByLabel('Business name').fill(user.orgName);
-    await page.getByLabel('Time zone').fill('Europe/London');
+    await page.getByLabel('Time zone').selectOption('Europe/London');
     await page.getByLabel('Pilot code').fill(code);
     await page.getByRole('button', { name: 'Create account' }).click();
     // Generous: a slow (not failed) sign-up must not be retried, or its pilot code is already used.

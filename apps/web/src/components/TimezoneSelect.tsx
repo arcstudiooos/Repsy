@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { inputClass, RequiredMark } from '@/components/auth-ui';
 import { useTimezones } from '@/components/settings/form';
 
@@ -50,9 +50,10 @@ export function TimezoneSelect({
 }) {
   const zones = useTimezones();
   const [value, setValue] = useState('UTC');
+  const picked = useRef(false);
   useEffect(() => {
-    // Read once after mount: the server can't know the visitor's zone.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // Read once after mount (the server can't know the visitor's zone), unless the visitor already chose one.
+    if (picked.current) return;
     setValue(currentZoneName(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'));
   }, []);
   const options = useMemo(() => {
@@ -80,7 +81,10 @@ export function TimezoneSelect({
         name={name}
         required
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => {
+          picked.current = true;
+          setValue(e.target.value);
+        }}
         className={inputClass}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy || undefined}
