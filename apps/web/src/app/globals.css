@@ -13,6 +13,18 @@
   --color-divider: var(--k-divider);
   --color-border: var(--k-border);
   --color-input-border: var(--k-input-border);
+  --color-sidebar: var(--k-sidebar);
+  --color-ink-muted: var(--k-ink-muted);
+  --color-brand: var(--k-brand);
+  --color-brand-hover: var(--k-brand-hover);
+  --color-brand-pressed: var(--k-brand-pressed);
+  --color-brand-soft: var(--k-brand-soft);
+  --color-on-brand: var(--k-on-brand);
+  --color-brand-ink: var(--k-brand-ink);
+  --color-acid: var(--k-acid);
+  --color-acid-soft: var(--k-acid-soft);
+  --color-on-acid: var(--k-on-acid);
+  --color-acid-ink: var(--k-acid-ink);
   --color-accent: var(--k-accent);
   --color-accent-hover: var(--k-accent-hover);
   --color-accent-fill: var(--k-accent-fill);
@@ -33,6 +45,7 @@
   --color-warning-soft: var(--k-warning-soft);
   --color-warning-ink: var(--k-warning-ink);
   --color-warning-fill: var(--k-warning-fill);
+  --color-unfinished: var(--k-unfinished);
   --color-danger: var(--k-danger);
   --color-danger-soft: var(--k-danger-soft);
   --color-danger-ink: var(--k-danger-ink);
@@ -92,7 +105,7 @@
     letter-spacing: -0.01em;
   }
   :focus-visible {
-    outline: 2px solid var(--k-accent);
+    outline: 2px solid var(--k-brand);
     outline-offset: 2px;
   }
 }

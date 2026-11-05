@@ -18,6 +18,7 @@ Automated: every UI spec runs axe (wcag2a, wcag2aa, wcag21aa, wcag22aa) at 375 a
 
 Record each manual pass:
 
-| Date | Who | Journeys | Findings    |
-| ---- | --- | -------- | ----------- |
-| —    | —   | —        | Not run yet |
+| Date       | Who                        | Journeys                                                                                                                                                            | Findings                                                                                                                                                                                                                                                             |
+| ---------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-05 | Automated (D-018 redesign) | Coach and portal shells at 320, 375, 768 and 1440 px, light and dark: axe, no horizontal overflow, nav names and `aria-current`; contrast pairs in `tokens.test.ts` | Fixed: hero tile text at 80% white failed 4.5:1 on periwinkle (now `on-midnight-muted`); the mobile account button's visible initials were missing from its name (now a screen-reader label in the button). Manual keyboard and VoiceOver/TalkBack pass still to do. |
+| —          | —                          | —                                                                                                                                                                   | Manual pass not run yet                                                                                                                                                                                                                                              |

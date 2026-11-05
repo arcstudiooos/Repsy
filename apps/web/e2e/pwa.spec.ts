@@ -26,7 +26,7 @@ test.describe('installable portal (PRD L1)', () => {
     );
     await expect(page.locator('meta[name="theme-color"]').first()).toHaveAttribute(
       'content',
-      '#101418',
+      '#F5F5FF',
     );
   });
 });

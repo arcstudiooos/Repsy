@@ -13,8 +13,8 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: '/portal',
     scope: '/',
     display: 'standalone',
-    background_color: '#f7f5f2',
-    theme_color: '#101418',
+    background_color: '#F5F5FF',
+    theme_color: '#5B5BD6',
     icons: [
       { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
       { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },

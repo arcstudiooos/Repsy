@@ -2,12 +2,12 @@ import { cn } from '@/lib/utils';
 
 /** Deterministic colours from the chart palette, with text colours that pass 4.5:1 (avatar.test.ts). */
 export const AVATAR_TONES = [
-  { bg: '#FBE3DA', fg: '#A93715' },
-  { bg: '#DFF4F7', fg: '#0A6F7D' },
-  { bg: '#FDF0DC', fg: '#8A5100' },
-  { bg: '#ECE8FF', fg: '#4A36C7' },
-  { bg: '#E3F4EA', fg: '#0B6B3C' },
-  { bg: '#EFEBE7', fg: '#5C554F' },
+  { bg: '#E4E4FB', fg: '#3D3DAE' },
+  { bg: '#DDF4F7', fg: '#08707E' },
+  { bg: '#FBE3EC', fg: '#A3285A' },
+  { bg: '#FFF1D6', fg: '#8A5100' },
+  { bg: '#E3F6EC', fg: '#0B6B3C' },
+  { bg: '#ECEDF3', fg: '#4A5160' },
 ] as const;
 
 export function initials(name: string): string {

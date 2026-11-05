@@ -30,11 +30,11 @@ export function AuthShell({ title, children }: { title: string; children: ReactN
       >
         <div
           aria-hidden
-          className="pointer-events-none absolute -top-32 -right-24 size-[28rem] rounded-full bg-ember/25 blur-3xl"
+          className="pointer-events-none absolute -top-32 -right-24 size-[28rem] rounded-full bg-midnight-2/70 blur-3xl"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute -bottom-32 -left-24 size-80 rounded-full bg-cyan/10 blur-3xl"
+          className="pointer-events-none absolute -bottom-32 -left-24 size-80 rounded-full bg-midnight-2/60 blur-3xl"
         />
         <RepsyLogo size="lg" tone="light" className="relative" />
         <div className="relative max-w-md">
@@ -44,7 +44,7 @@ export function AuthShell({ title, children }: { title: string; children: ReactN
           <ul className="mt-8 flex flex-col gap-4">
             {POINTS.map((p) => (
               <li key={p.text} className="flex items-center gap-3">
-                <span className="flex size-9 items-center justify-center rounded-md bg-midnight-2 text-ember">
+                <span className="flex size-9 items-center justify-center rounded-md bg-midnight-2 text-acid">
                   <p.icon aria-hidden className="size-5" />
                 </span>
                 {p.text}
@@ -53,7 +53,7 @@ export function AuthShell({ title, children }: { title: string; children: ReactN
           </ul>
           <div
             aria-hidden
-            className="mt-10 flex items-center gap-4 rounded-xl bg-midnight-2 p-4 ring-1 ring-white/10"
+            className="mt-10 flex items-center gap-4 rounded-xl bg-midnight-2 p-4 ring-1 ring-on-midnight/10"
           >
             <ProgressRing value={86} size={64} stroke={7} onDark />
             <div className="text-sm">

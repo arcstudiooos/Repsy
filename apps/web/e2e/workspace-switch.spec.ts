@@ -68,6 +68,8 @@ test.describe('dual-role workspace switching', () => {
 
     // Signing out forgets the active org.
     expect((await page.context().cookies()).some((c) => c.name === 'kinetic_org')).toBe(true);
+    // Sign out lives in the account menu behind the user card (D-018).
+    await page.getByRole('button', { name: /^Account menu for/ }).click();
     await page.getByRole('button', { name: 'Sign out' }).click();
     await expect(page).toHaveURL(/\/login/);
     expect((await page.context().cookies()).some((c) => c.name === 'kinetic_org')).toBe(false);

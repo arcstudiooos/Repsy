@@ -345,8 +345,9 @@ export function renderTemplate(
 ): RenderedBody {
   const template = TEMPLATES[templateKey];
   const body = template ? template(payload, appBaseUrl) : fromPayload(templateKey, payload);
+  const logoUrl = `${appBaseUrl.replace(/\/+$/, '')}/brand/repsy-logo-on-dark.png`;
   return {
     ...body,
-    html: brandEmail({ subject: body.subject, bodyHtml: body.html, text: body.text }),
+    html: brandEmail({ subject: body.subject, bodyHtml: body.html, text: body.text, logoUrl }),
   };
 }

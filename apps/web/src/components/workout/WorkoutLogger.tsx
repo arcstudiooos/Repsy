@@ -774,7 +774,7 @@ export function WorkoutLogger({
         {summary && (
           <Card variant="hero" className="mb-4">
             <h3 className="text-h3 font-semibold">
-              <span className="label-micro mb-1 block text-cyan">Workout summary</span>
+              <span className="label-micro mb-1 block text-acid">Workout summary</span>
               Nice work.
             </h3>
             <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">

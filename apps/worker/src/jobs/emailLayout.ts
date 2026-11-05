@@ -1,5 +1,5 @@
 /**
- * The branded shell every Repsy email is sent in (Midnight & Ember, D-014): a dark header with the wordmark, a white
+ * The branded shell every Repsy email is sent in (palette 19 "Periwinkle & Acid", D-018): a dark header with the wordmark, a white
  * card, a bulletproof button for the main link, and a quiet footer. Table layout and inline styles only, because
  * email clients (Gmail, Outlook) drop <style> blocks and modern CSS. Colors are the light-theme tokens.
  *
@@ -7,15 +7,14 @@
  * `brandEmail` styles it. Nothing here adds content, so D-007 (no client data in email) is unchanged.
  */
 const C = {
-  canvas: '#f7f5f2',
+  canvas: '#f5f5ff',
   surface: '#ffffff',
-  ink: '#14110f',
-  secondary: '#625b55',
-  divider: '#e9e4de',
-  accent: '#c7431c', // accent-fill: white text on it passes WCAG AA
-  ember: '#e8552d',
-  midnight: '#101418',
-  midnightMuted: '#a8b0ba',
+  ink: '#12131f',
+  secondary: '#4a5160',
+  divider: '#e2e2f2',
+  accent: '#5b5bd6', // brand: white text on it passes WCAG AA
+  highlight: '#e8ff47', // acid: a thin bar only, never text
+  midnight: '#12131f', // header behind the white-wordmark logo
 };
 const FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 
@@ -58,6 +57,8 @@ export function brandEmail(input: {
   bodyHtml: string;
   /** Plain text; its first line becomes the inbox preview. */
   text: string;
+  /** Absolute URL of the header logo (served by the web app at /brand/repsy-logo-on-dark.png). */
+  logoUrl: string;
 }): string {
   const preheader = input.text.split('\n').find((l) => l.trim()) ?? '';
   const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -73,9 +74,11 @@ export function brandEmail(input: {
     '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px">' +
     // Header: wordmark on midnight with an ember accent bar.
     `<tr><td bgcolor="${C.midnight}" style="border-radius:16px 16px 0 0;padding:24px 32px">` +
-    `<span style="font-family:${FONT};font-size:22px;font-weight:700;letter-spacing:-0.3px;color:#ffffff">` +
-    `Repsy<span style="color:${C.ember}">.</span></span></td></tr>` +
-    `<tr><td bgcolor="${C.ember}" style="height:4px;line-height:4px;font-size:0">&nbsp;</td></tr>` +
+    // The founder's logo (white wordmark, for dark backgrounds). Clients that block images show the alt text.
+    `<img src="${esc(input.logoUrl)}" width="150" height="48" alt="Repsy" style="display:block;border:0;` +
+    `outline:none;height:48px;width:150px;font-family:${FONT};font-size:22px;font-weight:700;color:#ffffff">` +
+    '</td></tr>' +
+    `<tr><td bgcolor="${C.highlight}" style="height:4px;line-height:4px;font-size:0">&nbsp;</td></tr>` +
     // Card
     `<tr><td bgcolor="${C.surface}" style="padding:32px;font-family:${FONT};border-left:1px solid ${C.divider};` +
     `border-right:1px solid ${C.divider}">` +

@@ -25,9 +25,10 @@ export function ProgressRing({
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const pct = value === null ? 0 : Math.max(0, Math.min(100, value));
-  const color = { ember: 'var(--k-ember)', cyan: 'var(--k-cyan)', success: 'var(--k-success)' }[
-    tone
-  ];
+  // On a brand hero surface the ring is acid (the highlight); elsewhere the tone's colour.
+  const color = onDark
+    ? 'var(--k-acid)'
+    : { ember: 'var(--k-brand)', cyan: 'var(--k-cyan)', success: 'var(--k-success)' }[tone];
   return (
     <div
       aria-hidden
@@ -40,7 +41,11 @@ export function ProgressRing({
           cy={size / 2}
           r={r}
           fill="none"
-          stroke={onDark ? 'rgba(255,255,255,0.14)' : 'var(--k-accent-soft)'}
+          stroke={
+            onDark
+              ? 'color-mix(in srgb, var(--k-on-midnight) 18%, transparent)'
+              : 'var(--k-brand-soft)'
+          }
           strokeWidth={stroke}
         />
         {pct > 0 && (
@@ -69,7 +74,7 @@ export function ProgressRing({
         </span>
         {label && (
           <span
-            className={cn('mt-1 text-micro', onDark ? 'text-on-midnight/80' : 'text-secondary')}
+            className={cn('mt-1 text-micro', onDark ? 'text-on-midnight-muted' : 'text-secondary')}
           >
             {label}
           </span>

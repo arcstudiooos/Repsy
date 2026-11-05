@@ -100,13 +100,14 @@ describe('reminder emails (PRD H13, F9)', () => {
     expect(r.subject).toBe('Verify your Repsy email');
     expect(r.text).toContain(url);
     expect(r.html).toContain('<!doctype html>');
-    expect(r.html).toContain('Repsy<span');
+    expect(r.html).toContain('<img src="https://app.repsy.fit/brand/repsy-logo-on-dark.png"');
+    expect(r.html).toContain('alt="Repsy"');
     expect(r.html).toContain('Verify my email</a></td></tr></table>');
     expect(r.html).toContain('token=abc&#38;callbackURL');
     expect(r.html).toContain('Hi Sam &#60;Coach&#62;,');
     expect(r.html).not.toContain('<Coach>');
     // Only the first lone link becomes a button; the fallback link is shown under it.
-    expect(r.html.match(/bgcolor="#c7431c"/g)).toHaveLength(1);
+    expect(r.html.match(/bgcolor="#5b5bd6"/g)).toHaveLength(1);
   });
 
   it('keep old auth outbox rows (no url) readable', () => {
