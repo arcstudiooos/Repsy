@@ -30,11 +30,11 @@ export function AuthShell({ title, children }: { title: string; children: ReactN
       >
         <div
           aria-hidden
-          className="pointer-events-none absolute -top-32 -right-24 size-[28rem] rounded-full bg-acid/20 blur-3xl"
+          className="pointer-events-none absolute -top-32 -right-24 size-[28rem] rounded-full bg-midnight-2/70 blur-3xl"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute -bottom-32 -left-24 size-80 rounded-full bg-on-midnight/10 blur-3xl"
+          className="pointer-events-none absolute -bottom-32 -left-24 size-80 rounded-full bg-midnight-2/60 blur-3xl"
         />
         <RepsyLogo size="lg" tone="light" className="relative" />
         <div className="relative max-w-md">
