@@ -107,7 +107,7 @@ describe('reminder emails (PRD H13, F9)', () => {
     expect(r.html).toContain('Hi Sam &#60;Coach&#62;,');
     expect(r.html).not.toContain('<Coach>');
     // Only the first lone link becomes a button; the fallback link is shown under it.
-    expect(r.html.match(/bgcolor="#c7431c"/g)).toHaveLength(1);
+    expect(r.html.match(/bgcolor="#5b5bd6"/g)).toHaveLength(1);
   });
 
   it('keep old auth outbox rows (no url) readable', () => {

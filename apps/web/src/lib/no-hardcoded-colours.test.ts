@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
@@ -30,7 +30,7 @@ describe('no hard-coded colours', () => {
   it('components and pages use tokens, not #hex or white/black utilities', () => {
     const offenders: string[] = [];
     for (const path of [...files(join(root, 'components')), ...files(join(root, 'app'))]) {
-      const rel = relative(root, path);
+      const rel = relative(root, path).split(sep).join('/'); // ALLOWED uses '/' on Windows too
       if (ALLOWED.has(rel)) continue;
       const src = readFileSync(path, 'utf8');
       if (
