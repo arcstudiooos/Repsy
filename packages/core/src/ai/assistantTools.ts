@@ -121,7 +121,8 @@ export const ASSISTANT_TOOLS: AssistantToolDef[] = [
   },
   {
     name: 'list_bookings',
-    description: 'Booked sessions (calls, check-in calls, in-person) in a date range, with client and status.',
+    description:
+      'Booked sessions (calls, check-in calls, in-person) in a date range, with client and status.',
     input_schema: {
       type: 'object',
       properties: {
@@ -653,7 +654,10 @@ async function businessSummaryTool(tx: TenantTx, actor: ActorContext, input: Inp
   };
 }
 
-const HANDLERS: Record<string, (tx: TenantTx, actor: ActorContext, input: Input) => Promise<unknown>> = {
+const HANDLERS: Record<
+  string,
+  (tx: TenantTx, actor: ActorContext, input: Input) => Promise<unknown>
+> = {
   list_clients: listClientsTool,
   get_client: getClientTool,
   list_programs: listProgramsTool,

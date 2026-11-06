@@ -44,7 +44,9 @@ describe('assistant tools', () => {
   it('every tool schema is strict-ready: all properties required, no extras', () => {
     for (const t of ASSISTANT_TOOLS) {
       expect(t.input_schema.additionalProperties).toBe(false);
-      expect(Object.keys(t.input_schema.properties).sort()).toEqual([...t.input_schema.required].sort());
+      expect(Object.keys(t.input_schema.properties).sort()).toEqual(
+        [...t.input_schema.required].sort(),
+      );
     }
   });
 
@@ -103,7 +105,9 @@ describe('assistant settings and conversations', () => {
     expect(await runAs(prisma, a.coach, (tx) => getAiSetting(tx, a.coach))).toMatchObject({
       aiEnabled: false,
     });
-    await expect(runAs(prisma, a.coach, (tx) => assertAiEnabled(tx, a.coach))).rejects.toMatchObject({
+    await expect(
+      runAs(prisma, a.coach, (tx) => assertAiEnabled(tx, a.coach)),
+    ).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
     await expect(
@@ -114,7 +118,9 @@ describe('assistant settings and conversations', () => {
   });
 
   it('conversations are private to the user who started them', async () => {
-    const id = await runAs(prisma, a.coach, (tx) => createAiConversation(tx, a.coach, 'Who trained?'));
+    const id = await runAs(prisma, a.coach, (tx) =>
+      createAiConversation(tx, a.coach, 'Who trained?'),
+    );
     await runAs(prisma, a.coach, (tx) =>
       appendAiExchange(tx, a.coach, id, {
         question: 'Who trained?',

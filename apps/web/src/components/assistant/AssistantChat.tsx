@@ -94,7 +94,11 @@ export function AssistantChat({
     if (!activeId) {
       setActiveId(conversationId);
       setConversations((list) => [
-        { id: conversationId, title: q.length > 60 ? `${q.slice(0, 57)}...` : q, updatedAt: new Date().toISOString() },
+        {
+          id: conversationId,
+          title: q.length > 60 ? `${q.slice(0, 57)}...` : q,
+          updatedAt: new Date().toISOString(),
+        },
         ...list,
       ]);
       router.refresh();
@@ -155,7 +159,10 @@ export function AssistantChat({
           )}
           {messages.map((m) =>
             m.role === 'user' ? (
-              <div key={m.id} className="ml-auto max-w-[85%] rounded-card bg-brand-soft px-4 py-2 text-brand-ink">
+              <div
+                key={m.id}
+                className="ml-auto max-w-[85%] rounded-card bg-brand-soft px-4 py-2 text-brand-ink"
+              >
                 <p className="whitespace-pre-line">{m.body}</p>
               </div>
             ) : (

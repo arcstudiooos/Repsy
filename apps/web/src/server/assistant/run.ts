@@ -94,7 +94,10 @@ export async function runAssistantTurn(
         throw new DomainError('RATE_LIMITED', 'The assistant is busy. Try again in a minute.');
       }
       if (err instanceof Anthropic.APIError || err instanceof Anthropic.APIConnectionError) {
-        throw new DomainError('AI_UNAVAILABLE', 'The assistant could not answer right now. Try again.');
+        throw new DomainError(
+          'AI_UNAVAILABLE',
+          'The assistant could not answer right now. Try again.',
+        );
       }
       throw err;
     }

@@ -535,7 +535,10 @@ export async function createBooking(
     ),
   );
   if (calendarBusy) {
-    throw new DomainError('CONFLICT', "That time is busy in the coach's calendar. Pick another slot.");
+    throw new DomainError(
+      'CONFLICT',
+      "That time is busy in the coach's calendar. Pick another slot.",
+    );
   }
   let packId: string | null = null;
   let packConsumed = false;

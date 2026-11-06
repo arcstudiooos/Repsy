@@ -115,7 +115,7 @@ A coach signs up, sets up a branded workspace, and later adds coaches without re
 | A13 | Coach cover and holiday mode | Hand a coach's queue to another coach for a date range; clients see who is covering                          | R3      | Differentiator |
 | A14 | Owner audit log              | Content-free list of who did what and when (assignments, transfers, exports, support access)                 | R3      | Differentiator |
 | A15 | Locations                    | Group coaches and clients by location for studios with several sites                                         | R4      | Parity         |
-| A16 | Single sign-on               | Google Workspace and Microsoft SAML for larger studios                                                       | R4      | Parity         |
+| A16 | Single sign-on               | Google Workspace and Microsoft Entra ID (OIDC) for larger studios; SAML-only providers later                  | R4      | Parity         |
 
 **Key rules**
 
@@ -411,7 +411,7 @@ Coaches get paid and booked inside Kinetic, with a 0% platform fee in the first 
 | K7  | Failed payments             | Automatic retries, a client email, a "Needs review" item, and an optional grace period before access pauses                                                  | R3      | Parity         |
 | K8  | Client billing self-service | See plan, next charge and receipts; update the card; cancel in one click, with the end date shown at once                                                    | R3      | Pain point P4  |
 | K9  | Revenue dashboard           | MRR, active subscriptions, churn, refunds and average client value; CSV export                                                                               | R3      | Parity         |
-| K10 | Scheduling                  | Availability, bookable session types (call, check-in call, in-person), buffers, reminders, time-zone-safe; two-way Google and Outlook calendar sync          | R3      | Pain point P15 |
+| K10 | Scheduling                  | Availability, bookable session types (call, check-in call, in-person), buffers, reminders, time-zone-safe; Google Calendar sync (Outlook later)              | R3      | Pain point P15 |
 | K11 | Session packs               | In-person credit packs (for example 10 sessions) that bookings use up; balance shown to the client                                                           | R3      | Parity         |
 | K12 | Group classes               | Class schedule, capacity, waitlist and attendance                                                                                                            | R4      | Parity         |
 | K13 | Sell programs and courses   | Sell a template program or a lesson course (G4) to self-guided buyers, with no coach time included                                                           | On hold | Parity         |
