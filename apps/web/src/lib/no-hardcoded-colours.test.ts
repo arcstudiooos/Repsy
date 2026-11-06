@@ -6,7 +6,8 @@ import { describe, expect, it } from 'vitest';
 /**
  * D-018: components use tokens only. No raw hex colours or white/black utilities in components and pages; the
  * exceptions hold data, not styling (avatar tones and tag colours are palettes users pick from or that are tested
- * for contrast; branding settings show the coach's own colour; the dev UI page documents the palette).
+ * for contrast; branding settings show the coach's own colour; the dev UI page documents the palette; the share image is
+ * rendered by next/og, which cannot read CSS variables, so it repeats the token values).
  */
 const root = fileURLToPath(new URL('..', import.meta.url));
 const ALLOWED = new Set([
@@ -15,6 +16,7 @@ const ALLOWED = new Set([
   'components/settings/BrandingSection.tsx',
   'app/layout.tsx',
   'app/manifest.ts',
+  'app/opengraph-image.tsx',
   'app/app/dev/ui/page.tsx',
 ]);
 
