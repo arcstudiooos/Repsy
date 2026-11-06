@@ -19,6 +19,7 @@ import {
   UsersRound,
   Trophy,
   CalendarClock,
+  CalendarRange,
   CreditCard,
   Sparkles,
   LifeBuoy,
@@ -64,6 +65,7 @@ export const coachNavGroups: NavGroup[] = [
     label: 'Business',
     items: [
       { label: 'Scheduling', href: '/app/scheduling', icon: CalendarClock },
+      { label: 'Classes', href: '/app/classes', icon: CalendarRange },
       { label: 'Payments', href: '/app/billing', icon: CreditCard },
       { label: 'Leads', href: '/app/leads', icon: Inbox },
       { label: 'AI assistant', href: '/app/assistant', icon: Sparkles },

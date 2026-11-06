@@ -73,6 +73,7 @@ model User {
   ownedOrganizations       Organization[]
   aiConversations          AiConversation[]
   calendarConnections      CalendarConnection[]
+  coachedClasses           GroupClass[]
   createdJoinLinks         JoinLink[]              @relation("JoinLinkCreator")
   platformNotices          PlatformNotice[]        @relation("PlatformNoticeCreator")
   uploadedMedia            MediaFile[]             @relation("MediaUploader")
@@ -292,6 +293,9 @@ model Organization {
   aiSettings         AiSetting[]
   aiConversations    AiConversation[]
   calendarConnections CalendarConnection[]
+  locations          Location[]
+  groupClasses       GroupClass[]
+  classEnrollments   ClassEnrollment[]
   aiMessages         AiMessage[]
   billingPackages    BillingPackage[]
   coupons            Coupon[]
@@ -353,6 +357,9 @@ model Membership {
   /// When this coach last marked the review list as seen (Sprint 2 "new completed workouts"). Null = never.
   reviewSeenAt   DateTime?        @map("review_seen_at") @db.Timestamptz(3)
   createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  /// PRD A15: the site a staff member works at (null = all sites).
+  locationId     String?          @map("location_id") @db.Uuid
+  location       Location?        @relation(fields: [locationId, organizationId], references: [id, organizationId])
 
   user         User         @relation(fields: [userId], references: [id])
   organization Organization @relation(fields: [organizationId], references: [id])
@@ -443,6 +450,10 @@ model Client {
   equipmentNotes String?      @map("equipment_notes")
   /// PRD B13: where the client trains (home, commercial_gym, outdoors, other) and the kit they have (EQUIPMENT labels).
   trainingLocation  String?   @map("training_location")
+  /// PRD A15: the site this client trains at.
+  locationId        String?   @map("location_id") @db.Uuid
+  location          Location? @relation(fields: [locationId, organizationId], references: [id, organizationId])
+  classEnrollments  ClassEnrollment[]
   equipment         String[]  @default([])
   preferences    String?
   /// IANA zone; defaults to the organization timezone at creation.
@@ -512,6 +523,7 @@ model Client {
   @@unique([organizationId, email])
   @@unique([organizationId, userId])
   /// Target of the composite (child_fk, organization_id) FKs that keep parent and child in one tenant (D-008).
+  @@index([organizationId, locationId])
   @@unique([id, organizationId])
   @@index([organizationId, status])
   @@index([organizationId, createdAt, id])
@@ -2905,4 +2917,69 @@ model SubscriptionLapse {
   @@unique([id, organizationId])
   @@index([organizationId, lapsedAt])
   @@map("subscription_lapses")
+}
+
+/// PRD A15: a site of a multi-location studio.
+model Location {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  name           String
+  address        String?
+  archivedAt     DateTime? @map("archived_at") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  clients      Client[]
+  memberships  Membership[]
+  classes      GroupClass[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId])
+  @@map("locations")
+}
+
+/// PRD K12: one class session. Classes created together share `seriesId` (weekly repeats).
+model GroupClass {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  seriesId       String    @map("series_id") @db.Uuid
+  title          String
+  description    String?
+  locationId     String?   @map("location_id") @db.Uuid
+  coachUserId    String?   @map("coach_user_id") @db.Uuid
+  startsAt       DateTime  @map("starts_at") @db.Timestamptz(3)
+  endsAt         DateTime  @map("ends_at") @db.Timestamptz(3)
+  capacity       Int
+  cancelledAt    DateTime? @map("cancelled_at") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization      @relation(fields: [organizationId], references: [id])
+  location     Location?         @relation(fields: [locationId, organizationId], references: [id, organizationId])
+  coach        User?             @relation(fields: [coachUserId], references: [id], onDelete: Restrict)
+  enrollments  ClassEnrollment[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, startsAt])
+  @@index([seriesId])
+  @@map("group_classes")
+}
+
+/// PRD K12: a client's place in a class: 'booked', 'waitlisted' or 'cancelled'; `attended` once marked.
+model ClassEnrollment {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  classId        String   @map("class_id") @db.Uuid
+  clientId       String   @map("client_id") @db.Uuid
+  status         String
+  attended       Boolean?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  groupClass   GroupClass   @relation(fields: [classId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
+
+  @@unique([classId, clientId])
+  @@index([organizationId, clientId])
+  @@map("class_enrollments")
 }

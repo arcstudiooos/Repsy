@@ -48,6 +48,10 @@ export type Action =
   | 'scheduling:manage'
   | 'scheduling:book'
   | 'assistant:use'
+  | 'location:manage'
+  | 'class:read'
+  | 'class:manage'
+  | 'class:book'
   | 'lapse:read'
   | 'lapse:record';
 
@@ -99,6 +103,12 @@ const POLICY: Record<Action, readonly Role[]> = {
   'scheduling:book': [...STAFF, 'client'],
   /** PRD I15: the read-only AI assistant. Each tool also checks its own screen's policy. */
   'assistant:use': [...STAFF],
+  /** PRD A15: sites of a multi-location studio. */
+  'location:manage': [...MANAGER],
+  /** PRD K12: group classes. */
+  'class:read': [...STAFF, 'client'],
+  'class:manage': [...TRAINER],
+  'class:book': [...STAFF, 'client'],
   'lapse:read': [...STAFF, 'client'],
   'lapse:record': [...MANAGER],
 };

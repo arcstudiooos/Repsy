@@ -1097,3 +1097,26 @@ export {
   uploadToStream,
   type StreamConfig,
 } from './media/stream';
+export {
+  listLocations,
+  listStaffLocations,
+  saveLocation,
+  setClientLocation,
+  setLocationArchived,
+  setStaffLocation,
+  type LocationStaffView,
+  type LocationView,
+} from './locations/locations';
+export {
+  cancelClass,
+  cancelEnrollment,
+  classRoster,
+  createClassSeries,
+  enrollInClass,
+  listClasses,
+  markAttendance,
+  MAX_CLASS_REPEATS,
+  setClassCapacity,
+  type ClassView,
+  type RosterEntry,
+} from './classes/classes';

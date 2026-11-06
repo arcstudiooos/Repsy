@@ -81,6 +81,7 @@ test.describe('app shells', () => {
                 'Check-ins',
                 'Analytics',
                 'Scheduling',
+                'Classes',
                 'Payments',
                 'Leads',
                 'AI assistant',

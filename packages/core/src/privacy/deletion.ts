@@ -215,6 +215,8 @@ export async function eraseClientData(
   await tx.challengeParticipant.deleteMany({ where: inClient });
   // R3 remaining: client-scoped rows. Bookings go before packs (bookings reference packs).
   await tx.booking.deleteMany({ where: inClient });
+  // PRD K12: their class places and attendance.
+  await tx.classEnrollment.deleteMany({ where: inClient });
   await tx.packageJourneyRun.deleteMany({ where: inClient });
   await tx.sessionPack.deleteMany({ where: inClient });
   // Financial records (subscriptions, payments, receipts) and org-level rows
