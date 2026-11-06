@@ -22,6 +22,8 @@ export const ERROR_STATUS = {
   INVITE_USED: 410,
   INVITE_REVOKED: 410,
   RATE_LIMITED: 429,
+  /** PRD I15: the AI provider is not configured, or failed. */
+  AI_UNAVAILABLE: 503,
   INTERNAL: 500,
 } as const;
 

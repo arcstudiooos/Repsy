@@ -1,9 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import {
-  generateVerificationToken,
-  isValidHostname,
-  resolveWorkspaceByHost,
-} from '../domains/domains';
 import { packBalance, packStatusOf } from './packs';
 import { generateSlots, spansOverlap, validateCallLink } from './scheduling';
 import { cleanJourneySteps, renewalReminderDate } from './journeys';
@@ -138,32 +133,6 @@ describe('pack balance (K11)', () => {
     expect(packStatusOf({ totalSessions: 10, usedSessions: 0, expiresAt: null }, now)).toBe(
       'active',
     );
-  });
-});
-
-describe('custom domains (L4, pure helpers)', () => {
-  it('issues tokens in the kinetic-verify-<32 hex> format', () => {
-    expect(generateVerificationToken()).toMatch(/^kinetic-verify-[0-9a-f]{32}$/);
-  });
-
-  it('accepts real hostnames and rejects schemes, paths, and bare names', () => {
-    expect(isValidHostname('coach.example.com')).toBe(true);
-    expect(isValidHostname('https://coach.example.com')).toBe(false);
-    expect(isValidHostname('coach.example.com/path')).toBe(false);
-    expect(isValidHostname('localhost')).toBe(false);
-    expect(isValidHostname('bad_host.example.com')).toBe(false);
-  });
-
-  it('routes only exact verified hostnames, falling back (null) otherwise', () => {
-    const domains = [
-      { hostname: 'coach.example.com', organizationId: 'org-1', status: 'verified' as const },
-      { hostname: 'pending.example.com', organizationId: 'org-2', status: 'requested' as const },
-    ];
-    expect(resolveWorkspaceByHost('coach.example.com', domains)).toBe('org-1');
-    expect(resolveWorkspaceByHost('https://coach.example.com:3000/', domains)).toBe('org-1');
-    expect(resolveWorkspaceByHost('sub.coach.example.com', domains)).toBeNull();
-    expect(resolveWorkspaceByHost('pending.example.com', domains)).toBeNull();
-    expect(resolveWorkspaceByHost('other.example.com', domains)).toBeNull();
   });
 });
 

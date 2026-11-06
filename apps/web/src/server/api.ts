@@ -21,7 +21,6 @@ import { orgCookieSecret, serializeOrgCookie } from './orgCookie';
 import { defaultLimiter, InMemoryRateLimiter, type RateLimiter } from './rateLimit';
 import { clientIp } from './clientIp';
 import { getRequestId } from './requestId';
-import { featureEnabled, type FeatureName } from './features';
 import { analyticsHashSecret, clientHash, defaultAnalytics, eventFor } from './analytics';
 
 export interface ApiDeps {
@@ -94,8 +93,6 @@ export interface RouteDef<S extends z.ZodType | undefined, R extends boolean> {
    * database access (memberships, system scope) or input validation. Requires `requireOrg: false`.
    */
   requirePlatformAdmin?: boolean;
-  /** Feature switch (server/features.ts). While it is off the route answers 404 NOT_FOUND before anything else. */
-  feature?: FeatureName;
   /**
    * Per-route token bucket (per user, or per IP when anonymous). Replaces the
    * global bucket for this route; omit to use the global per-user default.
@@ -194,9 +191,6 @@ export function createApiHandler(deps: ApiDeps = {}) {
     const routeLimiter = def.rateLimit ? new InMemoryRateLimiter(def.rateLimit) : undefined;
     return async (request, context) => {
       const requestId = getRequestId(request);
-      if (def.feature && !featureEnabled(def.feature, deps.env)) {
-        return fail('NOT_FOUND', 'Not found.', requestId);
-      }
       try {
         if (!SAFE_METHODS.has(request.method)) {
           // CSRF: browsers always send Origin on cross-site mutations.

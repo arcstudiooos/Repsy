@@ -215,11 +215,15 @@ export async function eraseClientData(
   await tx.challengeParticipant.deleteMany({ where: inClient });
   // R3 remaining: client-scoped rows. Bookings go before packs (bookings reference packs).
   await tx.booking.deleteMany({ where: inClient });
+  // PRD K12: their class places and attendance.
+  await tx.classEnrollment.deleteMany({ where: inClient });
+  // PRD I15 actions: proposals name the client and carry their plan details.
+  await tx.aiAction.deleteMany({ where: inClient });
   await tx.packageJourneyRun.deleteMany({ where: inClient });
   await tx.sessionPack.deleteMany({ where: inClient });
   // Financial records (subscriptions, payments, receipts) and org-level rows
-  // (ai_settings, ai_drafts, billing_packages, coupons, session_types,
-  // custom_domains, subscription_lapses) are NOT deleted here: financial
+  // (ai_settings, billing_packages, coupons, session_types,
+  // subscription_lapses) are NOT deleted here: financial
   // retention is a separate legal decision, and org-level rows are not
   // client data. See the PR body for that follow-up.
   await tx.mediaFile.updateMany({

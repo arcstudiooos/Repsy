@@ -115,7 +115,7 @@ A coach signs up, sets up a branded workspace, and later adds coaches without re
 | A13 | Coach cover and holiday mode | Hand a coach's queue to another coach for a date range; clients see who is covering                          | R3      | Differentiator |
 | A14 | Owner audit log              | Content-free list of who did what and when (assignments, transfers, exports, support access)                 | R3      | Differentiator |
 | A15 | Locations                    | Group coaches and clients by location for studios with several sites                                         | R4      | Parity         |
-| A16 | Single sign-on               | Google Workspace and Microsoft SAML for larger studios                                                       | R4      | Parity         |
+| A16 | Single sign-on               | Google Workspace and Microsoft Entra ID (OIDC) for larger studios; SAML-only providers later                  | R4      | Parity         |
 
 **Key rules**
 
@@ -220,7 +220,6 @@ The client logs a set in under 3 seconds, with or without signal, and never lose
 | D16 | Edit window                | Clients can fix a log for 24 hours; coaches correct it any time with a reason                                                                                      | Shipped | Differentiator     |
 | D17 | Readiness check            | Optional 5 questions before Start (sleep, energy, soreness, stress, mood, 1–5 each); a 0–100 score goes to the coach                                               | R2      | Differentiator     |
 | D18 | Plate and unit helper      | Plate breakdown for the bar weight; kg and lb conversion                                                                                                           | R3      | Parity             |
-| D19 | Watch companion            | Apple Watch and Wear OS: current set, rest timer, tap to log                                                                                                       | R4      | Parity             |
 | D20 | Crash recovery             | Every keystroke persists locally; after a crash or force-quit the workout reopens exactly where it was; a weekly integrity check compares device and server copies | R2      | Pain point P1      |
 | D21 | Big-gym ergonomics         | 44 px targets, numeric keypads, "same as last set" button, one-handed layout, high-contrast mode                                                                   | R2      | Differentiator     |
 
@@ -250,8 +249,6 @@ The client and the coach see change over time in one place: body metrics, photos
 | E9  | Goal tracking                 | Progress toward B18 goals, with an on-track or behind label                                                                                                      | R2    | Parity         |
 | E10 | Progress report               | Monthly branded PDF for the client: adherence, metrics, PRs, photos (opt-in), coach summary                                                                      | R3    | Differentiator |
 | E11 | Client progress page          | Everything above, from the client's side                                                                                                                         | R2    | Parity         |
-| E12 | Device data                   | Steps, sleep, resting heart rate and imported workouts from wearables (L5, L6), labelled "From device"                                                           | R4    | Parity         |
-| E13 | Smart scales                  | Weight and body fat from a smart scale (via L6)                                                                                                                  | R4    | Parity         |
 
 **Key rules**
 
@@ -307,8 +304,6 @@ Module G covers the 23 hours a day outside the gym. Habits and macro targets shi
 | G7  | Daily nutrition log           | The client logs daily totals in seconds; adherence uses a ±10% band per target, which the coach can change                                                | R2    | Parity                             |
 | G8  | Meal plans                    | Structured days × meals with macros, or an uploaded PDF; swap options per meal; a shopping list                                                           | R3    | Parity                             |
 | G9  | Recipe library                | Ingredients, steps, macros per serving, photo; shared to meal plans                                                                                       | R3    | Parity                             |
-| G10 | Food search and barcode       | A licensed food database (evaluate USDA FoodData Central and Open Food Facts first); barcode scanning in the native app                                   | R4    | Parity                             |
-| G11 | Nutrition app import          | Import daily totals through Apple Health and Health Connect (L5) instead of fragile direct MyFitnessPal links; show "Last synced" (L10)                   | R4    | Pain point P2                      |
 | G12 | Supplements and water         | Expressed as habits with targets; no dosing advice                                                                                                        | R2    | Parity                             |
 | G13 | Nutrition in the review queue | Opt-in rule: adherence under 50% for 2 weeks raises "Needs review"                                                                                        | R3    | Differentiator                     |
 
@@ -337,7 +332,6 @@ Coach and client stay in touch in one place, and the client always knows when to
 | H9  | Challenges and leaderboards | Time-boxed habit, workout-count or volume challenges; opt-in leaderboard with display names only; body metrics never ranked by default                                                     | R3      | Parity              |
 | H10 | Email notifications         | Transactional emails plus opt-in new-message emails, with no message content                                                                                                               | Shipped | Parity              |
 | H11 | Web push                    | Push through the PWA (L1) for messages, reminders and replies, with no content in payloads                                                                                                 | R2      | Parity              |
-| H12 | Native push                 | The same events through the native apps (L2)                                                                                                                                               | R4      | Parity              |
 | H13 | Reminders                   | Workout day (default 07:00 local), check-in due (18:00), habit nudge (optional); quiet hours 21:00–07:00; at most 3 per day; nothing while paused                                          | R2      | Parity              |
 | H14 | Coach digest                | Daily or real-time choice: new check-ins, messages, "Needs review" items                                                                                                                   | R2      | Parity              |
 | H15 | Video calls                 | R3: a call-link field (Zoom, Meet) on bookings. R4: built-in 1:1 video                                                                                                                     | R3      | Parity              |
@@ -356,22 +350,18 @@ Coach and client stay in touch in one place, and the client always knows when to
 
 The coach opens Kinetic and sees exactly who needs them today and why. R1's rules-based review queue is already ahead of competitors. Module I widens what it notices and adds AI, under strict limits, as a drafting aid.
 
-| ID  | Feature                  | What it does                                                                                                                                                                                                                                                                             | Phase   | Origin         |
-| --- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------------- |
-| I1  | Review queue             | Missed workouts, overdue or new check-ins, unread messages, coach follow-ups                                                                                                                                                                                                             | Shipped | Differentiator |
-| I2  | Snooze, resolve, dismiss | 1 day, 3 days, 1 week or a date; resolve and dismiss need a reason                                                                                                                                                                                                                       | Shipped | Differentiator |
-| I3  | More review rules        | Low readiness twice in a row; habit completion under 50% for 2 weeks; no portal visit for 7 days; weight change beyond a coach-set band; reply target missed (H16); payment failed (K7); program ends within 7 days; each opt-in                                                         | R2      | Differentiator |
-| I4  | Engagement signal        | One score per client from logging, check-ins, messages and portal visits, trended weekly; shown as "Needs review" when it drops, never as "At risk"                                                                                                                                      | R3      | Pain point P13 |
-| I5  | Per-client compliance    | Rolling 7, 30 and 90-day adherence with numerator and denominator; sortable in the client list                                                                                                                                                                                           | R2      | Parity         |
-| I6  | Workspace analytics      | Adherence, response rate, due check-ins, time to follow-up                                                                                                                                                                                                                               | Shipped | Parity         |
-| I7  | Business analytics       | Retention cohorts, average client lifetime, revenue, churn reasons; charts with tables                                                                                                                                                                                                   | R3      | Parity         |
-| I8  | Today workload           | Check-ins due today, replies coming due, reviews open, with an estimated time for each                                                                                                                                                                                                   | R2      | Differentiator |
-| I9  | Weekly coach brief       | Monday email: wins (PRs, streaks), who slipped, what's due this week; no client free text                                                                                                                                                                                                | R3      | Differentiator |
-| I10 | AI: paste to program     | Turns pasted text or a spreadsheet into a structured draft matched to the coach's exercise library (extends C14)                                                                                                                                                                         | R3      | Parity, P14    |
-| I11 | AI: draft from template  | "Like my template X, 4 days, dumbbells only, 6 weeks" produces a draft in the builder                                                                                                                                                                                                    | R3      | Parity         |
-| I12 | AI: check-in highlights  | Summarizes what changed since the last check-in, with a link to every source answer                                                                                                                                                                                                      | R3      | Differentiator |
-| I13 | AI: reply draft          | A suggested reply in the coach's voice, inserted into the composer and never sent automatically                                                                                                                                                                                          | R4      | Parity         |
-| I14 | AI guardrails            | Applies to I10–I13: coach-only; output is always a draft the coach saves or sends; per-workspace opt-in, off by default; labelled "Drafted with AI"; no client names sent; no medical, injury or supplement advice; no training on customer data; provider behind a `packages/core` port | R3      | Pain point P14 |
+| ID  | Feature                  | What it does                                                                                                                                                                                                                                                                                                                           | Phase   | Origin         |
+| --- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------------- |
+| I1  | Review queue             | Missed workouts, overdue or new check-ins, unread messages, coach follow-ups                                                                                                                                                                                                                                                           | Shipped | Differentiator |
+| I2  | Snooze, resolve, dismiss | 1 day, 3 days, 1 week or a date; resolve and dismiss need a reason                                                                                                                                                                                                                                                                     | Shipped | Differentiator |
+| I3  | More review rules        | Low readiness twice in a row; habit completion under 50% for 2 weeks; no portal visit for 7 days; weight change beyond a coach-set band; reply target missed (H16); payment failed (K7); program ends within 7 days; each opt-in                                                                                                       | R2      | Differentiator |
+| I4  | Engagement signal        | One score per client from logging, check-ins, messages and portal visits, trended weekly; shown as "Needs review" when it drops, never as "At risk"                                                                                                                                                                                    | R3      | Pain point P13 |
+| I5  | Per-client compliance    | Rolling 7, 30 and 90-day adherence with numerator and denominator; sortable in the client list                                                                                                                                                                                                                                         | R2      | Parity         |
+| I6  | Workspace analytics      | Adherence, response rate, due check-ins, time to follow-up                                                                                                                                                                                                                                                                             | Shipped | Parity         |
+| I7  | Business analytics       | Retention cohorts, average client lifetime, revenue, churn reasons; charts with tables                                                                                                                                                                                                                                                 | R3      | Parity         |
+| I8  | Today workload           | Check-ins due today, replies coming due, reviews open, with an estimated time for each                                                                                                                                                                                                                                                 | R2      | Differentiator |
+| I9  | Weekly coach brief       | Monday email: wins (PRs, streaks), who slipped, what's due this week; no client free text                                                                                                                                                                                                                                              | R3      | Differentiator |
+| I15 | AI assistant             | A dedicated chat screen where the coach asks about clients, programs, check-ins, bookings and the business; the assistant reads the coach's own workspace through read-only tools (respecting roles and row-level security) and answers with links to the source; per-workspace opt-in, off by default; never sends anything. A second opt-in (off by default) lets it propose changes (assign a program, nutrition targets, a weekly meal plan that hits daily macros) that happen only when the coach confirms (D-020) | R3      | Differentiator |
 
 **Key rules**
 
@@ -396,7 +386,6 @@ Automation is included on every plan, not sold as a $29–50 add-on (P3). A coac
 | J7  | Approval mode                | Any step can be set to "Ask me first": it waits in the review queue for one-tap approval                                                                                                           | R3    | Differentiator |
 | J8  | Run history                  | Every executed step appears in the client's History; failed steps raise "Needs review"                                                                                                             | R3    | Differentiator |
 | J9  | Sequence templates           | A starter library: online onboarding, 12-week transformation, hybrid in-person, re-engagement                                                                                                      | R3    | Parity         |
-| J10 | Webhooks and Zapier          | Outgoing events and incoming actions for coaches' other tools (L8, L9)                                                                                                                             | R4    | Parity         |
 
 **Key rules**
 
@@ -411,23 +400,23 @@ Automation is included on every plan, not sold as a $29–50 add-on (P3). A coac
 
 Coaches get paid and booked inside Kinetic, with a 0% platform fee in the first year and one-click cancellation for their clients (P4). Payments run on Stripe Connect worldwide and Razorpay in India (P16). Kinetic never holds funds.
 
-| ID  | Feature                     | What it does                                                                                                                                                 | Phase | Origin         |
-| --- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----- | -------------- |
-| K1  | Stripe Connect              | Coaches connect a Stripe Standard account; payouts and disputes stay in their Stripe                                                                         | R3    | Parity         |
-| K2  | Regional processors         | Razorpay (India: UPI, cards, subscriptions) behind the same payments port; others when demand appears                                                        | R3    | Pain point P16 |
-| K3  | Packages                    | One-off, recurring (weekly or monthly), payment plans (3 × $100), free trials; each can invite, tag, start a sequence (J4) and assign a template on purchase | R3    | Parity         |
-| K4  | Storefront and checkout     | Public `/join/<coach>` with packages, bio, testimonials and the lead form (B15); hosted checkout                                                             | R3    | Parity         |
-| K5  | Coupons                     | Percentage or fixed, with expiry and a usage cap                                                                                                             | R3    | Parity         |
-| K6  | Invoices, receipts and tax  | Branded receipts; tax through Stripe Tax and GST invoices for Razorpay                                                                                       | R3    | Parity         |
-| K7  | Failed payments             | Automatic retries, a client email, a "Needs review" item, and an optional grace period before access pauses                                                  | R3    | Parity         |
-| K8  | Client billing self-service | See plan, next charge and receipts; update the card; cancel in one click, with the end date shown at once                                                    | R3    | Pain point P4  |
-| K9  | Revenue dashboard           | MRR, active subscriptions, churn, refunds and average client value; CSV export                                                                               | R3    | Parity         |
-| K10 | Scheduling                  | Availability, bookable session types (call, check-in call, in-person), buffers, reminders, time-zone-safe; two-way Google and Outlook calendar sync          | R3    | Pain point P15 |
-| K11 | Session packs               | In-person credit packs (for example 10 sessions) that bookings use up; balance shown to the client                                                           | R3    | Parity         |
-| K12 | Group classes               | Class schedule, capacity, waitlist and attendance                                                                                                            | R4    | Parity         |
-| K13 | Sell programs and courses   | Sell a template program or a lesson course (G4) to self-guided buyers, with no coach time included                                                           | R4    | Parity         |
-| K14 | Referrals                   | Client referral links with a reward the coach chooses                                                                                                        | R4    | Parity         |
-| K15 | Manual payments             | Record cash or bank transfers against a package for coaches who don't use online payments                                                                    | R3    | Parity         |
+| ID  | Feature                     | What it does                                                                                                                                                 | Phase   | Origin         |
+| --- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- | -------------- |
+| K1  | Stripe Connect              | Coaches connect a Stripe Standard account; payouts and disputes stay in their Stripe                                                                         | R3      | Parity         |
+| K2  | Regional processors         | Razorpay (India: UPI, cards, subscriptions) behind the same payments port; others when demand appears                                                        | R3      | Pain point P16 |
+| K3  | Packages                    | One-off, recurring (weekly or monthly), payment plans (3 × $100), free trials; each can invite, tag, start a sequence (J4) and assign a template on purchase | R3      | Parity         |
+| K4  | Storefront and checkout     | Public `/join/<coach>` with packages, bio, testimonials and the lead form (B15); hosted checkout                                                             | R3      | Parity         |
+| K5  | Coupons                     | Percentage or fixed, with expiry and a usage cap                                                                                                             | R3      | Parity         |
+| K6  | Invoices, receipts and tax  | Branded receipts; tax through Stripe Tax and GST invoices for Razorpay                                                                                       | R3      | Parity         |
+| K7  | Failed payments             | Automatic retries, a client email, a "Needs review" item, and an optional grace period before access pauses                                                  | R3      | Parity         |
+| K8  | Client billing self-service | See plan, next charge and receipts; update the card; cancel in one click, with the end date shown at once                                                    | R3      | Pain point P4  |
+| K9  | Revenue dashboard           | MRR, active subscriptions, churn, refunds and average client value; CSV export                                                                               | R3      | Parity         |
+| K10 | Scheduling                  | Availability, bookable session types (call, check-in call, in-person), buffers, reminders, time-zone-safe; Google Calendar sync (Outlook later)              | R3      | Pain point P15 |
+| K11 | Session packs               | In-person credit packs (for example 10 sessions) that bookings use up; balance shown to the client                                                           | R3      | Parity         |
+| K12 | Group classes               | Class schedule, capacity, waitlist and attendance                                                                                                            | R4      | Parity         |
+| K13 | Sell programs and courses   | Sell a template program or a lesson course (G4) to self-guided buyers, with no coach time included                                                           | On hold | Parity         |
+| K14 | Referrals                   | Client referral links with a reward the coach chooses                                                                                                        | On hold | Parity         |
+| K15 | Manual payments             | Record cash or bank transfers against a package for coaches who don't use online payments                                                                    | R3      | Parity         |
 
 **Key rules**
 
@@ -442,19 +431,11 @@ Coaches get paid and booked inside Kinetic, with a 0% platform fee in the first 
 
 The client reaches Kinetic from any phone on day one through an installable web app. Native iOS and Android apps follow together in R4, never one without the other (P6). Every integration shows its sync health, so nothing fails quietly (P2).
 
-| ID  | Feature                         | What it does                                                                                                                                                        | Phase | Origin             |
-| --- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | ------------------ |
-| L1  | Installable PWA                 | The add-to-home-screen client portal with offline logging, web push and the coach's logo as the icon                                                                | R2    | Parity, P6         |
-| L2  | Native client apps              | iOS and Android at the same time, sharing the portal's code (Capacitor or Expo shell); unlocks HealthKit, Health Connect, barcode scanning and better push          | R4    | Parity, P6         |
-| L3  | Custom-branded store apps       | The coach's own name and icon in the App Store and Google Play; built and submitted by Kinetic                                                                      | R4    | Parity             |
-| L4  | Custom domain                   | `coach.example.com` for the portal and `join` pages, plus branded sending addresses for email                                                                       | R3    | Parity             |
-| L5  | Apple Health and Health Connect | Read steps, workouts, sleep, resting heart rate, weight and nutrition totals with per-type consent; optionally write completed workouts                             | R4    | Parity             |
-| L6  | Wearable and scale clouds       | Garmin, Fitbit, Oura, Whoop, Withings and Coros through server-side OAuth (partner approval needed)                                                                 | R4    | Parity             |
-| L7  | Calendar sync                   | Google and Outlook two-way sync for K10 bookings; an ICS feed of a client's workouts                                                                                | R3    | Parity             |
-| L8  | Public API and webhooks         | Versioned REST API (from the existing `docs/api/openapi.yaml`), API keys per workspace, signed webhooks                                                             | R4    | Parity             |
-| L9  | Zapier                          | Triggers and actions built on L8                                                                                                                                    | R4    | Parity             |
-| L10 | Integration health              | Each connection shows "Last synced 2 h ago," error state, a reconnect button and a per-day import log; a broken sync raises "Needs review" for the coach after 48 h | R4    | Differentiator, P2 |
-| L11 | Video library hosting           | Coach-uploaded demo and lesson videos transcoded for mobile with adaptive bitrate                                                                                   | R2    | Parity             |
+| ID  | Feature               | What it does                                                                                         | Phase | Origin     |
+| --- | --------------------- | ---------------------------------------------------------------------------------------------------- | ----- | ---------- |
+| L1  | Installable PWA       | The add-to-home-screen client portal with offline logging, web push and the coach's logo as the icon | R2    | Parity, P6 |
+| L7  | Calendar sync         | Google and Outlook two-way sync for K10 bookings; an ICS feed of a client's workouts                 | R3    | Parity     |
+| L11 | Video library hosting | Coach-uploaded demo and lesson videos transcoded for mobile with adaptive bitrate                    | R2    | Parity     |
 
 **Key rules**
 
@@ -492,6 +473,33 @@ Trust is a feature coaches can see. They can see that Kinetic is up, that their 
 - Export formats are documented in the repo and versioned. A breaking change ships a migration note.
 - Status-page data comes from external probes, not self-reporting.
 - Counsel reviews M6, M7 and M12 before general availability (MHMDA and GDPR).
+
+## Removed from scope (2026-11-06)
+
+The founder removed these items from the roadmap on 2026-11-06 (decision D-019). They are not built and are not planned. L4 and I10-I12/I14 were built and have been deleted from the code. K13 (sell programs and courses) and K14 (referrals) are on hold, not removed.
+
+| ID  | Item                            |
+| --- | ------------------------------- |
+| D19 | Watch companion                 |
+| E12 | Device data                     |
+| E13 | Smart scales                    |
+| G10 | Food search and barcode         |
+| G11 | Nutrition app import            |
+| H12 | Native push                     |
+| I10 | AI: paste to program            |
+| I11 | AI: draft from template         |
+| I12 | AI: check-in highlights         |
+| I13 | AI: reply draft                 |
+| I14 | AI guardrails                   |
+| J10 | Webhooks and Zapier             |
+| L2  | Native client apps              |
+| L3  | Custom-branded store apps       |
+| L4  | Custom domain                   |
+| L5  | Apple Health and Health Connect |
+| L6  | Wearable and scale clouds       |
+| L8  | Public API and webhooks         |
+| L9  | Zapier                          |
+| L10 | Integration health              |
 
 ## Non-functional requirements
 

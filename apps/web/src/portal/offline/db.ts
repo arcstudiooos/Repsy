@@ -12,6 +12,8 @@
 export const DB_NAME = 'kinetic-offline';
 // v2 (PR #2 review): adds `meta`. v1 data has no owner, so the upgrade drops it (v1 never shipped).
 // v3 (PRD D20): adds `drafts`, what is typed in a set row before it is saved.
+// PRD M11: an upgrade must never drop `outbox` or `rejected` (writes queued by an older build still have to reach
+// the server). Add stores or indexes; migrate rows in place.
 const DB_VERSION = 3;
 
 export type StoreName = 'workouts' | 'outbox' | 'rejected' | 'drafts';

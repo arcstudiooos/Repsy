@@ -726,6 +726,17 @@ export {
   type PushKind,
 } from './notifications/push';
 export { twoFactorStatus, type TwoFactorStatus } from './identity/twoFactor';
+export {
+  clearSsoSetting,
+  emailDomain,
+  getSsoSetting,
+  microsoftLinkAllowed,
+  microsoftTenantFromIdToken,
+  saveSsoSetting,
+  ssoRequiredFor,
+  type SsoProvider,
+  type SsoSettingView,
+} from './identity/sso';
 export { recordReadiness, readReadiness, type ReadinessView } from './sessions/readiness';
 export {
   READINESS_QUESTIONS,
@@ -917,47 +928,6 @@ export {
 export { CHURN_LABEL, CHURN_REASONS, type ChurnReason } from './clients/churn';
 
 // --- R3 remaining features (2026-11-03) ---
-export { AI_LABEL, FakeAiProvider, assertProviderSafe } from './ai/ai';
-export type {
-  AiDraftDay,
-  AiDraftExercise,
-  AiDraftKind,
-  AiDraftRequest,
-  AiDraftResponse,
-  AiDraftSet,
-  AiDraftWeek,
-  AiProvider,
-} from './ai/ai';
-export {
-  assertNoAdviceRequest,
-  checkinAnswerUrl,
-  cleanDraftSet,
-  createPasteDraft,
-  createTemplateDraft,
-  getAiSetting,
-  highlightsForCoach,
-  listAiDrafts,
-  matchToLibrary,
-  parseTemplateInstruction,
-  redactText,
-  savePasteAiDraft,
-  saveTemplateAiDraft,
-  setAiSetting,
-  summarizeCheckinChanges,
-} from './ai/drafting';
-export type {
-  AiDraftContent,
-  AiDraftView,
-  AiSettingView,
-  CheckinHighlight,
-  CheckinSnapshot,
-  LibraryExercise,
-  PasteDraftInput,
-  TemplateDayInput,
-  TemplateDraftInput,
-  TemplateInstruction,
-  UnmatchedExercise,
-} from './ai/drafting';
 export {
   FakePaymentsProvider,
   calculateTax,
@@ -1071,19 +1041,6 @@ export {
   type ExternalCalendarEvent,
 } from './scheduling/calendarSync';
 export {
-  cleanHostname,
-  generateVerificationToken,
-  isValidHostname,
-  listCustomDomains,
-  markDomainVerified,
-  requestCustomDomain,
-  resolveWorkspaceByHost,
-  setBrandedSender,
-  verificationTxtRecord,
-  type CustomDomainStatus,
-  type CustomDomainView,
-} from './domains/domains';
-export {
   assertLapseAllows,
   assertWritable,
   CLIENT_LAPSE_DAYS,
@@ -1097,3 +1054,104 @@ export {
   type LapseActorKind,
   type LapseView,
 } from './lapse/lapse';
+export {
+  assertAiEnabled,
+  getAiSetting,
+  setAiActionsEnabled,
+  setAiSetting,
+  type AiSettingView,
+} from './ai/settings';
+export {
+  ACTION_TOOLS,
+  ACTION_TOOL_NAMES,
+  AI_ACTION_TTL_MS,
+  MEAL_PLAN_TOLERANCE,
+  applyAiAction,
+  canUseAssistantActions,
+  cancelAiAction,
+  linkAiActions,
+  listAiActions,
+  markAiActionFailed,
+  mealPlanMisses,
+  runActionTool,
+  type ActionToolResult,
+  type AiActionKind,
+  type AiActionStatus,
+  type AiActionView,
+} from './ai/actions';
+export {
+  ASSISTANT_TOOLS,
+  ASSISTANT_TOOL_NAMES,
+  runAssistantTool,
+  type AssistantToolDef,
+  type AssistantToolResult,
+} from './ai/assistantTools';
+export {
+  AI_CONVERSATION_RETENTION_DAYS,
+  AI_MESSAGE_MAX_CHARS,
+  appendAiExchange,
+  cleanQuestion,
+  conversationTitle,
+  createAiConversation,
+  deleteAiConversation,
+  getAiConversation,
+  listAiConversations,
+  purgeOldAiConversations,
+  type AiConversationSummary,
+  type AiConversationView,
+  type AiMessageView,
+} from './ai/conversations';
+export {
+  coachBusyTimes,
+  coachConnectionForSessionType,
+  disconnectCalendar,
+  getCalendarConnection,
+  saveGoogleConnection,
+  signCalendarState,
+  syncPendingBookings,
+  verifyCalendarState,
+  type CalendarConnectionView,
+} from './calendar/connections';
+export {
+  exchangeGoogleCode,
+  googleConsentUrl,
+  googleOAuthConfig,
+  GoogleCalendarError,
+  GoogleCalendarSync,
+  revokeGoogleToken,
+  type GoogleOAuthConfig,
+} from './calendar/google';
+export { decryptToken, encryptToken } from './calendar/tokenCrypto';
+export {
+  deleteFromStream,
+  mediaPlayback,
+  processVideoStreams,
+  STREAM_PURPOSES,
+  streamConfig,
+  streamStatus,
+  uploadToStream,
+  type StreamConfig,
+} from './media/stream';
+export {
+  listLocations,
+  listStaffLocations,
+  saveLocation,
+  setClientLocation,
+  setLocationArchived,
+  setStaffLocation,
+  type LocationStaffView,
+  type LocationView,
+} from './locations/locations';
+export {
+  cancelClass,
+  cancelEnrollment,
+  classRoster,
+  createClassSeries,
+  enrollInClass,
+  listClasses,
+  markAttendance,
+  MAX_CLASS_REPEATS,
+  setClassCapacity,
+  type ClassView,
+  type RosterEntry,
+} from './classes/classes';

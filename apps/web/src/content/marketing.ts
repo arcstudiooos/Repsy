@@ -106,9 +106,8 @@ export const PROMISES: Promise[] = [
   },
   {
     n: '05',
-    title: 'AI that drafts, you decide.',
-    body: 'Off by default, labelled on every draft, never sent without you.',
-    soon: true,
+    title: 'An assistant that knows your roster.',
+    body: 'Ask about any client, program or week. Off by default, and it only reads.',
   },
   {
     n: '06',
@@ -349,7 +348,7 @@ export const FAQ = [
   },
   {
     q: 'Is there AI in Repsy?',
-    a: 'AI drafting is coming. When it ships it is off by default, every draft is labelled, and nothing is sent without your say.',
+    a: 'Yes: an AI assistant you can ask about your clients, programs, check-ins and business. It is off until a workspace owner turns it on, it can only read, and it never messages anyone for you.',
   },
   {
     q: 'Can I take payments from clients?',

@@ -163,6 +163,13 @@ export default async function PortalHome() {
       show: true,
     },
     {
+      label: 'Book a group class',
+      hint: 'Classes and waitlists',
+      href: '/portal/classes',
+      icon: UsersRound,
+      show: true,
+    },
+    {
       label: 'Resources from your coach',
       hint: 'Guides and videos',
       href: '/portal/resources',

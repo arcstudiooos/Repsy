@@ -71,6 +71,10 @@ model User {
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   ownedOrganizations       Organization[]
+  aiConversations          AiConversation[]
+  aiActions                AiAction[]
+  calendarConnections      CalendarConnection[]
+  coachedClasses           GroupClass[]
   createdJoinLinks         JoinLink[]              @relation("JoinLinkCreator")
   platformNotices          PlatformNotice[]        @relation("PlatformNoticeCreator")
   uploadedMedia            MediaFile[]             @relation("MediaUploader")
@@ -134,7 +138,6 @@ model User {
   groupMutes               GroupMute[]              @relation("GroupMuter")
   groupMutedBy             GroupMute[]              @relation("GroupMuted")
   outboxPushes             OutboxPush[]
-  aiDrafts             AiDraft[]
   coachedSessionTypes SessionType[]
   coachedBookings     Booking[]
 
@@ -289,7 +292,14 @@ model Organization {
   nutritionLogs           NutritionLog[]
   savedReplies            SavedReply[]
   aiSettings         AiSetting[]
-  aiDrafts           AiDraft[]
+  aiConversations    AiConversation[]
+  calendarConnections CalendarConnection[]
+  locations          Location[]
+  ssoSetting         SsoSetting?
+  groupClasses       GroupClass[]
+  classEnrollments   ClassEnrollment[]
+  aiMessages         AiMessage[]
+  aiActions          AiAction[]
   billingPackages    BillingPackage[]
   coupons            Coupon[]
   subscriptions      Subscription[]
@@ -299,7 +309,6 @@ model Organization {
   bookings           Booking[]
   sessionPacks       SessionPack[]
   packageJourneyRuns PackageJourneyRun[]
-  customDomains      CustomDomain[]
   subscriptionLapses SubscriptionLapse[]
 
   @@map("organizations")
@@ -351,6 +360,9 @@ model Membership {
   /// When this coach last marked the review list as seen (Sprint 2 "new completed workouts"). Null = never.
   reviewSeenAt   DateTime?        @map("review_seen_at") @db.Timestamptz(3)
   createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  /// PRD A15: the site a staff member works at (null = all sites).
+  locationId     String?          @map("location_id") @db.Uuid
+  location       Location?        @relation(fields: [locationId, organizationId], references: [id, organizationId])
 
   user         User         @relation(fields: [userId], references: [id])
   organization Organization @relation(fields: [organizationId], references: [id])
@@ -441,6 +453,10 @@ model Client {
   equipmentNotes String?      @map("equipment_notes")
   /// PRD B13: where the client trains (home, commercial_gym, outdoors, other) and the kit they have (EQUIPMENT labels).
   trainingLocation  String?   @map("training_location")
+  /// PRD A15: the site this client trains at.
+  locationId        String?   @map("location_id") @db.Uuid
+  location          Location? @relation(fields: [locationId, organizationId], references: [id, organizationId])
+  classEnrollments  ClassEnrollment[]
   equipment         String[]  @default([])
   preferences    String?
   /// IANA zone; defaults to the organization timezone at creation.
@@ -510,6 +526,7 @@ model Client {
   @@unique([organizationId, email])
   @@unique([organizationId, userId])
   /// Target of the composite (child_fk, organization_id) FKs that keep parent and child in one tenant (D-008).
+  @@index([organizationId, locationId])
   @@unique([id, organizationId])
   @@index([organizationId, status])
   @@index([organizationId, createdAt, id])
@@ -1774,6 +1791,11 @@ model MediaFile {
   storageKey     String    @unique @map("storage_key")
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   erasedAt       DateTime? @map("erased_at") @db.Timestamptz(3)
+  /// PRD L11: the Cloudflare Stream video for an uploaded demo, and its adaptive HLS manifest.
+  streamUid      String?   @map("stream_uid")
+  /// null (not sent), 'processing', 'ready' or 'error'.
+  streamStatus   String?   @map("stream_status")
+  streamHlsUrl   String?   @map("stream_hls_url")
 
   organization   Organization    @relation(fields: [organizationId], references: [id])
   client         Client?         @relation(fields: [clientId, organizationId], references: [id, organizationId])
@@ -2546,10 +2568,12 @@ model ChallengeParticipant {
 model AiSetting {
   id             String   @id @default(uuid()) @db.Uuid
   organizationId String   @map("organization_id") @db.Uuid
-  /// Per-workspace opt-in for AI drafting. OFF by default (I14).
+  /// Per-workspace opt-in for the AI assistant. OFF by default.
   aiEnabled      Boolean  @default(false) @map("ai_enabled")
-  /// Only 'fake' is shipped: the fake/local provider. No provider keys exist.
-  provider       String   @default("fake")
+  /// The AI provider the assistant uses: 'anthropic'.
+  provider       String   @default("anthropic")
+  /// Lets the assistant propose changes the coach confirms. OFF by default.
+  actionsEnabled Boolean  @default(false) @map("actions_enabled")
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -2560,29 +2584,42 @@ model AiSetting {
   @@map("ai_settings")
 }
 
-model AiDraft {
-  id           String   @id @default(uuid()) @db.Uuid
-  organizationId String @map("organization_id") @db.Uuid
-  /// The coach who created the draft.
-  coachUserId  String   @map("coach_user_id") @db.Uuid
-  /// 'paste' (I10) or 'template' (I11).
-  kind         String
-  /// Redacted paste only (emails, phones, supplied client names stripped); null for template drafts.
-  sourceText   String?  @map("source_text")
-  /// `AiDraftContent`: label 'Drafted with AI', title, weeks, unmatched exercises.
-  draftJson    Json     @map("draft_json")
-  /// Always 'draft'. A draft is never auto-saved as a program or sent (I14).
-  status       String   @default("draft")
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+/// PRD I15: one AI assistant conversation, private to the staff user who started it.
+model AiConversation {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  title          String
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id])
-  coach        User         @relation(fields: [coachUserId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+  messages     AiMessage[]
+  actions      AiAction[]
 
   @@unique([id, organizationId])
+  @@index([organizationId, userId, updatedAt])
+  @@map("ai_conversations")
+}
+
+/// PRD I15: one turn. `toolsUsed` names the read-only tools the assistant called; tool output is not stored.
+model AiMessage {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  conversationId String   @map("conversation_id") @db.Uuid
+  /// 'user' or 'assistant'.
+  role           String
+  body           String
+  toolsUsed      String[] @default([]) @map("tools_used")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  conversation AiConversation @relation(fields: [conversationId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
   @@index([organizationId])
-  @@index([organizationId, coachUserId])
-  @@map("ai_drafts")
+  @@map("ai_messages")
 }
 
 model BillingPackage {
@@ -2789,6 +2826,10 @@ model Booking {
   packConsumed   Boolean  @default(false) @map("pack_consumed")
   cancelledAt    DateTime? @map("cancelled_at") @db.Timestamptz(3)
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  /// PRD K10: the Google Calendar event that mirrors this booking.
+  externalEventId  String?   @map("external_event_id")
+  calendarSyncedAt DateTime? @map("calendar_synced_at") @db.Timestamptz(3)
+  calendarError    String?   @map("calendar_error")
 
   organization Organization @relation(fields: [organizationId], references: [id])
   sessionType  SessionType  @relation(fields: [sessionTypeId, organizationId], references: [id, organizationId])
@@ -2800,6 +2841,30 @@ model Booking {
   @@index([organizationId, clientId])
   @@index([organizationId, coachUserId, startsAt])
   @@map("bookings")
+}
+
+/// PRD K10: a staff user's connected Google calendar. `refreshTokenEnc` is AES-256-GCM ciphertext.
+model CalendarConnection {
+  id              String    @id @default(uuid()) @db.Uuid
+  organizationId  String    @map("organization_id") @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  provider        String    @default("google")
+  accountEmail    String    @map("account_email")
+  refreshTokenEnc String    @map("refresh_token_enc")
+  calendarId      String    @default("primary") @map("calendar_id")
+  /// 'active' or 'error' (the token was revoked or Google keeps refusing).
+  status          String    @default("active")
+  lastSyncedAt    DateTime? @map("last_synced_at") @db.Timestamptz(3)
+  lastError       String?   @map("last_error")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, userId, provider])
+  @@map("calendar_connections")
 }
 
 model SessionPack {
@@ -2845,23 +2910,6 @@ model PackageJourneyRun {
   @@map("package_journey_runs")
 }
 
-model CustomDomain {
-  id               String    @id @default(uuid()) @db.Uuid
-  organizationId   String    @map("organization_id") @db.Uuid
-  hostname         String    @unique
-  status           String    @default("requested")
-  verificationToken String   @map("verification_token")
-  verifiedAt       DateTime? @map("verified_at") @db.Timestamptz(3)
-  brandedFromLocal String?   @map("branded_from_local")
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-
-  organization Organization @relation(fields: [organizationId], references: [id])
-
-  @@unique([id, organizationId])
-  @@index([organizationId])
-  @@map("custom_domains")
-}
-
 model SubscriptionLapse {
   id            String   @id @default(uuid()) @db.Uuid
   organizationId String  @map("organization_id") @db.Uuid
@@ -2875,4 +2923,115 @@ model SubscriptionLapse {
   @@unique([id, organizationId])
   @@index([organizationId, lapsedAt])
   @@map("subscription_lapses")
+}
+
+/// PRD A15: a site of a multi-location studio.
+model Location {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  name           String
+  address        String?
+  archivedAt     DateTime? @map("archived_at") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  clients      Client[]
+  memberships  Membership[]
+  classes      GroupClass[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId])
+  @@map("locations")
+}
+
+/// PRD K12: one class session. Classes created together share `seriesId` (weekly repeats).
+model GroupClass {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  seriesId       String    @map("series_id") @db.Uuid
+  title          String
+  description    String?
+  locationId     String?   @map("location_id") @db.Uuid
+  coachUserId    String?   @map("coach_user_id") @db.Uuid
+  startsAt       DateTime  @map("starts_at") @db.Timestamptz(3)
+  endsAt         DateTime  @map("ends_at") @db.Timestamptz(3)
+  capacity       Int
+  cancelledAt    DateTime? @map("cancelled_at") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization      @relation(fields: [organizationId], references: [id])
+  location     Location?         @relation(fields: [locationId, organizationId], references: [id, organizationId])
+  coach        User?             @relation(fields: [coachUserId], references: [id], onDelete: Restrict)
+  enrollments  ClassEnrollment[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, startsAt])
+  @@index([seriesId])
+  @@map("group_classes")
+}
+
+/// PRD K12: a client's place in a class: 'booked', 'waitlisted' or 'cancelled'; `attended` once marked.
+model ClassEnrollment {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  classId        String   @map("class_id") @db.Uuid
+  clientId       String   @map("client_id") @db.Uuid
+  status         String
+  attended       Boolean?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  groupClass   GroupClass   @relation(fields: [classId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])
+
+  @@unique([classId, clientId])
+  @@index([organizationId, clientId])
+  @@map("class_enrollments")
+}
+
+/// PRD A16: single sign-on for a workspace (Google Workspace or Microsoft Entra ID).
+model SsoSetting {
+  organizationId    String   @id @map("organization_id") @db.Uuid
+  /// 'google' | 'microsoft'
+  provider          String
+  /// Staff email domain the setting covers, lower case (e.g. "studio.com").
+  domain            String
+  /// Microsoft only: the Entra directory (tenant) id that must sign the user in.
+  microsoftTenantId String?  @map("microsoft_tenant_id")
+  /// Blocks password sign-in for staff on the domain.
+  enforced          Boolean  @default(false)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("sso_settings")
+}
+
+/// PRD I15 actions: a change the assistant proposed; nothing happens until the coach confirms it.
+model AiAction {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  conversationId String    @map("conversation_id") @db.Uuid
+  messageId      String?   @map("message_id") @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  clientId       String?   @map("client_id") @db.Uuid
+  /// 'assign_program' | 'set_nutrition_targets' | 'meal_plan' | 'assign_meal_plan'
+  kind           String
+  summary        String
+  payload        Json
+  /// 'proposed' | 'applied' | 'cancelled' | 'failed' | 'expired'
+  status         String    @default("proposed")
+  result         Json?
+  error          String?
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  decidedAt      DateTime? @map("decided_at") @db.Timestamptz(3)
+
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  conversation AiConversation @relation(fields: [conversationId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  user         User           @relation(fields: [userId], references: [id])
+
+  @@index([conversationId])
+  @@index([organizationId, clientId])
+  @@map("ai_actions")
 }

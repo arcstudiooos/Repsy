@@ -8,12 +8,10 @@ Status on 2 November 2026: releases **R1 and R2 are complete**, **R3 is mostly b
 **R4 has not been started** on purpose. Everything below is on `main` in this repository, with the full history
 from the first commit.
 
-> **Branch note (r3-remaining-features, 3 November 2026, not merged):** this branch implements the
-> remaining R3 items from section 5 below — AI drafting (I10–I12, I14), payments and scheduling
-> (K1–K11, K15), call links (H15), package journeys (J4, J6), custom domains (L4) and post-lapse
-> access (M12) — behind fake providers only. See the PR body for what is fake, what was not verified
-> against a database, and the follow-ups before merging (real provider webhooks, real calendar sync,
-> real DNS TXT checks, financial-record retention on erasure, and "save draft as program").
+> **Update, 6 November 2026 (branch `feat/roadmap-cuts-and-builds`):** the R3 branch has merged. This branch removes
+> AI drafting (I10–I12, I14), custom domains (L4) and the cut R4 items (D-019), and builds the I15 AI assistant, real
+> Google Calendar sync (K10), adaptive video (L11), locations (A15), single sign-on (A16), group classes (K12), update
+> safety (M11) and the security programme (M14). K13 and K14 are on hold. See `README.md`, R4 features.
 
 ## 1. Run it locally
 
@@ -107,23 +105,11 @@ logs; analytics and adherence; web push; exports, deletion and the privacy featu
 
 ## 5. What is left
 
-**R3, not built yet** (in the order planned):
+**R3:** built and merged. Payments run on fake providers until real Stripe/Razorpay keys and webhooks are added;
+M12 lapses are recorded by a platform admin until the coach's own plan billing exists.
 
-1. **I10-I12, I14 AI drafting:** paste to program, draft from a template, check-in highlights. Coach-only,
-   per-workspace opt-in and off by default, always a draft, labelled "Drafted with AI", no client names sent, no
-   medical or supplement advice; the model provider goes behind a `packages/core` port.
-2. **K1-K11, K15 payments and scheduling:** Stripe Connect and Razorpay behind one payments port, packages,
-   storefront and checkout, coupons, receipts and tax, failed payments, billing self-service, revenue dashboard,
-   scheduling with calendar sync, session packs, manual payments. Needs provider accounts and keys; build against a
-   fake provider first. Revenue then joins `/app/analytics/business` (I7).
-3. **H15:** a call link (Zoom, Meet) on bookings; comes with K10 scheduling.
-4. **J4, J6:** onboarding sequence per package and renewal journeys; come with K3 packages.
-5. **L4:** custom domains for the portal and join pages, and branded sending addresses.
-6. **M12:** read-only access and export for 90 days (clients) and 180 days (coach) after a coach's subscription
-   lapses.
-
-**R4 (not started, by decision):** A15, A16, D19, E12, E13, G10, G11, H12, I13, J10, K12, K13, K14, L2, L3, L5, L6,
-L8, L9, L10, M11, M14, M15.
+**R4:** A15, A16, K12, L11, M11 and M14 are built (see `README.md`). K13 and K14 are on hold. M15 is not started.
+Everything else in R4 was removed from scope (D-019).
 
 ## 6. Things to know
 
@@ -134,9 +120,11 @@ L8, L9, L10, M11, M14, M15.
 - **Group activity** sends no notifications; the chat refreshes every 20 seconds while open.
 - **Workspace files** (exercise demos, recipe photos, meal-plan PDFs) can be fetched by any member of the workspace;
   client files (progress and assessment photos, attachments, form checks) only by that client and their coaches.
-- **Video** plays as uploaded; adaptive streaming waits for a media provider (D-011 #5).
+- **Video:** coach demo videos stream adaptively through Cloudflare Stream when it is configured (L11); otherwise
+  they play as uploaded. Client videos (form checks) are never sent to Stream.
 - **Production needs:** `BETTER_AUTH_SECRET`, `RESEND_API_KEY` and `EMAIL_FROM`, object storage, and optionally
-  Google sign-in, VAPID keys for push, Sentry and PostHog. All variables are documented in `.env.example`.
+  Google sign-in and Calendar sync, Microsoft SSO, `ANTHROPIC_API_KEY` for the AI assistant, Cloudflare Stream, VAPID
+  keys for push, Sentry and PostHog. All variables are documented in `.env.example`.
 - **Dev servers** log "uncached data during prerendering" warnings on dynamic pages; they are expected and
   `next build` passes.
 

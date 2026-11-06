@@ -65,9 +65,11 @@ export function LoginForm({ google }: { google: ReactNode }) {
     if (failure) {
       setPending(false);
       setError(
-        failure.status === 403
-          ? 'Verify your email first. We sent you a new link.'
-          : 'Email or password is incorrect.',
+        failure.code === 'SSO_REQUIRED' && failure.message
+          ? failure.message
+          : failure.status === 403
+            ? 'Verify your email first. We sent you a new link.'
+            : 'Email or password is incorrect.',
       );
       return;
     }
