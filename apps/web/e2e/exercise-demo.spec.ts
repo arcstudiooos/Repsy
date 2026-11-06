@@ -97,7 +97,10 @@ test.describe('exercise demo media (PRD C2, D7)', () => {
     await item.getByRole('button', { name: 'Watch demo: Banded Hip Hinge' }).click({
       timeout: 30_000,
     });
-    const src = await item.locator('video').getAttribute('src');
+    // L11: the player sets the MP4 src once its /playback lookup answers (no Stream in tests).
+    const video = item.locator('video');
+    await expect(video).toHaveAttribute('src', /./, { timeout: 15_000 });
+    const src = await video.getAttribute('src');
     expect(src).toMatch(/^\/api\/v1\/media\/[0-9a-f-]{36}$/);
     expect((await page.request.get(src!)).headers()['content-type']).toBe('video/mp4');
     await page.goto('/app/exercises?q=banded+hip');
