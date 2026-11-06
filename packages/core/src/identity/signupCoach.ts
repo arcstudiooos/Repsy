@@ -4,7 +4,7 @@ import { canonicalTimezone } from '../timezone';
 import { hashPilotCode } from './pilotCode';
 
 /** PRD A4: a workspace without a pilot code is a trial: this many days, this many active clients. */
-export const TRIAL_DAYS = 14;
+export const TRIAL_DAYS = 7;
 export const TRIAL_CLIENT_LIMIT = 3;
 
 export interface SignupCoachInput {

@@ -1093,6 +1093,8 @@ function Footer() {
         ['Changelog', '/changelog'],
         ['Status', '/status'],
         ['Contact', 'mailto:hello@repsy.fit'],
+        ['Terms', '/terms'],
+        ['Privacy', '/privacy'],
       ],
     },
     {

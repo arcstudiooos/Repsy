@@ -31,6 +31,7 @@ import { PushToggle } from '@/portal/PushToggle';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { withPortalTenant } from '@/server/serverActor';
 import { connection } from 'next/server';
+import { LegalLinks } from '@/components/legal/LegalPage';
 
 export const metadata: Metadata = { title: 'Profile | Repsy' };
 
@@ -184,6 +185,7 @@ export default async function PortalProfile() {
             Help and support
           </Link>
         </p>
+        <LegalLinks className="text-sm text-secondary" />
         <Card>
           <CardHeader>
             <CardTitle>Account</CardTitle>

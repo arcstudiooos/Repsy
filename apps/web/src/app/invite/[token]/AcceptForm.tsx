@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useActionState, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { buttonClass, Field, FormMessage, inputClass } from '@/components/auth-ui';
 import { acceptWithSignupAction, type AcceptState } from './actions';
@@ -123,6 +124,17 @@ export function AcceptForm(props: AcceptFormProps) {
           Privacy notice
         </h2>
         <p className="rounded-lg bg-surface-2 p-3 text-sm">{privacyText}</p>
+        <p className="mt-2 text-sm text-secondary">
+          Read the full{' '}
+          <Link href="/privacy" className="text-accent underline underline-offset-4">
+            Privacy Policy
+          </Link>{' '}
+          and{' '}
+          <Link href="/terms" className="text-accent underline underline-offset-4">
+            Terms of Service
+          </Link>
+          .
+        </p>
       </section>
 
       <div className="mb-4">

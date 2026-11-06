@@ -117,7 +117,7 @@ describe('signupCoach', () => {
 });
 
 describe('self-serve trial (PRD A4)', () => {
-  it('a blank code makes a 14-day trial for 3 clients; an ended trial takes no new clients', async () => {
+  it('a blank code makes a 7-day trial for 3 clients; an ended trial takes no new clients', async () => {
     const user = await withSystem(
       (tx) => tx.user.create({ data: { email: 'trial@example.test', name: 'T' } }),
       prisma,
@@ -138,8 +138,8 @@ describe('self-serve trial (PRD A4)', () => {
     );
     expect(org).toMatchObject({ plan: 'trial', activeClientLimit: 3 });
     const days = (org.trialEndsAt!.getTime() - Date.now()) / day;
-    expect(days).toBeGreaterThan(13.9);
-    expect(days).toBeLessThanOrEqual(14);
+    expect(days).toBeGreaterThan(6.9);
+    expect(days).toBeLessThanOrEqual(7);
 
     const coach = { userId: user.id, orgId, role: 'owner' as const, isPlatformAdmin: false };
     const add = (email: string) =>

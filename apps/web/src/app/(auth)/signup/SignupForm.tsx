@@ -43,9 +43,20 @@ export function SignupForm() {
           label="Pilot code (optional)"
           name="pilotCode"
           required={false}
-          hint="No code? You get a free 14-day trial for up to 3 clients."
+          hint="No code? You get a free 7-day trial for up to 3 clients."
           error={errors.pilotCode}
         />
+        <p className="mb-4 text-sm text-secondary">
+          By creating an account you agree to the{' '}
+          <Link href="/terms" className={linkClass}>
+            Terms of Service
+          </Link>{' '}
+          and the{' '}
+          <Link href="/privacy" className={linkClass}>
+            Privacy Policy
+          </Link>
+          .
+        </p>
         <button type="submit" className={buttonClass} disabled={pending}>
           {pending ? 'Creating account' : 'Create account'}
         </button>
