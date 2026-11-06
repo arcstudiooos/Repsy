@@ -2,7 +2,9 @@ import { z } from 'zod';
 import { withSystem } from '@kinetic/db';
 import {
   deletePushSubscription,
+  DomainError,
   hasPushSubscription,
+  isPushServiceEndpoint,
   releaseEndpoint,
   savePushSubscription,
   vapidKeys,
@@ -37,6 +39,12 @@ export const pushSubscribeRoute: RouteDef<typeof subscriptionSchema, true> = {
   input: subscriptionSchema,
   rateLimit: { capacity: 10, refillPerSecond: 10 / 3600 },
   handler: async ({ actor, input, tenant }) => {
+    // Checked before `releaseEndpoint` touches another user's row: only real push-service endpoints are accepted.
+    if (!isPushServiceEndpoint(input.endpoint)) {
+      throw new DomainError('VALIDATION', 'Some fields are invalid.', {
+        subscription: ['Invalid subscription.'],
+      });
+    }
     await withSystem((tx) => releaseEndpoint(tx, input.endpoint, actor.userId));
     await tenant((tx) => savePushSubscription(tx, actor, input));
     return { subscribed: true };

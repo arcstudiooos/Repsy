@@ -54,6 +54,42 @@ const invalid = (message: string) =>
 
 const B64URL = /^[A-Za-z0-9_-]+$/;
 
+/**
+ * The browser push services: FCM (Chrome, Chromium Edge, Opera, Samsung Internet), Mozilla autopush (Firefox), Apple
+ * (Safari) and WNS (legacy Edge). The worker POSTs to every stored endpoint, so accepting any https URL would let a
+ * signed-in user aim it at an arbitrary, possibly internal, host (server-side request forgery).
+ */
+const PUSH_SERVICE_HOSTS = [
+  'fcm.googleapis.com',
+  'android.googleapis.com',
+  'updates.push.services.mozilla.com',
+  'web.push.apple.com',
+];
+const PUSH_SERVICE_SUFFIXES = [
+  '.push.services.mozilla.com',
+  '.push.apple.com',
+  '.notify.windows.com',
+];
+
+/** True only for an https endpoint on a known push service, on the default port and without credentials. */
+export function isPushServiceEndpoint(endpoint: string): boolean {
+  if (endpoint.length > 1000) return false;
+  let url: URL;
+  try {
+    url = new URL(endpoint);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== 'https:' || url.port !== '' || url.username !== '' || url.password !== '') {
+    return false;
+  }
+  const host = url.hostname.toLowerCase();
+  return (
+    PUSH_SERVICE_HOSTS.includes(host) ||
+    PUSH_SERVICE_SUFFIXES.some((suffix) => host.endsWith(suffix))
+  );
+}
+
 /** Saves this device's subscription for the acting user (an endpoint moves to whoever subscribed it last). */
 export async function savePushSubscription(
   tx: TenantTx,
@@ -62,14 +98,7 @@ export async function savePushSubscription(
 ): Promise<void> {
   if (!vapidKeys())
     throw new DomainError('CONFLICT', 'Notifications on this device are not available yet.');
-  let url: URL;
-  try {
-    url = new URL(input.endpoint);
-  } catch {
-    throw invalid('Invalid subscription.');
-  }
-  if (url.protocol !== 'https:' || input.endpoint.length > 1000)
-    throw invalid('Invalid subscription.');
+  if (!isPushServiceEndpoint(input.endpoint)) throw invalid('Invalid subscription.');
   const { p256dh, auth } = input.keys;
   if (!B64URL.test(p256dh) || p256dh.length > 200 || !B64URL.test(auth) || auth.length > 100) {
     throw invalid('Invalid subscription.');
@@ -191,6 +220,12 @@ export async function deliverPushes(
     );
     let failed = false;
     for (const d of devices) {
+      // A row saved before the push-service allowlist, or by hand: never sent to, and forgotten.
+      if (!isPushServiceEndpoint(d.endpoint)) {
+        await withSystem((tx) => tx.pushSubscription.deleteMany({ where: { id: d.id } }));
+        dropped += 1;
+        continue;
+      }
       let status: number;
       try {
         status = await send(d.endpoint, {
