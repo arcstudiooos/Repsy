@@ -158,30 +158,35 @@ export function createAuth(options: CreateAuthOptions = {}) {
       },
     },
     rateLimit: { enabled: true, storage: 'database', modelName: 'rateLimit', window: 60, max: 100 },
-    socialProviders: {
-      ...(googleConfigured
-        ? {
-            google: {
-              clientId: env.GOOGLE_CLIENT_ID as string,
-              clientSecret: env.GOOGLE_CLIENT_SECRET as string,
-              // Accounts are only created through pilot-code signup.
-              disableImplicitSignUp: true,
-            },
-          }
-        : {}),
-      // PRD A16: Microsoft Entra ID single sign-on for work accounts. Never creates accounts.
-      ...(microsoftConfigured
-        ? {
-            microsoft: {
-              clientId: env.MICROSOFT_CLIENT_ID as string,
-              clientSecret: env.MICROSOFT_CLIENT_SECRET as string,
-              tenantId: 'organizations',
-              disableImplicitSignUp: true,
-              disableProfilePhoto: true,
-            },
-          }
-        : {}),
-    },
+    // Absent entirely when no provider is configured.
+    ...(googleConfigured || microsoftConfigured
+      ? {
+          socialProviders: {
+            ...(googleConfigured
+              ? {
+                  google: {
+                    clientId: env.GOOGLE_CLIENT_ID as string,
+                    clientSecret: env.GOOGLE_CLIENT_SECRET as string,
+                    // Accounts are only created through pilot-code signup.
+                    disableImplicitSignUp: true,
+                  },
+                }
+              : {}),
+            // PRD A16: Microsoft Entra ID single sign-on for work accounts. Never creates accounts.
+            ...(microsoftConfigured
+              ? {
+                  microsoft: {
+                    clientId: env.MICROSOFT_CLIENT_ID as string,
+                    clientSecret: env.MICROSOFT_CLIENT_SECRET as string,
+                    tenantId: 'organizations',
+                    disableImplicitSignUp: true,
+                    disableProfilePhoto: true,
+                  },
+                }
+              : {}),
+          },
+        }
+      : {}),
     account: {
       // SSO signs an invited team member into their existing account. Microsoft's email claim is not
       // verified, so each Microsoft link is checked against the workspace's directory below.
