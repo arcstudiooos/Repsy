@@ -8,9 +8,9 @@ const IDLE_MS = 30_000;
 const SELECTOR =
   '[data-reveal], [data-draw], [data-grow], [data-cascade], .mk-marker, .mk-sync, [data-count]';
 
-const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+export const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-function readPaused(): boolean {
+export function readPaused(): boolean {
   try {
     return window.localStorage.getItem(PAUSE_KEY) === 'paused';
   } catch {
@@ -45,6 +45,8 @@ function countUp(el: HTMLElement) {
 export function MotionController() {
   useEffect(() => {
     const root = document.documentElement;
+    // The inline boot script sets this before paint; re-add it after a remount (React Strict Mode runs the cleanup).
+    root.classList.add('mk-js');
     const io = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {

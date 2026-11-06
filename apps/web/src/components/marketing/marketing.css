@@ -423,3 +423,134 @@ html[data-motion='paused'] .mk *::after {
     display: none;
   }
 }
+
+/* ---------- Depth (3D) ---------- */
+/* Aurora: two soft glows drifting on long loops (transform only). They stay put without motion. */
+.mk-aurora {
+  overflow: hidden;
+}
+.mk-aurora--hero {
+  mask-image: linear-gradient(to bottom, #000 55%, transparent);
+}
+.mk-aurora-blob {
+  position: absolute;
+  width: min(70vw, 720px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  animation: mk-drift 22s ease-in-out infinite alternate;
+}
+.mk-aurora-blob--brand {
+  top: -18%;
+  left: 38%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--k-brand) 22%, transparent),
+    transparent 62%
+  );
+}
+.mk-aurora-blob--acid {
+  bottom: -24%;
+  left: -12%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--k-acid) 20%, transparent),
+    transparent 60%
+  );
+  animation-duration: 28s;
+  animation-direction: alternate-reverse;
+}
+@keyframes mk-drift {
+  from {
+    transform: translate3d(-6%, 4%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(8%, -6%, 0) scale(1.15);
+  }
+}
+
+/* Hero stage: layers at different depths inside a plane that leans back and follows the pointer (DepthStage). */
+.mk-depth {
+  position: absolute;
+  inset: -8% -4%;
+  pointer-events: none;
+}
+/* Fade the glows out before the layer's edges so the clip never shows as a hard rectangle. */
+.mk-depth .mk-aurora {
+  mask-image: radial-gradient(ellipse 60% 60% at 50% 50%, #000 35%, transparent 72%);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mk-js .mk-stage {
+    perspective: 1800px;
+    perspective-origin: 50% 30%;
+  }
+  .mk-js .mk-stage-inner {
+    transform: rotateX(var(--mk-rx, 10deg)) rotateY(var(--mk-ry, 0deg));
+    transform-origin: 50% 40%;
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+  .mk-js .mk-stage .mk-3d {
+    transform-style: preserve-3d;
+  }
+  .mk-js .mk-stage .mk-depth {
+    translate: 0 0 -200px;
+    scale: 1.12;
+  }
+  .mk-js .mk-stage .mk-z2 {
+    translate: 0 0 70px;
+  }
+  .mk-js .mk-stage .mk-z3 {
+    translate: 0 0 50px;
+  }
+
+  /* A 3D entrance: the element tips up from below. */
+  .mk-js [data-reveal='tilt']:not([data-inview]) {
+    transform: perspective(1200px) rotateX(16deg) translateY(40px) scale(0.97);
+  }
+  .mk-js [data-reveal='tilt'] {
+    transform-origin: 50% 0;
+  }
+}
+
+/* Tilt cards (TiltList): turn toward the pointer with a soft glare. */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .mk-tilt-list {
+    perspective: 1600px;
+  }
+  .mk-tilt {
+    rotate: var(--mk-tilt, none);
+  }
+  .mk-js [data-reveal].mk-tilt {
+    transition:
+      opacity 600ms var(--mk-ease-in),
+      transform 600ms var(--mk-ease-in),
+      rotate 220ms var(--mk-ease-in),
+      box-shadow 240ms var(--mk-ease-in),
+      border-color 240ms var(--mk-ease-in);
+    transition-delay: calc(var(--mk-i, 0) * 70ms), calc(var(--mk-i, 0) * 70ms), 0ms, 0ms, 0ms;
+  }
+  .mk-tilt::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background: radial-gradient(
+      circle at var(--mk-gx, 50%) var(--mk-gy, 50%),
+      color-mix(in srgb, var(--k-brand) 12%, transparent),
+      transparent 55%
+    );
+    opacity: 0;
+    transition: opacity 240ms var(--mk-ease-in);
+  }
+  .bg-midnight.mk-tilt::after {
+    background: radial-gradient(
+      circle at var(--mk-gx, 50%) var(--mk-gy, 50%),
+      color-mix(in srgb, var(--k-acid) 14%, transparent),
+      transparent 55%
+    );
+  }
+  .mk-tilt:hover::after {
+    opacity: 1;
+  }
+}

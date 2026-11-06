@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 
 import { RepsyMark } from '@/components/brand/Logo';
 import { cn } from '@/lib/utils';
 import { LOOP, PLANS } from '@/content/marketing';
+import { readPaused, reduced } from './motion';
 
 export const NAV_LINKS = [
   { label: 'Features', href: '#promises' },
@@ -365,5 +366,133 @@ export function PricingPlans() {
         })}
       </ul>
     </div>
+  );
+}
+
+const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+
+/**
+ * Hero 3D stage: the product mockups sit on layers at different depths (CSS `translate` Z on `.mk-z*`) inside a
+ * `preserve-3d` plane. The plane leans back while it sits low in the viewport and flattens as it scrolls up; on a fine
+ * pointer it also turns toward the cursor. JS only writes two custom properties (`--mk-rx`, `--mk-ry`) that drive a
+ * transform, eased in one rAF loop that stops once settled. No motion at all under reduced motion or when the visitor
+ * paused motion (the CSS is gated too, so the stage renders flat without JS).
+ */
+export function DepthStage({ children, className }: { children: ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || reduced()) return;
+    const area = el.closest('section') ?? el;
+    const fine = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    const cur = { rx: 10, ry: 0 };
+    let px = 0;
+    let py = 0;
+    let raf = 0;
+    const target = () => {
+      if (readPaused()) return { rx: 0, ry: 0 };
+      const top = el.getBoundingClientRect().top;
+      const lean = clamp(top / (window.innerHeight || 1), 0, 1) * 12;
+      return { rx: lean - py * 6, ry: px * 10 };
+    };
+    const frame = () => {
+      const t = target();
+      cur.rx += (t.rx - cur.rx) * 0.12;
+      cur.ry += (t.ry - cur.ry) * 0.12;
+      el.style.setProperty('--mk-rx', `${cur.rx.toFixed(2)}deg`);
+      el.style.setProperty('--mk-ry', `${cur.ry.toFixed(2)}deg`);
+      const moving = Math.abs(t.rx - cur.rx) > 0.02 || Math.abs(t.ry - cur.ry) > 0.02;
+      raf = moving ? requestAnimationFrame(frame) : 0;
+    };
+    const kick = () => {
+      if (!raf) raf = requestAnimationFrame(frame);
+    };
+    const onMove = (e: PointerEvent) => {
+      if (e.pointerType !== 'mouse') return;
+      const r = area.getBoundingClientRect();
+      px = clamp((e.clientX - r.left) / r.width - 0.5, -0.5, 0.5);
+      py = clamp((e.clientY - r.top) / r.height - 0.5, -0.5, 0.5);
+      kick();
+    };
+    const onLeave = () => {
+      px = 0;
+      py = 0;
+      kick();
+    };
+    if (fine) {
+      area.addEventListener('pointermove', onMove as EventListener, { passive: true });
+      area.addEventListener('pointerleave', onLeave);
+    }
+    window.addEventListener('scroll', kick, { passive: true });
+    window.addEventListener('resize', kick);
+    window.addEventListener('repsy-motion', kick);
+    kick();
+    return () => {
+      cancelAnimationFrame(raf);
+      area.removeEventListener('pointermove', onMove as EventListener);
+      area.removeEventListener('pointerleave', onLeave);
+      window.removeEventListener('scroll', kick);
+      window.removeEventListener('resize', kick);
+      window.removeEventListener('repsy-motion', kick);
+    };
+  }, []);
+  return (
+    <div ref={ref} className={cn('mk-stage', className)}>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * A list whose `.mk-tilt` items turn toward a fine pointer (up to 6deg) with a soft glare that follows it. One
+ * delegated listener; it writes custom properties only (`rotate` + a gradient position), never layout.
+ */
+export function TiltList({ children, className }: { children: ReactNode; className?: string }) {
+  const ref = useRef<HTMLUListElement>(null);
+  useEffect(() => {
+    const list = ref.current;
+    if (!list || reduced() || !window.matchMedia('(hover: hover) and (pointer: fine)').matches)
+      return;
+    let active: HTMLElement | null = null;
+    const reset = (card: HTMLElement | null) => {
+      if (!card) return;
+      const axis = card.style.getPropertyValue('--mk-axis') || '0 1 0';
+      card.style.setProperty('--mk-tilt', `${axis} 0deg`);
+    };
+    const onMove = (e: PointerEvent) => {
+      if (e.pointerType !== 'mouse') return;
+      const card = (e.target as Element).closest<HTMLElement>('.mk-tilt');
+      if (card !== active) {
+        reset(active);
+        active = card;
+      }
+      if (!card || readPaused()) return;
+      const r = card.getBoundingClientRect();
+      const x = clamp((e.clientX - r.left) / r.width, 0, 1);
+      const y = clamp((e.clientY - r.top) / r.height, 0, 1);
+      const ax = -(y - 0.5);
+      const ay = x - 0.5;
+      const len = Math.hypot(ax, ay) || 1;
+      const axis = `${(ax / len).toFixed(3)} ${(ay / len).toFixed(3)} 0`;
+      card.style.setProperty('--mk-axis', axis);
+      card.style.setProperty('--mk-tilt', `${axis} ${(len * 8.5).toFixed(2)}deg`);
+      card.style.setProperty('--mk-gx', `${(x * 100).toFixed(1)}%`);
+      card.style.setProperty('--mk-gy', `${(y * 100).toFixed(1)}%`);
+    };
+    const onLeave = () => {
+      reset(active);
+      active = null;
+    };
+    list.addEventListener('pointermove', onMove as EventListener, { passive: true });
+    list.addEventListener('pointerleave', onLeave);
+    return () => {
+      list.removeEventListener('pointermove', onMove as EventListener);
+      list.removeEventListener('pointerleave', onLeave);
+    };
+  }, []);
+  return (
+    <ul ref={ref} className={cn('mk-tilt-list', className)}>
+      {children}
+    </ul>
   );
 }
