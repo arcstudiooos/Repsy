@@ -98,6 +98,7 @@ describe('row level security', () => {
     expect(tables.map((t) => t.relname).sort()).toEqual([
       'agreement_acceptances',
       'agreements',
+      'ai_actions',
       'ai_conversations',
       'ai_messages',
       'ai_settings',
@@ -209,6 +210,7 @@ describe('row level security', () => {
     expect(policies.map((p) => p.tablename).sort()).toEqual([
       'agreement_acceptances',
       'agreements',
+      'ai_actions',
       'ai_conversations',
       'ai_messages',
       'ai_settings',

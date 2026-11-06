@@ -3,7 +3,8 @@ import type { ActorContext } from '../authz/actor';
 import { assertCan, can } from '../authz/policies';
 
 /**
- * PRD I15: the AI assistant's tools. Every tool is READ-ONLY and runs inside the caller's tenant
+ * PRD I15: the AI assistant's read tools (changes go through the propose-and-confirm tools in
+ * `actions.ts`). Every tool here is READ-ONLY and runs inside the caller's tenant
  * transaction, so row-level security limits it to the coach's own workspace, and each tool checks the
  * same policy as the matching screen. Nothing here writes, sends or schedules anything.
  *
@@ -141,6 +142,53 @@ export const ASSISTANT_TOOLS: AssistantToolDef[] = [
       type: 'object',
       properties: { days: int('How many days back from today, 1 to 365.') },
       required: ['days'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'client_nutrition',
+    description:
+      "One client's nutrition: current and past daily targets, what they logged each day for the last N days, and the meal plan they are on now with each day's meals.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        clientId: str('The client id.'),
+        days: int('How many days of logs, 1 to 60.'),
+      },
+      required: ['clientId', 'days'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'client_extras',
+    description:
+      'More about one client: recent and upcoming bookings, group class bookings, subscriptions and payments, assessments, progress photo dates, and program history. Use with get_client for a complete picture.',
+    input_schema: {
+      type: 'object',
+      properties: { clientId: str('The client id.') },
+      required: ['clientId'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'list_recipes',
+    description:
+      "The workspace's recipes with macros per serving and servings. Use them in meal plans where they fit.",
+    input_schema: {
+      type: 'object',
+      properties: { search: str('Part of a recipe title. Empty string for all.') },
+      required: ['search'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'list_meal_plans',
+    description:
+      'Meal plans in the workspace library, with how many days and how many clients are on each.',
+    input_schema: {
+      type: 'object',
+      properties: { search: str('Part of a plan title. Empty string for all.') },
+      required: ['search'],
       additionalProperties: false,
     },
   },
@@ -654,6 +702,209 @@ async function businessSummaryTool(tx: TenantTx, actor: ActorContext, input: Inp
   };
 }
 
+async function clientNutritionTool(tx: TenantTx, actor: ActorContext, input: Input) {
+  assertCan(actor, 'nutrition:read');
+  const clientId = text(input.clientId, 64);
+  const days = clamp(input.days, 1, 60, 14);
+  const client = await tx.client.findFirst({
+    where: { id: clientId, organizationId: actor.orgId },
+    select: { id: true, name: true },
+  });
+  if (!client) throw new ToolInputError('No client with that id in this workspace.');
+  const [targets, logs, plan] = await Promise.all([
+    tx.nutritionTarget.findMany({
+      where: { clientId },
+      orderBy: { effectiveFrom: 'desc' },
+      take: 5,
+      select: { effectiveFrom: true, calories: true, proteinG: true, carbsG: true, fatG: true },
+    }),
+    tx.nutritionLog.findMany({
+      where: { clientId, localDate: { gte: daysAgo(days) } },
+      orderBy: { localDate: 'asc' },
+      select: { localDate: true, calories: true, proteinG: true, carbsG: true, fatG: true },
+    }),
+    tx.clientMealPlan.findFirst({
+      where: { clientId, endedAt: null, mealPlan: { archivedAt: null } },
+      select: { mealPlan: { select: { id: true, title: true, notes: true, daysJson: true } } },
+    }),
+  ]);
+  return {
+    client: client.name,
+    targets: targets.map((t) => ({ ...t, effectiveFrom: isoDay(t.effectiveFrom) })),
+    logs: logs.map((l) => ({ ...l, localDate: isoDay(l.localDate) })),
+    mealPlan: plan
+      ? {
+          id: plan.mealPlan.id,
+          title: plan.mealPlan.title,
+          notes: plan.mealPlan.notes,
+          days: plan.mealPlan.daysJson,
+        }
+      : null,
+  };
+}
+
+async function clientExtrasTool(tx: TenantTx, actor: ActorContext, input: Input) {
+  assertCan(actor, 'client:read');
+  const clientId = text(input.clientId, 64);
+  const client = await tx.client.findFirst({
+    where: { id: clientId, organizationId: actor.orgId },
+    select: { id: true, name: true },
+  });
+  if (!client) throw new ToolInputError('No client with that id in this workspace.');
+  const billing = can(actor, 'billing:manage');
+  const [bookings, classes, subs, payments, assessments, photos, programs] = await Promise.all([
+    can(actor, 'scheduling:read')
+      ? tx.booking.findMany({
+          where: { clientId, startsAt: { gte: daysAgo(60) } },
+          orderBy: { startsAt: 'asc' },
+          take: 30,
+          select: { startsAt: true, status: true, sessionType: { select: { name: true } } },
+        })
+      : Promise.resolve([]),
+    tx.classEnrollment.findMany({
+      where: { clientId, groupClass: { startsAt: { gte: daysAgo(60) } } },
+      take: 30,
+      select: {
+        status: true,
+        attended: true,
+        groupClass: { select: { title: true, startsAt: true, cancelledAt: true } },
+      },
+    }),
+    billing
+      ? tx.subscription.findMany({
+          where: { clientId },
+          take: 10,
+          select: {
+            status: true,
+            amountMinor: true,
+            currency: true,
+            interval: true,
+            nextChargeAt: true,
+          },
+        })
+      : Promise.resolve([]),
+    billing
+      ? tx.payment.findMany({
+          where: { clientId },
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+          select: { status: true, amountMinor: true, currency: true, kind: true, createdAt: true },
+        })
+      : Promise.resolve([]),
+    tx.clientAssessment.findMany({
+      where: { clientId },
+      take: 10,
+      select: { startLocalDate: true, endedAt: true, assessment: { select: { title: true } } },
+    }),
+    tx.progressPhoto.findMany({
+      where: { clientId },
+      orderBy: { takenOn: 'desc' },
+      take: 20,
+      select: { takenOn: true, pose: true },
+    }),
+    tx.programAssignment.findMany({
+      where: { clientId },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      select: {
+        status: true,
+        startLocalDate: true,
+        endedAt: true,
+        weekdays: true,
+        program: { select: { title: true } },
+      },
+    }),
+  ]);
+  return {
+    client: client.name,
+    bookings: bookings.map((b) => ({
+      at: b.startsAt.toISOString(),
+      status: b.status,
+      type: b.sessionType.name,
+    })),
+    classes: classes.map((c) => ({
+      title: c.groupClass.title,
+      at: c.groupClass.startsAt.toISOString(),
+      status: c.groupClass.cancelledAt ? 'class cancelled' : c.status,
+      attended: c.attended,
+    })),
+    subscriptions: subs.map((s) => ({
+      status: s.status,
+      amount: money(s.amountMinor, s.currency),
+      interval: s.interval,
+      nextCharge: isoDay(s.nextChargeAt),
+    })),
+    payments: payments.map((p) => ({
+      status: p.status,
+      amount: money(p.amountMinor, p.currency),
+      kind: p.kind,
+      date: isoDay(p.createdAt),
+    })),
+    assessments: assessments.map((a) => ({
+      title: a.assessment.title,
+      started: isoDay(a.startLocalDate),
+      ended: isoDay(a.endedAt),
+    })),
+    progressPhotos: photos.map((p) => ({ date: isoDay(p.takenOn), pose: p.pose })),
+    programHistory: programs.map((p) => ({
+      title: p.program.title,
+      status: p.status,
+      started: isoDay(p.startLocalDate),
+      ended: isoDay(p.endedAt),
+      weekdays: p.weekdays,
+    })),
+    note: billing ? undefined : 'Payments are hidden for your role.',
+  };
+}
+
+async function listRecipesTool(tx: TenantTx, actor: ActorContext, input: Input) {
+  assertCan(actor, 'nutrition:read');
+  const search = text(input.search, 100);
+  const rows = await tx.recipe.findMany({
+    where: {
+      archivedAt: null,
+      ...(search ? { title: { contains: search, mode: 'insensitive' } } : {}),
+    },
+    orderBy: { title: 'asc' },
+    take: 200,
+    select: {
+      id: true,
+      title: true,
+      servings: true,
+      calories: true,
+      proteinG: true,
+      carbsG: true,
+      fatG: true,
+    },
+  });
+  return { macrosArePerServing: true, recipes: rows };
+}
+
+async function listMealPlansTool(tx: TenantTx, actor: ActorContext, input: Input) {
+  assertCan(actor, 'nutrition:read');
+  const search = text(input.search, 100);
+  const rows = await tx.mealPlan.findMany({
+    where: {
+      archivedAt: null,
+      ...(search ? { title: { contains: search, mode: 'insensitive' } } : {}),
+    },
+    orderBy: { title: 'asc' },
+    take: 100,
+    select: {
+      id: true,
+      title: true,
+      daysJson: true,
+      _count: { select: { assigned: { where: { endedAt: null } } } },
+    },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    days: Array.isArray(r.daysJson) ? r.daysJson.length : 0,
+    clientsOnIt: r._count.assigned,
+  }));
+}
+
 const HANDLERS: Record<
   string,
   (tx: TenantTx, actor: ActorContext, input: Input) => Promise<unknown>
@@ -667,6 +918,10 @@ const HANDLERS: Record<
   recent_messages: recentMessagesTool,
   list_bookings: listBookingsTool,
   business_summary: businessSummaryTool,
+  client_nutrition: clientNutritionTool,
+  client_extras: clientExtrasTool,
+  list_recipes: listRecipesTool,
+  list_meal_plans: listMealPlansTool,
 };
 
 export interface AssistantToolResult {

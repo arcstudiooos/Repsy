@@ -63,6 +63,7 @@ describe('runAssistantTurn (PRD I15)', () => {
     expect(result).toEqual({
       answer: 'Asha missed two workouts.',
       toolsUsed: ['list_clients', 'get_client'],
+      actionIds: [],
     });
     expect(ran).toEqual(['list_clients', 'get_client']);
     expect(calls[0]).toMatchObject({
@@ -71,6 +72,8 @@ describe('runAssistantTurn (PRD I15)', () => {
       betas: ['server-side-fallback-2026-07-01'],
     });
     expect(calls[0]?.tools?.every((t) => 'strict' in t && t.strict === true)).toBe(true);
+    // Without actions the model is not offered the propose tools.
+    expect(calls[0]?.tools?.some((t) => 'name' in t && t.name.startsWith('propose_'))).toBe(false);
     // History first, then the question with today's date; tool results go back in one user turn.
     const second = calls[1]?.messages ?? [];
     expect(second[2]?.content).toContain('Today is Friday, 2026-11-06');
@@ -108,5 +111,42 @@ describe('runAssistantTurn (PRD I15)', () => {
     });
     expect(calls).toHaveLength(10);
     expect(result.answer).toMatch(/narrower question/);
+  });
+
+  it('offers the propose tools only when actions are allowed and collects the proposal ids', async () => {
+    const { client, calls } = fakeClient([
+      {
+        stop_reason: 'tool_use',
+        content: [
+          {
+            type: 'tool_use',
+            id: 't1',
+            name: 'propose_nutrition_targets',
+            input: { clientId: 'c' },
+          },
+          { type: 'tool_use', id: 't2', name: 'propose_meal_plan', input: { clientId: 'c' } },
+        ] as Anthropic.Beta.BetaContentBlock[],
+      },
+      {
+        stop_reason: 'end_turn',
+        content: [
+          { type: 'text', text: 'Proposed. Press Confirm to apply.' },
+        ] as Anthropic.Beta.BetaContentBlock[],
+      },
+    ]);
+    const result = await runAssistantTurn(client, {
+      history: [],
+      question: 'Set Asha up',
+      context,
+      allowActions: true,
+      runTool: async (name) =>
+        name === 'propose_nutrition_targets'
+          ? { ok: true, content: 'Proposed.', actionId: 'a1' }
+          : { ok: false, content: 'Tuesday: calories 900 (-1100)' },
+    });
+    expect(result.actionIds).toEqual(['a1']);
+    expect(calls[0]?.tools?.some((t) => 'name' in t && t.name === 'propose_meal_plan')).toBe(true);
+    expect(calls[0]?.system).toBeDefined();
+    expect(JSON.stringify(calls[0]?.system)).toMatch(/Confirm/);
   });
 });

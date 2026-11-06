@@ -3,10 +3,11 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Loader2, MessageSquarePlus, Send, Sparkles, Trash2 } from 'lucide-react';
-import type { AiConversationSummary, AiMessageView } from '@kinetic/core';
+import type { AiActionView, AiConversationSummary, AiMessageView } from '@kinetic/core';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/toast';
 import { askAssistant, loadConversation, removeConversation } from '@/lib/assistant-api';
+import { ActionCard } from './ActionCard';
 import { AnswerText } from './AnswerText';
 
 const TOOL_LABELS: Record<string, string> = {
@@ -19,6 +20,14 @@ const TOOL_LABELS: Record<string, string> = {
   recent_messages: 'messages',
   list_bookings: 'bookings',
   business_summary: 'business numbers',
+  client_nutrition: 'nutrition',
+  client_extras: 'bookings and history',
+  list_recipes: 'recipes',
+  list_meal_plans: 'meal plans',
+  propose_assign_program: 'proposed a program',
+  propose_nutrition_targets: 'proposed targets',
+  propose_meal_plan: 'proposed a meal plan',
+  propose_assign_meal_plan: 'proposed a meal plan',
 };
 
 const SUGGESTIONS = [
@@ -28,17 +37,26 @@ const SUGGESTIONS = [
   'How much did I collect in the last 30 days?',
 ];
 
+const ACTION_SUGGESTIONS = [
+  'Build a 7-day vegetarian meal plan for my newest client at 1800 kcal and 120 g protein.',
+  'Put my newest client on a program that fits their goals, starting next Monday.',
+];
+
 /** PRD I15: the assistant screen. Conversations on the left (top on mobile), the chat on the right. */
 export function AssistantChat({
   initialConversations,
+  actionsEnabled = false,
 }: {
   initialConversations: AiConversationSummary[];
+  /** The workspace lets the assistant propose changes. */
+  actionsEnabled?: boolean;
 }) {
   const router = useRouter();
   const inputId = useId();
   const [conversations, setConversations] = useState(initialConversations);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<AiMessageView[]>([]);
+  const [actions, setActions] = useState<AiActionView[]>([]);
   const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [loading, setLoading] = useState(false);
@@ -57,11 +75,13 @@ export function AssistantChat({
     }
     setActiveId(id);
     setMessages(res.data.messages);
+    setActions(res.data.actions);
   }
 
   function startNew() {
     setActiveId(null);
     setMessages([]);
+    setActions([]);
     setDraft('');
   }
 
@@ -89,8 +109,9 @@ export function AssistantChat({
       toast.error(res.message);
       return;
     }
-    const { conversationId, messages: added } = res.data;
+    const { conversationId, messages: added, actions: proposed } = res.data;
     setMessages((list) => [...list, ...added]);
+    setActions((list) => [...list, ...proposed]);
     if (!activeId) {
       setActiveId(conversationId);
       setConversations((list) => [
@@ -149,7 +170,7 @@ export function AssistantChat({
                 programs, check-ins or business.
               </p>
               <div className="flex flex-wrap gap-2">
-                {SUGGESTIONS.map((s) => (
+                {[...SUGGESTIONS, ...(actionsEnabled ? ACTION_SUGGESTIONS : [])].map((s) => (
                   <Button key={s} variant="soft" size="sm" onClick={() => ask(s)}>
                     {s}
                   </Button>
@@ -174,6 +195,17 @@ export function AssistantChat({
                     {[...new Set(m.toolsUsed.map((t) => TOOL_LABELS[t] ?? t))].join(', ')}
                   </p>
                 )}
+                {actions
+                  .filter((a) => a.messageId === m.id)
+                  .map((a) => (
+                    <ActionCard
+                      key={a.id}
+                      action={a}
+                      onChange={(next) =>
+                        setActions((list) => list.map((x) => (x.id === next.id ? next : x)))
+                      }
+                    />
+                  ))}
               </div>
             ),
           )}

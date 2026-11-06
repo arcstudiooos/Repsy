@@ -1054,7 +1054,31 @@ export {
   type LapseActorKind,
   type LapseView,
 } from './lapse/lapse';
-export { assertAiEnabled, getAiSetting, setAiSetting, type AiSettingView } from './ai/settings';
+export {
+  assertAiEnabled,
+  getAiSetting,
+  setAiActionsEnabled,
+  setAiSetting,
+  type AiSettingView,
+} from './ai/settings';
+export {
+  ACTION_TOOLS,
+  ACTION_TOOL_NAMES,
+  AI_ACTION_TTL_MS,
+  MEAL_PLAN_TOLERANCE,
+  applyAiAction,
+  canUseAssistantActions,
+  cancelAiAction,
+  linkAiActions,
+  listAiActions,
+  markAiActionFailed,
+  mealPlanMisses,
+  runActionTool,
+  type ActionToolResult,
+  type AiActionKind,
+  type AiActionStatus,
+  type AiActionView,
+} from './ai/actions';
 export {
   ASSISTANT_TOOLS,
   ASSISTANT_TOOL_NAMES,

@@ -118,8 +118,10 @@ const SECTIONS: LegalSection[] = [
         <li>To understand which features are used and improve them (pseudonymous analytics).</li>
         <li>
           If a workspace owner turns on the AI assistant: to answer the coaching team&rsquo;s
-          questions. The assistant reads only what a question needs, cannot change anything, and its
-          conversations are deleted 90 days after their last message.
+          questions. The assistant reads only what a question needs. If the owner also allows it, it
+          can propose changes (assigning programs, nutrition targets and meal plans) that only
+          happen when a coach confirms them. Its conversations and proposals are deleted 90 days
+          after their last message.
         </li>
         <li>To meet legal obligations.</li>
       </ul>

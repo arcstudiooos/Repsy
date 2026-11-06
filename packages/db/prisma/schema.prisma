@@ -72,6 +72,7 @@ model User {
 
   ownedOrganizations       Organization[]
   aiConversations          AiConversation[]
+  aiActions                AiAction[]
   calendarConnections      CalendarConnection[]
   coachedClasses           GroupClass[]
   createdJoinLinks         JoinLink[]              @relation("JoinLinkCreator")
@@ -298,6 +299,7 @@ model Organization {
   groupClasses       GroupClass[]
   classEnrollments   ClassEnrollment[]
   aiMessages         AiMessage[]
+  aiActions          AiAction[]
   billingPackages    BillingPackage[]
   coupons            Coupon[]
   subscriptions      Subscription[]
@@ -2570,6 +2572,8 @@ model AiSetting {
   aiEnabled      Boolean  @default(false) @map("ai_enabled")
   /// The AI provider the assistant uses: 'anthropic'.
   provider       String   @default("anthropic")
+  /// Lets the assistant propose changes the coach confirms. OFF by default.
+  actionsEnabled Boolean  @default(false) @map("actions_enabled")
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -2592,6 +2596,7 @@ model AiConversation {
   organization Organization @relation(fields: [organizationId], references: [id])
   user         User         @relation(fields: [userId], references: [id])
   messages     AiMessage[]
+  actions      AiAction[]
 
   @@unique([id, organizationId])
   @@index([organizationId, userId, updatedAt])
@@ -3001,4 +3006,32 @@ model SsoSetting {
   organization Organization @relation(fields: [organizationId], references: [id])
 
   @@map("sso_settings")
+}
+
+/// PRD I15 actions: a change the assistant proposed; nothing happens until the coach confirms it.
+model AiAction {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  conversationId String    @map("conversation_id") @db.Uuid
+  messageId      String?   @map("message_id") @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  clientId       String?   @map("client_id") @db.Uuid
+  /// 'assign_program' | 'set_nutrition_targets' | 'meal_plan' | 'assign_meal_plan'
+  kind           String
+  summary        String
+  payload        Json
+  /// 'proposed' | 'applied' | 'cancelled' | 'failed' | 'expired'
+  status         String    @default("proposed")
+  result         Json?
+  error          String?
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  decidedAt      DateTime? @map("decided_at") @db.Timestamptz(3)
+
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  conversation AiConversation @relation(fields: [conversationId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  user         User           @relation(fields: [userId], references: [id])
+
+  @@index([conversationId])
+  @@index([organizationId, clientId])
+  @@map("ai_actions")
 }

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { connection } from 'next/server';
 import { getAiSetting, isManager, listAiConversations } from '@kinetic/core';
 import { AssistantChat } from '@/components/assistant/AssistantChat';
-import { AssistantToggle } from '@/components/assistant/AssistantToggle';
+import { AssistantActionsToggle, AssistantToggle } from '@/components/assistant/AssistantToggle';
 import { EmptyState } from '@/components/states/EmptyState';
 import { withServerTenant } from '@/server/serverActor';
 
@@ -22,7 +22,12 @@ export default async function AssistantPage() {
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-h1 font-semibold md:text-display">AI assistant</h1>
-        {manager && setting.aiEnabled && <AssistantToggle enabled />}
+        {manager && setting.aiEnabled && (
+          <div className="flex flex-wrap gap-2">
+            <AssistantActionsToggle enabled={setting.actionsEnabled} />
+            <AssistantToggle enabled />
+          </div>
+        )}
       </div>
       {!configured ? (
         <EmptyState
@@ -34,13 +39,16 @@ export default async function AssistantPage() {
           title="The AI assistant is off"
           body={
             manager
-              ? 'When it is on, anyone on your team can ask questions about clients, programs, check-ins and the business. To answer, Repsy sends the workspace data it needs to Anthropic, which processes it on our behalf and does not train on it. The assistant can only read: it never changes anything or messages anyone.'
+              ? 'When it is on, anyone on your team can ask questions about clients, programs, nutrition, check-ins and the business. To answer, Repsy sends the workspace data it needs to Anthropic, which processes it on our behalf and does not train on it. It only reads, unless you also let it propose changes (assigning programs, nutrition targets and meal plans); each change then waits for the coach to press Confirm. It never messages anyone.'
               : 'An owner or admin can turn it on for your workspace.'
           }
           action={manager ? <AssistantToggle enabled={false} /> : undefined}
         />
       ) : (
-        <AssistantChat initialConversations={conversations} />
+        <AssistantChat
+          initialConversations={conversations}
+          actionsEnabled={setting.actionsEnabled}
+        />
       )}
     </>
   );

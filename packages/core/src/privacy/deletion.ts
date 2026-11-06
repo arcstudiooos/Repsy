@@ -217,6 +217,8 @@ export async function eraseClientData(
   await tx.booking.deleteMany({ where: inClient });
   // PRD K12: their class places and attendance.
   await tx.classEnrollment.deleteMany({ where: inClient });
+  // PRD I15 actions: proposals name the client and carry their plan details.
+  await tx.aiAction.deleteMany({ where: inClient });
   await tx.packageJourneyRun.deleteMany({ where: inClient });
   await tx.sessionPack.deleteMany({ where: inClient });
   // Financial records (subscriptions, payments, receipts) and org-level rows

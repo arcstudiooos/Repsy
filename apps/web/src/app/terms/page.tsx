@@ -63,8 +63,11 @@ const SECTIONS: LegalSection[] = [
           help if you feel pain, dizziness or shortness of breath.
         </p>
         <p>
-          The AI assistant answers a coach&rsquo;s questions from their workspace data. Its answers
-          can be wrong: the coach checks them and is responsible for anything they send or assign.
+          The AI assistant answers a coach&rsquo;s questions from their workspace data. If the
+          workspace allows it, it can also propose changes, such as assigning a program or a meal
+          plan; nothing changes until the coach confirms. Its answers, meal plans and macro
+          estimates can be wrong: the coach checks them and is responsible for anything they send,
+          confirm or assign.
         </p>
       </>
     ),

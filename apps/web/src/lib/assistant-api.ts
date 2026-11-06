@@ -1,10 +1,10 @@
 /** Browser-side calls to the AI assistant API (PRD I15). Same-origin, so the CSRF Origin check passes. */
-import type { AiConversationView, AiMessageView } from '@kinetic/core';
+import type { AiActionView, AiConversationView, AiMessageView } from '@kinetic/core';
 import { call } from './checkin-api';
 import type { ApiCall } from './workout-api';
 
 export const askAssistant = (body: { conversationId?: string; question: string }) =>
-  call<{ conversationId: string; messages: AiMessageView[] }>(
+  call<{ conversationId: string; messages: AiMessageView[]; actions: AiActionView[] }>(
     'POST',
     '/api/v1/assistant/messages',
     body,
@@ -12,6 +12,15 @@ export const askAssistant = (body: { conversationId?: string; question: string }
 
 export const setAssistantEnabled = (aiEnabled: boolean) =>
   call<{ aiEnabled: boolean }>('PUT', '/api/v1/assistant/settings', { aiEnabled });
+
+export const setAssistantActionsEnabled = (actionsEnabled: boolean) =>
+  call<{ actionsEnabled: boolean }>('PUT', '/api/v1/assistant/settings', { actionsEnabled });
+
+export const confirmAction = (id: string) =>
+  call<AiActionView>('POST', `/api/v1/assistant/actions/${encodeURIComponent(id)}/confirm`, {});
+
+export const cancelAction = (id: string) =>
+  call<AiActionView>('POST', `/api/v1/assistant/actions/${encodeURIComponent(id)}/cancel`, {});
 
 async function send<T>(method: 'GET' | 'DELETE', path: string): Promise<ApiCall<T>> {
   try {
@@ -37,7 +46,10 @@ async function send<T>(method: 'GET' | 'DELETE', path: string): Promise<ApiCall<
 }
 
 export const loadConversation = (id: string) =>
-  send<AiConversationView>('GET', `/api/v1/assistant/conversations/${encodeURIComponent(id)}`);
+  send<AiConversationView & { actions: AiActionView[] }>(
+    'GET',
+    `/api/v1/assistant/conversations/${encodeURIComponent(id)}`,
+  );
 
 export const removeConversation = (id: string) =>
   send<{ deleted: true }>('DELETE', `/api/v1/assistant/conversations/${encodeURIComponent(id)}`);
