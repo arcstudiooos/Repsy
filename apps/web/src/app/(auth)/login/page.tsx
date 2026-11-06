@@ -5,12 +5,16 @@ import { LoginForm } from './LoginForm';
 
 export const metadata: Metadata = { title: 'Sign in | Repsy' };
 
-export default function LoginPage() {
+export default function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   return (
     <LoginForm
       google={
         <Suspense fallback={null}>
-          <GoogleButton />
+          <GoogleButton searchParams={searchParams} />
         </Suspense>
       }
     />

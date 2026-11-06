@@ -726,6 +726,17 @@ export {
   type PushKind,
 } from './notifications/push';
 export { twoFactorStatus, type TwoFactorStatus } from './identity/twoFactor';
+export {
+  clearSsoSetting,
+  emailDomain,
+  getSsoSetting,
+  microsoftLinkAllowed,
+  microsoftTenantFromIdToken,
+  saveSsoSetting,
+  ssoRequiredFor,
+  type SsoProvider,
+  type SsoSettingView,
+} from './identity/sso';
 export { recordReadiness, readReadiness, type ReadinessView } from './sessions/readiness';
 export {
   READINESS_QUESTIONS,
