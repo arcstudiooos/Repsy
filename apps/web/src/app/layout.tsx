@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { themeBootScript } from '@/components/theme/theme';
 import { Toaster } from '@/components/ui/toast';
+import { appUrl, SITE_NAME } from '@/lib/site';
 import './globals.css';
 
 const geistSans = Geist({
@@ -15,8 +16,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  // Relative canonicals and the generated share image resolve against the app host, where every page but the
+  // landing page lives (SEO/AEO audit 2026-11-06). The landing page sets an absolute canonical on the marketing host.
+  metadataBase: new URL(appUrl),
   title: 'Repsy',
   description: 'Coaching workspace for coaches and their clients.',
+  applicationName: SITE_NAME,
+  openGraph: { siteName: SITE_NAME, locale: 'en_US', type: 'website' },
+  twitter: { card: 'summary_large_image' },
   // PRD L1: installable; iOS reads the touch icon and status bar settings from here.
   appleWebApp: { capable: true, title: 'Repsy', statusBarStyle: 'default' },
   icons: { icon: '/favicon.ico', apple: '/icon-192.png' },
