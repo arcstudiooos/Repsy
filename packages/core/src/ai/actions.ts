@@ -419,7 +419,12 @@ async function readPlanDays(
       dayTitles.push(`${mealName}: ${first.title}`);
       return {
         name: mealName,
-        options: options.map(({ macros: _m, title: _t, ...rest }) => rest),
+        options: options.map((o) => {
+          const rest: Record<string, unknown> = { ...o };
+          delete rest.macros;
+          delete rest.title;
+          return rest;
+        }),
       };
     });
     totals.push(total);
