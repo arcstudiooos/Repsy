@@ -1087,3 +1087,13 @@ export {
   type GoogleOAuthConfig,
 } from './calendar/google';
 export { decryptToken, encryptToken } from './calendar/tokenCrypto';
+export {
+  deleteFromStream,
+  mediaPlayback,
+  processVideoStreams,
+  STREAM_PURPOSES,
+  streamConfig,
+  streamStatus,
+  uploadToStream,
+  type StreamConfig,
+} from './media/stream';

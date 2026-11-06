@@ -5,6 +5,7 @@ import {
   DomainError,
   listProgressPhotos,
   mediaForDownload,
+  mediaPlayback,
   prepareUpload,
   recordMedia,
   storageKeyFor,
@@ -79,6 +80,11 @@ export const mediaDownloadRoute: RouteDef<undefined, true> = {
       },
     });
   },
+};
+
+/** `GET /api/v1/media/:id/playback` (PRD L11): the adaptive HLS manifest when ready, else the MP4. */
+export const mediaPlaybackRoute: RouteDef<undefined, true> = {
+  handler: ({ actor, params, tenant }) => tenant((tx) => mediaPlayback(tx, actor, params.id ?? '')),
 };
 
 const photosQuery = z.object({ clientId: z.string().max(64).optional() });

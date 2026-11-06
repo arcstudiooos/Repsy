@@ -15,7 +15,11 @@ const mail = (
 
 const PROCESSORS: [string, string, string][] = [
   ['Render', 'Hosting for the app, background jobs and database', 'United States'],
-  ['Cloudflare', 'Network protection, and private storage for files and exports (R2)', 'Global'],
+  [
+    'Cloudflare',
+    'Network protection, private storage for files and exports (R2), and streaming of coach demo videos',
+    'Global',
+  ],
   ['Resend', 'Sending account and notification emails', 'United States'],
   ['Sentry', 'Error reports, so we can fix problems', 'United States or European Union'],
   [

@@ -1,3 +1,4 @@
+import { videoStreamJob } from './videoStream';
 import { calendarSyncJob } from './calendarSync';
 import { aiPurgeJob } from './aiPurge';
 import { billingSweepJob } from './billingSweep';
@@ -33,4 +34,5 @@ export const jobs = [
   billingSweepJob,
   aiPurgeJob,
   calendarSyncJob,
+  videoStreamJob,
 ] as const;

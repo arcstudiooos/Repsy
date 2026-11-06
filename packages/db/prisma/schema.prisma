@@ -1776,6 +1776,11 @@ model MediaFile {
   storageKey     String    @unique @map("storage_key")
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   erasedAt       DateTime? @map("erased_at") @db.Timestamptz(3)
+  /// PRD L11: the Cloudflare Stream video for an uploaded demo, and its adaptive HLS manifest.
+  streamUid      String?   @map("stream_uid")
+  /// null (not sent), 'processing', 'ready' or 'error'.
+  streamStatus   String?   @map("stream_status")
+  streamHlsUrl   String?   @map("stream_hls_url")
 
   organization   Organization    @relation(fields: [organizationId], references: [id])
   client         Client?         @relation(fields: [clientId, organizationId], references: [id, organizationId])
