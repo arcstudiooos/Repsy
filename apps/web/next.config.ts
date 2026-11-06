@@ -27,6 +27,22 @@ const buildId = (
   `t${Date.now().toString(36)}`
 ).replace(/[^A-Za-z0-9_-]/g, '');
 
+const SECURITY_HEADERS = [
+  {
+    key: 'Content-Security-Policy',
+    value: "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+  },
+  { key: 'X-Frame-Options', value: 'DENY' },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  {
+    key: 'Permissions-Policy',
+    value: 'camera=(self), microphone=(), geolocation=(), payment=(), usb=()',
+  },
+  // Browsers ignore HSTS over plain http, so this is harmless in local dev.
+  { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' },
+];
+
 const nextConfig: NextConfig = {
   // The E2E stack (and ad-hoc build checks) use their own build dir so they never share `.next` with `next dev`.
   distDir: process.env.NEXT_DIST_DIR?.trim() || '.next',
@@ -35,9 +51,17 @@ const nextConfig: NextConfig = {
   transpilePackages: ['@kinetic/core', '@kinetic/db'],
   serverExternalPackages: ['pg'],
   partialPrefetching: true,
-  // The portal service worker (S3-3): always revalidated, so a new version is picked up on the next visit.
+  poweredByHeader: false,
   async headers() {
     return [
+      // Baseline security headers on every response. The CSP only restricts framing, plugins and <base>:
+      // script/style sources stay open because Next inlines bootstrap scripts and Sentry/PostHog are
+      // optional. Tighten with nonces later.
+      {
+        source: '/:path*',
+        headers: SECURITY_HEADERS,
+      },
+      // The portal service worker (S3-3): always revalidated, so a new version is picked up on the next visit.
       {
         source: '/sw.js',
         headers: [

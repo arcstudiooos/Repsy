@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { appendAudit, type PrismaClient } from '@kinetic/db';
 import { createTestDb } from '@kinetic/db/testing';
 import { newClientWorld, newOrg, runAs } from '../sessions/fixtures.test-helpers';
-import { listAuditLog } from './ownerLog';
+import { humanizeAction, listAuditLog } from './ownerLog';
 
 let prisma: PrismaClient;
 let drop: () => Promise<void>;
@@ -60,5 +60,14 @@ describe('owner audit log (PRD A14)', () => {
     await expect(runAs(prisma, coach, (tx) => listAuditLog(tx, coach))).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
+  });
+});
+
+describe('audit labels (QA 2026-11-06)', () => {
+  it('never shows a raw key when an action has no label yet', () => {
+    expect(humanizeAction('client.stage_changed')).toBe('Client stage changed');
+    expect(humanizeAction('organization.public_page_updated')).toBe(
+      'Organization public page updated',
+    );
   });
 });

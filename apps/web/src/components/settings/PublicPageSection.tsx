@@ -2,6 +2,7 @@
 
 import { useId, useState, type FormEvent } from 'react';
 import type { PublicPageSettings } from '@kinetic/core';
+import { useHydrated } from '@/components/time/LocalTime';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -35,10 +36,9 @@ export function PublicPageSection({
     setSaved(res.data);
     toast.success('Public page saved');
   }
-  const url =
-    saved.slug && typeof window !== 'undefined'
-      ? `${window.location.origin}/join/${saved.slug}`
-      : null;
+  // The origin is only known in the browser: render the link after hydration so server and client markup match.
+  const hydrated = useHydrated();
+  const url = saved.slug && hydrated ? `${window.location.origin}/join/${saved.slug}` : null;
   return (
     <Card>
       <CardHeader>

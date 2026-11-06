@@ -6,15 +6,13 @@ import type { MessageAnchor } from '@kinetic/core';
 import { Fragment, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { fillPlaceholders } from '@kinetic/core/reply-fill';
 import type { MessageView, SavedReplyView } from '@kinetic/core';
+import { dayKey, formatWhen, LocalTime, useHydrated } from '@/components/time/LocalTime';
 import { Button } from '@/components/ui/button';
 import { fetchMessages, postMessage } from '@/lib/message-api';
 import { cn } from '@/lib/utils';
 
 const MAX = 4000;
 const POLL_MS = 15_000;
-
-const timeLabel = (iso: string) =>
-  new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
 /** Newest-first pages merged into one oldest-first list without duplicates. */
 function merge(current: MessageView[], incoming: MessageView[]): MessageView[] {
@@ -56,6 +54,7 @@ export function MessageThread({
   replyFacts?: Partial<Record<string, string>>;
 }) {
   const id = useId();
+  const hydrated = useHydrated();
   const [messages, setMessages] = useState(() => merge([], initial));
   const [cursor, setCursor] = useState(initialCursor);
   const [body, setBody] = useState('');
@@ -184,8 +183,8 @@ export function MessageThread({
       ) : (
         <ol aria-label="Messages" className="flex flex-col gap-3">
           {messages.map((m, i) => {
-            const day = new Date(m.createdAt).toDateString();
-            const prevDay = i > 0 ? new Date(messages[i - 1]!.createdAt).toDateString() : null;
+            const day = dayKey(m.createdAt, hydrated);
+            const prevDay = i > 0 ? dayKey(messages[i - 1]!.createdAt, hydrated) : null;
             return (
               <Fragment key={m.id}>
                 {day !== prevDay && (
@@ -194,7 +193,7 @@ export function MessageThread({
                     className="my-1 flex items-center gap-3 text-micro text-secondary"
                   >
                     <span className="h-px flex-1 bg-border" />
-                    {new Date(m.createdAt).toLocaleDateString('en-GB', {
+                    {formatWhen(m.createdAt, hydrated, {
                       weekday: 'short',
                       day: 'numeric',
                       month: 'short',
@@ -217,8 +216,7 @@ export function MessageThread({
                     {m.attachment && <Attachment a={m.attachment} />}
                   </div>
                   <p className="flex items-center gap-1 text-xs text-secondary">
-                    {m.mine ? 'You' : m.senderName} ·{' '}
-                    <time dateTime={m.createdAt}>{timeLabel(m.createdAt)}</time>
+                    {m.mine ? 'You' : m.senderName} · <LocalTime iso={m.createdAt} />
                     {m.mine && (
                       <>
                         {' '}

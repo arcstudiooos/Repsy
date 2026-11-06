@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import type { PrismaClient } from '@kinetic/db';
 import { getSessionUser, type Auth, type SessionUser } from './auth';
-import { hasCoachMembership, ONBOARDING_PATH } from './membership';
+import { hasCoachMembership, noCoachMembershipTarget } from './membership';
 
 const PROTECTED_PREFIXES = ['/app', '/portal', '/settings', '/admin', '/onboarding'] as const;
 
@@ -37,9 +37,11 @@ export async function guardRequest(
   if (decision.type === 'redirect') return NextResponse.redirect(new URL(decision.to, request.url));
   // The admin console is invisible to non-admins (S5-3): not found, not forbidden.
   if (decision.type === 'forbidden') return new NextResponse('Not Found', { status: 404 });
-  // Verified but no workspace (Google-less orphans, failed provisioning): redeem a pilot code.
+  // No coach membership: clients go to their portal, platform admins to /admin, and verified users with no
+  // workspace (Google-less orphans, failed provisioning) redeem a pilot code.
   if (user && isAppPath(pathname) && !(await hasCoachMembership(deps.prisma, user.id))) {
-    return NextResponse.redirect(new URL(ONBOARDING_PATH, request.url));
+    const to = await noCoachMembershipTarget(deps.prisma, user);
+    return NextResponse.redirect(new URL(to, request.url));
   }
   return null;
 }

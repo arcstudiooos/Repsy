@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { revalidatePath } from 'next/cache';
 import Link from 'next/link';
 import {
   assertLapseAllows,
@@ -15,6 +16,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { withServerTenant } from '@/server/serverActor';
 
 export const metadata: Metadata = { title: 'Billing | Repsy' };
+
+/** Re-render the billing page (and revenue views) after a write, so the new package or payment shows at once. */
+function refreshBilling() {
+  revalidatePath('/app/billing');
+  revalidatePath('/app/analytics/business');
+}
 
 async function createPackageAction(data: FormData) {
   'use server';
@@ -36,6 +43,7 @@ async function createPackageAction(data: FormData) {
       trialDays: Number(data.get('trialDays') ?? 0),
     });
   });
+  refreshBilling();
 }
 
 async function subscriptionAction(data: FormData) {
@@ -48,6 +56,7 @@ async function subscriptionAction(data: FormData) {
     await assertLapseAllows(tx, actor, 'write');
     return retrySubscriptionPayment(tx, actor, id).then(() => undefined);
   });
+  refreshBilling();
 }
 
 async function manualPaymentAction(data: FormData) {
@@ -63,6 +72,7 @@ async function manualPaymentAction(data: FormData) {
       reference: String(data.get('reference') ?? ''),
     });
   });
+  refreshBilling();
 }
 
 /** PRD K3, K7, K9, K15: packages, subscriptions, revenue and manual payments. */
@@ -75,6 +85,9 @@ export default async function BillingPage() {
       analytics: await getBillingAnalytics(tx, actor),
     }),
   );
+  const revenue = analytics.summary.revenueByCurrency
+    .map((r) => formatMoneyMinor(r.netMinor, r.currency))
+    .join(', ');
   const mrr = analytics.summary.mrrByCurrency
     .map((r) => formatMoneyMinor(r.mrrMinor, r.currency))
     .join(', ');
@@ -82,8 +95,9 @@ export default async function BillingPage() {
     <>
       <h1 className="mb-6 text-h1 font-semibold md:text-display">Billing</h1>
       <div className="flex flex-col gap-6">
-        <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {[
+            ['Revenue, after refunds', revenue || '–'],
             ['Monthly recurring revenue', mrr || '–'],
             ['Active subscriptions', String(analytics.summary.activeSubscriptions)],
             [
@@ -224,7 +238,7 @@ export default async function BillingPage() {
             <CardTitle as="h2">Packages</CardTitle>
             <CardDescription>
               What you sell. A package can invite, tag, start an onboarding sequence and assign a
-              template on purchase — the sequence itself runs in the journeys slice.
+              template on purchase.
             </CardDescription>
           </CardHeader>
           <CardContent>

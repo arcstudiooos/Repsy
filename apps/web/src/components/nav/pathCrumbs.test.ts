@@ -47,4 +47,14 @@ describe('crumbsFromPath', () => {
       { label: 'Version 2' },
     ]);
   });
+  it('names the print page and opaque ids in other sections (QA 2026-11-06)', () => {
+    const id = 'b13f5b66-4b02-4656-b796-1296fbc395e0';
+    expect(crumbsFromPath(`/app/programs/${id}/print`)?.slice(2)).toEqual([
+      { label: 'Program', href: `/app/programs/${id}/edit` },
+      { label: 'Print' },
+    ]);
+    expect(crumbsFromPath(`/app/groups/${id}`)?.at(-1)).toEqual({ label: 'Group' });
+    expect(crumbsFromPath(`/app/courses/${id}`)?.at(-1)).toEqual({ label: 'Course' });
+    expect(crumbsFromPath(`/app/meal-plans/recipes/${id}`)?.at(-1)).toEqual({ label: 'Recipe' });
+  });
 });

@@ -4,13 +4,12 @@ import { useRouter } from 'next/navigation';
 import { useId, useState } from 'react';
 import { Lock, Pin } from 'lucide-react';
 import type { NoteView } from '@kinetic/core';
+import { formatWhen, useHydrated } from '@/components/time/LocalTime';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/toast';
 import { addNote, editNote, pinNote, removeNote } from '@/lib/note-api';
 
 const MAX = 4000;
-const when = (iso: string) =>
-  new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
 function NoteForm({
   label,
@@ -80,6 +79,8 @@ function NoteForm({
 
 /** Private notes about a client (S4-5): never shown to the client. Only the author edits or deletes. */
 export function NotesPanel({ clientId, notes }: { clientId: string; notes: NoteView[] }) {
+  const hydrated = useHydrated();
+  const when = (iso: string) => formatWhen(iso, hydrated);
   const router = useRouter();
   const [editing, setEditing] = useState<string | null>(null);
 

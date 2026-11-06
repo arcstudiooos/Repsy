@@ -82,7 +82,7 @@ export function LoginForm({ google }: { google: ReactNode }) {
   if (step === 'code') {
     return (
       <AuthShell title="Two-step sign-in">
-        <form onSubmit={onCode}>
+        <form method="post" onSubmit={onCode}>
           {error && <FormMessage tone="error">{error}</FormMessage>}
           <p className="mb-4 text-sm">
             {backup
@@ -119,7 +119,7 @@ export function LoginForm({ google }: { google: ReactNode }) {
 
   return (
     <AuthShell title="Sign in">
-      <form onSubmit={onSubmit}>
+      <form method="post" onSubmit={onSubmit}>
         {error && <FormMessage tone="error">{error}</FormMessage>}
         <RequiredNote />
         <Field label="Email" name="email" type="email" autoComplete="email" />

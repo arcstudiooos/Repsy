@@ -22,6 +22,7 @@ function programCrumbs(segments: string[]): Crumb[] | null {
   if (page === 'history' && segments.length === 3) {
     return [programs, program, { label: 'Version history' }];
   }
+  if (page === 'print' && segments.length === 3) return [programs, program, { label: 'Print' }];
   if (page === 'versions' && no && segments.length === 4) {
     return [
       programs,
@@ -32,6 +33,21 @@ function programCrumbs(segments: string[]): Crumb[] | null {
   }
   return null;
 }
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** What an opaque id under each section is called, so a crumb never shows a raw UUID (QA 2026-11-06, B7). */
+const ITEM_LABEL: Record<string, string> = {
+  automations: 'Automation',
+  challenges: 'Challenge',
+  courses: 'Course',
+  groups: 'Group',
+  'meal-plans': 'Meal plan',
+  recipes: 'Recipe',
+};
+
+const segmentLabel = (segment: string, parent: string | undefined): string =>
+  UUID.test(segment) ? (ITEM_LABEL[parent ?? ''] ?? 'Details') : capitalize(safeDecode(segment));
 
 /**
  * Crumbs for nested coach routes (/app/clients/123 gives Overview / Clients / 123);
@@ -47,11 +63,8 @@ export function crumbsFromPath(pathname: string): Crumb[] | null {
   if (program) return [...crumbs, ...program];
   segments.forEach((segment, i) => {
     const href = `/app/${segments.slice(0, i + 1).join('/')}`;
-    crumbs.push(
-      i === segments.length - 1
-        ? { label: capitalize(safeDecode(segment)) }
-        : { label: capitalize(safeDecode(segment)), href },
-    );
+    const label = segmentLabel(segment, segments[i - 1]);
+    crumbs.push(i === segments.length - 1 ? { label } : { label, href });
   });
   return crumbs;
 }

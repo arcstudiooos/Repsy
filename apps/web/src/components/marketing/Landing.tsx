@@ -84,7 +84,7 @@ function PrimaryCta({
   tone?: 'brand' | 'acid';
 }) {
   return (
-    <Link
+    <a
       href={href}
       className={cn(
         'group inline-flex min-h-12 items-center justify-center gap-2 rounded-[12px] px-6 text-base font-semibold shadow-e1 transition-colors',
@@ -98,7 +98,7 @@ function PrimaryCta({
         aria-hidden
         className="size-4 transition-transform duration-150 group-hover:translate-x-[3px]"
       />
-    </Link>
+    </a>
   );
 }
 
