@@ -42,7 +42,11 @@ export default async function BusinessAnalyticsPage() {
         </dl>
         <p className="text-sm text-secondary">
           Average time coached: {days(a.averageLifetimeDays)}. A client starts when they accept
-          their invite and ends when you end coaching. Revenue appears here once you take payments.
+          their invite and ends when you end coaching. Revenue and payments are on{' '}
+          <Link href="/app/billing" className="text-accent underline underline-offset-4">
+            Billing
+          </Link>
+          .
         </p>
 
         <Card>

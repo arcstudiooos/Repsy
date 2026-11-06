@@ -5,10 +5,9 @@ import type { ExportView } from '@kinetic/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { exportLinks, listExports, requestExport } from '@/lib/export-api';
+import { LocalTime } from '@/components/time/LocalTime';
 
 const POLL_MS = 5000;
-const when = (iso: string) =>
-  new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 const STATUS: Record<ExportView['status'], string> = {
   queued: 'Preparing',
   running: 'Preparing',
@@ -97,7 +96,7 @@ export function DataExportSection({
                   <span className="font-medium" role="status">
                     {STATUS[e.status]}
                   </span>{' '}
-                  · requested {when(e.createdAt)}
+                  · requested <LocalTime iso={e.createdAt} />
                 </p>
                 {e.files.length > 0 && (
                   <ul className="mt-2 flex flex-wrap gap-2">

@@ -148,6 +148,29 @@ describe('membership gate', () => {
     expect(await guardRequest(onboarding, deps)).toBeNull();
   });
 
+  it('client-only user: /app redirects to /portal, not the coach-trial page', async () => {
+    const { cookie, user } = await verifiedOrphan('client-only@example.test');
+    await withSystem(async (tx) => {
+      const org = await tx.organization.create({
+        data: { name: 'Client Gym', timezone: 'UTC', ownerUserId: adminId },
+      });
+      await tx.membership.create({
+        data: { userId: user.id, organizationId: org.id, role: 'client' },
+      });
+    }, prisma);
+    const res = await guardRequest(new NextRequest(`${ORIGIN}/app`, { headers: { cookie } }), deps);
+    expect(res?.status).toBe(307);
+    expect(new URL(res?.headers.get('location') ?? '').pathname).toBe('/portal');
+  });
+
+  it('platform admin with no workspace: /app redirects to /admin', async () => {
+    const { cookie, user } = await verifiedOrphan('plat-admin@example.test');
+    await authPrisma.user.update({ where: { id: user.id }, data: { isPlatformAdmin: true } });
+    const res = await guardRequest(new NextRequest(`${ORIGIN}/app`, { headers: { cookie } }), deps);
+    expect(res?.status).toBe(307);
+    expect(new URL(res?.headers.get('location') ?? '').pathname).toBe('/admin');
+  });
+
   it('redeeming a valid code creates org + owner membership and opens /app', async () => {
     const { cookie, user } = await verifiedOrphan('redeem@example.test');
     await seedCode('redeem-ok');

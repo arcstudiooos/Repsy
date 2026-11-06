@@ -26,7 +26,10 @@ async function MembershipGate({
   const { user, memberships } = await getServerSession();
   if (!user) redirect(`/login?next=${encodeURIComponent(loginNext)}`);
   if (!user.emailVerified) redirect('/verify-email');
-  if (!memberships.some((m) => isCoachRole(m.role))) redirect(noMembershipPath);
+  if (!memberships.some((m) => isCoachRole(m.role))) {
+    if (memberships.some((m) => m.role === 'client')) redirect('/portal');
+    redirect(user.isPlatformAdmin ? '/admin' : noMembershipPath);
+  }
   const target = shellRedirect('coach', await getServerActorOutcome(user));
   if (target) redirect(target);
   return (

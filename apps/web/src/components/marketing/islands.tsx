@@ -55,13 +55,13 @@ export function MarketingNav() {
           </ul>
         </nav>
         <div className="ml-auto flex items-center gap-2">
-          <Link
+          <a
             href="/login"
             className="hidden min-h-10 items-center rounded-control px-3 text-[15px] font-medium hover:bg-surface-2 sm:flex"
           >
             Log in
-          </Link>
-          <Link
+          </a>
+          <a
             href="/signup"
             className="group flex min-h-10 items-center gap-1.5 rounded-[12px] bg-brand px-4 text-[15px] font-semibold text-on-brand shadow-e1 transition-colors hover:bg-brand-hover"
           >
@@ -70,7 +70,7 @@ export function MarketingNav() {
               aria-hidden
               className="size-4 transition-transform duration-150 group-hover:translate-x-[3px]"
             />
-          </Link>
+          </a>
           <Dialog.Root open={open} onOpenChange={setOpen}>
             <Dialog.Trigger
               aria-label="Menu"
@@ -103,20 +103,20 @@ export function MarketingNav() {
                     </li>
                   ))}
                   <li>
-                    <Link
+                    <a
                       href="/login"
                       className="flex min-h-12 items-center rounded-control px-3 hover:bg-surface-2"
                     >
                       Log in
-                    </Link>
+                    </a>
                   </li>
                 </ul>
-                <Link
+                <a
                   href="/signup"
                   className="mt-auto flex min-h-12 items-center justify-center rounded-[12px] bg-brand text-base font-semibold text-on-brand"
                 >
                   Start free with 3 clients
-                </Link>
+                </a>
               </Dialog.Content>
             </Dialog.Portal>
           </Dialog.Root>
@@ -349,7 +349,7 @@ export function PricingPlans() {
                 </li>
                 <li>Every feature included</li>
               </ul>
-              <Link
+              <a
                 href="/signup"
                 className={cn(
                   'mt-6 flex min-h-12 items-center justify-center rounded-[12px] text-[15px] font-semibold transition-colors',
@@ -359,7 +359,7 @@ export function PricingPlans() {
                 )}
               >
                 {p.monthly === 0 ? 'Start free' : `Choose ${p.name}`}
-              </Link>
+              </a>
             </li>
           );
         })}

@@ -22,7 +22,7 @@ export function ResendVerification() {
   }
 
   return (
-    <form onSubmit={onSubmit}>
+    <form method="post" onSubmit={onSubmit}>
       {sent && (
         <FormMessage tone="info">If that address needs verifying, we sent a new link.</FormMessage>
       )}

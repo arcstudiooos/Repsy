@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/toast';
 import { createFollowup, patchFlag, type FlagPatch } from '@/lib/review-api';
 import { formatDate } from '../clients/StatusBadge';
+import { LocalTime } from '@/components/time/LocalTime';
 
 type Dialogs =
   | { kind: 'resolve' | 'dismiss'; flag: FlagView }
@@ -34,7 +35,7 @@ const SNOOZES = [
   { label: '1 week', days: 7 },
 ];
 
-const when = (iso: string) => new Date(iso).toLocaleDateString(undefined, { dateStyle: 'medium' });
+const DAY: Intl.DateTimeFormatOptions = { dateStyle: 'medium' };
 
 /** One card per client (S4-3): each flag with its rule, evidence dates and actions. */
 export function FlagQueue({
@@ -176,14 +177,19 @@ export function FlagQueue({
                       <p className="text-sm text-secondary">
                         {f.title ? `${f.ruleText}. ` : ''}
                         {f.dates.length > 0 && <>{f.dates.map(formatDate).join(', ')} · </>}
-                        Raised {when(f.createdAt)}
+                        Raised <LocalTime iso={f.createdAt} options={DAY} />
                         {f.reopenedAt && <> · Back from snooze</>}
-                        {f.snoozedUntil && <> · Snoozed until {when(f.snoozedUntil)}</>}
+                        {f.snoozedUntil && (
+                          <>
+                            {' '}
+                            · Snoozed until <LocalTime iso={f.snoozedUntil} options={DAY} />
+                          </>
+                        )}
                         {f.resolvedAt && (
                           <>
                             {' '}
                             · {f.state === 'dismissed' ? 'Dismissed' : 'Resolved'}{' '}
-                            {when(f.resolvedAt)}
+                            <LocalTime iso={f.resolvedAt} options={DAY} />
                             {f.resolutionReason && <>: {f.resolutionReason}</>}
                           </>
                         )}

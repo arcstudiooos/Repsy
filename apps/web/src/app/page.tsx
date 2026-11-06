@@ -29,7 +29,8 @@ async function Landing() {
   } catch (error) {
     if (!(error instanceof DomainError)) throw error;
     // No workspace at all -> pilot-code recovery; ambiguous or stale org -> chooser.
-    target = memberships.length === 0 ? ONBOARDING_PATH : '/select-org';
+    target =
+      memberships.length > 0 ? '/select-org' : user.isPlatformAdmin ? '/admin' : ONBOARDING_PATH;
   }
   redirect(target);
 }

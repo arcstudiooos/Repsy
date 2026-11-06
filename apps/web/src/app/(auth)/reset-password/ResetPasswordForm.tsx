@@ -46,7 +46,7 @@ export function ResetPasswordForm() {
     <AuthShell title={token ? 'Choose a new password' : 'Reset your password'}>
       {message && <FormMessage tone={message.tone}>{message.text}</FormMessage>}
       {token ? (
-        <form onSubmit={choosePassword}>
+        <form method="post" onSubmit={choosePassword}>
           <Field
             label="New password"
             name="password"
@@ -60,7 +60,7 @@ export function ResetPasswordForm() {
           </button>
         </form>
       ) : (
-        <form onSubmit={requestLink}>
+        <form method="post" onSubmit={requestLink}>
           <Field label="Email" name="email" type="email" autoComplete="email" />
           <button type="submit" className={buttonClass} disabled={pending}>
             Send reset link

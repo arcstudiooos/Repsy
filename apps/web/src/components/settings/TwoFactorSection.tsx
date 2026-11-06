@@ -145,7 +145,12 @@ export function TwoFactorSection({ enabled, required }: { enabled: boolean; requ
           <>
             <p className="font-medium">Two-step sign-in is on.</p>
             {codes && codeList(codes)}
-            <form onSubmit={newCodes} className="flex flex-col gap-3" aria-label="New backup codes">
+            <form
+              method="post"
+              onSubmit={newCodes}
+              className="flex flex-col gap-3"
+              aria-label="New backup codes"
+            >
               {passwordField('codes')}
               <div>
                 <Button type="submit" variant="secondary" disabled={busy}>
@@ -184,7 +189,12 @@ export function TwoFactorSection({ enabled, required }: { enabled: boolean; requ
               <li>{codeList(setup.backupCodes)}</li>
               <li>Enter the 6-digit code the app shows.</li>
             </ol>
-            <form onSubmit={confirm} className="flex flex-col gap-3" aria-label="Confirm the code">
+            <form
+              method="post"
+              onSubmit={confirm}
+              className="flex flex-col gap-3"
+              aria-label="Confirm the code"
+            >
               <div className="flex flex-col gap-1 sm:max-w-xs">
                 <label htmlFor={`${id}-code`} className="text-sm font-medium">
                   Code from the app
