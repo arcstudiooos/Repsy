@@ -1066,3 +1066,24 @@ export {
   type AiConversationView,
   type AiMessageView,
 } from './ai/conversations';
+export {
+  coachBusyTimes,
+  coachConnectionForSessionType,
+  disconnectCalendar,
+  getCalendarConnection,
+  saveGoogleConnection,
+  signCalendarState,
+  syncPendingBookings,
+  verifyCalendarState,
+  type CalendarConnectionView,
+} from './calendar/connections';
+export {
+  exchangeGoogleCode,
+  googleConsentUrl,
+  googleOAuthConfig,
+  GoogleCalendarError,
+  GoogleCalendarSync,
+  revokeGoogleToken,
+  type GoogleOAuthConfig,
+} from './calendar/google';
+export { decryptToken, encryptToken } from './calendar/tokenCrypto';

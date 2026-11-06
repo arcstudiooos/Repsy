@@ -72,6 +72,7 @@ model User {
 
   ownedOrganizations       Organization[]
   aiConversations          AiConversation[]
+  calendarConnections      CalendarConnection[]
   createdJoinLinks         JoinLink[]              @relation("JoinLinkCreator")
   platformNotices          PlatformNotice[]        @relation("PlatformNoticeCreator")
   uploadedMedia            MediaFile[]             @relation("MediaUploader")
@@ -290,6 +291,7 @@ model Organization {
   savedReplies            SavedReply[]
   aiSettings         AiSetting[]
   aiConversations    AiConversation[]
+  calendarConnections CalendarConnection[]
   aiMessages         AiMessage[]
   billingPackages    BillingPackage[]
   coupons            Coupon[]
@@ -2801,6 +2803,10 @@ model Booking {
   packConsumed   Boolean  @default(false) @map("pack_consumed")
   cancelledAt    DateTime? @map("cancelled_at") @db.Timestamptz(3)
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  /// PRD K10: the Google Calendar event that mirrors this booking.
+  externalEventId  String?   @map("external_event_id")
+  calendarSyncedAt DateTime? @map("calendar_synced_at") @db.Timestamptz(3)
+  calendarError    String?   @map("calendar_error")
 
   organization Organization @relation(fields: [organizationId], references: [id])
   sessionType  SessionType  @relation(fields: [sessionTypeId, organizationId], references: [id, organizationId])
@@ -2812,6 +2818,30 @@ model Booking {
   @@index([organizationId, clientId])
   @@index([organizationId, coachUserId, startsAt])
   @@map("bookings")
+}
+
+/// PRD K10: a staff user's connected Google calendar. `refreshTokenEnc` is AES-256-GCM ciphertext.
+model CalendarConnection {
+  id              String    @id @default(uuid()) @db.Uuid
+  organizationId  String    @map("organization_id") @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  provider        String    @default("google")
+  accountEmail    String    @map("account_email")
+  refreshTokenEnc String    @map("refresh_token_enc")
+  calendarId      String    @default("primary") @map("calendar_id")
+  /// 'active' or 'error' (the token was revoked or Google keeps refusing).
+  status          String    @default("active")
+  lastSyncedAt    DateTime? @map("last_synced_at") @db.Timestamptz(3)
+  lastError       String?   @map("last_error")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, userId, provider])
+  @@map("calendar_connections")
 }
 
 model SessionPack {

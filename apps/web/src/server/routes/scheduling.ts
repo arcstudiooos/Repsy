@@ -13,6 +13,7 @@ import {
 import { listPacks, purchasePack } from '@kinetic/core';
 import { scheduleRenewalReminders, startPackageOnboarding } from '@kinetic/core';
 import { ApiResult, type RouteDef } from '../api';
+import { calendarBusyForBooking } from './calendarSync';
 
 const availabilitySchema = z.object({
   weekday: z.number().int().min(1).max(7),
@@ -76,8 +77,18 @@ export const bookingsListRoute: RouteDef<typeof bookingsQuerySchema, true> = {
 export const bookingsPostRoute: RouteDef<typeof bookingSchema, true> = {
   can: 'session:log',
   input: bookingSchema,
-  handler: async ({ actor, input, tenant }) =>
-    new ApiResult(await tenant((tx) => createBooking(tx, actor, input)), { status: 201 }),
+  handler: async ({ actor, input, tenant }) => {
+    // K10 two-way: the coach's Google busy times block the slot too (fails open).
+    const externalBusy = await calendarBusyForBooking(
+      tenant,
+      input.sessionTypeId,
+      input.startsAt,
+      input.endsAt,
+    );
+    return new ApiResult(await tenant((tx) => createBooking(tx, actor, input, { externalBusy })), {
+      status: 201,
+    });
+  },
 };
 
 /** `POST /api/v1/scheduling/bookings/:id/cancel` (PRD K10, K11 pack refund). */
