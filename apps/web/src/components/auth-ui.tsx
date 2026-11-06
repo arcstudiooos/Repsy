@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { CalendarCheck, LineChart, MessageSquare } from 'lucide-react';
 import { RepsyLogo } from '@/components/brand/Logo';
+import { LegalLinks } from '@/components/legal/LegalPage';
 import { ProgressRing } from '@/components/charts/ProgressRing';
 
 export const inputClass =
@@ -71,6 +72,7 @@ export function AuthShell({ title, children }: { title: string; children: ReactN
             <h1 className="mb-6 text-h1 font-semibold">{title}</h1>
             {children}
           </div>
+          <LegalLinks className="mt-6 text-center text-sm text-secondary" />
         </div>
       </div>
     </main>

@@ -30,7 +30,8 @@
     "db:diff": "node --env-file-if-exists=../../.env node_modules/prisma/build/index.js migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma --exit-code",
     "exercises:sql": "node --import tsx scripts/exercise-catalog-sql.ts",
     "db:seed": "node --env-file-if-exists=../../.env --import tsx prisma/seed.ts",
-    "db:deploy": "node --env-file-if-exists=../../.env node_modules/prisma/build/index.js migrate deploy"
+    "db:deploy": "node --env-file-if-exists=../../.env node_modules/prisma/build/index.js migrate deploy",
+    "db:wait-migrations": "node --env-file-if-exists=../../.env --import tsx scripts/wait-for-migrations.ts"
   },
   "exports": {
     ".": "./src/index.ts",

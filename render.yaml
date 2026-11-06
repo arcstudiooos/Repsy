@@ -34,6 +34,10 @@ services:
     runtime: node
     plan: starter
     buildCommand: pnpm install --frozen-lockfile --prod=false
+    # Only web applies migrations: wait until this build's migrations are in the database, so the new worker never
+    # runs against the old schema (go-live 2026-11-06). Uses the runtime role; times out (and keeps the old
+    # worker) after 20 minutes.
+    preDeployCommand: pnpm --filter @kinetic/db db:wait-migrations
     startCommand: pnpm --filter @kinetic/worker start
     autoDeploy: true
     envVars:

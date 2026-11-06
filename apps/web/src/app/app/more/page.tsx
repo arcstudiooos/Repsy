@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { SignOutButton } from '@/components/nav/SignOutButton';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { Card } from '@/components/ui/card';
+import { LegalLinks } from '@/components/legal/LegalPage';
 
 export const metadata: Metadata = { title: 'More | Repsy' };
 
@@ -49,6 +50,7 @@ export default function MorePage() {
         <h2 className="mb-3 text-h3 font-semibold">Theme</h2>
         <ThemeToggle />
       </Card>
+      <LegalLinks className="mt-4 px-1 text-sm text-secondary" />
     </>
   );
 }

@@ -62,6 +62,12 @@ describe('render.yaml blueprint', () => {
     expect(service('worker')?.startCommand).toBe('pnpm --filter @kinetic/worker start');
   });
 
+  it('worker waits for migrations before going live, without the owner role', () => {
+    const cmd = service('worker')?.preDeployCommand ?? '';
+    expect(cmd).toBe('pnpm --filter @kinetic/db db:wait-migrations');
+    expect(cmd).not.toContain('MIGRATION_DATABASE_URL');
+  });
+
   it('the owner connection string comes from the database and only reaches web', () => {
     const owner = service('web')?.envVars?.find((v) => v.key === 'MIGRATION_DATABASE_URL');
     expect(owner?.fromDatabase?.name).toBe(blueprint.databases[0]?.name);
