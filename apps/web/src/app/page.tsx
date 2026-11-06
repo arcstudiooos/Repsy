@@ -7,6 +7,8 @@ import { Landing as MarketingHome } from '@/components/marketing/Landing';
 import { LoadingState } from '@/components/states/LoadingState';
 import { getSessionUser } from '@/lib/auth';
 import { ONBOARDING_PATH } from '@/lib/membership';
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE, siteUrl } from '@/lib/site';
+import { homeJsonLd, jsonLdScript } from '@/lib/structuredData';
 import { loadMemberships, resolveActor } from '@/server/actor';
 
 /**
@@ -35,23 +37,38 @@ async function Landing() {
   redirect(target);
 }
 
+const TITLE = `${SITE_NAME} | ${SITE_TAGLINE}`;
+const SHARE_DESCRIPTION =
+  'Programs, check-ins, messages and scheduling in one place. Every feature on every plan.';
+
 export const metadata: Metadata = {
-  title: 'Repsy | Coaching software that never drops the ball',
-  description:
-    "Programs, check-ins, messages and scheduling for online and hybrid coaches. Clients' logs save with no signal, and every feature is on every plan.",
+  title: TITLE,
+  description: SITE_DESCRIPTION,
+  // The same page answers on the app host too: point both at the marketing host (SEO/AEO audit 2026-11-06).
+  alternates: { canonical: `${siteUrl}/` },
   openGraph: {
-    title: 'Repsy | Coaching software that never drops the ball',
-    description:
-      'Programs, check-ins, messages and scheduling in one place. Every feature on every plan.',
+    title: TITLE,
+    description: SHARE_DESCRIPTION,
+    url: `${siteUrl}/`,
+    siteName: SITE_NAME,
+    locale: 'en_US',
     type: 'website',
   },
+  twitter: { card: 'summary_large_image', title: TITLE, description: SHARE_DESCRIPTION },
 };
 
 export default function Home() {
   // Session + cookies are runtime data: keep them behind a boundary (cacheComponents).
+  // The JSON-LD is static, so it sits outside the boundary and lands in the prerendered HTML.
   return (
-    <Suspense fallback={<LoadingState />}>
-      <Landing />
-    </Suspense>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(homeJsonLd()) }}
+      />
+      <Suspense fallback={<LoadingState />}>
+        <Landing />
+      </Suspense>
+    </>
   );
 }

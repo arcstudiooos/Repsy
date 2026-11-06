@@ -146,6 +146,7 @@ function Hero() {
             <span data-reveal className="block">
               Coaching software that
             </span>
+            {/* A real space: the spans are blocks, so without it the heading's text reads "thatnever". */}{' '}
             <span data-reveal style={i(1)} className="block">
               <span className="mk-marker">never drops the ball.</span>
             </span>
