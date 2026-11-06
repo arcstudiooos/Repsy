@@ -68,6 +68,9 @@ envVarGroups:
         sync: false
       - key: RESEND_API_KEY
         sync: false
+      # PRD I15: the AI assistant (Claude). Blank turns the assistant off.
+      - key: ANTHROPIC_API_KEY
+        sync: false
       - key: SENTRY_DSN
         sync: false
       - key: NEXT_PUBLIC_SENTRY_DSN

@@ -722,3 +722,12 @@ snippet — `docs/decisions.md` itself was not edited by the slice).
 2. **Charts stay allowed**, superseding D-008 #1 "counts only": every chart keeps its numerator, denominator and period visible and offers "View as table". This restates D-014 #1–#3, which already replaced D-008 #1.
 3. **Shell:** a light sidebar, 248 px expanded and 72 px collapsed. It holds a workspace header, a "Search… ⌘K" button, grouped primary nav, Settings and Help, and a user card whose menu has Profile, Theme, Switch workspace and Sign out. Below 768 px it becomes a top bar plus a bottom tab bar with a "More" sheet.
 4. **Logo:** the founder's gradient R (D-017) stays the mark. It is not replaced by the brief's periwinkle square.
+
+## D-019 — Roadmap cuts and the next build list (2026-11-06)
+
+**Status:** Approved by the founder (2026-11-06).
+
+1. **Removed, not planned:** D19 watch companion, E12 device data, E13 smart scales, G10 food search and barcode, G11 nutrition app import, H12 native push, I13 AI reply draft, J10 webhooks and Zapier, L2 native apps, L3 branded store apps, L5 Apple Health / Health Connect, L6 wearable clouds, L8 public API and webhooks, L9 Zapier, L10 integration health. The PRD lists them under "Removed from scope".
+2. **Removed from the code:** L4 custom domains (supersedes D-015) and AI drafting I10-I12 with its guardrails I14 (supersedes D-013 "AI drafting rulings"). Migration 000090 drops `custom_domains` and `ai_drafts`. `ai_settings` stays as the opt-in for the AI assistant and every workspace is reset to OFF, because the old opt-in was for a fake provider that sent nothing anywhere.
+3. **To build:** I15 AI assistant (a chat screen with read-only access to the coach's workspace), K10 real Google Calendar sync, L11 adaptive video, A15 locations, A16 single sign-on, K12 group classes, M11 update safety and the M14 security programme.
+4. **On hold:** K13 sell programs and courses, K14 referrals.

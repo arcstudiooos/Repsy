@@ -19,6 +19,11 @@ const PROCESSORS: [string, string, string][] = [
   ['Resend', 'Sending account and notification emails', 'United States'],
   ['Sentry', 'Error reports, so we can fix problems', 'United States or European Union'],
   [
+    'Anthropic',
+    'The AI assistant, only if a workspace turns it on. Not used to train models',
+    'United States',
+  ],
+  [
     'PostHog',
     'Product analytics with pseudonymous ids, only if turned on',
     'United States or European Union',
@@ -107,6 +112,11 @@ const SECTIONS: LegalSection[] = [
         <li>To send emails and notifications you need, such as invites, reminders and replies.</li>
         <li>To keep accounts and data secure, prevent abuse and fix errors.</li>
         <li>To understand which features are used and improve them (pseudonymous analytics).</li>
+        <li>
+          If a workspace owner turns on the AI assistant: to answer the coaching team&rsquo;s
+          questions. The assistant reads only what a question needs, cannot change anything, and its
+          conversations are deleted 90 days after their last message.
+        </li>
         <li>To meet legal obligations.</li>
       </ul>
     ),

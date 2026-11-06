@@ -917,47 +917,6 @@ export {
 export { CHURN_LABEL, CHURN_REASONS, type ChurnReason } from './clients/churn';
 
 // --- R3 remaining features (2026-11-03) ---
-export { AI_LABEL, FakeAiProvider, assertProviderSafe } from './ai/ai';
-export type {
-  AiDraftDay,
-  AiDraftExercise,
-  AiDraftKind,
-  AiDraftRequest,
-  AiDraftResponse,
-  AiDraftSet,
-  AiDraftWeek,
-  AiProvider,
-} from './ai/ai';
-export {
-  assertNoAdviceRequest,
-  checkinAnswerUrl,
-  cleanDraftSet,
-  createPasteDraft,
-  createTemplateDraft,
-  getAiSetting,
-  highlightsForCoach,
-  listAiDrafts,
-  matchToLibrary,
-  parseTemplateInstruction,
-  redactText,
-  savePasteAiDraft,
-  saveTemplateAiDraft,
-  setAiSetting,
-  summarizeCheckinChanges,
-} from './ai/drafting';
-export type {
-  AiDraftContent,
-  AiDraftView,
-  AiSettingView,
-  CheckinHighlight,
-  CheckinSnapshot,
-  LibraryExercise,
-  PasteDraftInput,
-  TemplateDayInput,
-  TemplateDraftInput,
-  TemplateInstruction,
-  UnmatchedExercise,
-} from './ai/drafting';
 export {
   FakePaymentsProvider,
   calculateTax,
@@ -1071,19 +1030,6 @@ export {
   type ExternalCalendarEvent,
 } from './scheduling/calendarSync';
 export {
-  cleanHostname,
-  generateVerificationToken,
-  isValidHostname,
-  listCustomDomains,
-  markDomainVerified,
-  requestCustomDomain,
-  resolveWorkspaceByHost,
-  setBrandedSender,
-  verificationTxtRecord,
-  type CustomDomainStatus,
-  type CustomDomainView,
-} from './domains/domains';
-export {
   assertLapseAllows,
   assertWritable,
   CLIENT_LAPSE_DAYS,
@@ -1097,3 +1043,26 @@ export {
   type LapseActorKind,
   type LapseView,
 } from './lapse/lapse';
+export { assertAiEnabled, getAiSetting, setAiSetting, type AiSettingView } from './ai/settings';
+export {
+  ASSISTANT_TOOLS,
+  ASSISTANT_TOOL_NAMES,
+  runAssistantTool,
+  type AssistantToolDef,
+  type AssistantToolResult,
+} from './ai/assistantTools';
+export {
+  AI_CONVERSATION_RETENTION_DAYS,
+  AI_MESSAGE_MAX_CHARS,
+  appendAiExchange,
+  cleanQuestion,
+  conversationTitle,
+  createAiConversation,
+  deleteAiConversation,
+  getAiConversation,
+  listAiConversations,
+  purgeOldAiConversations,
+  type AiConversationSummary,
+  type AiConversationView,
+  type AiMessageView,
+} from './ai/conversations';

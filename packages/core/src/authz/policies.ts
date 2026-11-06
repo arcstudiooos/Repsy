@@ -47,7 +47,7 @@ export type Action =
   | 'scheduling:read'
   | 'scheduling:manage'
   | 'scheduling:book'
-  | 'domain:manage'
+  | 'assistant:use'
   | 'lapse:read'
   | 'lapse:record';
 
@@ -97,7 +97,8 @@ const POLICY: Record<Action, readonly Role[]> = {
   'scheduling:read': [...STAFF, 'client'],
   'scheduling:manage': [...TRAINER],
   'scheduling:book': [...STAFF, 'client'],
-  'domain:manage': [...MANAGER],
+  /** PRD I15: the read-only AI assistant. Each tool also checks its own screen's policy. */
+  'assistant:use': [...STAFF],
   'lapse:read': [...STAFF, 'client'],
   'lapse:record': [...MANAGER],
 };

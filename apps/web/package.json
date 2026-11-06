@@ -11,6 +11,7 @@
     "test:e2e": "playwright test --pass-with-no-tests && playwright test -c playwright.offline.config.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.5.0",
     "@hookform/resolvers": "6.0.2",
     "@kinetic/core": "workspace:*",
     "@kinetic/db": "workspace:*",

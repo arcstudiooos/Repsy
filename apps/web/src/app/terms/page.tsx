@@ -63,8 +63,8 @@ const SECTIONS: LegalSection[] = [
           help if you feel pain, dizziness or shortness of breath.
         </p>
         <p>
-          Features labelled &ldquo;Drafted with AI&rdquo; produce drafts for the coach to check. The
-          coach is responsible for anything they send or assign.
+          The AI assistant answers a coach&rsquo;s questions from their workspace data. Its answers
+          can be wrong: the coach checks them and is responsible for anything they send or assign.
         </p>
       </>
     ),

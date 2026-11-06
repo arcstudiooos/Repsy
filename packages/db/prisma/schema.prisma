@@ -71,6 +71,7 @@ model User {
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   ownedOrganizations       Organization[]
+  aiConversations          AiConversation[]
   createdJoinLinks         JoinLink[]              @relation("JoinLinkCreator")
   platformNotices          PlatformNotice[]        @relation("PlatformNoticeCreator")
   uploadedMedia            MediaFile[]             @relation("MediaUploader")
@@ -134,7 +135,6 @@ model User {
   groupMutes               GroupMute[]              @relation("GroupMuter")
   groupMutedBy             GroupMute[]              @relation("GroupMuted")
   outboxPushes             OutboxPush[]
-  aiDrafts             AiDraft[]
   coachedSessionTypes SessionType[]
   coachedBookings     Booking[]
 
@@ -289,7 +289,8 @@ model Organization {
   nutritionLogs           NutritionLog[]
   savedReplies            SavedReply[]
   aiSettings         AiSetting[]
-  aiDrafts           AiDraft[]
+  aiConversations    AiConversation[]
+  aiMessages         AiMessage[]
   billingPackages    BillingPackage[]
   coupons            Coupon[]
   subscriptions      Subscription[]
@@ -299,7 +300,6 @@ model Organization {
   bookings           Booking[]
   sessionPacks       SessionPack[]
   packageJourneyRuns PackageJourneyRun[]
-  customDomains      CustomDomain[]
   subscriptionLapses SubscriptionLapse[]
 
   @@map("organizations")
@@ -2546,10 +2546,10 @@ model ChallengeParticipant {
 model AiSetting {
   id             String   @id @default(uuid()) @db.Uuid
   organizationId String   @map("organization_id") @db.Uuid
-  /// Per-workspace opt-in for AI drafting. OFF by default (I14).
+  /// Per-workspace opt-in for the AI assistant. OFF by default.
   aiEnabled      Boolean  @default(false) @map("ai_enabled")
-  /// Only 'fake' is shipped: the fake/local provider. No provider keys exist.
-  provider       String   @default("fake")
+  /// The AI provider the assistant uses: 'anthropic'.
+  provider       String   @default("anthropic")
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -2560,29 +2560,41 @@ model AiSetting {
   @@map("ai_settings")
 }
 
-model AiDraft {
-  id           String   @id @default(uuid()) @db.Uuid
-  organizationId String @map("organization_id") @db.Uuid
-  /// The coach who created the draft.
-  coachUserId  String   @map("coach_user_id") @db.Uuid
-  /// 'paste' (I10) or 'template' (I11).
-  kind         String
-  /// Redacted paste only (emails, phones, supplied client names stripped); null for template drafts.
-  sourceText   String?  @map("source_text")
-  /// `AiDraftContent`: label 'Drafted with AI', title, weeks, unmatched exercises.
-  draftJson    Json     @map("draft_json")
-  /// Always 'draft'. A draft is never auto-saved as a program or sent (I14).
-  status       String   @default("draft")
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+/// PRD I15: one AI assistant conversation, private to the staff user who started it.
+model AiConversation {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  title          String
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id])
-  coach        User         @relation(fields: [coachUserId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+  messages     AiMessage[]
 
   @@unique([id, organizationId])
+  @@index([organizationId, userId, updatedAt])
+  @@map("ai_conversations")
+}
+
+/// PRD I15: one turn. `toolsUsed` names the read-only tools the assistant called; tool output is not stored.
+model AiMessage {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  conversationId String   @map("conversation_id") @db.Uuid
+  /// 'user' or 'assistant'.
+  role           String
+  body           String
+  toolsUsed      String[] @default([]) @map("tools_used")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  conversation AiConversation @relation(fields: [conversationId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
   @@index([organizationId])
-  @@index([organizationId, coachUserId])
-  @@map("ai_drafts")
+  @@map("ai_messages")
 }
 
 model BillingPackage {
@@ -2843,23 +2855,6 @@ model PackageJourneyRun {
   @@unique([packageId, clientId])
   @@index([organizationId, clientId])
   @@map("package_journey_runs")
-}
-
-model CustomDomain {
-  id               String    @id @default(uuid()) @db.Uuid
-  organizationId   String    @map("organization_id") @db.Uuid
-  hostname         String    @unique
-  status           String    @default("requested")
-  verificationToken String   @map("verification_token")
-  verifiedAt       DateTime? @map("verified_at") @db.Timestamptz(3)
-  brandedFromLocal String?   @map("branded_from_local")
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-
-  organization Organization @relation(fields: [organizationId], references: [id])
-
-  @@unique([id, organizationId])
-  @@index([organizationId])
-  @@map("custom_domains")
 }
 
 model SubscriptionLapse {

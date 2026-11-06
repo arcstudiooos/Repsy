@@ -1,3 +1,4 @@
+import { aiPurgeJob } from './aiPurge';
 import { billingSweepJob } from './billingSweep';
 import { checkinsIssueJob } from './checkinsIssue';
 import { clientRemindersJob } from './clientReminders';
@@ -29,4 +30,5 @@ export const jobs = [
   phasesAdvanceJob,
   automationsJob,
   billingSweepJob,
+  aiPurgeJob,
 ] as const;

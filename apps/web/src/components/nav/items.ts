@@ -66,7 +66,7 @@ export const coachNavGroups: NavGroup[] = [
       { label: 'Scheduling', href: '/app/scheduling', icon: CalendarClock },
       { label: 'Payments', href: '/app/billing', icon: CreditCard },
       { label: 'Leads', href: '/app/leads', icon: Inbox },
-      { label: 'AI drafting', href: '/app/ai-drafts', icon: Sparkles },
+      { label: 'AI assistant', href: '/app/assistant', icon: Sparkles },
       { label: 'Automations', href: '/app/automations', icon: Workflow },
     ],
   },

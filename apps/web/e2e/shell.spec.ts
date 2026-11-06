@@ -83,7 +83,7 @@ test.describe('app shells', () => {
                 'Scheduling',
                 'Payments',
                 'Leads',
-                'AI drafting',
+                'AI assistant',
                 'Automations',
                 ...(vp.width < 1024 ? library : []),
                 'Settings',
