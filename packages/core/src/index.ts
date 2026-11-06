@@ -718,6 +718,7 @@ export {
   deliverPushes,
   enqueuePush,
   hasPushSubscription,
+  isPushServiceEndpoint,
   PUSH_KINDS,
   releaseEndpoint,
   savePushSubscription,

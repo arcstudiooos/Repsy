@@ -11,6 +11,8 @@ async function send(endpoint: string, headers: Record<string, string>): Promise<
   const res = await fetch(endpoint, {
     method: 'POST',
     headers,
+    // Never follow a redirect off the push service (core only stores allowlisted push-service endpoints).
+    redirect: 'manual',
     signal: AbortSignal.timeout(10_000),
   });
   return res.status;

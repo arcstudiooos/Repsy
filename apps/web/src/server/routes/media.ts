@@ -17,6 +17,28 @@ import { exportStorage } from './exports';
 const MAX_UPLOAD = 100 * 1024 * 1024;
 
 /**
+ * The request body, or null once it passes `max` bytes. Reading stops there, so a chunked body (no Content-Length)
+ * or a false Content-Length cannot push more than `max` into memory.
+ */
+export async function readBodyCapped(request: Request, max: number): Promise<Buffer | null> {
+  if (!request.body) return Buffer.alloc(0);
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > max) {
+      await reader.cancel().catch(() => undefined);
+      return null;
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks, total);
+}
+
+/**
  * `POST /api/v1/media?purpose=...&clientId=...` (D-011 #5): the raw file as the body. The owner is checked before
  * anything is stored; images are stored without metadata. Returns the file id to attach.
  */
@@ -30,10 +52,10 @@ export const mediaUploadRoute: RouteDef<undefined, true> = {
         file: ['The file is too big.'],
       });
     }
-    const body = Buffer.from(await request.arrayBuffer());
-    if (body.length === 0 || body.length > MAX_UPLOAD) {
+    const body = await readBodyCapped(request, MAX_UPLOAD);
+    if (body === null || body.length === 0) {
       throw new DomainError('VALIDATION', 'Some fields are invalid.', {
-        file: [body.length === 0 ? 'Choose a file.' : 'The file is too big.'],
+        file: [body === null ? 'The file is too big.' : 'Choose a file.'],
       });
     }
     const file = prepareUpload(url.searchParams.get('purpose'), body);
