@@ -9,6 +9,7 @@ import {
   deliverPushes,
   enqueuePush,
   hasPushSubscription,
+  isPushServiceEndpoint,
   releaseEndpoint,
   savePushSubscription,
   vapidAuthorization,
@@ -45,20 +46,20 @@ afterAll(async () => {
 });
 
 const sub = (n: string) => ({
-  endpoint: `https://push.example.test/send/${n}`,
+  endpoint: `https://fcm.googleapis.com/fcm/send/${n}`,
   keys: { p256dh: 'BKey_abc', auth: 'auth_1' },
 });
 
 describe('web push (PRD H11)', () => {
   it('signs a VAPID header the push service can verify', () => {
-    const header = vapidAuthorization('https://push.example.test/send/x', {
+    const header = vapidAuthorization('https://fcm.googleapis.com/fcm/send/x', {
       ...keys,
       subject: 'mailto:help@example.test',
     });
     const m = /^vapid t=([^.]+)\.([^.]+)\.([^,]+), k=(.+)$/.exec(header)!;
     expect(m[4]).toBe(keys.publicKey);
     const claims = JSON.parse(Buffer.from(m[2]!, 'base64url').toString()) as { aud: string };
-    expect(claims.aud).toBe('https://push.example.test');
+    expect(claims.aud).toBe('https://fcm.googleapis.com');
     const ok = verify(
       'sha256',
       Buffer.from(`${m[1]}.${m[2]}`),
@@ -150,5 +151,84 @@ describe('web push (PRD H11)', () => {
     } finally {
       process.env.VAPID_PUBLIC_KEY = keys.publicKey;
     }
+  });
+
+  it('accepts only https endpoints on a known push service (no SSRF through the worker)', () => {
+    for (const ok of [
+      'https://fcm.googleapis.com/fcm/send/abc',
+      'https://updates.push.services.mozilla.com/wpush/v2/abc',
+      'https://web.push.apple.com/QGx',
+      'https://api.push.apple.com/3/device/abc',
+      'https://wns2-par02p.notify.windows.com/w/?token=abc',
+    ]) {
+      expect(isPushServiceEndpoint(ok), ok).toBe(true);
+    }
+    for (const bad of [
+      'http://fcm.googleapis.com/fcm/send/abc',
+      'https://fcm.googleapis.com:8443/fcm/send/abc',
+      'https://user:pw@fcm.googleapis.com/fcm/send/abc',
+      'https://fcm.googleapis.com.evil.example/x',
+      'https://evilpush.apple.com.example/x',
+      'https://169.254.169.254/latest/meta-data',
+      'https://internal-service.local/admin',
+      'https://localhost/x',
+      'not a url',
+      `https://fcm.googleapis.com/${'a'.repeat(1000)}`,
+    ]) {
+      expect(isPushServiceEndpoint(bad), bad).toBe(false);
+    }
+  });
+
+  it('refuses to save a non-push-service endpoint', async () => {
+    const org = await newOrg(prisma);
+    const w = await newClientWorld(prisma, org);
+    await expect(
+      runAs(prisma, w.client, (tx) =>
+        savePushSubscription(tx, w.client, {
+          endpoint: 'https://internal-service.local/admin',
+          keys: { p256dh: 'BKey_abc', auth: 'auth_1' },
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'VALIDATION' });
+  });
+
+  it('never sends to a stored endpoint outside the allowlist, and forgets it', async () => {
+    const org = await newOrg(prisma);
+    const w = await newClientWorld(prisma, org);
+    // A row from before the allowlist, written straight to the table.
+    await withSystem(
+      (tx) =>
+        tx.pushSubscription.create({
+          data: {
+            userId: w.client.userId,
+            endpoint: 'https://internal-service.local/hook',
+            p256dh: 'BKey_abc',
+            auth: 'auth_1',
+          },
+        }),
+      prisma,
+    );
+    await runAs(prisma, org.coach, (tx) =>
+      enqueuePush(tx, {
+        toUserId: w.client.userId,
+        kind: 'new_message',
+        idempotencyKey: `legacy-${w.clientId}`,
+      }),
+    );
+    const calls: string[] = [];
+    const res = await deliverPushes(
+      (fn) => withSystem(fn, prisma),
+      async (endpoint) => {
+        calls.push(endpoint);
+        return 201;
+      },
+    );
+    expect(calls).not.toContain('https://internal-service.local/hook');
+    expect(res.dropped).toBeGreaterThanOrEqual(1);
+    const left = await withSystem(
+      (tx) => tx.pushSubscription.count({ where: { userId: w.client.userId } }),
+      prisma,
+    );
+    expect(left).toBe(0);
   });
 });

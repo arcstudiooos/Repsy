@@ -1,7 +1,11 @@
 import type { Metadata } from 'next';
 import { CHANGELOG, ROADMAP } from '@/content/changelog';
 
-export const metadata: Metadata = { title: 'What’s new | Repsy' };
+export const metadata: Metadata = {
+  title: 'What’s new | Repsy',
+  description: 'What has shipped in Repsy lately, and what is on the roadmap next.',
+  alternates: { canonical: '/changelog' },
+};
 
 /** PRD M13: public changelog and roadmap. */
 export default function ChangelogPage() {

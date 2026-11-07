@@ -8,6 +8,10 @@ on:
         description: Base URL of the deployed web service (https://...)
         required: true
 
+# Least privilege for the job token: these workflows only read the repository.
+permissions:
+  contents: read
+
 jobs:
   smoke:
     runs-on: ubuntu-latest
