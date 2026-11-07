@@ -741,3 +741,12 @@ The coach asked to do the whole set-up for a client in one place: put them on a 
 3. **Same rules as the screens.** Confirm runs the existing domain functions (`assignProgram`, `setNutritionTarget`, `saveMealPlan`, `setClientMealPlan`) as the confirming coach, so roles, row-level security and validation apply. Confirming an assignment replaces the client's current program; the card says so. Each confirm writes the audit entry `assistant.action_applied`.
 4. **Meal plans are checked before they are shown.** Every day's totals must be within 5% of the calorie target and within 10% or 5 g (whichever is larger) of each macro target; otherwise the tool returns the misses and the model fixes the plan. Macros are AI estimates, labelled as such on the card.
 5. **Retention and erasure.** Proposals belong to their conversation and are purged with it after 90 days; client erasure deletes the client's proposals.
+
+## D-021 — The AI assistant runs on OpenAI (2026-11-08)
+
+The owner chose OpenAI instead of Anthropic for the assistant (I15, D-020).
+
+1. **Provider.** `apps/web/src/server/assistant/run.ts` calls the OpenAI Chat Completions API through the official `openai` SDK. The key is `OPENAI_API_KEY`; the model is `OPENAI_MODEL`, default `gpt-5`. Nothing else about the assistant changes: the same tools, prompts, round limit, proposals and Confirm step.
+2. **Tools.** The tool schemas in `@kinetic/core` are sent as strict function tools. Tool arguments arrive as JSON text; text that does not parse goes back to the model as an error instead of running the tool.
+3. **Privacy.** OpenAI replaces Anthropic as the processor for assistant questions, in the privacy notice, the assistant page and `docs/security/subprocessors.md`. OpenAI does not train on API data by default.
+

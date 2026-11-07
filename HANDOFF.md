@@ -123,7 +123,7 @@ Everything else in R4 was removed from scope (D-019).
 - **Video:** coach demo videos stream adaptively through Cloudflare Stream when it is configured (L11); otherwise
   they play as uploaded. Client videos (form checks) are never sent to Stream.
 - **Production needs:** `BETTER_AUTH_SECRET`, `RESEND_API_KEY` and `EMAIL_FROM`, object storage, and optionally
-  Google sign-in and Calendar sync, Microsoft SSO, `ANTHROPIC_API_KEY` for the AI assistant, Cloudflare Stream, VAPID
+  Google sign-in and Calendar sync, Microsoft SSO, `OPENAI_API_KEY` (and optionally `OPENAI_MODEL`) for the AI assistant, Cloudflare Stream, VAPID
   keys for push, Sentry and PostHog. All variables are documented in `.env.example`.
 - **Dev servers** log "uncached data during prerendering" warnings on dynamic pages; they are expected and
   `next build` passes.

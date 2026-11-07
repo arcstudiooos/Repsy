@@ -22,9 +22,14 @@ import {
   setAiSetting,
 } from '@kinetic/core';
 import { ApiResult, type RouteDef } from '../api';
-import { assistantClient, runAssistantTurn, type AssistantClient } from '../assistant/run';
+import {
+  assistantClient,
+  assistantConfigured,
+  runAssistantTurn,
+  type AssistantClient,
+} from '../assistant/run';
 
-/** Tests swap in a fake model client; production builds one from ANTHROPIC_API_KEY. */
+/** Tests swap in a fake model client; production builds one from OPENAI_API_KEY. */
 let clientOverride: AssistantClient | null | undefined;
 export function setAssistantClientForTests(client: AssistantClient | null | undefined) {
   clientOverride = client;
@@ -40,8 +45,7 @@ export const assistantSettingsGetRoute: RouteDef<undefined, true> = {
   can: 'assistant:use',
   handler: async ({ actor, tenant }) => ({
     ...(await tenant((tx) => getAiSetting(tx, actor))),
-    configured:
-      clientOverride !== undefined ? clientOverride !== null : !!process.env.ANTHROPIC_API_KEY,
+    configured: clientOverride !== undefined ? clientOverride !== null : assistantConfigured(),
   }),
 };
 

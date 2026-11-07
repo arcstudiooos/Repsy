@@ -68,8 +68,10 @@ envVarGroups:
         sync: false
       - key: RESEND_API_KEY
         sync: false
-      # PRD I15: the AI assistant (Claude). Blank turns the assistant off.
-      - key: ANTHROPIC_API_KEY
+      # PRD I15: the AI assistant (OpenAI, D-021). Blank turns the assistant off. OPENAI_MODEL optional (default gpt-5).
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
         sync: false
       # PRD L11: Cloudflare Stream for adaptive demo video. Blank = MP4 plays as uploaded.
       - key: CLOUDFLARE_ACCOUNT_ID

@@ -4,6 +4,7 @@ import { getAiSetting, isManager, listAiConversations } from '@kinetic/core';
 import { AssistantChat } from '@/components/assistant/AssistantChat';
 import { AssistantActionsToggle, AssistantToggle } from '@/components/assistant/AssistantToggle';
 import { EmptyState } from '@/components/states/EmptyState';
+import { assistantConfigured } from '@/server/assistant/run';
 import { withServerTenant } from '@/server/serverActor';
 
 export const metadata: Metadata = { title: 'AI assistant | Repsy' };
@@ -16,7 +17,7 @@ export default async function AssistantPage() {
     conversations: await listAiConversations(tx, actor),
     manager: isManager(actor.role),
   }));
-  const configured = !!process.env.ANTHROPIC_API_KEY;
+  const configured = assistantConfigured();
 
   return (
     <>
@@ -32,14 +33,14 @@ export default async function AssistantPage() {
       {!configured ? (
         <EmptyState
           title="The assistant is not set up yet"
-          body="This server has no AI provider key. Add ANTHROPIC_API_KEY to the web service to use the assistant."
+          body="This server has no AI provider key. Add OPENAI_API_KEY to the web service to use the assistant."
         />
       ) : !setting.aiEnabled ? (
         <EmptyState
           title="The AI assistant is off"
           body={
             manager
-              ? 'When it is on, anyone on your team can ask questions about clients, programs, nutrition, check-ins and the business. To answer, Repsy sends the workspace data it needs to Anthropic, which processes it on our behalf and does not train on it. It only reads, unless you also let it propose changes (assigning programs, nutrition targets and meal plans); each change then waits for the coach to press Confirm. It never messages anyone.'
+              ? 'When it is on, anyone on your team can ask questions about clients, programs, nutrition, check-ins and the business. To answer, Repsy sends the workspace data it needs to OpenAI, which processes it on our behalf and does not train on it. It only reads, unless you also let it propose changes (assigning programs, nutrition targets and meal plans); each change then waits for the coach to press Confirm. It never messages anyone.'
               : 'An owner or admin can turn it on for your workspace.'
           }
           action={manager ? <AssistantToggle enabled={false} /> : undefined}
