@@ -21,7 +21,7 @@
     "resend": "6.37.0"
   },
   "devDependencies": {
-    "@types/node": "24.19.2",
+    "@types/node": "26.6.6",
     "@types/pg": "8.23.1",
     "pg": "8.23.1",
     "tsx": "4.23.15",
