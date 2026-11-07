@@ -35,7 +35,7 @@ The controls below exist in the product today. Each row names where it lives, so
 | CSRF             | State-changing requests must come from the app's own origin.                                                               | `apps/web/src/server/api.ts`                            |
 | Rate limiting    | Sign-in and auth endpoints (database-backed), plus per-route limits on sensitive API routes.                               | `apps/web/src/lib/auth.ts`, `server/rateLimit.ts`       |
 | Security headers | Content Security Policy, `X-Frame-Options: DENY`, `Referrer-Policy`, HSTS.                                                 | `apps/web/next.config.ts`                               |
-| AI assistant     | Off by default; read-only tools, plus proposals only when a manager turns actions on; every proposal needs the asking coach's Confirm, runs through the domain functions with their permissions and is audited; workspace data goes to Anthropic only when a manager turns it on; no training on it. | `packages/core/src/ai`, `apps/web/src/server/assistant` |
+| AI assistant     | Off by default; read-only tools, plus proposals only when a manager turns actions on; every proposal needs the asking coach's Confirm, runs through the domain functions with their permissions and is audited; workspace data goes to OpenAI only when a manager turns it on; no training on it. | `packages/core/src/ai`, `apps/web/src/server/assistant` |
 | Errors           | Error responses carry a request id, never a stack trace.                                                                   | `apps/web/src/server/api.ts`                            |
 
 ## Operations
