@@ -15,17 +15,17 @@
     "@kinetic/core": "workspace:*",
     "@kinetic/db": "workspace:*",
     "@kinetic/storage": "workspace:*",
-    "@sentry/node": "11.9.0",
+    "@sentry/node": "11.10.0",
     "pg-boss": "12.38.0",
     "pino": "10.4.0",
-    "resend": "6.35.0"
+    "resend": "6.37.0"
   },
   "devDependencies": {
-    "@types/node": "24.19.2",
+    "@types/node": "26.6.6",
     "@types/pg": "8.23.1",
     "pg": "8.23.1",
     "tsx": "4.23.15",
-    "typescript": "5.9.3",
-    "vitest": "5.0.5"
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
   }
 }
