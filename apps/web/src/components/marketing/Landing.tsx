@@ -32,6 +32,7 @@ import {
 } from '@/content/marketing';
 import {
   AcidTabs,
+  Aurora,
   DotGrid,
   Grain,
   LogGrid,
@@ -41,7 +42,7 @@ import {
   TrendLine,
   Wordmark,
 } from './bg';
-import { LoopStepper, MarketingNav, PricingPlans } from './islands';
+import { DepthStage, LoopStepper, MarketingNav, PricingPlans, TiltList } from './islands';
 import { DashboardMock, Num, PhoneLogger, PrCard, SyncPill, FloatCard } from './mocks';
 import { MotionController, MotionPauseToggle } from './motion';
 import './marketing.css';
@@ -130,6 +131,7 @@ function SecondaryCta({
 function Hero() {
   return (
     <section aria-labelledby="hero-title" className="mk-section !pt-10 md:!pt-16">
+      <Aurora className="mk-aurora--hero" />
       <DotGrid />
       <PlateRings size={520} className="-top-40 -right-48 hidden md:block" />
       <AcidTabs
@@ -172,35 +174,41 @@ function Hero() {
           </p>
         </div>
 
-        <div className="relative mt-14 md:mt-20">
-          <LogGrid />
-          <div className="relative grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_auto]">
-            <div data-reveal style={i(2)} aria-hidden>
-              <DashboardMock />
+        <DepthStage className="relative mt-14 md:mt-20">
+          <div className="mk-stage-inner relative">
+            {/* Depth layer: the log grid and two glows sit far behind the mockups. */}
+            <div aria-hidden className="mk-depth">
+              <LogGrid />
+              <Aurora />
             </div>
-            <div
-              data-reveal
-              style={i(4)}
-              aria-hidden
-              className="relative mx-auto lg:-ml-16 lg:mt-16"
-            >
-              <PhoneLogger />
-              <div
-                className="absolute -top-16 -right-6 hidden min-[900px]:block"
-                data-reveal
-                style={i(6)}
-              >
-                <PrCard />
+            <div className="mk-3d relative grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_auto]">
+              <div data-reveal style={i(2)} aria-hidden className="mk-z1">
+                <DashboardMock />
               </div>
               <div
-                className="absolute -right-14 -bottom-16 hidden min-[900px]:block"
                 data-reveal
-                style={i(7)}
+                style={i(4)}
+                aria-hidden
+                className="mk-3d mk-z2 relative mx-auto lg:-ml-16 lg:mt-16"
               >
-                <FloatCard>
-                  <p className="text-secondary">Set 3 · 82.5 kg × 5</p>
-                  <SyncPill className="mt-1" />
-                </FloatCard>
+                <PhoneLogger />
+                <div
+                  className="mk-z3 absolute -top-16 -right-6 hidden min-[900px]:block"
+                  data-reveal
+                  style={i(6)}
+                >
+                  <PrCard />
+                </div>
+                <div
+                  className="mk-z3 absolute -right-14 -bottom-16 hidden min-[900px]:block"
+                  data-reveal
+                  style={i(7)}
+                >
+                  <FloatCard>
+                    <p className="text-secondary">Set 3 · 82.5 kg × 5</p>
+                    <SyncPill className="mt-1" />
+                  </FloatCard>
+                </div>
               </div>
             </div>
           </div>
@@ -209,7 +217,7 @@ function Hero() {
             and $4,860 this month, next to a client logging bench press sets on a phone; the third
             set shows Saved on device, then Syncing, then Synced.
           </p>
-        </div>
+        </DepthStage>
       </div>
     </section>
   );
@@ -279,7 +287,7 @@ function Tour() {
           Repsy.
         </p>
         <div
-          data-reveal
+          data-reveal="tilt"
           className="relative mt-10 aspect-video overflow-hidden rounded-[20px] border border-border bg-surface shadow-e1"
         >
           {tourReady ? (
@@ -405,16 +413,16 @@ function Promises() {
             Six promises other coaching apps don&apos;t make.
           </H2>
         </div>
-        <ul className="mt-12 grid gap-4 md:grid-cols-6">
+        <TiltList className="mt-12 grid gap-4 md:grid-cols-6">
           {PROMISES.map((p, k) => {
             const brand = k === 1;
             return (
               <li
                 key={p.n}
-                data-reveal
+                data-reveal="tilt"
                 style={i(k)}
                 className={cn(
-                  'mk-lift relative overflow-hidden rounded-[16px] p-6 md:p-7',
+                  'mk-lift mk-tilt relative overflow-hidden rounded-[16px] p-6 md:p-7',
                   spans[k],
                   brand
                     ? 'bg-midnight text-on-midnight shadow-e2'
@@ -452,7 +460,7 @@ function Promises() {
               </li>
             );
           })}
-        </ul>
+        </TiltList>
       </div>
     </section>
   );

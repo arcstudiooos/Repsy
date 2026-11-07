@@ -156,3 +156,13 @@ export function Wordmark() {
     </div>
   );
 }
+
+/** Two soft glows (brand + acid) drifting on long loops; transform only. Static without motion. */
+export function Aurora({ className }: { className?: string }) {
+  return (
+    <div aria-hidden className={cn('mk-bg mk-aurora', className)}>
+      <span className="mk-aurora-blob mk-aurora-blob--brand" />
+      <span className="mk-aurora-blob mk-aurora-blob--acid" />
+    </div>
+  );
+}
