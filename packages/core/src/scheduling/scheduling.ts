@@ -434,7 +434,11 @@ export async function createBooking(
   tx: TenantTx,
   actor: ActorContext,
   input: Record<string, unknown>,
-  opts: { now?: Date } = {},
+  opts: {
+    now?: Date;
+    /** PRD K10 two-way sync: busy blocks from the coach's connected calendar. */
+    externalBusy?: { startsAt: Date; endsAt: Date }[];
+  } = {},
 ): Promise<{ id: string }> {
   const now = opts.now ?? new Date();
   if (!isUuid(input.sessionTypeId) || !isUuid(input.clientId)) throw notFound();
@@ -521,6 +525,20 @@ export async function createBooking(
   );
   if (clashes.length > 0) {
     throw new DomainError('CONFLICT', 'That slot is no longer free (buffers included).');
+  }
+  const calendarBusy = (opts.externalBusy ?? []).some((b) =>
+    spansOverlap(
+      new Date(startsAt.getTime() - type.bufferBeforeMinutes * 60_000),
+      new Date(endsAt.getTime() + type.bufferAfterMinutes * 60_000),
+      b.startsAt,
+      b.endsAt,
+    ),
+  );
+  if (calendarBusy) {
+    throw new DomainError(
+      'CONFLICT',
+      "That time is busy in the coach's calendar. Pick another slot.",
+    );
   }
   let packId: string | null = null;
   let packConsumed = false;

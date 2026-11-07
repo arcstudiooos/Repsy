@@ -68,6 +68,14 @@ envVarGroups:
         sync: false
       - key: RESEND_API_KEY
         sync: false
+      # PRD I15: the AI assistant (Claude). Blank turns the assistant off.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      # PRD L11: Cloudflare Stream for adaptive demo video. Blank = MP4 plays as uploaded.
+      - key: CLOUDFLARE_ACCOUNT_ID
+        sync: false
+      - key: CLOUDFLARE_STREAM_TOKEN
+        sync: false
       - key: SENTRY_DSN
         sync: false
       - key: NEXT_PUBLIC_SENTRY_DSN

@@ -4,7 +4,13 @@ import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { haveIBeenPwned } from 'better-auth/plugins/haveibeenpwned';
 import { twoFactor } from 'better-auth/plugins/two-factor';
-import { enqueuePlatformEmail, logger } from '@kinetic/core';
+import {
+  enqueuePlatformEmail,
+  logger,
+  microsoftLinkAllowed,
+  microsoftTenantFromIdToken,
+  ssoRequiredFor,
+} from '@kinetic/core';
 import {
   authPrisma as defaultAuthPrisma,
   prisma as defaultPrisma,
@@ -95,6 +101,7 @@ export function createAuth(options: CreateAuthOptions = {}) {
   const env = options.env ?? process.env;
   assertAuthEnv(env);
   const googleConfigured = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
+  const microsoftConfigured = microsoftSsoConfigured(env);
 
   return betterAuth({
     baseURL: env.BETTER_AUTH_URL,
@@ -151,18 +158,40 @@ export function createAuth(options: CreateAuthOptions = {}) {
       },
     },
     rateLimit: { enabled: true, storage: 'database', modelName: 'rateLimit', window: 60, max: 100 },
-    ...(googleConfigured
+    // Absent entirely when no provider is configured.
+    ...(googleConfigured || microsoftConfigured
       ? {
           socialProviders: {
-            google: {
-              clientId: env.GOOGLE_CLIENT_ID as string,
-              clientSecret: env.GOOGLE_CLIENT_SECRET as string,
-              // Accounts are only created through pilot-code signup.
-              disableImplicitSignUp: true,
-            },
+            ...(googleConfigured
+              ? {
+                  google: {
+                    clientId: env.GOOGLE_CLIENT_ID as string,
+                    clientSecret: env.GOOGLE_CLIENT_SECRET as string,
+                    // Accounts are only created through pilot-code signup.
+                    disableImplicitSignUp: true,
+                  },
+                }
+              : {}),
+            // PRD A16: Microsoft Entra ID single sign-on for work accounts. Never creates accounts.
+            ...(microsoftConfigured
+              ? {
+                  microsoft: {
+                    clientId: env.MICROSOFT_CLIENT_ID as string,
+                    clientSecret: env.MICROSOFT_CLIENT_SECRET as string,
+                    tenantId: 'organizations',
+                    disableImplicitSignUp: true,
+                    disableProfilePhoto: true,
+                  },
+                }
+              : {}),
           },
         }
       : {}),
+    account: {
+      // SSO signs an invited team member into their existing account. Microsoft's email claim is not
+      // verified, so each Microsoft link is checked against the workspace's directory below.
+      accountLinking: { enabled: true, trustedProviders: ['google', 'microsoft'] },
+    },
     hooks: {
       // Account creation is gated by a pilot code. registerCoach calls
       // auth.api.signUpEmail server-side (no ctx.request); anything arriving
@@ -179,6 +208,17 @@ export function createAuth(options: CreateAuthOptions = {}) {
             code: 'SIGNUP_REQUIRES_PILOT_CODE',
           });
         }
+        // PRD A16: a workspace that requires single sign-on blocks password sign-in for its staff.
+        if (viaHttp && ctx.path === '/sign-in/email') {
+          const email = (ctx.body as { email?: unknown } | undefined)?.email;
+          const provider = typeof email === 'string' ? await ssoRequiredFor(prisma, email) : null;
+          if (provider) {
+            throw new APIError('FORBIDDEN', {
+              message: `Your workspace uses single sign-on. Continue with ${provider === 'google' ? 'Google' : 'Microsoft'} instead.`,
+              code: 'SSO_REQUIRED',
+            });
+          }
+        }
       }),
     },
     plugins: [
@@ -187,6 +227,23 @@ export function createAuth(options: CreateAuthOptions = {}) {
       twoFactor({ issuer: 'Repsy' }),
     ],
     databaseHooks: {
+      account: {
+        create: {
+          // PRD A16: a Microsoft account links only from the workspace's own Entra directory.
+          before: async (account) => {
+            if (account.providerId !== 'microsoft') return;
+            const tenantId = microsoftTenantFromIdToken(account.idToken);
+            const allowed = await microsoftLinkAllowed(prisma, account.userId, tenantId);
+            if (!allowed) {
+              logger.warn(
+                { userId: account.userId },
+                'microsoft sign-in refused: directory mismatch',
+              );
+              return false;
+            }
+          },
+        },
+      },
       session: {
         create: {
           after: async (session) => {
@@ -199,6 +256,11 @@ export function createAuth(options: CreateAuthOptions = {}) {
       },
     },
   });
+}
+
+/** Microsoft SSO needs an Entra app registration (multi-tenant, work accounts). */
+export function microsoftSsoConfigured(env: AuthEnv = process.env): boolean {
+  return Boolean(env.MICROSOFT_CLIENT_ID && env.MICROSOFT_CLIENT_SECRET);
 }
 
 export type Auth = ReturnType<typeof createAuth>;

@@ -15,9 +15,18 @@ const mail = (
 
 const PROCESSORS: [string, string, string][] = [
   ['Render', 'Hosting for the app, background jobs and database', 'United States'],
-  ['Cloudflare', 'Network protection, and private storage for files and exports (R2)', 'Global'],
+  [
+    'Cloudflare',
+    'Network protection, private storage for files and exports (R2), and streaming of coach demo videos',
+    'Global',
+  ],
   ['Resend', 'Sending account and notification emails', 'United States'],
   ['Sentry', 'Error reports, so we can fix problems', 'United States or European Union'],
+  [
+    'Anthropic',
+    'The AI assistant, only if a workspace turns it on. Not used to train models',
+    'United States',
+  ],
   [
     'PostHog',
     'Product analytics with pseudonymous ids, only if turned on',
@@ -107,6 +116,13 @@ const SECTIONS: LegalSection[] = [
         <li>To send emails and notifications you need, such as invites, reminders and replies.</li>
         <li>To keep accounts and data secure, prevent abuse and fix errors.</li>
         <li>To understand which features are used and improve them (pseudonymous analytics).</li>
+        <li>
+          If a workspace owner turns on the AI assistant: to answer the coaching team&rsquo;s
+          questions. The assistant reads only what a question needs. If the owner also allows it, it
+          can propose changes (assigning programs, nutrition targets and meal plans) that only
+          happen when a coach confirms them. Its conversations and proposals are deleted 90 days
+          after their last message.
+        </li>
         <li>To meet legal obligations.</li>
       </ul>
     ),

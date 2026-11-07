@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { getClientContext, isManager, TRAINER_ROLES } from '@kinetic/core';
+import { getClientContext, isManager, listLocations, TRAINER_ROLES } from '@kinetic/core';
 import Link from 'next/link';
 import { MessageSquare } from 'lucide-react';
 import { Breadcrumbs } from '@/components/nav/Breadcrumbs';
@@ -15,6 +15,7 @@ import { EndCoaching } from './EndCoaching';
 import { PauseControls } from './PauseControls';
 import { CoachSelect } from './CoachSelect';
 import { StageSelect } from './StageSelect';
+import { LocationSelect } from './LocationSelect';
 
 export default async function ClientLayout({
   children,
@@ -25,8 +26,8 @@ export default async function ClientLayout({
 }) {
   const { id } = await params;
   const client = await loadClient(id);
-  const { context, coaches, canTransfer, canEdit, plan } = await withServerTenant(
-    async (tx, actor) => ({
+  const { context, coaches, canTransfer, canEdit, plan, locations, locationId } =
+    await withServerTenant(async (tx, actor) => ({
       context: await getClientContext(tx, actor, client.id),
       // PRD A11: the team's coaches, to move the client to another.
       coaches: (
@@ -39,6 +40,15 @@ export default async function ClientLayout({
       canTransfer:
         isManager(actor.role) || (actor.role === 'coach' && actor.userId === client.coachUserId),
       canEdit: (TRAINER_ROLES as readonly string[]).includes(actor.role),
+      // PRD A15: the site the client trains at, when the workspace has locations.
+      locations: (await listLocations(tx, actor)).map((l) => ({ id: l.id, name: l.name })),
+      locationId:
+        (
+          await tx.client.findFirst({
+            where: { id: client.id },
+            select: { locationId: true },
+          })
+        )?.locationId ?? null,
       // The hero's program line: title and "Week X of Y" from the active assignment's sessions.
       plan: await (async () => {
         const a = await tx.programAssignment.findFirst({
@@ -63,8 +73,7 @@ export default async function ClientLayout({
           total,
         };
       })(),
-    }),
-  );
+    }));
   return (
     <>
       <Breadcrumbs items={[{ label: 'Clients', href: '/app/clients' }, { label: client.name }]} />
@@ -89,6 +98,14 @@ export default async function ClientLayout({
                     coachUserId={client.coachUserId}
                     coaches={coaches}
                     canTransfer={canTransfer}
+                  />
+                )}
+                {locations.length > 0 && (
+                  <LocationSelect
+                    clientId={client.id}
+                    locationId={locationId}
+                    locations={locations}
+                    canEdit={canEdit}
                   />
                 )}
               </div>

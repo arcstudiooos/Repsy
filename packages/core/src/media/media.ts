@@ -211,7 +211,8 @@ export async function purgeErasedMedia(
       data: { erasedAt: now },
     });
     return tx.mediaFile.findMany({
-      where: { erasedAt: { not: null } },
+      // PRD L11: a file still in Cloudflare Stream waits until the video job deletes that copy.
+      where: { erasedAt: { not: null }, streamUid: null },
       take: 500,
       select: { id: true, storageKey: true },
     });

@@ -722,3 +722,22 @@ snippet — `docs/decisions.md` itself was not edited by the slice).
 2. **Charts stay allowed**, superseding D-008 #1 "counts only": every chart keeps its numerator, denominator and period visible and offers "View as table". This restates D-014 #1–#3, which already replaced D-008 #1.
 3. **Shell:** a light sidebar, 248 px expanded and 72 px collapsed. It holds a workspace header, a "Search… ⌘K" button, grouped primary nav, Settings and Help, and a user card whose menu has Profile, Theme, Switch workspace and Sign out. Below 768 px it becomes a top bar plus a bottom tab bar with a "More" sheet.
 4. **Logo:** the founder's gradient R (D-017) stays the mark. It is not replaced by the brief's periwinkle square.
+
+## D-019 — Roadmap cuts and the next build list (2026-11-06)
+
+**Status:** Approved by the founder (2026-11-06).
+
+1. **Removed, not planned:** D19 watch companion, E12 device data, E13 smart scales, G10 food search and barcode, G11 nutrition app import, H12 native push, I13 AI reply draft, J10 webhooks and Zapier, L2 native apps, L3 branded store apps, L5 Apple Health / Health Connect, L6 wearable clouds, L8 public API and webhooks, L9 Zapier, L10 integration health. The PRD lists them under "Removed from scope".
+2. **Removed from the code:** L4 custom domains (supersedes D-015) and AI drafting I10-I12 with its guardrails I14 (supersedes D-013 "AI drafting rulings"). Migration 000090 drops `custom_domains` and `ai_drafts`. `ai_settings` stays as the opt-in for the AI assistant and every workspace is reset to OFF, because the old opt-in was for a fake provider that sent nothing anywhere.
+3. **To build:** I15 AI assistant (a chat screen with read-only access to the coach's workspace), K10 real Google Calendar sync, L11 adaptive video, A15 locations, A16 single sign-on, K12 group classes, M11 update safety and the M14 security programme.
+4. **On hold:** K13 sell programs and courses, K14 referrals.
+
+## D-020 — The AI assistant can propose changes (2026-11-06)
+
+The coach asked to do the whole set-up for a client in one place: put them on a program, then build a weekly meal plan that hits set macros every day.
+
+1. **Proposals, not writes.** The assistant gets four propose tools: assign a program, set daily nutrition targets, build and give a meal plan, give an existing meal plan. Each call only stores an `ai_actions` row and shows a card. Nothing changes until the coach who asked presses **Confirm**. Cancel, or 24 hours without a decision, ends it.
+2. **Separate switch.** `ai_settings.actions_enabled`, off by default, turned on by an owner or admin. With it off the model is not offered the propose tools at all.
+3. **Same rules as the screens.** Confirm runs the existing domain functions (`assignProgram`, `setNutritionTarget`, `saveMealPlan`, `setClientMealPlan`) as the confirming coach, so roles, row-level security and validation apply. Confirming an assignment replaces the client's current program; the card says so. Each confirm writes the audit entry `assistant.action_applied`.
+4. **Meal plans are checked before they are shown.** Every day's totals must be within 5% of the calorie target and within 10% or 5 g (whichever is larger) of each macro target; otherwise the tool returns the misses and the model fixes the plan. Macros are AI estimates, labelled as such on the card.
+5. **Retention and erasure.** Proposals belong to their conversation and are purged with it after 90 days; client erasure deletes the client's proposals.

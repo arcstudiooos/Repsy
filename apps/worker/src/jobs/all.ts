@@ -1,3 +1,6 @@
+import { videoStreamJob } from './videoStream';
+import { calendarSyncJob } from './calendarSync';
+import { aiPurgeJob } from './aiPurge';
 import { billingSweepJob } from './billingSweep';
 import { checkinsIssueJob } from './checkinsIssue';
 import { clientRemindersJob } from './clientReminders';
@@ -29,4 +32,7 @@ export const jobs = [
   phasesAdvanceJob,
   automationsJob,
   billingSweepJob,
+  aiPurgeJob,
+  calendarSyncJob,
+  videoStreamJob,
 ] as const;

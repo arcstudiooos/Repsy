@@ -3,6 +3,7 @@
 import { useState, useSyncExternalStore } from 'react';
 import { parseExerciseMedia } from '@kinetic/core/exercise-media';
 import { Button } from '@/components/ui/button';
+import { AdaptiveVideo } from './AdaptiveVideo';
 
 const subscribe = (cb: () => void) => {
   window.addEventListener('online', cb);
@@ -56,9 +57,7 @@ export function ExerciseDemo({ url, name }: { url: string | null | undefined; na
   return (
     <div className="mt-2 aspect-video w-full overflow-hidden rounded-control bg-canvas">
       {media.kind === 'video' ? (
-        <video src={media.src} controls playsInline className="h-full w-full">
-          <track kind="captions" />
-        </video>
+        <AdaptiveVideo src={media.src} label={`Demo: ${name}`} />
       ) : (
         <iframe
           src={media.embedUrl}

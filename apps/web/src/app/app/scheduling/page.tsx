@@ -1,7 +1,13 @@
 import type { Metadata } from 'next';
 // NOTE (slice merge): the parent adds these names to '@kinetic/core' first
 // (see SLICE_REPORT_SCHEDULING.md); the page then compiles unchanged.
-import { listSessionTypes, TRAINER_ROLES } from '@kinetic/core';
+import {
+  getCalendarConnection,
+  googleOAuthConfig,
+  listSessionTypes,
+  TRAINER_ROLES,
+} from '@kinetic/core';
+import { CalendarConnectCard } from '@/components/scheduling/CalendarConnectCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   BookSessionForm,
@@ -13,15 +19,31 @@ import { withServerTenant } from '@/server/serverActor';
 export const metadata: Metadata = { title: 'Scheduling | Repsy' };
 
 /** PRD K10, K11, H15: availability, bookings with call links, pack balances. */
-export default async function SchedulingPage() {
-  const { types, canEdit } = await withServerTenant(async (tx, actor) => ({
-    types: await listSessionTypes(tx, actor),
-    canEdit: (TRAINER_ROLES as readonly string[]).includes(actor.role),
-  }));
+export default async function SchedulingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ calendar?: string }>;
+}) {
+  const { calendar } = await searchParams;
+  const { types, canEdit, connection } = await withServerTenant(async (tx, actor) => {
+    const canEdit = (TRAINER_ROLES as readonly string[]).includes(actor.role);
+    return {
+      types: await listSessionTypes(tx, actor),
+      canEdit,
+      connection: canEdit ? await getCalendarConnection(tx, actor) : null,
+    };
+  });
   return (
     <>
       <h1 className="mb-6 text-h1 font-semibold md:text-display">Scheduling</h1>
       <div className="flex flex-col gap-6">
+        {canEdit && (
+          <CalendarConnectCard
+            connection={connection}
+            available={googleOAuthConfig() !== null}
+            notice={calendar}
+          />
+        )}
         <Card>
           <CardHeader>
             <CardTitle as="h2">Session types</CardTitle>

@@ -12,6 +12,7 @@ import {
   listAgreements,
   isManager,
   getPublicPageSettings,
+  getSsoSetting,
 } from '@kinetic/core';
 import { AgreementsSection } from '@/components/settings/AgreementsSection';
 import { PublicPageSection } from '@/components/settings/PublicPageSection';
@@ -29,6 +30,8 @@ import { PilotAccessCard } from '@/components/settings/PilotAccessCard';
 import { SettingsNav } from '@/components/settings/SettingsNav';
 import { PageHeader } from '@/components/ui/page-header';
 import { SecuritySection } from '@/components/settings/SecuritySection';
+import { SsoSection } from '@/components/settings/SsoSection';
+import { microsoftSsoConfigured } from '@/lib/auth';
 import { TwoFactorSection } from '@/components/settings/TwoFactorSection';
 import { withServerTenant } from '@/server/serverActor';
 
@@ -47,6 +50,7 @@ export default async function SettingsPage() {
     publicPage,
     branding,
     twoFactor,
+    sso,
   } = await withServerTenant(async (tx, a) => ({
     actor: a,
     settings: a.role === 'client' ? null : await getSettings(tx, a),
@@ -58,6 +62,7 @@ export default async function SettingsPage() {
     publicPage: await getPublicPageSettings(tx),
     branding: await getBranding(tx),
     twoFactor: await twoFactorStatus(tx, a),
+    sso: a.role === 'client' ? null : await getSsoSetting(tx, a),
   }));
   // A client who lands here belongs in their portal.
   if (!settings?.profile || !settings.org) redirect('/portal/profile');
@@ -122,6 +127,14 @@ export default async function SettingsPage() {
       description: 'Exports, people and the record of changes.',
       body: (
         <>
+          <SsoSection
+            initial={sso}
+            canEdit={isOwner}
+            googleAvailable={Boolean(
+              process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET,
+            )}
+            microsoftAvailable={microsoftSsoConfigured()}
+          />
           {isOwner && <DataExportSection scope="org" initial={exports} />}
           <ul className="grid gap-3 sm:grid-cols-2">
             {isOwner && (
