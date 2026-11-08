@@ -208,8 +208,8 @@ export function createAuth(options: CreateAuthOptions = {}) {
             body.provider !== 'google');
         if (viaHttp && blocked) {
           throw new APIError('FORBIDDEN', {
-            message: 'Sign-up requires a pilot code.',
-            code: 'SIGNUP_REQUIRES_PILOT_CODE',
+            message: 'Create your account on the Repsy sign-up page.',
+            code: 'SIGNUP_ON_SIGNUP_PAGE',
           });
         }
         // PRD A16: a workspace that requires single sign-on blocks password sign-in for its staff.

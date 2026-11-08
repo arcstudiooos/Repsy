@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
-import { createPilotCode, findOwnerOrg, resetRateLimits } from './support/db';
+import { findOwnerOrg, resetRateLimits } from './support/db';
 
 const PASSWORD = 'e2e-correct-horse-battery';
 
@@ -29,11 +29,9 @@ async function waitForEmail(
   return found as SunkEmail;
 }
 
-test('coach signs up with pilot code, verifies, lands on /app', async ({ page, request }) => {
+test('coach signs up, verifies, lands on /app', async ({ page, request }) => {
   const stamp = Date.now();
   const email = `coach-${stamp}@example.test`;
-  const code = `PILOT-${stamp}`;
-  await createPilotCode(code);
 
   // Sign-up is rate limited per IP and parallel workers share one IP: reset and retry.
   await expect(async () => {
@@ -44,7 +42,6 @@ test('coach signs up with pilot code, verifies, lands on /app', async ({ page, r
     await page.getByLabel('Password').fill(PASSWORD);
     await page.getByLabel('Business name').fill('Casey Strength');
     await page.getByLabel('Time zone').selectOption('Europe/London');
-    await page.getByLabel('Pilot code').fill(code);
     await page.getByRole('button', { name: 'Create account' }).click();
     await expect(page).toHaveURL(/\/verify-email$/, { timeout: 5_000 });
   }).toPass({ timeout: 45_000 });
@@ -63,24 +60,7 @@ test('coach signs up with pilot code, verifies, lands on /app', async ({ page, r
   expect(await findOwnerOrg(email)).toEqual({ name: 'Casey Strength', role: 'owner' });
 });
 
-test('signup rejects an unknown pilot code without creating an account', async ({ page }) => {
-  // Parallel specs share the per-IP sign-up counter: reset and retry.
-  await expect(async () => {
-    await resetRateLimits();
-    await page.goto('/signup');
-    await page.getByLabel('Your name').fill('No Code');
-    await page.getByLabel('Email').fill(`nocode-${Date.now()}@example.test`);
-    await page.getByLabel('Password').fill(PASSWORD);
-    await page.getByLabel('Business name').fill('Nope Ltd');
-    await page.getByLabel('Time zone').selectOption('UTC');
-    await page.getByLabel('Pilot code').fill('NOT-A-CODE');
-    await page.getByRole('button', { name: 'Create account' }).click();
-    await expect(page.getByText('This pilot code is invalid or has expired.')).toBeVisible();
-  }).toPass({ timeout: 45_000 });
-  await expect(page).toHaveURL(/\/signup$/);
-});
-
-test('public sign-up endpoint is closed without a pilot code', async ({ request, baseURL }) => {
+test('public sign-up endpoint is closed', async ({ request, baseURL }) => {
   const res = await request.post('/api/auth/sign-up/email', {
     headers: { origin: baseURL as string },
     data: { name: 'Bypass', email: `bypass-${Date.now()}@example.test`, password: PASSWORD },

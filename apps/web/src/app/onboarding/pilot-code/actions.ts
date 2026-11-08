@@ -22,7 +22,8 @@ export async function redeemPilotCodeAction(
   const user = await getSessionUser(requestHeaders);
   if (!user?.emailVerified) redirect('/login?next=%2Fonboarding%2Fpilot-code');
 
-  const pilotCode = field(data, 'pilotCode');
+  // Pilot codes are retired from sign-up; every new workspace starts on the trial.
+  const pilotCode = '';
   const orgName = field(data, 'orgName');
   const timezone = field(data, 'timezone');
   const fieldErrors: Record<string, string> = {};

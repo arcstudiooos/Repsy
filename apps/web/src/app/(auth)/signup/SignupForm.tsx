@@ -70,13 +70,9 @@ export function SignupForm({
           hint="Used for reminders and check-in times. We picked yours from this device."
           error={errors.timezone}
         />
-        <Field
-          label="Pilot code (optional)"
-          name="pilotCode"
-          required={false}
-          hint="No code? You get a free 7-day trial for up to 3 clients."
-          error={errors.pilotCode}
-        />
+        <p className="mb-2 text-sm text-secondary">
+          Free 7-day trial for up to 3 clients. No card needed.
+        </p>
         <p className="mb-4 text-sm text-secondary">
           By creating an account you agree to the{' '}
           <Link href="/terms" className={linkClass}>

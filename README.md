@@ -24,7 +24,7 @@ pnpm dev                   # web (http://localhost:3000) + worker together
 Open http://localhost:3000 and sign in as `coach@example.test` (or `admin@example.test`) with your `SEED_PASSWORD`, or sign up with the printed pilot code.
 
 - With provider keys blank: emails go to the dev sink, Google sign-in is hidden, Sentry and PostHog are off.
-- **Google sign-in and sign-up:** with `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` set, `/login` shows "Continue with Google" (existing accounts only) and `/signup` shows "Sign up with Google", which creates the account and sends the coach to `/onboarding/pilot-code` for business name, time zone and an optional pilot code (D-022). Google OAuth redirect URI: `{BETTER_AUTH_URL}/api/auth/callback/google`.
+- **Google sign-in and sign-up:** with `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` set, `/login` shows "Continue with Google" (existing accounts only) and `/signup` shows "Sign up with Google", which creates the account and sends the coach to `/onboarding/pilot-code` for business name and time zone (D-022). Sign-up no longer asks for a pilot code; every new workspace starts on the 7-day, 3-client trial. Google OAuth redirect URI: `{BETTER_AUTH_URL}/api/auth/callback/google`.
 - Verification and reset emails land as JSON files in `DEV_EMAIL_DIR` (blank = `.dev-emails/` at the repo root), also listed at http://localhost:3000/api/dev/emails. Open the link in the `text` field.
 - `pnpm dev`, `pnpm db:migrate`, `pnpm db:seed`, `pilot-code:create` and `pgboss:migrate` read the root `.env` (Node's built-in env-file loader; variables already set in the shell win). `pnpm test` does not.
 - `pnpm db:down` stops the container (data persists in a named volume).
