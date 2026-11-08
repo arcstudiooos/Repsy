@@ -167,7 +167,8 @@ export function createAuth(options: CreateAuthOptions = {}) {
                   google: {
                     clientId: env.GOOGLE_CLIENT_ID as string,
                     clientSecret: env.GOOGLE_CLIENT_SECRET as string,
-                    // Accounts are only created through pilot-code signup.
+                    // Signing in never creates an account. The sign-up page's Google button asks for one
+                    // explicitly (requestSignUp); the new user then sets up a workspace at onboarding.
                     disableImplicitSignUp: true,
                   },
                 }
@@ -193,15 +194,18 @@ export function createAuth(options: CreateAuthOptions = {}) {
       accountLinking: { enabled: true, trustedProviders: ['google', 'microsoft'] },
     },
     hooks: {
-      // Account creation is gated by a pilot code. registerCoach calls
-      // auth.api.signUpEmail server-side (no ctx.request); anything arriving
-      // over HTTP (ctx.request set) may not create users.
+      // Password accounts are created only by registerCoach, which calls auth.api.signUpEmail
+      // server-side (no ctx.request). Over HTTP (ctx.request set) the only sign-up allowed is
+      // Google's, from the sign-up page: Google has verified the email, and a user with no
+      // workspace is sent to /onboarding to create one. Microsoft SSO never creates users.
       before: createAuthMiddleware(async (ctx) => {
         const viaHttp = ctx.request !== undefined;
-        const body = ctx.body as { requestSignUp?: unknown } | undefined;
+        const body = ctx.body as { requestSignUp?: unknown; provider?: unknown } | undefined;
         const blocked =
           ctx.path === '/sign-up/email' ||
-          (ctx.path === '/sign-in/social' && body?.requestSignUp === true);
+          (ctx.path === '/sign-in/social' &&
+            body?.requestSignUp === true &&
+            body.provider !== 'google');
         if (viaHttp && blocked) {
           throw new APIError('FORBIDDEN', {
             message: 'Sign-up requires a pilot code.',

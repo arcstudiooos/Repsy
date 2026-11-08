@@ -2,17 +2,16 @@
 
 import { useActionState } from 'react';
 import { AuthShell, buttonClass, Field, FormMessage } from '@/components/auth-ui';
+import { TimezoneSelect } from '@/components/TimezoneSelect';
 import { redeemPilotCodeAction, type RedeemState } from './actions';
 
 export function PilotCodeForm() {
   const [state, action, pending] = useActionState<RedeemState, FormData>(redeemPilotCodeAction, {});
   const errors = state.fieldErrors ?? {};
-  const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   return (
-    <AuthShell title="Enter your pilot code">
+    <AuthShell title="Set up your workspace">
       <p className="mb-4 text-base">
-        Your account is verified but has no coaching workspace yet. Enter your pilot code to create
-        one.
+        Your account is ready. Add your business details to create your coaching workspace.
       </p>
       <form action={action}>
         {errors.form && <FormMessage tone="error">{errors.form}</FormMessage>}
@@ -24,11 +23,10 @@ export function PilotCodeForm() {
           error={errors.pilotCode}
         />
         <Field label="Business name" name="orgName" error={errors.orgName} />
-        <Field
+        <TimezoneSelect
           label="Time zone"
           name="timezone"
-          defaultValue={browserZone}
-          hint="For example Europe/London."
+          hint="Used for reminders and check-in times. We picked yours from this device."
           error={errors.timezone}
         />
         <button type="submit" className={buttonClass} disabled={pending}>

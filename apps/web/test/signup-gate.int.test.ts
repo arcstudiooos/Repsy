@@ -100,13 +100,44 @@ describe('pilot-code gate', () => {
     expect(await outbox()).toBe(before);
   });
 
-  it('HTTP social sign-in cannot request an implicit sign-up', async () => {
-    const res = await post('/sign-in/social', {
-      provider: 'google',
+  it('HTTP social sign-in can request a sign-up only with Google', async () => {
+    const withProviders = createAuth({
+      prisma,
+      authPrisma,
+      env: {
+        ...env,
+        GOOGLE_CLIENT_ID: 'id',
+        GOOGLE_CLIENT_SECRET: 'secret',
+        MICROSOFT_CLIENT_ID: 'mid',
+        MICROSOFT_CLIENT_SECRET: 'msecret',
+      },
+    });
+    const social = (body: unknown) =>
+      createAuthHandlers(withProviders).POST(
+        new Request(`${ORIGIN}/api/auth/sign-in/social`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', origin: ORIGIN },
+          body: JSON.stringify(body),
+        }),
+      );
+    // Microsoft SSO never creates accounts.
+    const microsoft = await social({
+      provider: 'microsoft',
       requestSignUp: true,
       callbackURL: '/app',
     });
-    expect(res.status).toBe(403);
+    expect(microsoft.status).toBe(403);
+    // Google sign-up from the sign-up page goes on to Google's consent screen.
+    const google = await social({
+      provider: 'google',
+      requestSignUp: true,
+      callbackURL: '/app',
+      newUserCallbackURL: '/onboarding/pilot-code',
+    });
+    expect(google.status).toBe(200);
+    expect(((await google.json()) as { url: string }).url).toMatch(
+      /^https:\/\/accounts\.google\.com\//,
+    );
   });
 
   it('google provider disables implicit sign-up and is absent when unconfigured', () => {

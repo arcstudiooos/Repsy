@@ -750,3 +750,9 @@ The owner chose OpenAI instead of Anthropic for the assistant (I15, D-020).
 2. **Tools.** The tool schemas in `@kinetic/core` are sent as strict function tools. Tool arguments arrive as JSON text; text that does not parse goes back to the model as an error instead of running the tool.
 3. **Privacy.** OpenAI replaces Anthropic as the processor for assistant questions, in the privacy notice, the assistant page and `docs/security/subprocessors.md`. OpenAI does not train on API data by default.
 
+## D-022 — One-click coach sign-up with Google (2026-11-08)
+
+1. `/signup` shows **Sign up with Google** when the Google keys are set. It asks Google to create the account (`requestSignUp`); Google has already verified the email.
+2. The new coach lands on `/onboarding/pilot-code` ("Set up your workspace") for business name, time zone and an optional pilot code, then `/app`. No code starts the 7-day trial, as with email sign-up. A Google user who leaves before this step is sent back to it by the existing no-workspace guard.
+3. Signing in from `/login` with Google still never creates an account. Over HTTP, Google from the sign-up page is the only way to create a user; email accounts still go through `registerCoach`, and Microsoft SSO never creates users.
+

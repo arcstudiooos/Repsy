@@ -6,6 +6,7 @@ import { DomainError } from '@kinetic/core';
 import { prisma } from '@kinetic/db';
 import { getSessionUser } from '@/lib/auth';
 import { CODE_INVALID, redeemPilotCode, validTimezone } from '@/lib/register-coach';
+import { analyticsHashSecret, defaultAnalytics, eventFor } from '@/server/analytics';
 
 export interface RedeemState {
   fieldErrors?: Record<string, string>;
@@ -43,5 +44,9 @@ export async function redeemPilotCodeAction(
     }
     throw error;
   }
+  // A Google sign-up (or a recovered half-finished one) becomes a coach here.
+  defaultAnalytics().capture(
+    eventFor(analyticsHashSecret(), { userId: user.id }, 'coach_signed_up'),
+  );
   redirect('/app');
 }

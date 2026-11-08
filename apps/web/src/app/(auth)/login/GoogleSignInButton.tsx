@@ -21,6 +21,27 @@ export function GoogleSignInButton() {
   );
 }
 
+/** New coach account with Google; the workspace is set up next, at onboarding. */
+export function GoogleSignUpButton() {
+  return (
+    <button
+      type="button"
+      className={secondaryButtonClass}
+      onClick={() =>
+        void authClient.signIn.social({
+          provider: 'google',
+          requestSignUp: true,
+          callbackURL: '/app',
+          newUserCallbackURL: '/onboarding/pilot-code',
+          errorCallbackURL: '/signup?google=failed',
+        })
+      }
+    >
+      Sign up with Google
+    </button>
+  );
+}
+
 /** PRD A16: Microsoft Entra ID single sign-on for workspaces that set it up. */
 export function MicrosoftSignInButton() {
   return (
