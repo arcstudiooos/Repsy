@@ -4,7 +4,14 @@ import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';
 import { enqueueEmail } from '../outbox';
 import { isUuid } from '../uuid';
-import { fakePaymentsProvider, type PaymentsPort, type ProviderKind } from './payments';
+import {
+  assertOnlinePayments,
+  defaultPaymentsProvider,
+  fakePaymentsProvider,
+  onlinePaymentsAvailable,
+  type PaymentsPort,
+  type ProviderKind,
+} from './payments';
 import { nextChargeDate } from './packages';
 import type { BillingTx } from './packages';
 
@@ -329,6 +336,7 @@ export async function confirmCheckout(
   now: Date = new Date(),
 ): Promise<{ receiptId: string | null }> {
   assertCan(actor, 'client:update');
+  assertOnlinePayments();
   const db = billingTx(tx);
   const org = await tx.organization.findFirstOrThrow({
     select: { name: true, brandAccent: true, logoUrl: true },
@@ -756,7 +764,7 @@ async function chargeSubscription(
   opts: { description: string; idempotencyKey: string },
 ): Promise<{ status: SubscriptionStatus }> {
   const db = billingTx(tx);
-  const provider = payments ?? fakePaymentsProvider(sub.provider as ProviderKind);
+  const provider = payments ?? defaultPaymentsProvider(sub.provider as ProviderKind);
   const charge = await provider.createCharge({
     providerAccountId: `org_${orgId}`,
     customerEmail: sub.customerEmail as string,
@@ -887,9 +895,12 @@ export async function refundPayment(
   if (already + amount > (payment.amountMinor as number)) {
     throw new DomainError('CONFLICT', 'That refund is more than the payment.');
   }
-  const provider = payments ?? fakePaymentsProvider(payment.provider as ProviderKind);
+  // Manual payments refund without a provider; a provider charge needs online payments.
   const result = payment.providerChargeId
-    ? await provider.refundCharge(payment.providerChargeId as string, amount)
+    ? await (payments ?? defaultPaymentsProvider(payment.provider as ProviderKind)).refundCharge(
+        payment.providerChargeId as string,
+        amount,
+      )
     : { providerRefundId: `re_fake_manual_${payment.id.slice(0, 8)}`, refundedMinor: amount };
   await db.payment.updateMany({
     where: { id: payment.id },
@@ -933,13 +944,15 @@ export async function getBillingSelfService(
         take: 50,
       })
     : [];
-  const provider = payments ?? fakePaymentsProvider('stripe');
-  const portal = sub
-    ? await provider.createPortalSession({
-        providerCustomerId: `cus_fake_${clientId ?? 'anon'}`,
-        returnUrl: '/portal/billing',
-      })
-    : null;
+  // No billing portal link while online payments are off.
+  const provider = payments ?? (onlinePaymentsAvailable() ? fakePaymentsProvider('stripe') : null);
+  const portal =
+    sub && provider
+      ? await provider.createPortalSession({
+          providerCustomerId: `cus_fake_${clientId ?? 'anon'}`,
+          returnUrl: '/portal/billing',
+        })
+      : null;
   return {
     subscription: sub ? subscriptionView(sub) : null,
     portalUrl: portal?.url ?? null,

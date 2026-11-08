@@ -105,16 +105,22 @@ logs; analytics and adherence; web push; exports, deletion and the privacy featu
 
 ## 5. What is left
 
-**R3:** built and merged. Payments run on fake providers until real Stripe/Razorpay keys and webhooks are added;
+**R3:** built and merged. Online client payments (checkout, renewals, retries, provider refunds) run on a fake
+provider, so they are switched off in production until a real Stripe/Razorpay adapter and webhooks exist
+(`onlinePaymentsAvailable`; `PAYMENTS_FAKE=true` turns the fake on for E2E and demos). Manual payments work everywhere.
 M12 lapses are recorded by a platform admin until the coach's own plan billing exists.
+
+**Coach plan billing does not exist yet.** New workspaces get a 7-day, 3-client trial; to move to a paid plan
+(Solo, Pro, Studio on the landing page) a coach emails hello@repsy.fit and a platform admin changes the workspace's
+plan by hand. Online checkout for coach plans is the main piece of work left before self-serve paid launch.
 
 **R4:** A15, A16, K12, L11, M11 and M14 are built (see `README.md`). K13 and K14 are on hold. M15 is not started.
 Everything else in R4 was removed from scope (D-019).
 
 ## 6. Things to know
 
-- **The name:** the product is Repsy here; the code, UI copy, emails and docs still say Kinetic. Renaming is a
-  search-and-replace plus the package scope `@kinetic/*`.
+- **The name:** the product, UI copy and emails say Repsy. Only internal names still say Kinetic: the package scope
+  `@kinetic/*`, the database role `kinetic_app` and some older docs.
 - **PDF reports** use a small built-in writer (`packages/core/src/reports/pdf.ts`) with the standard Helvetica font:
   Western European text renders; other scripts show as "?" until a font is embedded. Only JPEG photos are drawn.
 - **Group activity** sends no notifications; the chat refreshes every 20 seconds while open.

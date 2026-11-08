@@ -5,7 +5,7 @@ import { DomainError } from '../errors';
 import { isUuid } from '../uuid';
 import {
   defaultProviderForCurrency,
-  fakePaymentsProvider,
+  defaultPaymentsProvider,
   type PaymentsPort,
   type ProviderKind,
 } from './payments';
@@ -557,7 +557,7 @@ export async function createCheckout(
     input.provider === 'stripe' || input.provider === 'razorpay'
       ? (input.provider as ProviderKind)
       : defaultProviderForCurrency(pkg.currency as string);
-  const provider = payments ?? fakePaymentsProvider(providerKind);
+  const provider = payments ?? defaultPaymentsProvider(providerKind);
   const tax = provider.calculateTax(amountMinor, { currency: pkg.currency as string });
   const trialDays = pkg.trialDays as number;
   const firstCharge = trialDays > 0 ? trialEndDate(now, trialDays) : now;

@@ -292,3 +292,29 @@ export class FakePaymentsProvider implements PaymentsPort {
 export function fakePaymentsProvider(kind: ProviderKind): PaymentsPort {
   return new FakePaymentsProvider(kind);
 }
+
+/**
+ * Online payments (checkout, renewals, retries, provider refunds) run on the fake provider only, so they are off in
+ * production until a real Stripe/Razorpay adapter exists (go-live review 2026-11-08). Outside production, or with
+ * PAYMENTS_FAKE=true (E2E, demos), the fake provider stays available. Manual payments are never affected.
+ */
+export function onlinePaymentsAvailable(
+  env: Record<string, string | undefined> = process.env,
+): boolean {
+  return env.NODE_ENV !== 'production' || env.PAYMENTS_FAKE === 'true';
+}
+
+export const PAYMENTS_UNAVAILABLE_MESSAGE =
+  'Online payments are not available yet. Record payments you take elsewhere against the client instead.';
+
+export function assertOnlinePayments(): void {
+  if (!onlinePaymentsAvailable()) {
+    throw new DomainError('PAYMENTS_UNAVAILABLE', PAYMENTS_UNAVAILABLE_MESSAGE);
+  }
+}
+
+/** The provider used when a caller does not pass one: the fake, and only where online payments are available. */
+export function defaultPaymentsProvider(kind: ProviderKind): PaymentsPort {
+  assertOnlinePayments();
+  return fakePaymentsProvider(kind);
+}

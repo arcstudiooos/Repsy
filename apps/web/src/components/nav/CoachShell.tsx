@@ -68,7 +68,7 @@ async function TrialBanner() {
       <p className="text-sm text-secondary">
         {left > 0
           ? `Up to ${org.activeClientLimit} active clients during the trial.`
-          : 'Your clients and data are kept. Adding new clients needs a plan.'}{' '}
+          : 'Your clients and data are kept. Adding new clients needs a paid plan.'}{' '}
         <Link href="/plan" className="text-accent underline">
           See the plan
         </Link>

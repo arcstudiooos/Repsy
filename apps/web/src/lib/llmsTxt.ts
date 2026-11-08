@@ -1,4 +1,4 @@
-import { FAQ, PLANS, PROMISES, TRUST } from '@/content/marketing';
+import { FAQ, PLAN_CONTACT, PLANS, PROMISES, TRUST } from '@/content/marketing';
 import {
   appUrl,
   CONTACT_EMAIL,
@@ -36,6 +36,8 @@ export function llmsTxt(site: string = siteUrl, app: string = appUrl): string {
         `- ${p.name}: ${price(p.monthly)}, up to ${p.clients} clients, ${p.seats} ${p.seats === 1 ? 'coach seat' : 'coach seats'}. ${p.blurb}`,
     ),
     '',
+    `Online checkout is coming soon. Until then, coaches start the free trial and email ${PLAN_CONTACT} to move to a paid plan.`,
+    '',
     '## Trust',
     '',
     ...TRUST.map((t) => `- ${t.title}: ${t.body}`),
@@ -46,7 +48,7 @@ export function llmsTxt(site: string = siteUrl, app: string = appUrl): string {
     '## Links',
     '',
     `- [Home](${site}/): what Repsy does, plans and FAQ`,
-    `- [Start free](${app}/signup): create a coach account`,
+    `- [Start free trial](${app}/signup): create a coach account (7 days, up to 3 clients)`,
     `- [Plan and fair-billing charter](${app}/plan): cancellation, refunds and renewals`,
     `- [Changelog](${app}/changelog): what has shipped and what is next`,
     `- [Service status](${app}/status): current incidents and maintenance`,

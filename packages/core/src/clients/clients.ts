@@ -204,7 +204,7 @@ export async function createClient(
   if (org.trialEndsAt && org.trialEndsAt <= new Date()) {
     throw new DomainError(
       'TRIAL_ENDED',
-      'Your free trial has ended. Your clients and data are kept; contact us to continue.',
+      'Your free trial has ended. Your clients and data are kept. Email hello@repsy.fit to move to a paid plan.',
     );
   }
   await assertUnderLimit(tx, org.activeClientLimit);

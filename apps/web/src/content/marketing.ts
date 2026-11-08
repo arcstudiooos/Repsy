@@ -21,15 +21,20 @@ export const TOUR_VIDEO: {
   length: '2 minutes',
 };
 
+/** Where coaches ask for a paid plan until online checkout exists (go-live review 2026-11-08). */
+export const PLAN_CONTACT = 'hello@repsy.fit';
+export const planMailto = (plan: string) =>
+  `mailto:${PLAN_CONTACT}?subject=${encodeURIComponent(`Repsy ${plan} plan`)}`;
+
 export const PLANS = [
   {
-    id: 'free',
-    name: 'Free',
+    id: 'trial',
+    name: 'Free trial',
     clients: 3,
     seats: 1,
     monthly: 0,
     annual: 0,
-    blurb: 'Try every feature with your first clients.',
+    blurb: 'Every feature for 7 days with your first clients.',
   },
   {
     id: 'solo',
