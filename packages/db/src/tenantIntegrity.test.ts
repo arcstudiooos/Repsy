@@ -141,11 +141,14 @@ async function seedTenant(tx: SystemTx, label: string): Promise<Tenant> {
   };
 }
 
+// One check-in per client per day is a unique constraint, and the same client gets several rows in this file: a
+// random day collided now and then, so every row takes the next day.
+let checkinDay = 0;
 const checkinRow = (own: Tenant, clientId: string, templateId: string) => ({
   organizationId: own.orgId,
   clientId,
   templateId,
-  periodLocalDate: new Date(`20${Math.floor(Math.random() * 70) + 30}-01-05`),
+  periodLocalDate: new Date(Date.UTC(2030, 0, 5) + checkinDay++ * 86_400_000),
   questionsJson: [],
   issuedAt: new Date('2026-11-04T06:00:00Z'),
   dueAt: new Date('2026-11-04T23:59:00Z'),
