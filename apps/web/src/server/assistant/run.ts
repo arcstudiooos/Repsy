@@ -1,13 +1,13 @@
-import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 import { ACTION_TOOLS, ASSISTANT_TOOLS, DomainError, type ActionToolResult } from '@kinetic/core';
 
 /**
- * PRD I15: one assistant turn with Claude. The model reads the coach's workspace only through the
- * read-only tools in `@kinetic/core` (`runTool` runs each inside its own tenant transaction, so no
+ * PRD I15: one assistant turn with an OpenAI model (D-021). The model reads the coach's workspace only through
+ * the read-only tools in `@kinetic/core` (`runTool` runs each inside its own tenant transaction, so no
  * transaction is held open while the model thinks). When the workspace allows it, the model can also call the
  * `propose_*` tools: they only store a proposal, and nothing changes until the coach confirms it on screen.
  */
-export const ASSISTANT_MODEL = 'claude-opus-5-5';
+export const DEFAULT_ASSISTANT_MODEL = 'gpt-5';
 /** Upper bound on model round trips in one turn, so a confused loop cannot run up cost. */
 export const MAX_TOOL_ROUNDS = 10;
 
@@ -37,20 +37,23 @@ You can also propose changes with the propose_* tools: put a client on a program
 - After proposing, say in one or two lines what you proposed and that it is waiting for their Confirm. Never say a change is done.
 Messaging clients, booking and settings are not available; tell the coach where to do those in Repsy.`;
 
-const toBeta = (t: (typeof ASSISTANT_TOOLS)[number]): Anthropic.Beta.BetaTool => ({
-  name: t.name,
-  description: t.description,
-  input_schema: t.input_schema,
-  strict: true,
+const toTool = (t: (typeof ASSISTANT_TOOLS)[number]): OpenAI.Chat.ChatCompletionFunctionTool => ({
+  type: 'function',
+  function: {
+    name: t.name,
+    description: t.description,
+    parameters: t.input_schema as Record<string, unknown>,
+    strict: true,
+  },
 });
-const READ_TOOLS = ASSISTANT_TOOLS.map(toBeta);
-const ALL_TOOLS = [...READ_TOOLS, ...ACTION_TOOLS.map(toBeta)];
+const READ_TOOLS = ASSISTANT_TOOLS.map(toTool);
+const ALL_TOOLS = [...READ_TOOLS, ...ACTION_TOOLS.map(toTool)];
 
 export interface AssistantTurnInput {
   /** Earlier exchanges in this conversation, oldest first, as plain text. */
   history: { role: 'user' | 'assistant'; body: string }[];
   question: string;
-  /** Context that changes per request; kept out of the cached system prompt. */
+  /** Context that changes per request; kept out of the system prompt so its prefix can be cached. */
   context: { today: string; timezone: string; workspaceName: string };
   /** Offer the propose-and-confirm tools (the workspace allows it and the user's role can make changes). */
   allowActions?: boolean;
@@ -66,27 +69,40 @@ export interface AssistantTurnResult {
 
 /** The slice of the SDK client this module needs, so tests can pass a fake. */
 export interface AssistantClient {
-  beta: { messages: { create: Anthropic['beta']['messages']['create'] } };
+  chat: { completions: { create: OpenAI['chat']['completions']['create'] } };
+  /** The model to use; `OPENAI_MODEL`, else DEFAULT_ASSISTANT_MODEL. */
+  model?: string;
 }
 
-export function assistantClient(env: Record<string, string | undefined> = process.env) {
-  if (!env.ANTHROPIC_API_KEY) return null;
-  return new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, timeout: 120_000, maxRetries: 2 });
+/** True when the server has an AI provider key. */
+export const assistantConfigured = (env: Record<string, string | undefined> = process.env) =>
+  !!env.OPENAI_API_KEY;
+
+export function assistantClient(
+  env: Record<string, string | undefined> = process.env,
+): AssistantClient | null {
+  if (!env.OPENAI_API_KEY) return null;
+  const client = new OpenAI({ apiKey: env.OPENAI_API_KEY, timeout: 120_000, maxRetries: 2 });
+  return { chat: client.chat, model: env.OPENAI_MODEL || DEFAULT_ASSISTANT_MODEL };
 }
 
-const textOf = (content: Anthropic.Beta.BetaContentBlock[]) =>
-  content
-    .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text')
-    .map((b) => b.text)
-    .join('\n\n')
-    .trim();
+/** Tool arguments arrive as a JSON string; a malformed one goes back to the model as an error. */
+function parseArgs(raw: string): { ok: true; value: unknown } | { ok: false } {
+  try {
+    return { ok: true, value: JSON.parse(raw || '{}') };
+  } catch {
+    return { ok: false };
+  }
+}
 
 export async function runAssistantTurn(
   client: AssistantClient,
   input: AssistantTurnInput,
 ): Promise<AssistantTurnResult> {
   const { context } = input;
-  const messages: Anthropic.Beta.BetaMessageParam[] = [
+  const system = SYSTEM_PROMPT + (input.allowActions ? WITH_ACTIONS : READ_ONLY);
+  const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    { role: 'system', content: system },
     ...input.history.map((m) => ({ role: m.role, content: m.body })),
     {
       role: 'user',
@@ -95,28 +111,22 @@ export async function runAssistantTurn(
   ];
   const toolsUsed: string[] = [];
   const actionIds: string[] = [];
-  const system = SYSTEM_PROMPT + (input.allowActions ? WITH_ACTIONS : READ_ONLY);
   const tools = input.allowActions ? ALL_TOOLS : READ_TOOLS;
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-    let response: Anthropic.Beta.BetaMessage;
+    let response: OpenAI.Chat.ChatCompletion;
     try {
-      response = await client.beta.messages.create({
-        model: ASSISTANT_MODEL,
-        max_tokens: 16000,
-        betas: ['server-side-fallback-2026-07-01'],
-        fallbacks: 'default',
-        output_config: { effort: 'medium' },
-        cache_control: { type: 'ephemeral' },
-        system,
-        tools,
+      response = await client.chat.completions.create({
+        model: client.model ?? DEFAULT_ASSISTANT_MODEL,
+        max_completion_tokens: 16000,
         messages,
+        tools,
       });
     } catch (err) {
-      if (err instanceof Anthropic.RateLimitError) {
+      if (err instanceof OpenAI.RateLimitError) {
         throw new DomainError('RATE_LIMITED', 'The assistant is busy. Try again in a minute.');
       }
-      if (err instanceof Anthropic.APIError || err instanceof Anthropic.APIConnectionError) {
+      if (err instanceof OpenAI.APIError) {
         throw new DomainError(
           'AI_UNAVAILABLE',
           'The assistant could not answer right now. Try again.',
@@ -125,23 +135,24 @@ export async function runAssistantTurn(
       throw err;
     }
 
-    if (response.stop_reason === 'refusal') {
+    const choice = response.choices[0];
+    const message = choice?.message;
+    if (!choice || !message) {
+      return { answer: 'I could not find an answer to that.', toolsUsed, actionIds };
+    }
+    if (message.refusal || choice.finish_reason === 'content_filter') {
       return {
         answer: "I can't help with that one. Try asking about your clients, programs or business.",
         toolsUsed,
         actionIds,
       };
     }
-    if (response.stop_reason === 'pause_turn') {
-      messages.push({ role: 'assistant', content: response.content });
-      continue;
-    }
-    const toolCalls = response.content.filter(
-      (b): b is Anthropic.Beta.BetaToolUseBlock => b.type === 'tool_use',
+    const toolCalls = (message.tool_calls ?? []).filter(
+      (c): c is OpenAI.Chat.ChatCompletionMessageFunctionToolCall => c.type === 'function',
     );
-    if (response.stop_reason !== 'tool_use' || toolCalls.length === 0) {
-      const answer = textOf(response.content);
-      const cut = response.stop_reason === 'max_tokens' ? '\n\n(The answer was cut short.)' : '';
+    if (toolCalls.length === 0) {
+      const answer = (message.content ?? '').trim();
+      const cut = choice.finish_reason === 'length' ? '\n\n(The answer was cut short.)' : '';
       return {
         answer: (answer || 'I could not find an answer to that.') + cut,
         toolsUsed,
@@ -149,21 +160,23 @@ export async function runAssistantTurn(
       };
     }
 
-    messages.push({ role: 'assistant', content: response.content });
+    messages.push({ role: 'assistant', content: message.content ?? null, tool_calls: toolCalls });
     const results = await Promise.all(
-      toolCalls.map(async (call): Promise<Anthropic.Beta.BetaToolResultBlockParam> => {
-        toolsUsed.push(call.name);
-        const result = await input.runTool(call.name, call.input);
+      toolCalls.map(async (call): Promise<OpenAI.Chat.ChatCompletionToolMessageParam> => {
+        toolsUsed.push(call.function.name);
+        const args = parseArgs(call.function.arguments);
+        const result: ActionToolResult = args.ok
+          ? await input.runTool(call.function.name, args.value)
+          : { ok: false, content: 'The tool arguments were not valid JSON. Try again.' };
         if (result.actionId) actionIds.push(result.actionId);
         return {
-          type: 'tool_result',
-          tool_use_id: call.id,
-          content: result.content,
-          ...(result.ok ? {} : { is_error: true }),
+          role: 'tool',
+          tool_call_id: call.id,
+          content: result.ok ? result.content : `Error: ${result.content}`,
         };
       }),
     );
-    messages.push({ role: 'user', content: results });
+    messages.push(...results);
   }
   return {
     answer: 'That needed more lookups than I can do in one go. Try a narrower question.',

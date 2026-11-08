@@ -11,7 +11,6 @@
     "test:e2e": "playwright test --pass-with-no-tests && playwright test -c playwright.offline.config.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^1.5.0",
     "@hookform/resolvers": "7.0.2",
     "@kinetic/core": "workspace:*",
     "@kinetic/db": "workspace:*",
@@ -31,6 +30,7 @@
     "hls.js": "1.7.4",
     "lucide-react": "1.68.0",
     "next": "16.4.5",
+    "openai": "7.53.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "react-hook-form": "7.91.0",

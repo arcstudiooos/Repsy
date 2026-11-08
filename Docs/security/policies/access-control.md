@@ -4,7 +4,7 @@
 
 ## Repsy's own systems
 
-Production systems: GitHub, Render (web, worker, database), Cloudflare (DNS, R2, Stream), Resend, Sentry, PostHog, Anthropic console, Google Cloud console, Microsoft Entra app registration, the domain registrar, the password manager.
+Production systems: GitHub, Render (web, worker, database), Cloudflare (DNS, R2, Stream), Resend, Sentry, PostHog, OpenAI platform console, Google Cloud console, Microsoft Entra app registration, the domain registrar, the password manager.
 
 1. **Joiners.** Access is requested by the person's manager, approved by the security lead, and limited to what the role needs. Record who, what, when and why.
 2. **Movers.** When a role changes, remove access the new role does not need within 5 working days.

@@ -23,7 +23,7 @@ const PROCESSORS: [string, string, string][] = [
   ['Resend', 'Sending account and notification emails', 'United States'],
   ['Sentry', 'Error reports, so we can fix problems', 'United States or European Union'],
   [
-    'Anthropic',
+    'OpenAI',
     'The AI assistant, only if a workspace turns it on. Not used to train models',
     'United States',
   ],
