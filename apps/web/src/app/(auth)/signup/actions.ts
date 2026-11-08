@@ -23,7 +23,8 @@ export async function signUpCoachAction(_prev: SignupState, data: FormData): Pro
       password: String(data.get('password') ?? ''),
       orgName: field(data, 'orgName'),
       timezone: field(data, 'timezone'),
-      pilotCode: field(data, 'pilotCode'),
+      // Pilot codes are retired from sign-up; every new workspace starts on the trial.
+      pilotCode: '',
     },
   );
   if (!result.ok) return { fieldErrors: result.fieldErrors };

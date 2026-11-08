@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { hashPassword } from 'better-auth/crypto';
 import { readFileSync } from 'node:fs';
 import pg from 'pg';
@@ -6,25 +6,21 @@ import { STATE_FILE, type E2EState } from './state';
 
 export const readState = (): E2EState => JSON.parse(readFileSync(STATE_FILE, 'utf8')) as E2EState;
 
-/** Same normalization as @kinetic/core normalizePilotCode (uppercase, no hyphens or spaces). */
-const normalizeCode = (code: string) => code.replace(/[\s-]+/g, '').toUpperCase();
-
-/** Inserts an unused pilot code (stored hashed, like production) via the admin connection. */
-export async function createPilotCode(code: string): Promise<void> {
+/**
+ * Lifts a test coach's new workspace from the 7-day, 3-client trial to the pilot allowance (30 active clients, no
+ * trial end), so journeys that add several clients are not stopped by the trial limit. Admin connection
+ * (bypasses RLS); test setup only. Sign-up itself no longer takes pilot codes.
+ */
+export async function grantPilotAccess(ownerEmail: string): Promise<void> {
   const client = new pg.Client({ connectionString: readState().adminUrl });
   await client.connect();
   try {
-    const email = `admin-${Math.random().toString(36).slice(2)}@example.test`;
-    const { rows } = await client.query<{ id: string }>(
-      `INSERT INTO users (id, email, name, updated_at)
-       VALUES (gen_random_uuid(), $1, 'Platform Admin', now()) RETURNING id`,
-      [email],
+    const { rowCount } = await client.query(
+      `UPDATE organizations SET plan = 'pilot', active_client_limit = 30, trial_ends_at = NULL
+       WHERE owner_user_id = (SELECT id FROM users WHERE email = $1)`,
+      [ownerEmail],
     );
-    await client.query(
-      `INSERT INTO pilot_codes (id, code_hash, created_by, expires_at)
-       VALUES (gen_random_uuid(), $1, $2, now() + interval '1 day')`,
-      [createHash('sha256').update(normalizeCode(code)).digest('hex'), rows[0]?.id],
-    );
+    if (rowCount !== 1) throw new Error(`grantPilotAccess: no workspace owned by ${ownerEmail}`);
   } finally {
     await client.end();
   }

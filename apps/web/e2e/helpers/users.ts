@@ -13,7 +13,7 @@
  *   on the given page (use a separate browser context from the coach).
  */
 import { expect, type APIRequestContext, type Page } from '@playwright/test';
-import { createPilotCode, makeClientOfCoach, resetRateLimits } from '../support/db';
+import { grantPilotAccess, makeClientOfCoach, resetRateLimits } from '../support/db';
 
 export const E2E_PASSWORD = 'e2e-correct-horse-battery';
 
@@ -69,9 +69,6 @@ async function signUpAndVerify(
     password: E2E_PASSWORD,
     orgName: `${displayName} Org`,
   };
-  const code = `PILOT-${id}`;
-  await createPilotCode(code);
-
   // Sign-up is rate limited per IP and parallel workers share one IP, so another
   // worker can refill the counter between our reset and submit: retry.
   await expect(async () => {
@@ -82,11 +79,11 @@ async function signUpAndVerify(
     await page.getByLabel('Password').fill(user.password);
     await page.getByLabel('Business name').fill(user.orgName);
     await page.getByLabel('Time zone').selectOption('Europe/London');
-    await page.getByLabel('Pilot code').fill(code);
     await page.getByRole('button', { name: 'Create account' }).click();
-    // Generous: a slow (not failed) sign-up must not be retried, or its pilot code is already used.
+    // Generous: a slow (not failed) sign-up must not be retried, or its email is already taken.
     await expect(page).toHaveURL(/\/verify-email$/, { timeout: 20_000 });
   }).toPass({ timeout: 90_000 });
+  await grantPilotAccess(user.email);
 
   const mail = await waitForEmail(request, user.email, 'auth.verify_email');
   const link = /https?:\/\/\S+/.exec(mail.text)?.[0];
