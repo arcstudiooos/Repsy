@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@kinetic/db';
+import type { PrismaClient } from '@repsy/db';
 import { DomainError } from '../errors';
 
 export const ATTEMPT_LIMIT = 5;
@@ -6,12 +6,12 @@ export const ATTEMPT_WINDOW_MS = 15 * 60_000;
 
 /**
  * Per-key attempt limiter in Postgres (non-tenant `rate_limits` table, keys
- * namespaced `kinetic:` so they never collide with Better Auth's own rows).
+ * namespaced `repsy:` so they never collide with Better Auth's own rows).
  * `last_request` holds the window start; the increment is an atomic upsert.
  */
 async function consume(prisma: PrismaClient, key: string, now: Date): Promise<number> {
   const nowMs = BigInt(now.getTime());
-  const fullKey = `kinetic:${key}`;
+  const fullKey = `repsy:${key}`;
   // Start a fresh window when the previous one has lapsed.
   await prisma.rateLimit.updateMany({
     where: { key: fullKey, lastRequest: { lte: nowMs - BigInt(ATTEMPT_WINDOW_MS) } },

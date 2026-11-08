@@ -4,7 +4,7 @@
  * server lacks, or holds older, is queued again (with its original time, so the newest value still wins and a replay
  * stays idempotent). Typed rows of workouts no longer on the device are dropped.
  */
-import type { LoggedSet, SessionDetail } from '@kinetic/core';
+import type { LoggedSet, SessionDetail } from '@repsy/core';
 import type { SetLogPayload } from '@/lib/workout-api';
 import { countOutbox, del, getAll, getBySession, getMeta, setMeta } from './db';
 import { enqueue, type RejectedMutation } from './outbox';

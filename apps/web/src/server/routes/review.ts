@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { getReviewOverview, markReviewSeen } from '@kinetic/core';
+import { getReviewOverview, markReviewSeen } from '@repsy/core';
 import type { RouteDef } from '../api';
 
 /** `GET /api/v1/review`: Sprint 2 review list (S2-4), read queries over the org's sessions. */

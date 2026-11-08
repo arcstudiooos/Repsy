@@ -4,7 +4,7 @@
  * excluded, and a session counts once its due window (due + grace) has ended. A session still `scheduled` past its
  * window counts as missed, still `in_progress` as not finished (the sweep may not have run yet).
  */
-import type { TenantTx } from '@kinetic/db';
+import type { TenantTx } from '@repsy/db';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { getExerciseHistory, resolveClientId } from '../progress/records';

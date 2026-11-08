@@ -1,5 +1,5 @@
-/** `pnpm --filter @kinetic/db pilot-code:create [--expires-days N]` — prints the code once. */
-// Relative on purpose: @kinetic/core depends on @kinetic/db, so a package import would be a cycle.
+/** `pnpm --filter @repsy/db pilot-code:create [--expires-days N]` — prints the code once. */
+// Relative on purpose: @repsy/core depends on @repsy/db, so a package import would be a cycle.
 import { generatePilotCode } from '../../core/src/identity/pilotCode';
 import { createPrismaClient } from '../src/client';
 import { DEFAULT_PILOT_CODE_DAYS, createPilotCodeRow } from '../src/pilotCodes';

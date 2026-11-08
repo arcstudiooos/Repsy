@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useId, useState } from 'react';
-import type { Guide } from '@kinetic/core';
+import type { Guide } from '@repsy/core';
 import { GUIDE_LABEL, GuideOverlay } from '@/components/assessments/GuideOverlay';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

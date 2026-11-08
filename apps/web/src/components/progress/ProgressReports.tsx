@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useId, useMemo, useState } from 'react';
-import type { ProgressReportView } from '@kinetic/core';
+import type { ProgressReportView } from '@repsy/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/toast';

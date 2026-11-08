@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { connection } from 'next/server';
-import { getAiSetting, isManager, listAiConversations } from '@kinetic/core';
+import { getAiSetting, isManager, listAiConversations } from '@repsy/core';
 import { AssistantChat } from '@/components/assistant/AssistantChat';
 import { AssistantActionsToggle, AssistantToggle } from '@/components/assistant/AssistantToggle';
 import { EmptyState } from '@/components/states/EmptyState';

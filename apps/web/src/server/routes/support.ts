@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { requestSupport } from '@kinetic/core';
+import { requestSupport } from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 
 const supportSchema = z.object({ topic: z.string().max(20), message: z.string().max(6000) });

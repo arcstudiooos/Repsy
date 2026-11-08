@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useId, useState } from 'react';
-import { SETTABLE_STAGES, STAGE_LABEL, type LifecycleStage } from '@kinetic/core/client-stages';
+import { SETTABLE_STAGES, STAGE_LABEL, type LifecycleStage } from '@repsy/core/client-stages';
 import { toast } from '@/components/ui/toast';
 import { call } from '@/lib/checkin-api';
 

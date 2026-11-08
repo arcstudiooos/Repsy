@@ -1,5 +1,5 @@
-import { appendAudit, withTenant } from '@kinetic/db';
-import { DomainError } from '@kinetic/core';
+import { appendAudit, withTenant } from '@repsy/db';
+import { DomainError } from '@repsy/core';
 import { describeDevice } from '@/lib/device';
 import { ApiResult, type RouteDef } from '../api';
 

@@ -1,6 +1,6 @@
 'use client';
 
-import type { ClassView } from '@kinetic/core';
+import type { ClassView } from '@repsy/core';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';

@@ -1,4 +1,4 @@
-import { hasCalendarFeed, revokeCalendarToken, rotateCalendarToken } from '@kinetic/core';
+import { hasCalendarFeed, revokeCalendarToken, rotateCalendarToken } from '@repsy/core';
 import type { RouteDef } from '../api';
 
 const urlFor = (token: string) =>

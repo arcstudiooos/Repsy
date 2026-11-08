@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { DomainError, getChallenge, TRAINER_ROLES } from '@kinetic/core';
+import { DomainError, getChallenge, TRAINER_ROLES } from '@repsy/core';
 import { challengeDates, challengeStatus } from '@/components/challenges/ChallengeList';
 import { ArchiveChallenge, Leaderboard, METRIC_LABEL } from '@/components/challenges/Challenges';
 import { withServerTenant } from '@/server/serverActor';

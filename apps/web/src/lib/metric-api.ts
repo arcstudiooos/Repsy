@@ -1,5 +1,5 @@
 /** Browser-side calls to the body metrics API (same-origin, so the CSRF Origin check passes). */
-import type { MetricEntryView } from '@kinetic/core';
+import type { MetricEntryView } from '@repsy/core';
 import { call } from './checkin-api';
 
 export const recordMetricValue = (

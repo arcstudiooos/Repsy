@@ -7,7 +7,7 @@ import {
   listSequences,
   listTags,
   SEQUENCE_TEMPLATES,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { loadAllTemplates } from '@/server/selectOptions';
 import { withServerTenant } from '@/server/serverActor';
 import { ArchiveSequence } from '../ArchiveSequence';

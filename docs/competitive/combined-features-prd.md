@@ -1,7 +1,7 @@
-# Combined Competitor Features PRD: Kinetic R2 candidates
+# Combined Competitor Features PRD: Repsy R2 candidates
 
 **Status:** Draft v0.1, 2026-10-31. **Proposed**: every feature here needs founder sign-off before a ticket is written.
-**Inputs:** [`spurfit-features-prd.md`](spurfit-features-prd.md), public research on ABC Trainerize, Everfit, TrueCoach, Kahunas, TrainHeroic, Hevy Coach, CoachRx, My PT Hub, PT Distinction and FitBudd, and the current Kinetic code (`apps/web/src/app/**`, `packages/db/prisma/schema.prisma`) and decisions (`docs/decisions.md`).
+**Inputs:** [`spurfit-features-prd.md`](spurfit-features-prd.md), public research on ABC Trainerize, Everfit, TrueCoach, Kahunas, TrainHeroic, Hevy Coach, CoachRx, My PT Hub, PT Distinction and FitBudd, and the current Repsy code (`apps/web/src/app/**`, `packages/db/prisma/schema.prisma`) and decisions (`docs/decisions.md`).
 **Precedence:** `docs/decisions.md` still wins. Section 3 lists every place this PRD would amend a locked decision.
 
 ---
@@ -28,9 +28,9 @@
 
 ## 2. Feature matrix
 
-Kinetic column: ✅ shipped (Sprints 1–5), ✖ not built, ◐ partial.
+Repsy column: ✅ shipped (Sprints 1–5), ✖ not built, ◐ partial.
 
-| #    | Capability                                   | Spur                   | Trainerize  | Everfit             | TrueCoach        | Kahunas       | TrainHeroic      | **Kinetic**                       |
+| #    | Capability                                   | Spur                   | Trainerize  | Everfit             | TrueCoach        | Kahunas       | TrainHeroic      | **Repsy**                       |
 | ---- | -------------------------------------------- | ---------------------- | ----------- | ------------------- | ---------------- | ------------- | ---------------- | --------------------------------- |
 | —    | Program builder (weeks/days/exercises/sets)  | ✅                     | ✅          | ✅                  | ✅               | ✅            | ✅               | ✅ (versioned, autosaved drafts)  |
 | —    | Templates assigned to clients                | ✅                     | ✅          | ✅                  | ✅               | ✅            | ✅               | ✅ (copy-on-assign)               |
@@ -63,7 +63,7 @@ Kinetic column: ✅ shipped (Sprints 1–5), ✖ not built, ◐ partial.
 | F-23 | AI drafting                                  | ✅ (core)              | ?           | ✅                  | ✖                | ?             | ?                | ✖ (D-007 rule)                    |
 | F-24 | Storefront / marketplace                     | ?                      | ◐           | ◐                   | ✖                | ?             | ✅               | ✖                                 |
 
-**Read-out:** F-01, F-02, F-03, F-04, F-07, F-08 and F-09 are table stakes: every competitor with data has them, and a prospect will notice their absence in a demo. F-11, F-12 and F-13 are where competitors make money (they are sold as add-ons). Spur.fit's moat is F-23 (AI), and Kahunas's is F-02/F-06 (check-in depth). Kinetic's own strengths (versioned programs, offline logging with an honest sync state, the attention queue, privacy workflows) are not matched in any source we found. Keep them as our positioning.
+**Read-out:** F-01, F-02, F-03, F-04, F-07, F-08 and F-09 are table stakes: every competitor with data has them, and a prospect will notice their absence in a demo. F-11, F-12 and F-13 are where competitors make money (they are sold as add-ons). Spur.fit's moat is F-23 (AI), and Kahunas's is F-02/F-06 (check-in depth). Repsy's own strengths (versioned programs, offline logging with an honest sync state, the attention queue, privacy workflows) are not matched in any source we found. Keep them as our positioning.
 
 ## 3. Decisions this PRD would amend
 
@@ -77,17 +77,17 @@ Each row needs a founder ruling, recorded as a new `D-011+` entry in `docs/decis
 | D-008 #3: individual assignments only                                    | F-10              | Allow **bulk assign** that creates individual copy-on-assign assignments (D-001 unchanged), one per client. There is no shared "group program" object.                                                                                                                            |
 | D-008 #9: one check-in template                                          | F-06              | Several form templates per org; each client gets one recurring check-in plus optional one-off forms.                                                                                                                                                                              |
 | D-008 #10: no scheduled reminders                                        | F-07              | Allow opt-in reminders (workout day morning, check-in due evening) by email and web push. Respect quiet hours in the client's time zone.                                                                                                                                          |
-| D-008 #12: billing outside the app                                       | F-13              | Stripe Connect (Standard) for coaches charging clients. Kinetic's own billing of coaches is a separate decision.                                                                                                                                                                  |
+| D-008 #12: billing outside the app                                       | F-13              | Stripe Connect (Standard) for coaches charging clients. Repsy's own billing of coaches is a separate decision.                                                                                                                                                                  |
 | D-008 #13: 30 active clients per coach                                   | F-15              | Unchanged for the pilot. Revisit at GA pricing.                                                                                                                                                                                                                                   |
 | §2.3: native app is R2                                                   | F-19, F-20        | Confirm R2 or R3 timing. F-19 depends on F-20.                                                                                                                                                                                                                                    |
 
-## 4. Combined screen inventory, mapped to Kinetic routes
+## 4. Combined screen inventory, mapped to Repsy routes
 
 **Existing** = the route exists today. **Extend** = add to an existing route. **New** = new route.
 
 ### 4.1 Coach (`/app`)
 
-| Screen (seen across competitors)                                    | Kinetic route                                      | Status                                                                          | Features               |
+| Screen (seen across competitors)                                    | Repsy route                                      | Status                                                                          | Features               |
 | ------------------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------- | ---------------------- |
 | Dashboard: attention, due, activity                                 | `/app`                                             | Extend: readiness alerts, PRs this week, revenue tile (F-13)                    | F-09, F-13, F-17       |
 | Clients list with compliance and tags                               | `/app/clients`                                     | Extend: 7/30/90 compliance columns, tags filter, sort by attention, bulk select | F-10, F-18             |
@@ -113,7 +113,7 @@ Each row needs a founder ruling, recorded as a new `D-011+` entry in `docs/decis
 
 ### 4.2 Client (`/portal`)
 
-| Screen                                             | Kinetic route                                      | Status                                                                               | Features               |
+| Screen                                             | Repsy route                                      | Status                                                                               | Features               |
 | -------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------- |
 | Home / Today: workout, habits, check-in, readiness | `/portal`                                          | Extend: today's habits checklist, readiness prompt, reminders opt-in                 | F-05, F-07, F-17       |
 | Workouts list and logger                           | `/portal/workouts`, `/portal/workouts/[sessionId]` | Extend: video demo, previous performance, PR badge, rest timer, blocks, set comments | F-03, F-04, F-08, F-09 |
@@ -305,7 +305,7 @@ All features inherit the Global Constraints: tenant scoping with `organization_i
 **Seen in:** all (mostly as add-ons).
 **Requirements**
 
-1. A coach connects Stripe (Standard Connect). Kinetic never holds funds. Platform fee is 0% in R2 (pricing decision).
+1. A coach connects Stripe (Standard Connect). Repsy never holds funds. Platform fee is 0% in R2 (pricing decision).
 2. Packages: one-off or recurring (weekly, monthly), with a price, currency, description and optional trial. Optional on purchase: invite the client, enrol a sequence (F-12), assign a program template.
 3. A public checkout page per package at `/join/[orgSlug]/[package]` uses Stripe Checkout. Webhooks are idempotent through stored event ids.
 4. Client billing view: current plan, next charge, Stripe Customer Portal link for card changes and cancellation.
@@ -340,7 +340,7 @@ All features inherit the Global Constraints: tenant scoping with `organization_i
 ### F-17 Readiness survey before a workout — P1, S
 
 **Seen in:** TrainHeroic (5 questions; readiness score on the coach dashboard).
-**Why it fits Kinetic:** it feeds the attention queue we already have.
+**Why it fits Repsy:** it feeds the attention queue we already have.
 **Requirements**
 
 1. An optional per-client toggle. On **Start**, the client answers five 1–5 items (sleep, energy, soreness, stress, mood). Skippable.
@@ -408,11 +408,11 @@ Each release keeps the golden-path E2E green, adds an E2E for its new loop, and 
 
 Ask each pilot coach (the time-on-task protocol in `docs/pilot/` can host this):
 
-1. Which tool did you use before Kinetic? What do you miss from it? (Map answers to the F-numbers.)
+1. Which tool did you use before Repsy? What do you miss from it? (Map answers to the F-numbers.)
 2. Rank: progress photos, body metrics, habits, nutrition targets, reminders, payments, AI drafting.
 3. How do you collect progress photos today? (WhatsApp? Email?) That shows how big the F-02 privacy risk is in practice.
 4. Would you use AI to turn a pasted workout into a program, if you always review it before saving? Would your clients mind?
-5. How do you take payment today? Would you move it into Kinetic at a 0% platform fee?
+5. How do you take payment today? Would you move it into Repsy at a 0% platform fee?
    Promote a feature from Proposed to a sprint ticket when **≥3 pilot coaches** rank it top-3, or when a blocking objection in a sales demo names it.
 
 ## 8. Hands-on verification (for a team member)

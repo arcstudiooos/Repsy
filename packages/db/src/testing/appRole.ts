@@ -14,10 +14,10 @@ export interface AppRoleOptions {
 export async function applyAppRoleSql(admin: pg.Client, options: AppRoleOptions): Promise<void> {
   const set = (name: string, value: string) =>
     admin.query('SELECT set_config($1, $2, false)', [name, value]);
-  await set('kinetic.app_role', options.role);
-  await set('kinetic.app_password', options.password);
-  await set('kinetic.app_schema', options.appSchema);
-  await set('kinetic.pgboss_schema', options.pgbossSchema);
+  await set('repsy.app_role', options.role);
+  await set('repsy.app_password', options.password);
+  await set('repsy.app_schema', options.appSchema);
+  await set('repsy.pgboss_schema', options.pgbossSchema);
   await admin.query(sql);
 }
 

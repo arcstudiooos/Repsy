@@ -2,7 +2,7 @@
 
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { prisma } from '@kinetic/db';
+import { prisma } from '@repsy/db';
 import { auth } from '@/lib/auth';
 import { registerCoach } from '@/lib/register-coach';
 import { analyticsHashSecret, defaultAnalytics, eventFor } from '@/server/analytics';

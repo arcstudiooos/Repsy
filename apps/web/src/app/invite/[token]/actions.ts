@@ -3,7 +3,7 @@
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { parseSetCookieHeader, toCookieOptions } from 'better-auth/cookies';
-import { prisma } from '@kinetic/db';
+import { prisma } from '@repsy/db';
 import { acceptWithSignup } from '@/lib/accept-invite';
 import { auth, getSessionUser } from '@/lib/auth';
 

@@ -1,5 +1,5 @@
 /** Browser-side calls to the nutrition API (same-origin, so the CSRF Origin check passes). */
-import type { NutritionView } from '@kinetic/core';
+import type { NutritionView } from '@repsy/core';
 import { call } from './checkin-api';
 
 const base = (clientId: string) => `/api/v1/clients/${encodeURIComponent(clientId)}/nutrition`;

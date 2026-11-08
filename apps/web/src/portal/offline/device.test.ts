@@ -26,8 +26,8 @@ import { cacheWorkout, localView } from './workoutCache';
 
 const OTHER_USER = { userId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', orgId: OWNER.orgId };
 const OTHER_ORG = { userId: OWNER.userId, orgId: 'pppppppp-pppp-4ppp-8ppp-pppppppppppp' };
-const PAGES = 'kinetic-pages-v1';
-const ASSETS = 'kinetic-assets-v1';
+const PAGES = 'repsy-pages-v1';
+const ASSETS = 'repsy-assets-v1';
 
 const logs = (id: string) =>
   enqueue({

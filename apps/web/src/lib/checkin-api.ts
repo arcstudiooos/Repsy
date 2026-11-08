@@ -4,7 +4,7 @@ import type {
   CheckinQuestion,
   CheckinTemplateView,
   CheckinView,
-} from '@kinetic/core';
+} from '@repsy/core';
 import type { ApiCall } from './workout-api';
 
 const OFFLINE = 'Could not reach the server. Check your connection and try again.';

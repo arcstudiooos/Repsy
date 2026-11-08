@@ -17,7 +17,7 @@ import {
   runHistory,
   TRAINER_ROLES,
   type TimelineKind,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { EmptyState } from '@/components/states/EmptyState';
 import { formatLocalDateTime } from '@/lib/session-format';
 import { cn } from '@/lib/utils';

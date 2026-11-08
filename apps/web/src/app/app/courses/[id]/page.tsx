@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getCourse, isUuid, TRAINER_ROLES } from '@kinetic/core';
+import { getCourse, isUuid, TRAINER_ROLES } from '@repsy/core';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { loadActiveClients } from '@/server/selectOptions';
 import { withServerTenant } from '@/server/serverActor';

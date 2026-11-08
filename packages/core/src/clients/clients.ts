@@ -1,4 +1,4 @@
-import type { TenantTx } from '@kinetic/db';
+import type { TenantTx } from '@repsy/db';
 import { effectiveStage, LIFECYCLE_STAGES, stageWhere, type LifecycleStage } from './stage';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';

@@ -2,7 +2,7 @@
 
 import { AlertCircle, CheckCircle2, Circle, Loader2 } from 'lucide-react';
 import { useId } from 'react';
-import type { TrackingType, Units } from '@kinetic/core';
+import type { TrackingType, Units } from '@repsy/core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { fieldsFor, type SetDraft } from '@/lib/set-entry';

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { listChallenges, listGroups, todayInZone, TRAINER_ROLES } from '@kinetic/core';
+import { listChallenges, listGroups, todayInZone, TRAINER_ROLES } from '@repsy/core';
 import { ChallengeList } from '@/components/challenges/ChallengeList';
 import { NewChallengeForm } from '@/components/challenges/Challenges';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

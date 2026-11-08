@@ -1,4 +1,4 @@
-import type { TenantTx } from '@kinetic/db';
+import type { TenantTx } from '@repsy/db';
 import { isCoachRole, STAFF_ROLES } from '../authz/actor';
 import type { ActorContext } from '../authz/actor';
 

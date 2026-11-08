@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Dumbbell, Users } from 'lucide-react';
 import { AvatarStack } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import { DomainError, listPrograms } from '@kinetic/core';
+import { DomainError, listPrograms } from '@repsy/core';
 import { EmptyState } from '@/components/states/EmptyState';
 import { ErrorState } from '@/components/states/ErrorState';
 import { buttonVariants } from '@/components/ui/button';

@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useId, useState, type FormEvent } from 'react';
-import type { GoalKind, GoalLabel, GoalView } from '@kinetic/core';
+import type { GoalKind, GoalLabel, GoalView } from '@repsy/core';
 import {
   BODY_METRICS,
   metricDef,
@@ -10,8 +10,8 @@ import {
   metricToCanonical,
   metricUnit,
   type BodyMetric,
-} from '@kinetic/core/metric-catalog';
-import { fromDisplay, toDisplay, type Units } from '@kinetic/core/units';
+} from '@repsy/core/metric-catalog';
+import { fromDisplay, toDisplay, type Units } from '@repsy/core/units';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

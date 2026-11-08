@@ -1,5 +1,5 @@
 /** Browser-side calls to the client tags API (same-origin, so the CSRF Origin check passes). */
-import type { TagView } from '@kinetic/core';
+import type { TagView } from '@repsy/core';
 import { call } from './checkin-api';
 
 export const createTagApi = (name: string, color: string) =>

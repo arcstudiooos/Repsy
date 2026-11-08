@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import type { SessionDetail } from '@kinetic/core';
+import type { SessionDetail } from '@repsy/core';
 import { finishWorkout, type ApiCall } from '@/lib/workout-api';
 
 export type FinishBody = { idempotencyKey: string; comment?: string };

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { addPhase, listPhases, removePhase, startPhase } from '@kinetic/core';
+import { addPhase, listPhases, removePhase, startPhase } from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 
 /** `GET /api/v1/clients/:id/phases` (PRD C17): the client's queued program phases. */

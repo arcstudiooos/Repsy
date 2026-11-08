@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { archiveResource, createResource, listResources } from '@kinetic/core';
+import { archiveResource, createResource, listResources } from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 
 /** `GET /api/v1/resources` (PRD G5): coaches see all; a client sees what is shared with them. */

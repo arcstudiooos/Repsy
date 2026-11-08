@@ -16,7 +16,7 @@ const packageDir = fileURLToPath(new URL('../', import.meta.url));
  * hid that a function-level `SET app.bypass_rls` needs one (Postgres 15+), so the first Render deploy failed.
  */
 describe('migrations as a non-superuser owner', () => {
-  const role = `kinetic_owner_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+  const role = `repsy_owner_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
   const schema = `owner_${randomUUID().replace(/-/g, '')}`;
   const admin = new pg.Client({ connectionString: process.env.DATABASE_URL });
 

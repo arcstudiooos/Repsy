@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useId, useState } from 'react';
-import type { GroupCommentView, GroupDetail, GroupItem, Reaction } from '@kinetic/core';
+import type { GroupCommentView, GroupDetail, GroupItem, Reaction } from '@repsy/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from '@/components/ui/toast';

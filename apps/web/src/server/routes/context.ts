@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { getClientContext, setNotePinned, updateClientContext } from '@kinetic/core';
+import { getClientContext, setNotePinned, updateClientContext } from '@repsy/core';
 import { type RouteDef } from '../api';
 
 /** `GET /api/v1/clients/:id/context`: the client context card (PRD B7), coaches only. */

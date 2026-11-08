@@ -1,4 +1,4 @@
-import type { ErrorCode, MembershipRef, Role } from '@kinetic/core';
+import type { ErrorCode, MembershipRef, Role } from '@repsy/core';
 
 /** What resolving the actor for the active org produced: a role, or the DomainError code it threw. */
 export type ActorOutcome = { role: Role } | { error: ErrorCode };

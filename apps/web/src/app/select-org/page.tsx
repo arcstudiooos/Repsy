@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
-import { withSystem } from '@kinetic/db';
+import { withSystem } from '@repsy/db';
 import { AuthShell } from '@/components/auth-ui';
 import { LoadingState } from '@/components/states/LoadingState';
 import { getSessionUser } from '@/lib/auth';

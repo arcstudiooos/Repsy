@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { getNutrition, logNutrition, setNutritionTarget } from '@kinetic/core';
+import { getNutrition, logNutrition, setNutritionTarget } from '@repsy/core';
 import { type RouteDef } from '../api';
 
 const macros = {

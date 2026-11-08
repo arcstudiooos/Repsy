@@ -2,8 +2,8 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
-import { DomainError } from '@kinetic/core';
-import type { PrismaClient } from '@kinetic/db';
+import { DomainError } from '@repsy/core';
+import type { PrismaClient } from '@repsy/db';
 import { withPlatformAdmin } from '@/server/platformAdmin';
 
 /** A client whose `$transaction` records calls and hands `withSystem` a tx that accepts `$executeRaw`. */

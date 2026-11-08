@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useId, useState } from 'react';
-import type { JoinLinkView } from '@kinetic/core';
+import type { JoinLinkView } from '@repsy/core';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

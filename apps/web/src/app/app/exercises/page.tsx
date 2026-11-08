@@ -4,7 +4,7 @@ import {
   searchExercises,
   TRACKING_TYPES,
   type SearchExercisesQuery,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { ErrorState } from '@/components/states/ErrorState';
 import { withServerTenant } from '@/server/serverActor';
 import { ExerciseLibrary } from './ExerciseLibrary';

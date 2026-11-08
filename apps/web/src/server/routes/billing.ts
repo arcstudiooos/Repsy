@@ -17,7 +17,7 @@ import {
   saveCoupon,
   savePackage,
   validateCoupon,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 
 /**

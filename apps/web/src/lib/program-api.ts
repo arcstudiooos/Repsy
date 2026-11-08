@@ -1,5 +1,5 @@
 /** Browser-side calls to the program builder API (same-origin, so the CSRF Origin check passes). */
-import type { PreviousPerformance, ProgramDetail, WeekInput } from '@kinetic/core';
+import type { PreviousPerformance, ProgramDetail, WeekInput } from '@repsy/core';
 
 export interface ProgramApiError {
   ok: false;

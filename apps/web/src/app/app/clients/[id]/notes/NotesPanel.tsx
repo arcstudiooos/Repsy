@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useId, useState } from 'react';
 import { Lock, Pin } from 'lucide-react';
-import type { NoteView } from '@kinetic/core';
+import type { NoteView } from '@repsy/core';
 import { formatWhen, useHydrated } from '@/components/time/LocalTime';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/toast';

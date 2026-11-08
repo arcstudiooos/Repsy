@@ -11,7 +11,7 @@ import { PortalDevice } from '@/portal/offline/PortalDevice';
 import { ServiceWorker } from '@/portal/offline/ServiceWorker';
 import { getServerActorOutcome, getServerSession, withServerTenant } from '@/server/serverActor';
 import { shellRedirect } from '@/server/shellGate';
-import { clientBillingPaused, pendingAgreements, recordPortalVisit } from '@kinetic/core';
+import { clientBillingPaused, pendingAgreements, recordPortalVisit } from '@repsy/core';
 import { AgreementGate } from '@/portal/AgreementGate';
 import { BillingSelfService } from '@/portal/BillingSelfService';
 import { RepsyLogo } from '@/components/brand/Logo';

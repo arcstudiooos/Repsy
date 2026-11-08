@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import type { AgreementView } from '@kinetic/core';
+import type { AgreementView } from '@repsy/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { call } from '@/lib/checkin-api';

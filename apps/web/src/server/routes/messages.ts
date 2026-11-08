@@ -6,7 +6,7 @@ import {
   listMessages,
   listThreads,
   sendMessage,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 import { onMessageSent } from '../reviewHooks';
 

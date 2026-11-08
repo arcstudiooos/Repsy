@@ -7,7 +7,7 @@ import {
   listPilotCodes,
   lookupAccount,
   DomainError,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -21,7 +21,7 @@ import {
   ResolveNotice,
   RevokeGrant,
 } from './AdminActions';
-import { readNotices } from '@kinetic/core';
+import { readNotices } from '@repsy/core';
 
 export const metadata: Metadata = { title: 'Admin | Repsy' };
 

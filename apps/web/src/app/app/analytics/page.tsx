@@ -8,7 +8,7 @@ import {
   isoWeekOf,
   todayInZone,
   type AnalyticsView,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { ChartFrame } from '@/components/charts/ChartFrame';
 import { Donut } from '@/components/charts/Donut';
 import { AreaChart, BarChart } from '@/components/charts/Interactive';

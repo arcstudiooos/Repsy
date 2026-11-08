@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import type { PrismaClient } from '@kinetic/db';
+import type { PrismaClient } from '@repsy/db';
 import { getSessionUser, type Auth, type SessionUser } from './auth';
 import { hasCoachMembership, noCoachMembershipTarget } from './membership';
 

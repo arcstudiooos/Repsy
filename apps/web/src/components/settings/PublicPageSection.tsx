@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useState, type FormEvent } from 'react';
-import type { PublicPageSettings } from '@kinetic/core';
+import type { PublicPageSettings } from '@repsy/core';
 import { useHydrated } from '@/components/time/LocalTime';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

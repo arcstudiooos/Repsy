@@ -6,7 +6,7 @@ import {
   openPauseOf,
   todayInZone,
   type SessionListScope,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { PausedBanner } from '@/components/portal/PausedBanner';
 import { EmptyState } from '@/components/states/EmptyState';
 import {

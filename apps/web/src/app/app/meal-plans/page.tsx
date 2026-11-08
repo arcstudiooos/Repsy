@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { listMealPlans, listRecipes } from '@kinetic/core';
+import { listMealPlans, listRecipes } from '@repsy/core';
 import { buttonVariants } from '@/components/ui/button';
 import { withServerTenant } from '@/server/serverActor';
 

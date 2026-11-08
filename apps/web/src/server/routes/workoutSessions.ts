@@ -18,7 +18,7 @@ import {
   swapExercise,
   undoSwap,
   upsertSetLogs,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 
 // Unknown keys are stripped. `clientId` is only read for coaches: core ignores it for a client actor.

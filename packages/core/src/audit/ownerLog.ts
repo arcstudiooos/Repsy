@@ -1,4 +1,4 @@
-import type { TenantTx } from '@kinetic/db';
+import type { TenantTx } from '@repsy/db';
 import { isManager } from '../authz/actor';
 import type { ActorContext } from '../authz/actor';
 import { DomainError } from '../errors';

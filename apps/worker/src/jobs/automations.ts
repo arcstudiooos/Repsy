@@ -1,4 +1,4 @@
-import { processClientEvents, runDueSteps } from '@kinetic/core';
+import { processClientEvents, runDueSteps } from '@repsy/core';
 import { defineJob } from './registry';
 
 export const AUTOMATIONS = 'automations.run';

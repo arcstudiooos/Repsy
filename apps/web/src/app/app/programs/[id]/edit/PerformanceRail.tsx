@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { PreviousPerformance } from '@kinetic/core';
-import type { Units } from '@kinetic/core/units';
+import type { PreviousPerformance } from '@repsy/core';
+import type { Units } from '@repsy/core/units';
 import { fetchClientHistory } from '@/lib/program-api';
 import { formatLoggedSet } from '@/lib/session-format';
 import { formatDate } from '../../../clients/StatusBadge';

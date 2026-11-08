@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { TRIAL_CLIENT_LIMIT, TRIAL_DAYS } from '@kinetic/core';
+import { TRIAL_CLIENT_LIMIT, TRIAL_DAYS } from '@repsy/core';
 import { LEGAL_CONTACT, LegalPage, type LegalSection } from '@/components/legal/LegalPage';
 
 export const metadata: Metadata = {

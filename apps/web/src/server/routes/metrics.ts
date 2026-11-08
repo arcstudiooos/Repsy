@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { listMetrics, recordMetric } from '@kinetic/core';
+import { listMetrics, recordMetric } from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 
 /** `GET /api/v1/clients/:id/metrics`: body metrics (PRD E1). A client reaches only their own (core). */

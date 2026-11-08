@@ -1,9 +1,9 @@
 'use client';
 
 import { MediaThumb } from '@/components/workout/ExerciseDemo';
-import { demoUrlOf } from '@kinetic/core/exercise-media';
+import { demoUrlOf } from '@repsy/core/exercise-media';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ExerciseView } from '@kinetic/core';
+import type { ExerciseView } from '@repsy/core';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

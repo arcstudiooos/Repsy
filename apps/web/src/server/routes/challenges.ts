@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { archiveChallenge, joinChallenge, leaveChallenge, saveChallenge } from '@kinetic/core';
+import { archiveChallenge, joinChallenge, leaveChallenge, saveChallenge } from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 
 const schema = z.object({

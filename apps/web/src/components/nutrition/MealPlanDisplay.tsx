@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { MealPlanView, ShoppingItem } from '@kinetic/core';
+import type { MealPlanView, ShoppingItem } from '@repsy/core';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShoppingList } from './ShoppingList';
 

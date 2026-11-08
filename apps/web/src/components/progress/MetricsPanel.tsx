@@ -2,14 +2,14 @@
 
 import { useRouter } from 'next/navigation';
 import { useId, useState } from 'react';
-import type { MetricsView } from '@kinetic/core';
+import type { MetricsView } from '@repsy/core';
 import {
   BODY_METRICS,
   metricDef,
   metricFromCanonical,
   metricUnit,
   type BodyMetric,
-} from '@kinetic/core/metric-catalog';
+} from '@repsy/core/metric-catalog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

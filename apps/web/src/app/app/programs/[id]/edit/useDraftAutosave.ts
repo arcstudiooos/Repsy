@@ -28,7 +28,7 @@ export interface LocalDraft {
   savedAt: string;
 }
 
-export const localDraftKey = (programId: string) => `kinetic:program-draft:${programId}`;
+export const localDraftKey = (programId: string) => `repsy:program-draft:${programId}`;
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 

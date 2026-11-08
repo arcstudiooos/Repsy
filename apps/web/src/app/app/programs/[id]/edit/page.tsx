@@ -12,8 +12,8 @@ import {
   type ProgramDraftView,
   isManager,
   TRAINER_ROLES,
-} from '@kinetic/core';
-import type { Units } from '@kinetic/core/units';
+} from '@repsy/core';
+import type { Units } from '@repsy/core/units';
 import { EmptyState } from '@/components/states/EmptyState';
 import { buttonVariants } from '@/components/ui/button';
 import { withServerTenant } from '@/server/serverActor';

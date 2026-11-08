@@ -18,7 +18,7 @@ import {
   getPersonalRecords,
   getWeeklyVolume,
   toDisplay,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { DeletionRequestButton } from '@/components/settings/DeletionRequestButton';
 import { DataExportSection } from '@/components/settings/DataExportSection';
 import { ClientPreferencesSection } from '@/components/settings/ClientSections';

@@ -1,4 +1,4 @@
-import { appendAudit, type TenantTx } from '@kinetic/db';
+import { appendAudit, type TenantTx } from '@repsy/db';
 import { isManager, TRAINER_ROLES, type ActorContext } from '../authz/actor';
 import { DomainError } from '../errors';
 import { zonedTimeToUtc } from '../timezone';

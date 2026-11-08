@@ -1,8 +1,8 @@
 'use client';
 
 import { useId, useState } from 'react';
-import type { CheckinAnswers, CheckinQuestion, MetricAsOf, Units } from '@kinetic/core';
-import { metricDef, metricFromCanonical, metricUnit } from '@kinetic/core/metric-catalog';
+import type { CheckinAnswers, CheckinQuestion, MetricAsOf, Units } from '@repsy/core';
+import { metricDef, metricFromCanonical, metricUnit } from '@repsy/core/metric-catalog';
 import { formatAnswer } from '@/lib/checkin-answer';
 
 export interface CompareCheckin {

@@ -4,7 +4,7 @@
 
 ## Who we are and our role
 
-Kinetic is a coaching tool. Your coach's business decides what to collect and why (the **controller**). Kinetic processes the data on the coach's behalf (the **processor**). [Counsel: confirm roles and add entity names and contact details.]
+Repsy is a coaching tool. Your coach's business decides what to collect and why (the **controller**). Repsy processes the data on the coach's behalf (the **processor**). [Counsel: confirm roles and add entity names and contact details.]
 
 ## What we process
 
@@ -22,17 +22,17 @@ To provide the coaching service your coach offers, keep the service secure, and 
 
 ## Who sees it
 
-Your coach (and coaches in their workspace), you, and Kinetic staff only when needed for support, through an explicit, time-limited (24 hours), audited access grant. Service providers: hosting (Render), email delivery (Resend), error monitoring (Sentry), analytics (PostHog, if enabled), file storage for exports. [Counsel: list processors, locations and transfer safeguards.]
+Your coach (and coaches in their workspace), you, and Repsy staff only when needed for support, through an explicit, time-limited (24 hours), audited access grant. Service providers: hosting (Render), email delivery (Resend), error monitoring (Sentry), analytics (PostHog, if enabled), file storage for exports. [Counsel: list processors, locations and transfer safeguards.]
 
 ## Your rights
 
 - **Export:** download your data as CSV files from your Profile at any time.
-- **Deletion:** request deletion from your Profile. Your coach is told; Kinetic verifies the request and deletes your data in that workspace, normally within 30 days. Other workspaces you belong to are not affected. Backups expire within 35 days. We keep content-free audit records (ids and actions) and anything we must keep by law (legal hold).
+- **Deletion:** request deletion from your Profile. Your coach is told; Repsy verifies the request and deletes your data in that workspace, normally within 30 days. Other workspaces you belong to are not affected. Backups expire within 35 days. We keep content-free audit records (ids and actions) and anything we must keep by law (legal hold).
 - [Counsel: access, rectification, objection, complaint to a supervisory authority, per jurisdiction.]
 
 ## Retention
 
-Account and coaching data are kept while your coach's workspace uses Kinetic and you are a client there; archived clients lose access but data stays until deletion is requested or the coach's account closes. [Counsel: confirm periods.]
+Account and coaching data are kept while your coach's workspace uses Repsy and you are a client there; archived clients lose access but data stays until deletion is requested or the coach's account closes. [Counsel: confirm periods.]
 
 ## Contact
 

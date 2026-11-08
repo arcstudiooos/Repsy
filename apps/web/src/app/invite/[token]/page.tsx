@@ -7,8 +7,8 @@ import {
   hashInviteToken,
   inviteFailureMessage,
   PRIVACY_NOTICE_TEXT,
-} from '@kinetic/core';
-import { findInviteByTokenHash } from '@kinetic/db';
+} from '@repsy/core';
+import { findInviteByTokenHash } from '@repsy/db';
 import { AuthShell, linkClass } from '@/components/auth-ui';
 import { SignOutButton } from '@/components/nav/SignOutButton';
 import { LoadingState } from '@/components/states/LoadingState';

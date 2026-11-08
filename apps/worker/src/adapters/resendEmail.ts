@@ -1,5 +1,5 @@
 import { Resend } from 'resend';
-import type { EmailMessage, EmailPort } from '@kinetic/core';
+import type { EmailMessage, EmailPort } from '@repsy/core';
 
 export class ResendEmailAdapter implements EmailPort {
   private readonly client: Resend;

@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useId, useState, type FormEvent } from 'react';
-import type { ClientView } from '@kinetic/core';
+import type { ClientView } from '@repsy/core';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

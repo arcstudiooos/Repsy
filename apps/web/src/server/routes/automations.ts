@@ -6,7 +6,7 @@ import {
   listSequences,
   saveSequence,
   startSequence,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 
 const stepSchema = z.object({

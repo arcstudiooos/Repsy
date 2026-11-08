@@ -1,6 +1,6 @@
 import { z } from 'zod';
 // NOTE (slice merge): these names are exported from the new core modules
-// (packages/core/src/scheduling/*) but NOT yet from '@kinetic/core' itself —
+// (packages/core/src/scheduling/*) but NOT yet from '@repsy/core' itself —
 // this slice may not edit packages/core/src/index.ts. The parent adds the
 // export lines in SLICE_REPORT_SCHEDULING.md, then these imports resolve.
 import {
@@ -9,9 +9,9 @@ import {
   listBookings,
   listSessionTypes,
   saveSessionType,
-} from '@kinetic/core';
-import { listPacks, purchasePack } from '@kinetic/core';
-import { scheduleRenewalReminders, startPackageOnboarding } from '@kinetic/core';
+} from '@repsy/core';
+import { listPacks, purchasePack } from '@repsy/core';
+import { scheduleRenewalReminders, startPackageOnboarding } from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 import { calendarBusyForBooking } from './calendarSync';
 

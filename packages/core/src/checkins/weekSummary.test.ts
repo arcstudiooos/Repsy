@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { withSystem, type PrismaClient } from '@kinetic/db';
-import { createTestDb } from '@kinetic/db/testing';
+import { withSystem, type PrismaClient } from '@repsy/db';
+import { createTestDb } from '@repsy/db/testing';
 import { upsertSetLogs } from '../logging/upsertSetLogs';
 import { newClientWorld, newOrg, runAs, sessionsOf } from '../sessions/fixtures.test-helpers';
 import { completeSession, startSession } from '../sessions/lifecycle';

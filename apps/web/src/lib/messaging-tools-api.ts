@@ -1,5 +1,5 @@
 /** Browser-side calls for reply expectations and saved replies (same-origin, so the CSRF Origin check passes). */
-import type { ReplyExpectations, SavedReplyView } from '@kinetic/core';
+import type { ReplyExpectations, SavedReplyView } from '@repsy/core';
 import { call } from './checkin-api';
 import type { ApiCall } from './workout-api';
 

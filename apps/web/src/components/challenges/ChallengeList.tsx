@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { ChallengeSummary } from '@kinetic/core';
+import type { ChallengeSummary } from '@repsy/core';
 
 const STATUS = { upcoming: 'Starts soon', live: 'On now', ended: 'Ended' } as const;
 const day = (d: string) =>

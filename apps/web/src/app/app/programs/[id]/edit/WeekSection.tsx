@@ -3,7 +3,7 @@
 import { Copy, Percent, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useFieldArray, useFormContext } from 'react-hook-form';
-import type { Units } from '@kinetic/core/units';
+import type { Units } from '@repsy/core/units';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

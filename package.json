@@ -1,5 +1,5 @@
 {
-  "name": "kinetic",
+  "name": "repsy",
   "version": "0.0.0",
   "private": true,
   "packageManager": "pnpm@12.16.1",
@@ -7,18 +7,18 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev": "pnpm --parallel --filter @kinetic/web --filter @kinetic/worker dev",
-    "lint": "eslint . && pnpm --filter @kinetic/web lint",
+    "dev": "pnpm --parallel --filter @repsy/web --filter @repsy/worker dev",
+    "lint": "eslint . && pnpm --filter @repsy/web lint",
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "vitest run",
-    "test:e2e": "pnpm --filter @kinetic/web test:e2e",
+    "test:e2e": "pnpm --filter @repsy/web test:e2e",
     "db:up": "docker compose up -d --wait postgres",
     "db:down": "docker compose down",
-    "db:migrate": "pnpm --filter @kinetic/db db:deploy",
-    "db:seed": "pnpm --filter @kinetic/db db:seed",
+    "db:migrate": "pnpm --filter @repsy/db db:deploy",
+    "db:seed": "pnpm --filter @repsy/db db:seed",
     "format": "prettier --write .",
     "format:check": "prettier --check --end-of-line auto apps packages .github README.md package.json pnpm-workspace.yaml render.yaml docker-compose.yml",
-    "perf:dashboard": "pnpm --filter @kinetic/core perf:dashboard"
+    "perf:dashboard": "pnpm --filter @repsy/core perf:dashboard"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",

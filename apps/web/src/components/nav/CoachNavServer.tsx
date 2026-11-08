@@ -1,5 +1,5 @@
-import { prisma } from '@kinetic/db';
-import { countOpenFlags, unreadMessageCount } from '@kinetic/core';
+import { prisma } from '@repsy/db';
+import { countOpenFlags, unreadMessageCount } from '@repsy/core';
 import type { ReactNode } from 'react';
 import { getServerSession, withServerTenant } from '@/server/serverActor';
 import { canSwitchWorkspace } from '@/server/shellGate';

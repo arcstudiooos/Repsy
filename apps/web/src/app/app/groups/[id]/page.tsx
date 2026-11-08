@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { DomainError, getGroup, isUuid, TRAINER_ROLES } from '@kinetic/core';
+import { DomainError, getGroup, isUuid, TRAINER_ROLES } from '@repsy/core';
 import { ArchiveGroup, GroupMembers } from '@/components/groups/GroupForms';
 import { GroupView } from '@/components/groups/GroupView';
 import { cn } from '@/lib/utils';

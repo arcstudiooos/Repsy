@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { DomainError, setSubscriptionLapse } from '@kinetic/core';
-import { withSystem, type PrismaClient } from '@kinetic/db';
-import { createTestDb } from '@kinetic/db/testing';
+import { DomainError, setSubscriptionLapse } from '@repsy/core';
+import { withSystem, type PrismaClient } from '@repsy/db';
+import { createTestDb } from '@repsy/db/testing';
 import { createAuth, type Auth } from '@/lib/auth';
 import { createApiHandler, type RouteDef } from '@/server/api';
 import { InMemoryRateLimiter } from '@/server/rateLimit';

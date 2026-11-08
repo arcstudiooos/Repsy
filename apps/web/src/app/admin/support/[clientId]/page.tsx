@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { DomainError, readClientForSupport } from '@kinetic/core';
+import { DomainError, readClientForSupport } from '@repsy/core';
 import { EmptyState } from '@/components/states/EmptyState';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { withPlatformAdmin } from '@/server/platformAdmin';

@@ -1,4 +1,4 @@
-import { appendAudit, type Prisma, type TenantTx } from '@kinetic/db';
+import { appendAudit, type Prisma, type TenantTx } from '@repsy/db';
 import { demoUrlOf } from '../exercises/media';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';

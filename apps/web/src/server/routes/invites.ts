@@ -1,4 +1,4 @@
-import { issueInvite, revokeInvite } from '@kinetic/core';
+import { issueInvite, revokeInvite } from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 
 /** 10 issues/resends per hour per user. */

@@ -28,7 +28,7 @@ Sources: `apps/web/src`, `docs/screenshots/*`, `docs/decisions.md`, `docs/access
 | P7  | Workout logger   | Each set is a tall fieldset with empty space; no previous-performance hint, no progress through the workout, actions not sticky on mobile.                                                                                                 |
 | P8  | Shell            | Sidebar has no brand mark, no badge counts (review, unread), sign-out block collides with the avatar. Portal top nav is plain. Mobile coach dashboard is one long column of tiles.                                                         |
 | P9  | Empty states     | Plain sentences ("Nothing needs review right now.") with no icon, illustration or next step.                                                                                                                                               |
-| P10 | Naming           | Repo is **Repsy**, the UI and metadata say **Kinetic**.                                                                                                                                                                                    |
+| P10 | Naming           | The UI and metadata used an old working name instead of **Repsy** (fixed).                                                                                                                                                                 |
 
 ---
 
@@ -105,7 +105,7 @@ A `/app/dev/ui` page (dev only) renders every component in light and dark for re
 
 ### 4.1 Shell and navigation
 
-- **Coach sidebar**: graphite background, Repsy/Kinetic logo mark, nav items with brand-soft active pill and left indicator, **badge counts** on Review and Messages, collapsible to icons on `lg`. Bottom: user card (avatar, name, org) with a menu for Settings, workspace switch, theme toggle and sign out.
+- **Coach sidebar**: graphite background, Repsy logo mark, nav items with brand-soft active pill and left indicator, **badge counts** on Review and Messages, collapsible to icons on `lg`. Bottom: user card (avatar, name, org) with a menu for Settings, workspace switch, theme toggle and sign out.
 - **Coach mobile**: bottom tab bar with active pill and badges; page content uses 2-column tile grids instead of one long column.
 - **Portal**: compact top bar with logo and avatar on desktop; bottom tab bar on mobile with a raised centre "Train" button.
 - **Command palette (⌘K)** for coaches: jump to a client, program or page.
@@ -224,7 +224,7 @@ No phases: everything is built in one continuous pass, on one branch, shipped as
 
 1. Decision record replacing D-008 #1 in `docs/decisions.md`.
 2. Tokens (light + dark), type scale, `tokens.test.ts` update, ThemeProvider.
-3. Rename user-facing "Kinetic" to "Repsy" + logo mark.
+3. Use the name "Repsy" everywhere a user sees it, plus the logo mark.
 4. Component library + chart primitives + `/app/dev/ui` page.
 5. Core series queries in `packages/core` (section 5) with unit tests.
 6. Shell and navigation (coach sidebar, mobile tab bars, portal bar).
@@ -240,7 +240,7 @@ No phases: everything is built in one continuous pass, on one branch, shipped as
 ## 8. Decisions (all answered)
 
 1. ~~Palette~~: **decided, Midnight & Ember** (2026-11-04).
-2. ~~Product name~~: **decided, Repsy** (2026-11-04). Scope: every user-facing string (page titles `… | Kinetic`, metadata, nav logo, emails sent by the worker, export file names, e2e/axe specs that assert the name), about 64 occurrences in 49 files under `apps/` and `packages/`. Internal package names (`@kinetic/*`), env vars and DB identifiers stay as they are to avoid churn. Done right after the tokens (step 3 of section 7).
+2. ~~Product name~~: **decided, Repsy** (2026-11-04). Scope: every user-facing string (page titles, metadata, nav logo, emails sent by the worker, export file names, e2e/axe specs that assert the name), about 64 occurrences in 49 files under `apps/` and `packages/`. Internal package names (`@repsy/*`), env vars and DB identifiers stay as they are to avoid churn. Done right after the tokens (step 3 of section 7).
 3. ~~Dark mode~~: **decided, ship it with everything else** (2026-11-04). Default follows the system setting; a Light / Dark / System toggle lives in the user menu (coach) and Profile (portal), saved per user on the device. Theme is applied before first paint (no flash). Every chart, badge and status colour gets a dark value; axe specs and screenshots run in both themes.
 4. ~~Reverse D-008 #1~~: **approved** (2026-11-04). Step 1 of the build order writes the new decision record in `docs/decisions.md` (charts allowed in analytics, dashboard, client and portal views; every chart keeps numerator, denominator and period visible and has a table view) and marks D-008 #1 as superseded by it.
 5. ~~Chart library~~: **decided, Recharts 3** (2026-11-04) for interactive charts (line, bar, area with tooltips), pinned to an exact version and wrapped in `src/components/charts/` so pages never import it directly. Small charts (sparkline, ring, donut, week dots, heatmap) stay server-rendered SVG, so offline portal pages need no chart JS.

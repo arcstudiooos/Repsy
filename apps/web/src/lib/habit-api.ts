@@ -1,5 +1,5 @@
 /** Browser-side calls to the habits API (same-origin, so the CSRF Origin check passes). */
-import type { HabitView } from '@kinetic/core';
+import type { HabitView } from '@repsy/core';
 import { call } from './checkin-api';
 
 const enc = encodeURIComponent;

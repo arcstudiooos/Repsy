@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useState, type FormEvent } from 'react';
-import type { SessionNoteView } from '@kinetic/core';
+import type { SessionNoteView } from '@repsy/core';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/toast';
 import { call } from '@/lib/checkin-api';

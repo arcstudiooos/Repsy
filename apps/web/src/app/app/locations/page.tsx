@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { connection } from 'next/server';
-import { isManager, listLocations, listStaffLocations } from '@kinetic/core';
+import { isManager, listLocations, listStaffLocations } from '@repsy/core';
 import { LocationsManager } from '@/components/classes/LocationsManager';
 import { EmptyState } from '@/components/states/EmptyState';
 import { withServerTenant } from '@/server/serverActor';

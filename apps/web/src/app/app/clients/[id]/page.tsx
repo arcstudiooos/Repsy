@@ -18,7 +18,7 @@ import {
   getStreak,
   getWeeklyVolume,
   toDisplay,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { CompliancePercent, WINDOW_LABEL } from '@/components/analytics/Compliance';
 import { EngagementCard } from '@/components/analytics/Engagement';
 import { GoalsPanel } from '@/components/goals/GoalsPanel';

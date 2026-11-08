@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { getClientCalendar } from '@kinetic/core';
+import { getClientCalendar } from '@repsy/core';
 import { CalendarMonth } from '@/components/calendar/CalendarMonth';
 import { withPortalTenant } from '@/server/serverActor';
 

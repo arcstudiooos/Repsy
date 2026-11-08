@@ -1,5 +1,5 @@
-import { purgeErasedMedia } from '@kinetic/core';
-import { createStorage, type StoragePort } from '@kinetic/storage';
+import { purgeErasedMedia } from '@repsy/core';
+import { createStorage, type StoragePort } from '@repsy/storage';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineJob } from './registry';

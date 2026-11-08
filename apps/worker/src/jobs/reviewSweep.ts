@@ -1,5 +1,5 @@
-import { evaluateRules, noopAnalytics, type AnalyticsPort, type Logger } from '@kinetic/core';
-import { withSystem, withTenant, type PrismaClient } from '@kinetic/db';
+import { evaluateRules, noopAnalytics, type AnalyticsPort, type Logger } from '@repsy/core';
+import { withSystem, withTenant, type PrismaClient } from '@repsy/db';
 import { orgHash, systemDistinctId } from '../adapters/analytics';
 import { defineJob, type CaptureException } from './registry';
 

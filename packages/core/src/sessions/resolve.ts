@@ -1,7 +1,7 @@
 import { readBlock } from '../programs/blocks';
 import { demoUrlOf } from '../exercises/media';
 import { asSection } from '../programs/sections';
-import type { TenantTx } from '@kinetic/db';
+import type { TenantTx } from '@repsy/db';
 import { DomainError } from '../errors';
 import { readStoredTargets } from '../programs/read';
 import { isUuid } from '../uuid';

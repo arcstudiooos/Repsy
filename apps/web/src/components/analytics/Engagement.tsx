@@ -1,4 +1,4 @@
-import type { EngagementWeek } from '@kinetic/core';
+import type { EngagementWeek } from '@repsy/core';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const week = (iso: string) =>

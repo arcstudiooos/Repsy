@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Check } from 'lucide-react';
-import type { HabitView, HabitsView } from '@kinetic/core';
+import type { HabitView, HabitsView } from '@repsy/core';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/toast';
 import { tickHabit } from '@/lib/habit-api';

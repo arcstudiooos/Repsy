@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { CHURN_LABEL, getBusinessAnalytics } from '@kinetic/core';
+import { CHURN_LABEL, getBusinessAnalytics } from '@repsy/core';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';
 

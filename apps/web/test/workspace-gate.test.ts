@@ -57,14 +57,14 @@ describe('sign-out clears the active org cookie', () => {
   });
   const setCookies = (res: Response) => res.headers.getSetCookie();
 
-  it('appends an expired kinetic_org cookie to the sign-out response, keeping Better Auth cookies', async () => {
+  it('appends an expired repsy_org cookie to the sign-out response, keeping Better Auth cookies', async () => {
     const res = await createAuthHandlers(fake()).POST(
       new Request('http://localhost:3000/api/auth/sign-out', { method: 'POST' }),
     );
     const cookies = setCookies(res);
     expect(cookies.some((c) => c.startsWith('better-auth.session_token='))).toBe(true);
-    const org = cookies.find((c) => c.startsWith('kinetic_org='));
-    expect(org).toMatch(/^kinetic_org=;/);
+    const org = cookies.find((c) => c.startsWith('repsy_org='));
+    expect(org).toMatch(/^repsy_org=;/);
     expect(org).toMatch(/Max-Age=0/);
     expect(org).toMatch(/Path=\//);
     expect(org).toMatch(/HttpOnly/);
@@ -74,6 +74,6 @@ describe('sign-out clears the active org cookie', () => {
     const res = await createAuthHandlers(fake()).POST(
       new Request('http://localhost:3000/api/auth/sign-in/email', { method: 'POST' }),
     );
-    expect(setCookies(res).some((c) => c.startsWith('kinetic_org='))).toBe(false);
+    expect(setCookies(res).some((c) => c.startsWith('repsy_org='))).toBe(false);
   });
 });

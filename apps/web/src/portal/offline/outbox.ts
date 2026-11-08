@@ -14,7 +14,7 @@
  * merged batch is resent write by write, so one bad set never takes the good ones down with it. A completion or skip
  * waits ("held") while any of the session's logs were refused, until the client keeps editing or finishes anyway.
  */
-import type { LoggedSet, SessionDetail, SetLogAck } from '@kinetic/core';
+import type { LoggedSet, SessionDetail, SetLogAck } from '@repsy/core';
 import type { SetLogPayload } from '@/lib/workout-api';
 import { currentOwner, del, getAll, getBySession, openDb, put, putInQueue } from './db';
 import {
@@ -92,7 +92,7 @@ export const HELD_REASON =
 const MAX_BATCH = 100;
 const MAX_BACKOFF_MS = 60_000;
 const LOOP_MS = 15_000;
-const LOCK = 'kinetic-outbox';
+const LOCK = 'repsy-outbox';
 const NOTHING: FlushResult = { sent: 0, pending: 0, blocked: 0, rejected: 0 };
 
 const backoffMs = (attempts: number) => Math.min(MAX_BACKOFF_MS, 1000 * 2 ** attempts);

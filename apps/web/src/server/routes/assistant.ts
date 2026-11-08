@@ -20,7 +20,7 @@ import {
   listAiConversations,
   runAssistantTool,
   setAiSetting,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 import {
   assistantClient,

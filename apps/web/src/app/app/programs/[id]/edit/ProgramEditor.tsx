@@ -5,8 +5,8 @@ import { Minus, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { FormProvider, useFieldArray, useForm, useWatch, type FieldErrors } from 'react-hook-form';
-import type { EquipmentGuide, ProgramDetail, ProgramDraftView } from '@kinetic/core';
-import type { Units } from '@kinetic/core/units';
+import type { EquipmentGuide, ProgramDetail, ProgramDraftView } from '@repsy/core';
+import type { Units } from '@repsy/core/units';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { createJoinLink, listJoinLinks, revokeJoinLink } from '@kinetic/core';
+import { createJoinLink, listJoinLinks, revokeJoinLink } from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 
 /** `GET /api/v1/join-links` (PRD B3): this workspace's sign-up links. */

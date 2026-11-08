@@ -6,7 +6,7 @@ import {
   deleteTag,
   listTags,
   setClientTags,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 
 /** `GET /api/v1/tags`: the organization's client tags with counts (PRD B4). */

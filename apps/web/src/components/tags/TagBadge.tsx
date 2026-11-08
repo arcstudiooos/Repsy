@@ -1,4 +1,4 @@
-import type { TagColor, TagView } from '@kinetic/core';
+import type { TagColor, TagView } from '@repsy/core';
 
 /** Decorative dot colours; the tag name carries the meaning (text stays ink for contrast). */
 export const TAG_DOT: Record<TagColor, string> = {

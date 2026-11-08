@@ -2,8 +2,8 @@
 
 import { useId, useState } from 'react';
 import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
-import type { ExerciseView } from '@kinetic/core';
-import type { Units } from '@kinetic/core/units';
+import type { ExerciseView } from '@repsy/core';
+import type { Units } from '@repsy/core/units';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

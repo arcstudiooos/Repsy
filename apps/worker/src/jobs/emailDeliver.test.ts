@@ -3,10 +3,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Writable } from 'node:stream';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { EmailMessage, EmailPort } from '@kinetic/core';
-import { createLogger, logger as defaultLogger } from '@kinetic/core';
-import { withSystem, type PrismaClient } from '@kinetic/db';
-import { createTestDb } from '@kinetic/db/testing';
+import type { EmailMessage, EmailPort } from '@repsy/core';
+import { createLogger, logger as defaultLogger } from '@repsy/core';
+import { withSystem, type PrismaClient } from '@repsy/db';
+import { createTestDb } from '@repsy/db/testing';
 import { DevSinkEmailAdapter } from '../adapters/devSinkEmail';
 import { backoffMs, deliverDueEmails, EMAIL_RETRY_LIMIT, queueEmailSweep } from './emailDeliver';
 
@@ -277,7 +277,7 @@ describe('queueEmailSweep', () => {
 describe('DevSinkEmailAdapter', () => {
   let dir: string;
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'kinetic-emails-'));
+    dir = await mkdtemp(join(tmpdir(), 'repsy-emails-'));
   });
   afterAll(async () => {
     if (dir) await rm(dir, { recursive: true, force: true });

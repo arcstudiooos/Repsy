@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { getSettings } from '@kinetic/core';
+import { getSettings } from '@repsy/core';
 import { withServerTenant } from '@/server/serverActor';
 import { ImportProgram } from './ImportProgram';
 

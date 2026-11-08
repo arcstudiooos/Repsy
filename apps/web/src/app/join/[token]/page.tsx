@@ -5,8 +5,8 @@ import {
   getPublicProfile,
   getPublicStorefront,
   lookupJoinLink,
-} from '@kinetic/core';
-import { prisma } from '@kinetic/db';
+} from '@repsy/core';
+import { prisma } from '@repsy/db';
 import { AuthShell } from '@/components/auth-ui';
 import { LoadingState } from '@/components/states/LoadingState';
 import { ApplyForm } from './ApplyForm';

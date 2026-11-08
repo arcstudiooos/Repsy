@@ -1,6 +1,6 @@
-import type { CheckinAnswers, CheckinQuestion } from '@kinetic/core';
-import { metricDef, metricFromCanonical, metricUnit } from '@kinetic/core/metric-catalog';
-import type { Units } from '@kinetic/core/units';
+import type { CheckinAnswers, CheckinQuestion } from '@repsy/core';
+import { metricDef, metricFromCanonical, metricUnit } from '@repsy/core/metric-catalog';
+import type { Units } from '@repsy/core/units';
 
 const fmtDate = (d: string) =>
   new Intl.DateTimeFormat('en-GB', {

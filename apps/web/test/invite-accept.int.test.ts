@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { canonicalTimezone, PRIVACY_NOTICE_VERSION } from '@kinetic/core';
-import { withSystem, type PrismaClient } from '@kinetic/db';
-import { createTestDb } from '@kinetic/db/testing';
+import { canonicalTimezone, PRIVACY_NOTICE_VERSION } from '@repsy/core';
+import { withSystem, type PrismaClient } from '@repsy/db';
+import { createTestDb } from '@repsy/db/testing';
 import { createAuth, type Auth } from '@/lib/auth';
 import { acceptWithSignup } from '@/lib/accept-invite';
 import { isProtectedPath } from '@/lib/guard';
@@ -225,7 +225,7 @@ describe('invite acceptance', () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { data: { orgId: string; clientId: string } };
     expect(body.data.orgId).toBe(orgId);
-    expect(res.headers.get('set-cookie')).toMatch(/^kinetic_org=/);
+    expect(res.headers.get('set-cookie')).toMatch(/^repsy_org=/);
 
     const users = await withSystem(
       (tx) => tx.user.findMany({ where: { email: t.coachA.email } }),

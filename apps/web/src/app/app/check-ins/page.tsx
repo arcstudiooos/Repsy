@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { listCheckinTemplates, type TemplateKind } from '@kinetic/core';
+import { listCheckinTemplates, type TemplateKind } from '@repsy/core';
 import { withServerTenant } from '@/server/serverActor';
 import { cn } from '@/lib/utils';
 import { NewTemplateForm } from './NewTemplateForm';

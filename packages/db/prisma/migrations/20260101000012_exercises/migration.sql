@@ -33,7 +33,7 @@ ALTER TABLE "exercises" ADD CONSTRAINT "exercises_organization_id_fkey" FOREIGN 
 COMMENT ON TABLE "exercises" IS 'Exercise library. organization_id NULL = global catalog row: readable by every organization, writable by none (only the system/bypass role changes them). Non-null = an organization''s custom exercise.';
 
 -- Global catalog (fixed UUIDs). Source list: prisma/exercise-catalog.ts; this block is generated from it
--- (pnpm --filter @kinetic/db exercises:sql). Runs before RLS is enabled below, so no bypass is needed.
+-- (pnpm --filter @repsy/db exercises:sql). Runs before RLS is enabled below, so no bypass is needed.
 -- ON CONFLICT keeps the migration safe to re-run against a database that already has the rows.
 INSERT INTO "exercises" ("id", "name", "equipment", "muscle_group", "movement_type", "tracking_type", "instructions") VALUES
   ('e0000000-0000-4000-8000-000000000001', 'Barbell Bench Press', 'Barbell', 'Chest', 'Push', 'reps_load'::"tracking_type", 'Lie on a flat bench with your feet planted. Lower the bar to your mid chest under control, then press it back up until your arms are straight.'),

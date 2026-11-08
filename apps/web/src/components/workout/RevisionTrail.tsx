@@ -1,4 +1,4 @@
-import type { SessionDetail, Units } from '@kinetic/core';
+import type { SessionDetail, Units } from '@repsy/core';
 import { describeRevisionChange, formatLocalDateTime } from '@/lib/session-format';
 
 /**

@@ -1,7 +1,7 @@
 // Client code: value imports only from core's dependency-free subpaths (the barrel pulls in the database layer).
-import type { SetTarget } from '@kinetic/core';
-import type { TrackingType } from '@kinetic/core/exercise-options';
-import { fromDisplay, toDisplay, type Units } from '@kinetic/core/units';
+import type { SetTarget } from '@repsy/core';
+import type { TrackingType } from '@repsy/core/exercise-options';
+import { fromDisplay, toDisplay, type Units } from '@repsy/core/units';
 
 /** One set row as typed: strings, so a half-typed "6." or an empty box round-trips untouched. */
 export interface SetDraft {

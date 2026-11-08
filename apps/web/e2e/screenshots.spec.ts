@@ -1,6 +1,6 @@
 /**
  * Screenshots of the main routes at 375 and 1440, light and dark (S5-5, §12, D-018). Runs only with SCREENSHOTS_DIR set:
- * `SCREENSHOTS_DIR=../../docs/screenshots pnpm --filter @kinetic/web exec playwright test screenshots`.
+ * `SCREENSHOTS_DIR=../../docs/screenshots pnpm --filter @repsy/web exec playwright test screenshots`.
  */
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { PrismaClient } from '@kinetic/db';
+import type { PrismaClient } from '@repsy/db';
 import { createAuth } from '@/lib/auth';
 import { assertAuthEnv } from '@/lib/auth-env';
 

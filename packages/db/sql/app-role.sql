@@ -1,28 +1,28 @@
--- Runtime database role for Kinetic (web + worker).
+-- Runtime database role for Repsy (web + worker).
 --
 -- Run as the DATABASE OWNER (the role that runs `prisma migrate deploy`), never
 -- as the runtime role. Idempotent: safe to re-run after every migration.
 --
---   PGOPTIONS="-c kinetic.app_password=$KINETIC_APP_PASSWORD" \
+--   PGOPTIONS="-c repsy.app_password=$REPSY_APP_PASSWORD" \
 --     psql "$MIGRATION_DATABASE_URL" -v ON_ERROR_STOP=1 -f packages/db/sql/app-role.sql
 --
--- The password is passed per session through the `kinetic.app_password` setting,
+-- The password is passed per session through the `repsy.app_password` setting,
 -- so it is never written to this file. Optional overrides (defaults in brackets):
---   kinetic.app_role [kinetic_app]   kinetic.app_schema [public]   kinetic.pgboss_schema [pgboss]
+--   repsy.app_role [repsy_app]   repsy.app_schema [public]   repsy.pgboss_schema [pgboss]
 --
 -- The role is deliberately powerless: no superuser, no BYPASSRLS, no DDL, and it
 -- owns nothing, so Row-Level Security always applies to it. The app refuses to
 -- boot in production if it is connected as anything else (assertRuntimeRole).
 DO $$
 DECLARE
-  role_name   text := COALESCE(NULLIF(current_setting('kinetic.app_role', true), ''), 'kinetic_app');
-  app_schema  text := COALESCE(NULLIF(current_setting('kinetic.app_schema', true), ''), 'public');
-  boss_schema text := COALESCE(NULLIF(current_setting('kinetic.pgboss_schema', true), ''), 'pgboss');
-  pw          text := current_setting('kinetic.app_password', true);
+  role_name   text := COALESCE(NULLIF(current_setting('repsy.app_role', true), ''), 'repsy_app');
+  app_schema  text := COALESCE(NULLIF(current_setting('repsy.app_schema', true), ''), 'public');
+  boss_schema text := COALESCE(NULLIF(current_setting('repsy.pgboss_schema', true), ''), 'pgboss');
+  pw          text := current_setting('repsy.app_password', true);
   schema_name text;
 BEGIN
   IF pw IS NULL OR pw = '' THEN
-    RAISE EXCEPTION 'kinetic.app_password is not set (pass it via PGOPTIONS, see the header of this file)';
+    RAISE EXCEPTION 'repsy.app_password is not set (pass it via PGOPTIONS, see the header of this file)';
   END IF;
 
   -- The owner may be a plain CREATEROLE role (Render), which cannot ALTER superuser-class
@@ -55,7 +55,7 @@ BEGIN
   EXECUTE format('GRANT CONNECT ON DATABASE %I TO %I', current_database(), role_name);
 
   -- pg-boss keeps its tables in its own schema; created here so the default
-  -- privileges below exist before `pnpm --filter @kinetic/worker pgboss:migrate` runs.
+  -- privileges below exist before `pnpm --filter @repsy/worker pgboss:migrate` runs.
   EXECUTE format('CREATE SCHEMA IF NOT EXISTS %I', boss_schema);
 
   FOREACH schema_name IN ARRAY ARRAY[app_schema, boss_schema] LOOP

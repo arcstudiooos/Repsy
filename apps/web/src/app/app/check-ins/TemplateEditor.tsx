@@ -2,15 +2,15 @@
 
 import { useRouter } from 'next/navigation';
 import { useId, useState } from 'react';
-import type { CheckinQuestion, CheckinTemplateView, QuestionType } from '@kinetic/core';
+import type { CheckinQuestion, CheckinTemplateView, QuestionType } from '@repsy/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/toast';
 import { call } from '@/lib/checkin-api';
 import { ConditionEditor } from './ConditionEditor';
-import type { ContextField } from '@kinetic/core';
-import { BODY_METRICS, type BodyMetric } from '@kinetic/core/metric-catalog';
+import type { ContextField } from '@repsy/core';
+import { BODY_METRICS, type BodyMetric } from '@repsy/core/metric-catalog';
 
 const TYPE_LABEL: Record<QuestionType, string> = {
   scale_1_5: 'Scale 1 to 5',

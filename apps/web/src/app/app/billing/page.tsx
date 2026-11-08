@@ -11,7 +11,7 @@ import {
   recordManualPayment,
   retrySubscriptionPayment,
   savePackage,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';
 

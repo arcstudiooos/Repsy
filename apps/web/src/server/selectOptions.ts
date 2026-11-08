@@ -4,8 +4,8 @@ import {
   type ActorContext,
   type ClientView,
   type ProgramSummary,
-} from '@kinetic/core';
-import type { TenantTx } from '@kinetic/db';
+} from '@repsy/core';
+import type { TenantTx } from '@repsy/db';
 
 /** Most options a select offers; beyond this the UI shows a hint. */
 export const SELECT_CAP = 200;

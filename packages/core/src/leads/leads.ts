@@ -4,7 +4,7 @@ import {
   type PrismaClient,
   type SystemTx,
   type TenantTx,
-} from '@kinetic/db';
+} from '@repsy/db';
 import { isManager, type ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { createClient, EMAIL } from '../clients/clients';

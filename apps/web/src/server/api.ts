@@ -12,8 +12,8 @@ import {
   type AnalyticsPort,
   type EventName,
   type EventValue,
-} from '@kinetic/core';
-import { prisma as defaultPrisma, withTenant, type PrismaClient, type TenantTx } from '@kinetic/db';
+} from '@repsy/core';
+import { prisma as defaultPrisma, withTenant, type PrismaClient, type TenantTx } from '@repsy/db';
 import { auth as defaultAuth, getSessionUser, type Auth, type SessionUser } from '@/lib/auth';
 import { loadMemberships, resolveActor } from './actor';
 import { platformAdminOf } from './platformAdmin';

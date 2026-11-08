@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { clientMealPlan, getNutrition } from '@kinetic/core';
+import { clientMealPlan, getNutrition } from '@repsy/core';
 import { NutritionPanel } from '@/components/nutrition/NutritionPanel';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';

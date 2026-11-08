@@ -1,5 +1,5 @@
-import type { CheckinWeekSummary, Units } from '@kinetic/core';
-import { metricDef, metricFromCanonical, metricUnit } from '@kinetic/core/metric-catalog';
+import type { CheckinWeekSummary, Units } from '@repsy/core';
+import { metricDef, metricFromCanonical, metricUnit } from '@repsy/core/metric-catalog';
 import { formatDate } from '@/app/app/clients/StatusBadge';
 import { plural } from '@/lib/session-format';
 

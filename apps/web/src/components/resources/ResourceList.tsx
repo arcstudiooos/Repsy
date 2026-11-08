@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import type { ResourceView } from '@kinetic/core';
+import type { ResourceView } from '@repsy/core';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/toast';
 

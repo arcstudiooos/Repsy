@@ -9,7 +9,7 @@ import { createTestDb } from './testing/createTestDb';
 import { withSystem } from './tenant';
 
 const suffix = randomUUID().replace(/-/g, '').slice(0, 10);
-const role = `kinetic_app_${suffix}`;
+const role = `repsy_app_${suffix}`;
 const pgbossSchema = `pgboss_${suffix}`;
 const password = `pw-${suffix}`;
 
@@ -96,12 +96,12 @@ describe('app-role.sql', () => {
 
   it('refuses to run without a password', async () => {
     await applyAppRoleSql(admin, options());
-    await admin.query(`SELECT set_config('kinetic.app_password', '', false)`);
+    await admin.query(`SELECT set_config('repsy.app_password', '', false)`);
     const sql = (await import('node:fs')).readFileSync(
       new URL('../sql/app-role.sql', import.meta.url),
       'utf8',
     );
-    await expect(admin.query(sql)).rejects.toThrow(/kinetic\.app_password/);
+    await expect(admin.query(sql)).rejects.toThrow(/repsy\.app_password/);
   });
 });
 
@@ -109,7 +109,7 @@ describe('app-role.sql run by a non-superuser CREATEROLE owner (Render)', () => 
   const ownerRole = `kowner_${suffix}`;
   const ownerPw = `opw-${suffix}`;
   const foreignRole = `kforeign_${suffix}`;
-  const appRole = `kinetic_app_o_${suffix}`;
+  const appRole = `repsy_app_o_${suffix}`;
   const bossSchema = `pgboss_o_${suffix}`;
   const secret = `s3cret-${suffix}-XYZ`;
   let db: Awaited<ReturnType<typeof createTestDb>>;

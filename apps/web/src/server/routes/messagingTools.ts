@@ -7,7 +7,7 @@ import {
   listSavedReplies,
   updateReplyExpectations,
   updateReviewRuleSettings,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 
 /** `GET /api/v1/org/reply-expectations` (PRD H16): readable by coaches and clients. */

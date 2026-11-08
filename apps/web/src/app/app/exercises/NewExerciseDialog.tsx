@@ -7,7 +7,7 @@ import {
   MOVEMENT_TYPES,
   MUSCLE_GROUPS,
   TRACKING_TYPES,
-} from '@kinetic/core/exercise-options';
+} from '@repsy/core/exercise-options';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

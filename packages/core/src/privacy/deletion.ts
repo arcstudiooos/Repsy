@@ -1,4 +1,4 @@
-import { appendAudit, type SystemTx, type TenantTx } from '@kinetic/db';
+import { appendAudit, type SystemTx, type TenantTx } from '@repsy/db';
 import type { ActorContext } from '../authz/actor';
 import { DomainError } from '../errors';
 import { enqueueEmail } from '../outbox';

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { Suspense, type ReactNode } from 'react';
 import Link from 'next/link';
-import { isCoachRole, twoFactorStatus } from '@kinetic/core';
+import { isCoachRole, twoFactorStatus } from '@repsy/core';
 import { CoachNavServer } from '@/components/nav/CoachNavServer';
 import { NoticeBanner } from '@/components/nav/NoticeBanner';
 import { PathBreadcrumbs } from '@/components/nav/PathBreadcrumbs';

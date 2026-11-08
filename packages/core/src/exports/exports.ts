@@ -1,4 +1,4 @@
-import { appendAudit, Prisma, type TenantTx } from '@kinetic/db';
+import { appendAudit, Prisma, type TenantTx } from '@repsy/db';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { readQuestions } from '../checkins/questions';
@@ -38,7 +38,7 @@ export interface ExportView {
   files: { name: string; rows: number }[];
 }
 
-/** The structural slice of `@kinetic/storage` the build needs (core imports no storage SDK). */
+/** The structural slice of `@repsy/storage` the build needs (core imports no storage SDK). */
 export interface ExportStorage {
   put(key: string, body: string, contentType: string): Promise<void>;
   deleteMany(keys: string[]): Promise<void>;
@@ -573,7 +573,7 @@ async function programsJson(
   }
   return {
     json: JSON.stringify(
-      { format: 'kinetic-programs', version: PORTABLE_FORMAT_VERSION, programs },
+      { format: 'repsy-programs', version: PORTABLE_FORMAT_VERSION, programs },
       null,
       2,
     ),
@@ -603,7 +603,7 @@ async function exercisesJson(tx: TenantTx): Promise<{ json: string; rows: number
   });
   return {
     json: JSON.stringify(
-      { format: 'kinetic-exercises', version: PORTABLE_FORMAT_VERSION, exercises: rows },
+      { format: 'repsy-exercises', version: PORTABLE_FORMAT_VERSION, exercises: rows },
       null,
       2,
     ),

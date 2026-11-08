@@ -1,4 +1,4 @@
-import { sendDueScheduledMessages } from '@kinetic/core';
+import { sendDueScheduledMessages } from '@repsy/core';
 import { defineJob } from './registry';
 
 export const SCHEDULED_MESSAGES = 'messages.scheduled';

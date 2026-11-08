@@ -1,7 +1,7 @@
 'use client';
 
 import { useId } from 'react';
-import { READINESS_QUESTIONS, type ReadinessKey } from '@kinetic/core/readiness';
+import { READINESS_QUESTIONS, type ReadinessKey } from '@repsy/core/readiness';
 
 export type ReadinessDraft = Partial<Record<ReadinessKey, number>>;
 

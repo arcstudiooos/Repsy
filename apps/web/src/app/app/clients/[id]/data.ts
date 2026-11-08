@@ -1,6 +1,6 @@
 import { cache } from 'react';
 import { notFound } from 'next/navigation';
-import { DomainError, getClient, type ClientView } from '@kinetic/core';
+import { DomainError, getClient, type ClientView } from '@repsy/core';
 import { withServerTenant } from '@/server/serverActor';
 
 /** One lookup per request, shared by the layout and the page. Unknown or cross-tenant ids are a 404. */

@@ -1,5 +1,5 @@
-import { withSystem, type PrismaClient } from '@kinetic/db';
-import { STAFF_ROLES } from '@kinetic/core';
+import { withSystem, type PrismaClient } from '@repsy/db';
+import { STAFF_ROLES } from '@repsy/core';
 
 export const ONBOARDING_PATH = '/onboarding/pilot-code';
 

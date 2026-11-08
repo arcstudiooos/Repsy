@@ -5,7 +5,7 @@ import {
   createAgreement,
   listAgreements,
   updateAgreement,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 import { clientIp } from '../clientIp';
 

@@ -1,12 +1,12 @@
-# Kinetic: Complete Coaching Platform PRD
+# Repsy: Complete Coaching Platform PRD
 
 Oct 31, 2026 · Repo copy of the live doc: https://claude.ai/artifact/1u1qfLgb9XJCQVko1PTttZ (the live doc wins if they differ)
 
 ## Executive summary
 
-Kinetic becomes a complete online-coaching platform. It will match the 200 features coaches now expect from Trainerize, Everfit, Spur.fit, TrueCoach and Kahunas, and it will win on what users say those products get wrong: crashes and lost logs, add-on pricing, billing traps, lock-in, and coaching that feels generic.
+Repsy becomes a complete online-coaching platform. It will match the 200 features coaches now expect from Trainerize, Everfit, Spur.fit, TrueCoach and Kahunas, and it will win on what users say those products get wrong: crashes and lost logs, add-on pricing, billing traps, lock-in, and coaching that feels generic.
 
-Today Kinetic has a reliable core loop (Sprints 1–5): versioned programs, offline workout logging, weekly check-ins, messaging, a review queue, analytics, and export and deletion. This PRD defines everything else, in 13 modules, and phases it into three releases after R1.
+Today Repsy has a reliable core loop (Sprints 1–5): versioned programs, offline workout logging, weekly check-ins, messaging, a review queue, analytics, and export and deletion. This PRD defines everything else, in 13 modules, and phases it into three releases after R1.
 
 **Six headline bets**, each a direct answer to a recurring complaint:
 
@@ -55,7 +55,7 @@ We found sixteen recurring pain points, and every one maps to features below. Re
 
 ## Product principles and positioning
 
-**Positioning:** "The coaching platform that never drops the ball: not your client's log, not your client's check-in, not your bill." Competitors sell feature volume. Kinetic sells dependability plus every feature, at one price.
+**Positioning:** "The coaching platform that never drops the ball: not your client's log, not your client's check-in, not your bill." Competitors sell feature volume. Repsy sells dependability plus every feature, at one price.
 
 Eight principles decide trade-offs:
 
@@ -234,7 +234,7 @@ The client logs a set in under 3 seconds, with or without signal, and never lose
 
 ## Module E: Progress tracking
 
-The client and the coach see change over time in one place: body metrics, photos, strength and goals. Every competitor has this and Kinetic doesn't yet, so it leads R2.
+The client and the coach see change over time in one place: body metrics, photos, strength and goals. Every competitor has this and Repsy doesn't yet, so it leads R2.
 
 | ID  | Feature                       | What it does                                                                                                                                                     | Phase | Origin         |
 | --- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | -------------- |
@@ -309,7 +309,7 @@ Module G covers the 23 hours a day outside the gym. Habits and macro targets shi
 
 **Key rules**
 
-- Kinetic gives no medical diets or claims. Copy reads "Targets set by your coach."
+- Repsy gives no medical diets or claims. Copy reads "Targets set by your coach."
 - Habit logs are idempotent per assignment and client-local date, and are tested across DST boundaries.
 - Lessons can be sold as a course (K13) in R4.
 
@@ -317,7 +317,7 @@ Module G covers the 23 hours a day outside the gym. Habits and macro targets shi
 
 ## Module H: Messaging, notifications and community
 
-Coach and client stay in touch in one place, and the client always knows when to expect a reply (P10). Kinetic sends the right nudge at the right local time and nothing more.
+Coach and client stay in touch in one place, and the client always knows when to expect a reply (P10). Repsy sends the right nudge at the right local time and nothing more.
 
 | ID  | Feature                     | What it does                                                                                                                                                                               | Phase   | Origin              |
 | --- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- | ------------------- |
@@ -348,7 +348,7 @@ Coach and client stay in touch in one place, and the client always knows when to
 
 ## Module I: Coach intelligence: review queue, analytics, AI assist
 
-The coach opens Kinetic and sees exactly who needs them today and why. R1's rules-based review queue is already ahead of competitors. Module I widens what it notices and adds AI, under strict limits, as a drafting aid.
+The coach opens Repsy and sees exactly who needs them today and why. R1's rules-based review queue is already ahead of competitors. Module I widens what it notices and adds AI, under strict limits, as a drafting aid.
 
 | ID  | Feature                  | What it does                                                                                                                                                                                                                                                                                                                           | Phase   | Origin         |
 | --- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------------- |
@@ -398,7 +398,7 @@ Automation is included on every plan, not sold as a $29–50 add-on (P3). A coac
 
 ## Module K: Business: payments, packages, storefront, scheduling
 
-Coaches get paid and booked inside Kinetic, with a 0% platform fee in the first year and one-click cancellation for their clients (P4). Payments run on Stripe Connect worldwide and Razorpay in India (P16). Kinetic never holds funds.
+Coaches get paid and booked inside Repsy, with a 0% platform fee in the first year and one-click cancellation for their clients (P4). Payments run on Stripe Connect worldwide and Razorpay in India (P16). Repsy never holds funds.
 
 | ID  | Feature                     | What it does                                                                                                                                                 | Phase   | Origin         |
 | --- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- | -------------- |
@@ -422,14 +422,14 @@ Coaches get paid and booked inside Kinetic, with a 0% platform fee in the first 
 
 - Webhooks are idempotent by stored event ID. The UI never shows "Paid" before the processor confirms it (Principle 2).
 - When a payment lapses, the client keeps read access to their own history and export (M12). They only lose new coaching.
-- Refunds and disputes happen in the processor and are mirrored into Kinetic.
-- Card data never touches Kinetic servers (hosted checkout only).
+- Refunds and disputes happen in the processor and are mirrored into Repsy.
+- Card data never touches Repsy servers (hosted checkout only).
 
 **Screens:** `/app/payments` (packages, transactions, coupons, revenue), `/app/calendar`, `/app/clients/[id]/billing`, `/portal/billing`, `/portal/book`, `/join/<coach>`.
 
 ## Module L: Branded apps, integrations and API
 
-The client reaches Kinetic from any phone on day one through an installable web app. Native iOS and Android apps follow together in R4, never one without the other (P6). Every integration shows its sync health, so nothing fails quietly (P2).
+The client reaches Repsy from any phone on day one through an installable web app. Native iOS and Android apps follow together in R4, never one without the other (P6). Every integration shows its sync health, so nothing fails quietly (P2).
 
 | ID  | Feature               | What it does                                                                                         | Phase | Origin     |
 | --- | --------------------- | ---------------------------------------------------------------------------------------------------- | ----- | ---------- |
@@ -447,13 +447,13 @@ The client reaches Kinetic from any phone on day one through an installable web 
 
 ## Module M: Trust: privacy, security, reliability, data portability
 
-Trust is a feature coaches can see. They can see that Kinetic is up, that their data leaves with them, that billing is fair and that support answers. This module turns P1, P3, P4, P5, P11 and P12 into commitments.
+Trust is a feature coaches can see. They can see that Repsy is up, that their data leaves with them, that billing is fair and that support answers. This module turns P1, P3, P4, P5, P11 and P12 into commitments.
 
 | ID  | Feature                        | What it does                                                                                                                                                                            | Phase   | Origin            |
 | --- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ----------------- |
 | M1  | Privacy exports                | Owners export the workspace and clients export their own data as CSV; private links that expire in 15 minutes                                                                           | Shipped | Differentiator    |
 | M2  | Deletion workflow              | Client or owner request, platform-admin verification, erasure job, content-free audit                                                                                                   | Shipped | Differentiator    |
-| M3  | Portable export                | One-click export of programs, templates, exercises, logs, check-ins, metrics, photos and messages as documented JSON and CSV (a ZIP), re-importable into Kinetic and mappable elsewhere | R2      | Pain point P11    |
+| M3  | Portable export                | One-click export of programs, templates, exercises, logs, check-ins, metrics, photos and messages as documented JSON and CSV (a ZIP), re-importable into Repsy and mappable elsewhere | R2      | Pain point P11    |
 | M4  | Migration toolkit              | CSV templates and mapping UI for clients (B17) and programs (C14), plus free concierge migration from Trainerize, TrueCoach, Everfit and Kahunas for paying workspaces                  | R2      | Pain point P11    |
 | M5  | Audited support access         | Time-limited, explicit, logged                                                                                                                                                          | Shipped | Differentiator    |
 | M6  | Consent and health-data notice | Versioned consent at onboarding; separate photo consent (E3)                                                                                                                            | Shipped | Parity            |
@@ -535,8 +535,8 @@ The proposal is four plans that differ only in active clients and coach seats, w
 | Studio | 300            | 10          | $199                        | $1,990 |
 
 - Above the plan limit: $1 per extra active client a month. Archived and paused clients don't count.
-- Payments (K1, K2): 0% Kinetic fee in year one; processor fees only.
-- The only paid extra is the custom-branded store app (L3), priced at about what it costs to run (store accounts and build and review time). It is not a feature gate: the PWA and the Kinetic-branded native apps carry the coach's logo and colours on every plan.
+- Payments (K1, K2): 0% Repsy fee in year one; processor fees only.
+- The only paid extra is the custom-branded store app (L3), priced at about what it costs to run (store accounts and build and review time). It is not a feature gate: the PWA and the Repsy-branded native apps carry the coach's logo and colours on every plan.
 
 **What competitors charge** (third-party figures, verify before publishing comparisons): Spur.fit $49 for 20 clients and $100 for 50 ([G2](https://g2.com/products/spur-fit/pricing)); TrueCoach about $49–58 for 20 and $99–137 for 50 ([ProMealPlan](https://www.promealplan.com/en/blog/truecoach-review-2026)); Kahunas $35 for 25 without automation and $69 for 50 with it ([Coachway](https://coachway.io/articles/kahunas-pricing/)); Everfit from about $19 plus Autoflow +$29, on-demand +$25 and payments +$9 ([ProMealPlan](https://www.promealplan.com/en/blog/everfit-review-2026)); Trainerize payments +$10, video +$10, nutrition +$20–45 ([Coachway](https://coachway.io/articles/trainerize-pricing/)).
 

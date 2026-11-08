@@ -10,8 +10,8 @@ import {
   isIanaTimezone,
   PRIVACY_NOTICE_VERSION,
   type ErrorCode,
-} from '@kinetic/core';
-import { findInviteByTokenHash, withSystem, type PrismaClient } from '@kinetic/db';
+} from '@repsy/core';
+import { findInviteByTokenHash, withSystem, type PrismaClient } from '@repsy/db';
 import { MIN_PASSWORD_LENGTH, type Auth } from './auth';
 import { deleteUser } from './register-coach';
 import { clientIp } from '../server/clientIp';

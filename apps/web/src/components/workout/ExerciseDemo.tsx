@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useSyncExternalStore } from 'react';
-import { parseExerciseMedia } from '@kinetic/core/exercise-media';
+import { parseExerciseMedia } from '@repsy/core/exercise-media';
 import { Button } from '@/components/ui/button';
 import { AdaptiveVideo } from './AdaptiveVideo';
 

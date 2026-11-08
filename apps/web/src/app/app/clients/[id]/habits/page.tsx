@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { listHabits } from '@kinetic/core';
+import { listHabits } from '@repsy/core';
 import { HabitHeatMap } from '@/components/habits/HabitHeatMap';
 import { withServerTenant } from '@/server/serverActor';
 import { loadClient } from '../data';

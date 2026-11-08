@@ -13,7 +13,7 @@ import {
   setClientLocation,
   setLocationArchived,
   setStaffLocation,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 
 /* ---------------------------------------------------------------- PRD A15 */

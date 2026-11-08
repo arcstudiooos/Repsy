@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useId, useState } from 'react';
-import type { TagColor, TagView } from '@kinetic/core';
+import type { TagColor, TagView } from '@repsy/core';
 import { TAG_DOT } from '@/components/tags/TagBadge';
 
 const TAG_COLORS = Object.keys(TAG_DOT) as TagColor[];

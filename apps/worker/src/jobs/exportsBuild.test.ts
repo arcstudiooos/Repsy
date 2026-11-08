@@ -2,9 +2,9 @@ import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { withSystem, type PrismaClient } from '@kinetic/db';
-import { createTestDb } from '@kinetic/db/testing';
-import { createFsStorage, type StoragePort } from '@kinetic/storage';
+import { withSystem, type PrismaClient } from '@repsy/db';
+import { createTestDb } from '@repsy/db/testing';
+import { createFsStorage, type StoragePort } from '@repsy/storage';
 import { buildExports, purgeExpiredExports } from './exportsBuild';
 
 let prisma: PrismaClient;
@@ -13,7 +13,7 @@ let dir: string;
 
 beforeAll(async () => {
   ({ prisma, drop } = await createTestDb());
-  dir = await mkdtemp(join(tmpdir(), 'kinetic-exports-'));
+  dir = await mkdtemp(join(tmpdir(), 'repsy-exports-'));
 });
 afterAll(async () => {
   await drop();

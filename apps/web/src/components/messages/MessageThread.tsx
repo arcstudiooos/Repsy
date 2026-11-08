@@ -2,10 +2,10 @@
 
 import { Check, CheckCheck } from 'lucide-react';
 import Link from 'next/link';
-import type { MessageAnchor } from '@kinetic/core';
+import type { MessageAnchor } from '@repsy/core';
 import { Fragment, useCallback, useEffect, useId, useRef, useState } from 'react';
-import { fillPlaceholders } from '@kinetic/core/reply-fill';
-import type { MessageView, SavedReplyView } from '@kinetic/core';
+import { fillPlaceholders } from '@repsy/core/reply-fill';
+import type { MessageView, SavedReplyView } from '@repsy/core';
 import { dayKey, formatWhen, LocalTime, useHydrated } from '@/components/time/LocalTime';
 import { Button } from '@/components/ui/button';
 import { fetchMessages, postMessage } from '@/lib/message-api';

@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import { DomainError, highestRole } from '@kinetic/core';
+import { DomainError, highestRole } from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 
 const schema = z.object({ orgId: z.uuid() });
 
 /**
- * Makes `orgId` the active organization by setting the signed `kinetic_org`
+ * Makes `orgId` the active organization by setting the signed `repsy_org`
  * cookie. Only an active membership qualifies; anything else is a 404 so org
  * existence never leaks.
  */

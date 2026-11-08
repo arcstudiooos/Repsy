@@ -1,4 +1,4 @@
-import { withTenant, type PrismaClient, type SystemTx } from '@kinetic/db';
+import { withTenant, type PrismaClient, type SystemTx } from '@repsy/db';
 import { SLUG } from '../leads/leads';
 import { listStorefrontPackages, type PackageView } from './packages';
 

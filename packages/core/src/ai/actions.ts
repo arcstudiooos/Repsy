@@ -1,4 +1,4 @@
-import { appendAudit, type TenantTx } from '@kinetic/db';
+import { appendAudit, type TenantTx } from '@repsy/db';
 import type { ActorContext } from '../authz/actor';
 import { assertCan, can } from '../authz/policies';
 import { assignProgram } from '../assignments/assign';

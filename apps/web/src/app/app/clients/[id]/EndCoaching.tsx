@@ -2,8 +2,8 @@
 
 import { useRouter } from 'next/navigation';
 import { useId, useState } from 'react';
-import { CHURN_LABEL, CHURN_REASONS, type ChurnReason } from '@kinetic/core/churn';
-import type { ClientView } from '@kinetic/core';
+import { CHURN_LABEL, CHURN_REASONS, type ChurnReason } from '@repsy/core/churn';
+import type { ClientView } from '@repsy/core';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

@@ -1,4 +1,4 @@
-import type { Guide } from '@kinetic/core';
+import type { Guide } from '@repsy/core';
 
 /**
  * PRD E5: guide lines drawn over an assessment photo so posture is easy to judge and repeat. Decorative: the photo's

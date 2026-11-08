@@ -1,4 +1,4 @@
-import type { Prisma, SystemTx, TenantTx } from '@kinetic/db';
+import type { Prisma, SystemTx, TenantTx } from '@repsy/db';
 
 /**
  * PRD J2: what automations react to. Written in the same transaction as the change that caused it, so an event exists

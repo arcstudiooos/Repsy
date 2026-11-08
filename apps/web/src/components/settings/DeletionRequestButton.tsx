@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { DeletionRequestView } from '@kinetic/core';
+import type { DeletionRequestView } from '@repsy/core';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

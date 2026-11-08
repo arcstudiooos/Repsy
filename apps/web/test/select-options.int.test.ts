@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createProgram, type ActorContext } from '@kinetic/core';
-import { withTenant, type PrismaClient } from '@kinetic/db';
-import { createTestDb } from '@kinetic/db/testing';
+import { createProgram, type ActorContext } from '@repsy/core';
+import { withTenant, type PrismaClient } from '@repsy/db';
+import { createTestDb } from '@repsy/db/testing';
 import { createAuth } from '@/lib/auth';
 import { collectPages, loadAllTemplates } from '@/server/selectOptions';
 import { seedTwoTenants, TEST_SECRET, type TwoTenants } from './harness/tenants';

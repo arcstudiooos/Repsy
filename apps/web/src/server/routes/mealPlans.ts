@@ -5,7 +5,7 @@ import {
   saveMealPlan,
   saveRecipe,
   setClientMealPlan,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 
 const macro = z.union([z.number(), z.null()]).optional();

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { EmailMessage, EmailPort } from '@kinetic/core';
+import type { EmailMessage, EmailPort } from '@repsy/core';
 
 /** Dev/test adapter: one JSON file per email, no network. */
 export class DevSinkEmailAdapter implements EmailPort {

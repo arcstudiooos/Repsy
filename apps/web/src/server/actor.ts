@@ -4,8 +4,8 @@ import {
   type ActorContext,
   type MembershipRef,
   type Role,
-} from '@kinetic/core';
-import { withSystem, type PrismaClient } from '@kinetic/db';
+} from '@repsy/core';
+import { withSystem, type PrismaClient } from '@repsy/db';
 import type { SessionUser } from '@/lib/auth';
 import { ORG_COOKIE, orgCookieSecret, readCookie, verifyOrgCookie } from './orgCookie';
 
@@ -27,7 +27,7 @@ export function loadMemberships(userId: string, prisma?: PrismaClient): Promise<
 }
 
 /**
- * Active org: signed `kinetic_org` cookie (bound to the user, re-checked against
+ * Active org: signed `repsy_org` cookie (bound to the user, re-checked against
  * live memberships), else the sole membership. A bad signature counts as absent;
  * a valid signature for an org the user does not belong to is a 404 so that
  * org existence never leaks.

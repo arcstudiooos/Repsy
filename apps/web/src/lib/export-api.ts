@@ -1,5 +1,5 @@
 /** Browser-side calls to the export API (same-origin, so the CSRF Origin check passes). */
-import type { ExportView } from '@kinetic/core';
+import type { ExportView } from '@repsy/core';
 import { call } from './checkin-api';
 import type { ApiCall } from './workout-api';
 

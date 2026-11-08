@@ -25,7 +25,7 @@ Sprint 0 (Foundations) was completed on branch `sprint-0` (2026-10-29). Every ta
 ## Before the first deploy (Render — currently deferred by the founder)
 
 - **`assertRuntimeRole` coverage:** check every non-system schema (including `pgboss`) plus `pg_has_role(current_user, owner, 'USAGE')`. A NULL `current_schema()` currently passes.
-- **Revoke migration-history DML:** revoke DML on `_prisma_migrations` from `kinetic_app`.
+- **Revoke migration-history DML:** revoke DML on `_prisma_migrations` from `repsy_app`.
 - **Better Auth IP:** align Better Auth's IP detection (`advanced.ipAddress`) with `clientIp` / `TRUSTED_PROXY_HOPS`.
 - **Deploy ordering:** web runs migrations in preDeploy before the worker starts new code. Sequence the deploys or document the order.
 - **Smoke credentials:** staging smoke uses `SMOKE_EMAIL` credentials, because the seed refuses `NODE_ENV=production`. The pilot has a single environment in `render.yaml`. Update plan S0-7 to match.

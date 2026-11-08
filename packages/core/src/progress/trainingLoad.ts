@@ -1,4 +1,4 @@
-import type { TenantTx } from '@kinetic/db';
+import type { TenantTx } from '@repsy/db';
 import type { ActorContext } from '../authz/actor';
 import { fromDbDate, isoWeekOf, toDbDate } from '../sessions/read';
 import { loadClientSwaps } from '../sessions/swaps';

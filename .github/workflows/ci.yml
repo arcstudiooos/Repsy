@@ -15,18 +15,18 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: kinetic
-          POSTGRES_PASSWORD: kinetic
-          POSTGRES_DB: kinetic_test
+          POSTGRES_USER: repsy
+          POSTGRES_PASSWORD: repsy
+          POSTGRES_DB: repsy_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U kinetic"
+          --health-cmd "pg_isready -U repsy"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
     env:
-      DATABASE_URL: postgres://kinetic:kinetic@localhost:5432/kinetic_test
+      DATABASE_URL: postgres://repsy:repsy@localhost:5432/repsy_test
       APP_BASE_URL: http://localhost:3000
       BETTER_AUTH_URL: http://localhost:3000
     steps:
@@ -43,17 +43,17 @@ jobs:
       - run: pnpm test
       # Migrations must reproduce prisma/schema.prisma exactly (replayed in a scratch database).
       - run: |
-          PGPASSWORD=kinetic psql -h localhost -U kinetic -d kinetic_test -c 'CREATE DATABASE kinetic_shadow'
-          pnpm --filter @kinetic/db db:diff
+          PGPASSWORD=repsy psql -h localhost -U repsy -d repsy_test -c 'CREATE DATABASE repsy_shadow'
+          pnpm --filter @repsy/db db:diff
         env:
-          SHADOW_DATABASE_URL: postgres://kinetic:kinetic@localhost:5432/kinetic_shadow
+          SHADOW_DATABASE_URL: postgres://repsy:repsy@localhost:5432/repsy_shadow
       # Production build. Placeholder-but-valid values: nothing here is a real secret,
       # and no provider is contacted at build time.
-      - run: pnpm --filter @kinetic/web build
+      - run: pnpm --filter @repsy/web build
         env:
           NODE_ENV: production
           BETTER_AUTH_SECRET: ci-build-placeholder-secret-0123456789abcdef
           NEXT_PUBLIC_SENTRY_DSN: ''
-      - run: pnpm --filter @kinetic/web exec playwright install --with-deps
+      - run: pnpm --filter @repsy/web exec playwright install --with-deps
       # Includes e2e/golden-path.spec.ts, which must pass on every PR from Sprint 2 on (D-009 rule 2).
       - run: pnpm test:e2e

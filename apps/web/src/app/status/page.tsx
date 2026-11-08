@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { connection } from 'next/server';
 import { Suspense } from 'react';
-import { readNotices, RELIABILITY_TARGETS } from '@kinetic/core';
+import { readNotices, RELIABILITY_TARGETS } from '@repsy/core';
 
 export const metadata: Metadata = {
   title: 'Service status | Repsy',

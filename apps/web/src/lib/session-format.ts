@@ -1,6 +1,6 @@
-import type { PreviousPerformance, RevisionValues, SessionState } from '@kinetic/core';
-import type { TrackingType } from '@kinetic/core/exercise-options';
-import { toDisplay, type Units } from '@kinetic/core/units';
+import type { PreviousPerformance, RevisionValues, SessionState } from '@repsy/core';
+import type { TrackingType } from '@repsy/core/exercise-options';
+import { toDisplay, type Units } from '@repsy/core/units';
 
 const DAY_MS = 86_400_000;
 const utcDate = (localDate: string) => new Date(`${localDate}T00:00:00Z`);

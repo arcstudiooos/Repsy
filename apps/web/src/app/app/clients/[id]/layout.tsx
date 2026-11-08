@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { getClientContext, isManager, listLocations, TRAINER_ROLES } from '@kinetic/core';
+import { getClientContext, isManager, listLocations, TRAINER_ROLES } from '@repsy/core';
 import Link from 'next/link';
 import { MessageSquare } from 'lucide-react';
 import { Breadcrumbs } from '@/components/nav/Breadcrumbs';

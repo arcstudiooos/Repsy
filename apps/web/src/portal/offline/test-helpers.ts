@@ -1,7 +1,7 @@
 /** Shared by the offline unit tests (not a test file itself). */
 import { IDBFactory } from 'fake-indexeddb';
 import { vi } from 'vitest';
-import type { SessionDetail } from '@kinetic/core';
+import type { SessionDetail } from '@repsy/core';
 import type { SetLogPayload } from '@/lib/workout-api';
 import { bindOwner, resetDbForTests, type DeviceOwner } from './db';
 

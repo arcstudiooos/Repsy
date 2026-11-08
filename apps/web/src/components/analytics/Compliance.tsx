@@ -1,4 +1,4 @@
-import type { AdherenceCounts, ComplianceWindow } from '@kinetic/core';
+import type { AdherenceCounts, ComplianceWindow } from '@repsy/core';
 
 export const WINDOW_LABEL: Record<ComplianceWindow, string> = {
   7: '7 days',

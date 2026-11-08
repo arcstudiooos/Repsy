@@ -13,7 +13,7 @@ import {
   todayInZone,
   listProgressPhotos,
   getTrainingLoad,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { AssessmentPhotos } from '@/components/assessments/AssessmentPhotos';
 import { AssignAssessment } from '@/components/assessments/AssignAssessment';
 import { MetricsPanel } from '@/components/progress/MetricsPanel';

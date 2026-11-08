@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useId, useState } from 'react';
-import type { SequenceTrigger, StepInput, StepType } from '@kinetic/core';
+import type { SequenceTrigger, StepInput, StepType } from '@repsy/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

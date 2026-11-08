@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import type { ExerciseHistoryEntry, ExerciseRecords } from '@kinetic/core';
-import { toDisplay, type Units } from '@kinetic/core/units';
+import type { ExerciseHistoryEntry, ExerciseRecords } from '@repsy/core';
+import { toDisplay, type Units } from '@repsy/core/units';
 import { EmptyState } from '@/components/states/EmptyState';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDate } from '@/app/app/clients/StatusBadge';

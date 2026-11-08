@@ -5,18 +5,18 @@ services:
     image: postgres:16.15
     restart: unless-stopped
     environment:
-      POSTGRES_USER: kinetic
-      POSTGRES_PASSWORD: kinetic
-      POSTGRES_DB: kinetic
+      POSTGRES_USER: repsy
+      POSTGRES_PASSWORD: repsy
+      POSTGRES_DB: repsy
     ports:
       - '127.0.0.1:54320:5432'
     volumes:
-      - kinetic-pg-data:/var/lib/postgresql/data
+      - repsy-pg-data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U kinetic -d kinetic']
+      test: ['CMD-SHELL', 'pg_isready -U repsy -d repsy']
       interval: 5s
       timeout: 5s
       retries: 10
 
 volumes:
-  kinetic-pg-data:
+  repsy-pg-data:

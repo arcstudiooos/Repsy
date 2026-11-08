@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { PrismaClient } from '@kinetic/db';
-import { createTestDb } from '@kinetic/db/testing';
+import type { PrismaClient } from '@repsy/db';
+import { createTestDb } from '@repsy/db/testing';
 import { createAuth, type Auth } from '@/lib/auth';
 import { createApiHandler } from '@/server/api';
 import { InMemoryRateLimiter } from '@/server/rateLimit';
@@ -13,7 +13,7 @@ import {
   type TwoTenants,
 } from './harness/tenants';
 import { linkClient, seedAssignment, type SeededAssignment } from './harness/sessions';
-import { withSystem } from '@kinetic/db';
+import { withSystem } from '@repsy/db';
 
 const ORIGIN = 'http://localhost:3000';
 const env = {

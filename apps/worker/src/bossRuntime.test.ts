@@ -2,15 +2,15 @@ import { randomUUID } from 'node:crypto';
 import { Writable } from 'node:stream';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createLogger } from '@kinetic/core';
-import { createPrismaClient } from '@kinetic/db';
-import { applyAppRoleSql, dropAppRole } from '@kinetic/db/testing/app-role';
+import { createLogger } from '@repsy/core';
+import { createPrismaClient } from '@repsy/db';
+import { applyAppRoleSql, dropAppRole } from '@repsy/db/testing/app-role';
 import { createBoss, migratePgBoss, pgBossSchemaIsPrecreated } from './boss';
 import { jobs } from './jobs/all';
 import { registerJobs } from './jobs/registry';
 
 const suffix = randomUUID().replace(/-/g, '').slice(0, 10);
-const role = `kinetic_app_${suffix}`;
+const role = `repsy_app_${suffix}`;
 const password = `pw-${suffix}`;
 const emptySchema = `pgboss_e_${suffix}`;
 const readySchema = `pgboss_r_${suffix}`;
@@ -29,7 +29,7 @@ beforeAll(async () => {
   url.username = role;
   url.password = password;
   appUrl = url.toString();
-  // Owner-only step, as `pnpm --filter @kinetic/worker pgboss:migrate` runs it.
+  // Owner-only step, as `pnpm --filter @repsy/worker pgboss:migrate` runs it.
   await migratePgBoss(baseUrl(), jobs, readySchema);
 });
 

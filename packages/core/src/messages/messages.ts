@@ -1,6 +1,6 @@
 import { anchorOf, resolveAnchor, type MessageAnchor } from './anchors';
 import { ownMedia } from '../media/media';
-import { appendAudit, wantsMessageEmail, type TenantTx } from '@kinetic/db';
+import { appendAudit, wantsMessageEmail, type TenantTx } from '@repsy/db';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { escapeLike } from '../clients/clients';

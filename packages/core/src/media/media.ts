@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { isCoachRole } from '../authz/actor';
-import { appendAudit, withSystem, type PrismaClient, type TenantTx } from '@kinetic/db';
+import { appendAudit, withSystem, type PrismaClient, type TenantTx } from '@repsy/db';
 import type { ActorContext } from '../authz/actor';
 import { DomainError } from '../errors';
 import { isUuid } from '../uuid';

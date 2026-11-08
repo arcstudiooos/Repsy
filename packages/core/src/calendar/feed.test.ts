@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { PrismaClient } from '@kinetic/db';
-import { createTestDb } from '@kinetic/db/testing';
+import type { PrismaClient } from '@repsy/db';
+import { createTestDb } from '@repsy/db/testing';
 import { newClientWorld, newOrg, NOW, runAs } from '../sessions/fixtures.test-helpers';
 import {
   calendarFeed,
@@ -27,13 +27,13 @@ describe('calendar feed (PRD L7)', () => {
     expect(await runAs(prisma, w.client, (tx) => hasCalendarFeed(tx, w.client))).toBe(true);
     const ics = await calendarFeed(prisma, token, {
       now: NOW,
-      appBaseUrl: 'https://kinetic.test',
+      appBaseUrl: 'https://repsy.test',
     });
     expect(ics).toMatch(/^BEGIN:VCALENDAR\r\n/);
     expect(ics!.match(/BEGIN:VEVENT/g)).toHaveLength(3);
     expect(ics).toContain('DTSTART;VALUE=DATE:20261104');
     expect(ics).toContain('DTEND;VALUE=DATE:20261105');
-    expect(ics).toContain('URL:https://kinetic.test/portal/workouts/');
+    expect(ics).toContain('URL:https://repsy.test/portal/workouts/');
     expect(ics!.endsWith('END:VCALENDAR\r\n')).toBe(true);
 
     // A new link replaces the old one; turning it off ends both.

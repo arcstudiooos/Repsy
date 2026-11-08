@@ -1,4 +1,4 @@
-import type { Prisma, SystemTx, TenantTx } from '@kinetic/db';
+import type { Prisma, SystemTx, TenantTx } from '@repsy/db';
 
 /** Addressed to an account (`toUserId`) or a raw address (`toEmail`, e.g. an invitee with no account yet): exactly one. */
 export type EmailRecipient =

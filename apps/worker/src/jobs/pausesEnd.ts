@@ -1,5 +1,5 @@
-import { endDuePause, todayInZone, type Logger } from '@kinetic/core';
-import { withSystem, withTenant, type PrismaClient } from '@kinetic/db';
+import { endDuePause, todayInZone, type Logger } from '@repsy/core';
+import { withSystem, withTenant, type PrismaClient } from '@repsy/db';
 import { defineJob, type CaptureException } from './registry';
 
 export const PAUSES_END = 'pauses.end';

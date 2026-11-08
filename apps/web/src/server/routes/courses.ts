@@ -1,11 +1,5 @@
 import { z } from 'zod';
-import {
-  archiveCourse,
-  endEnrollment,
-  enrollClient,
-  saveCourse,
-  setLessonDone,
-} from '@kinetic/core';
+import { archiveCourse, endEnrollment, enrollClient, saveCourse, setLessonDone } from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 
 const lesson = z.object({

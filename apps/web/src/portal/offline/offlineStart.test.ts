@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SessionDetail } from '@kinetic/core';
+import type { SessionDetail } from '@repsy/core';
 import { getAll } from './db';
 import { checkIntegrity, INTEGRITY_EVERY_MS, missingOnServer } from './integrity';
 import { enqueue, flush, syncState, type Mutation, type RejectedMutation } from './outbox';

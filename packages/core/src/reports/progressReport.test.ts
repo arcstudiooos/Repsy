@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { withSystem, type PrismaClient } from '@kinetic/db';
-import { createTestDb } from '@kinetic/db/testing';
+import { withSystem, type PrismaClient } from '@repsy/db';
+import { createTestDb } from '@repsy/db/testing';
 import { recordMetric } from '../progress/metrics';
 import { newClientWorld, newOrg, runAs } from '../sessions/fixtures.test-helpers';
 import { TINY_JPEG } from './tinyJpeg.test-helpers';

@@ -14,12 +14,12 @@ services:
     name: web
     runtime: node
     plan: starter # the free tier sleeps
-    buildCommand: pnpm install --frozen-lockfile --prod=false && pnpm --filter @kinetic/web build
+    buildCommand: pnpm install --frozen-lockfile --prod=false && pnpm --filter @repsy/web build
     # The owner URL is only for preDeployCommand; the running app must not see it.
-    startCommand: exec env -u MIGRATION_DATABASE_URL pnpm --filter @kinetic/web start
+    startCommand: exec env -u MIGRATION_DATABASE_URL pnpm --filter @repsy/web start
     # Owner-only steps: schema migrations and the pg-boss schema run as the database
-    # owner, never as the restricted runtime role (DATABASE_URL, kinetic_app).
-    preDeployCommand: DATABASE_URL="$MIGRATION_DATABASE_URL" pnpm --filter @kinetic/db exec prisma migrate deploy && pnpm --filter @kinetic/worker pgboss:migrate
+    # owner, never as the restricted runtime role (DATABASE_URL, repsy_app).
+    preDeployCommand: DATABASE_URL="$MIGRATION_DATABASE_URL" pnpm --filter @repsy/db exec prisma migrate deploy && pnpm --filter @repsy/worker pgboss:migrate
     healthCheckPath: /healthz
     autoDeploy: true
     envVars:
@@ -37,8 +37,8 @@ services:
     # Only web applies migrations: wait until this build's migrations are in the database, so the new worker never
     # runs against the old schema (go-live 2026-11-06). Uses the runtime role; times out (and keeps the old
     # worker) after 20 minutes.
-    preDeployCommand: pnpm --filter @kinetic/db db:wait-migrations
-    startCommand: pnpm --filter @kinetic/worker start
+    preDeployCommand: pnpm --filter @repsy/db db:wait-migrations
+    startCommand: pnpm --filter @repsy/worker start
     autoDeploy: true
     envVars:
       - fromGroup: kinetic-shared
@@ -53,7 +53,7 @@ envVarGroups:
       # One proxy hop (Render) appends to X-Forwarded-For.
       - key: TRUSTED_PROXY_HOPS
         value: '1'
-      # Runtime connection: the restricted `kinetic_app` role (packages/db/sql/app-role.sql).
+      # Runtime connection: the restricted `repsy_app` role (packages/db/sql/app-role.sql).
       - key: DATABASE_URL
         sync: false
       - key: BETTER_AUTH_SECRET

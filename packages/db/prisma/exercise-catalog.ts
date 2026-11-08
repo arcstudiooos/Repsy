@@ -4,7 +4,7 @@
  * from it, so reordering or renaming never changes an id. Never reuse a slot.
  *
  * Instructions are original, plain-text descriptions. No third-party text, no media.
- * After editing, regenerate the SQL block: `pnpm --filter @kinetic/db exercises:sql`
+ * After editing, regenerate the SQL block: `pnpm --filter @repsy/db exercises:sql`
  * (the catalog test fails when the migration and this list drift apart). Shipped
  * migrations are immutable, so later catalog changes go in a new migration.
  */

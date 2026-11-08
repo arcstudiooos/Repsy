@@ -1,4 +1,4 @@
-import type { TenantTx } from '@kinetic/db';
+import type { TenantTx } from '@repsy/db';
 import { DomainError } from '../errors';
 import { localDayBounds } from '../schedule/scheduleSlots';
 import { fromDbDate, toDbDate } from '../sessions/read';

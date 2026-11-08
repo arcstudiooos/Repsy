@@ -3,8 +3,8 @@
 import { useRouter } from 'next/navigation';
 import { useId, useState } from 'react';
 import { Pin } from 'lucide-react';
-import type { ClientContext } from '@kinetic/core';
-import { EQUIPMENT } from '@kinetic/core/exercise-options';
+import type { ClientContext } from '@repsy/core';
+import { EQUIPMENT } from '@repsy/core/exercise-options';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

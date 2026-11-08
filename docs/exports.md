@@ -32,7 +32,7 @@ notes.
 
 ```json
 {
-  "format": "kinetic-programs",
+  "format": "repsy-programs",
   "version": 1,
   "programs": [
     {
@@ -75,7 +75,7 @@ notes.
   `workSec`, `restSec` or `minutes` as the format needs). Labels such as A1 and A2 are derived from these.
 - The current version only; older versions stay in the app's version history.
 - **Re-import:** `weeks` (keeping `title`, `notes`, and per exercise `exerciseId`, `note`, `section`, `groupWithPrevious`, `block` and `sets`) is exactly the
-  body `POST /api/v1/programs/import` takes with a `title`, so a program can be recreated in any Kinetic workspace
+  body `POST /api/v1/programs/import` takes with a `title`, so a program can be recreated in any Repsy workspace
   that has the same exercises. `exerciseName` and `trackingType` let another tool map exercises by name.
 - Set fields by tracking type: `reps_load` uses `reps` (and optional `loadKg`, `rpe`); `duration` uses
   `durationSec`; `distance` uses `distanceM`. `restSec` and `tempo` are optional on any set.
@@ -84,7 +84,7 @@ notes.
 
 ```json
 {
-  "format": "kinetic-exercises",
+  "format": "repsy-exercises",
   "version": 1,
   "exercises": [
     {

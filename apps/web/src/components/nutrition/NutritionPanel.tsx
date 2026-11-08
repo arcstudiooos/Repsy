@@ -2,14 +2,14 @@
 
 import { useRouter } from 'next/navigation';
 import { useId, useState } from 'react';
-import type { NutritionView } from '@kinetic/core';
+import type { NutritionView } from '@repsy/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/toast';
 import { logDayApi, setTargetApi } from '@/lib/nutrition-api';
 
-// Local copy: client components never import runtime values from @kinetic/core (server code).
+// Local copy: client components never import runtime values from @repsy/core (server code).
 const FIELDS = [
   ['calories', 'Calories', 'kcal'],
   ['proteinG', 'Protein', 'g'],

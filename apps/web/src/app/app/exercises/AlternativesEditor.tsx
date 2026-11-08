@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { AlternativeView, ExerciseView } from '@kinetic/core';
+import type { AlternativeView, ExerciseView } from '@repsy/core';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

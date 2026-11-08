@@ -1,4 +1,4 @@
-import { withSystem, type PrismaClient } from '@kinetic/db';
+import { withSystem, type PrismaClient } from '@repsy/db';
 import type { Auth } from '@/lib/auth';
 import { ORG_COOKIE, signOrgCookie } from '@/server/orgCookie';
 
@@ -75,7 +75,7 @@ export async function seedTwoTenants(prisma: PrismaClient, auth: Auth): Promise<
   return { orgA: { id: orgA.id }, orgB: { id: orgB.id }, coachA, coachB, clientA, dualRoleUser };
 }
 
-/** Request headers for `user`, acting in `orgId` via a correctly signed `kinetic_org` cookie. */
+/** Request headers for `user`, acting in `orgId` via a correctly signed `repsy_org` cookie. */
 export function headersFor(user: SeededUser, orgId?: string): Headers {
   const cookie =
     orgId === undefined

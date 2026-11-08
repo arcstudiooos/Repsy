@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { PrismaClient } from '@kinetic/db';
-import { createTestDb } from '@kinetic/db/testing';
+import type { PrismaClient } from '@repsy/db';
+import { createTestDb } from '@repsy/db/testing';
 import { BENCH, newOrg, runAs } from '../sessions/fixtures.test-helpers';
 import { createProgramFromImport, matchExercises, nameScore } from './import';
 import { getProgram } from './read';

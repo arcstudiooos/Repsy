@@ -3,14 +3,14 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useId, useMemo, useState } from 'react';
-import type { ExerciseMatch, WeekInput } from '@kinetic/core';
+import type { ExerciseMatch, WeekInput } from '@repsy/core';
 import {
   parseProgram,
   type ImportUnits,
   type ParsedLine,
   type ParsedProgram,
-} from '@kinetic/core/program-text';
-import { toDisplay } from '@kinetic/core/units';
+} from '@repsy/core/program-text';
+import { toDisplay } from '@repsy/core/units';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { call } from '@/lib/checkin-api';
@@ -192,7 +192,7 @@ export function ImportProgram({ defaultUnits }: { defaultUnits: ImportUnits }) {
         <p className="mt-2 text-sm text-secondary">
           A spreadsheet works too: paste its rows with a header (Week, Day, Exercise, Sets, Reps,
           Load, RPE, Notes).{' '}
-          <a href="/templates/kinetic-program.csv" download className="text-accent underline">
+          <a href="/templates/repsy-program.csv" download className="text-accent underline">
             Download a sheet template
           </a>
           , or{' '}

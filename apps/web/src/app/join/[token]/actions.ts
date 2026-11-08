@@ -1,8 +1,8 @@
 'use server';
 
 import { headers } from 'next/headers';
-import { DomainError, joinWithLink, submitLead } from '@kinetic/core';
-import { prisma } from '@kinetic/db';
+import { DomainError, joinWithLink, submitLead } from '@repsy/core';
+import { prisma } from '@repsy/db';
 import { clientIp } from '@/server/clientIp';
 import { InMemoryRateLimiter } from '@/server/rateLimit';
 

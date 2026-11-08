@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useId, useState } from 'react';
-import type { ChallengeDetail, ChallengeMetric } from '@kinetic/core';
+import type { ChallengeDetail, ChallengeMetric } from '@repsy/core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/toast';

@@ -1,5 +1,5 @@
-import { DomainError, type PlatformAdmin } from '@kinetic/core';
-import { withSystem, type PrismaClient, type SystemTx } from '@kinetic/db';
+import { DomainError, type PlatformAdmin } from '@repsy/core';
+import { withSystem, type PrismaClient, type SystemTx } from '@repsy/db';
 
 /** The authenticated user as far as the admin gate cares (a `SessionUser`, or none when signed out). */
 export interface AdminCandidate {

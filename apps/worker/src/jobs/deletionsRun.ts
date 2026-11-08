@@ -3,8 +3,8 @@ import {
   ERASURE_TIMEOUT_MS,
   recordErasureFailure,
   type Logger,
-} from '@kinetic/core';
-import { withSystem, type PrismaClient } from '@kinetic/db';
+} from '@repsy/core';
+import { withSystem, type PrismaClient } from '@repsy/db';
 import { defineJob, type CaptureException } from './registry';
 
 export const DELETIONS_RUN = 'deletions.run';

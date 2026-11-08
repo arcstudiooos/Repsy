@@ -1,5 +1,5 @@
-import { queueCoachDigests, queueWeeklyBriefs, STAFF_ROLES, type Logger } from '@kinetic/core';
-import { withSystem, withTenant, type PrismaClient } from '@kinetic/db';
+import { queueCoachDigests, queueWeeklyBriefs, STAFF_ROLES, type Logger } from '@repsy/core';
+import { withSystem, withTenant, type PrismaClient } from '@repsy/db';
 import { defineJob, type CaptureException } from './registry';
 
 export const COACH_DIGEST = 'coach.digest';

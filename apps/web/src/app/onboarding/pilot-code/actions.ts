@@ -2,8 +2,8 @@
 
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { DomainError } from '@kinetic/core';
-import { prisma } from '@kinetic/db';
+import { DomainError } from '@repsy/core';
+import { prisma } from '@repsy/db';
 import { getSessionUser } from '@/lib/auth';
 import { CODE_INVALID, redeemPilotCode, validTimezone } from '@/lib/register-coach';
 import { analyticsHashSecret, defaultAnalytics, eventFor } from '@/server/analytics';
