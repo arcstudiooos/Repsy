@@ -28,6 +28,11 @@ const PROCESSORS: [string, string, string][] = [
     'United States',
   ],
   [
+    'Google (Tag Manager and Analytics)',
+    'Visitor statistics on the public home page, only if the visitor accepts cookies there',
+    'United States',
+  ],
+  [
     'PostHog',
     'Product analytics with pseudonymous ids, only if turned on',
     'United States or European Union',
@@ -245,9 +250,13 @@ const SECTIONS: LegalSection[] = [
     title: 'Cookies',
     body: (
       <p>
-        Repsy uses only the cookies it needs to work: your sign-in session, your chosen workspace
-        and your theme. We do not use advertising or cross-site tracking cookies. The portal can
-        store workouts on your device so you can log them offline.
+        Inside the app and the client portal, Repsy uses only the cookies it needs to work: your
+        sign-in session, your chosen workspace and your theme. The portal can store workouts on your
+        device so you can log them offline. On the public home page only, we ask before using Google
+        Analytics cookies (through Google Tag Manager) to count visits and see how visitors find us.
+        If you decline, or do not choose, Google is not loaded at all. You can change your choice
+        with &ldquo;Cookie settings&rdquo; at the bottom of the home page. We do not use advertising
+        cookies.
       </p>
     ),
   },

@@ -17,6 +17,7 @@ import {
   Workflow,
 } from 'lucide-react';
 import { RepsyMark } from '@/components/brand/Logo';
+import { CookieSettingsLink, MarketingAnalytics } from './MarketingAnalytics';
 import { cn } from '@/lib/utils';
 import {
   COMPARE_ROWS,
@@ -1146,7 +1147,10 @@ function Footer() {
         ))}
       </div>
       <Wordmark />
-      <p className="mk-container pb-8 text-[13px] text-secondary">© Repsy</p>
+      <p className="mk-container flex flex-wrap gap-4 pb-8 text-[13px] text-secondary">
+        <span>© Repsy</span>
+        <CookieSettingsLink className="underline-offset-4 hover:text-ink hover:underline" />
+      </p>
     </footer>
   );
 }
@@ -1163,6 +1167,7 @@ export function Landing() {
         Skip to content
       </a>
       <Grain />
+      <MarketingAnalytics />
       <MarketingNav />
       <main id="main">
         <Hero />

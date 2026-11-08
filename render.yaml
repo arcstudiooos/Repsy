@@ -73,6 +73,9 @@ envVarGroups:
         sync: false
       - key: OPENAI_MODEL
         sync: false
+      # D-023: Google Tag Manager on the public home page, after the visitor accepts cookies. Read at build time.
+      - key: NEXT_PUBLIC_GTM_ID
+        value: GTM-MBTTWJPC
       # PRD L11: Cloudflare Stream for adaptive demo video. Blank = MP4 plays as uploaded.
       - key: CLOUDFLARE_ACCOUNT_ID
         sync: false

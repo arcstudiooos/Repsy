@@ -750,3 +750,10 @@ The owner chose OpenAI instead of Anthropic for the assistant (I15, D-020).
 2. **Tools.** The tool schemas in `@kinetic/core` are sent as strict function tools. Tool arguments arrive as JSON text; text that does not parse goes back to the model as an error instead of running the tool.
 3. **Privacy.** OpenAI replaces Anthropic as the processor for assistant questions, in the privacy notice, the assistant page and `docs/security/subprocessors.md`. OpenAI does not train on API data by default.
 
+## D-023 — Google Tag Manager on the public home page, with consent (2026-11-08)
+
+1. The owner's GTM container (`NEXT_PUBLIC_GTM_ID`, `GTM-MBTTWJPC` in `render.yaml`) loads on the public home page only, from `MarketingAnalytics` in the landing page.
+2. It loads only after the visitor presses **Accept** on the cookie banner; Decline, or no choice, loads nothing from Google. The choice is kept in the browser (`localStorage`) and can be changed with "Cookie settings" in the home page footer.
+3. App, portal, admin and auth pages never load it: their URLs and titles carry client and workspace details. If a visitor who accepted moves from the home page into the app without a full page load, the page reloads so the script does not follow them.
+4. The privacy notice lists Google as a processor for home-page visitor statistics and describes the choice. Configure GA4 inside GTM; GTM tags that collect personal data, or advertising tags, need a new decision first.
+
