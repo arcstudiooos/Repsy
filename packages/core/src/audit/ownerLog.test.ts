@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { appendAudit, type PrismaClient } from '@kinetic/db';
-import { createTestDb } from '@kinetic/db/testing';
+import { appendAudit, type PrismaClient } from '@repsy/db';
+import { createTestDb } from '@repsy/db/testing';
 import { newClientWorld, newOrg, runAs } from '../sessions/fixtures.test-helpers';
 import { humanizeAction, listAuditLog } from './ownerLog';
 

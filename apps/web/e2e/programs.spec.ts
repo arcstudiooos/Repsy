@@ -171,7 +171,7 @@ test.describe('program builder', () => {
     await day.getByLabel('Day title').fill('Typed offline');
     await expect(page.getByText('Offline – draft kept on this device')).toBeVisible();
     const local = await page.evaluate(() =>
-      Object.keys(localStorage).filter((k) => k.startsWith('kinetic:program-draft:')),
+      Object.keys(localStorage).filter((k) => k.startsWith('repsy:program-draft:')),
     );
     expect(local).toHaveLength(1);
 

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { type PrismaClient } from '@kinetic/db';
-import { createTestDb } from '@kinetic/db/testing';
+import { type PrismaClient } from '@repsy/db';
+import { createTestDb } from '@repsy/db/testing';
 import { createHabit, logHabit } from '../habits/habits';
 import { saveGroup, setGroupMembers } from '../groups/groups';
 import { upsertSetLogs } from '../logging/upsertSetLogs';

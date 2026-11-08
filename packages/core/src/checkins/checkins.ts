@@ -1,7 +1,7 @@
 import { recordMetric } from '../progress/metrics';
 import { emitClientEvent } from '../automations/events';
 import { metricDef, metricFromCanonical } from '../progress/metric-catalog';
-import { appendAudit, Prisma, type TenantTx } from '@kinetic/db';
+import { appendAudit, Prisma, type TenantTx } from '@repsy/db';
 import { graceMs } from '../analytics/adherence';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';

@@ -1,12 +1,12 @@
 openapi: 3.1.0
 info:
-  title: Kinetic API
+  title: Repsy API
   version: v1
   description: |
-    The Kinetic web API (`/api/v1`). Every response uses the envelope `{ data, meta? }` or `{ error }`; errors are
+    The Repsy web API (`/api/v1`). Every response uses the envelope `{ data, meta? }` or `{ error }`; errors are
     `{ code, message, fieldErrors?, requestId }` with statuses 400/401/403/404/409/422/429/500. Mutations require a
     same-origin `Origin` header (CSRF). Every read and write is scoped to the active organization (signed
-    `kinetic_org` cookie); another organization's ids are 404. Generated from `apps/web/src/app/api/v1` (S5-5).
+    `repsy_org` cookie); another organization's ids are 404. Generated from `apps/web/src/app/api/v1` (S5-5).
 servers:
   - url: /api/v1
 security:

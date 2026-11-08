@@ -4,7 +4,7 @@ import {
   progressReportData,
   renderProgressReport,
   saveProgressReport,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 import { exportStorage } from './exports';
 

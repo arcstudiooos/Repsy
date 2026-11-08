@@ -1,6 +1,6 @@
 'use client';
 
-import type { AiActionView } from '@kinetic/core';
+import type { AiActionView } from '@repsy/core';
 import { Check, Loader2, X } from 'lucide-react';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';

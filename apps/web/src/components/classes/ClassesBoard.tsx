@@ -1,6 +1,6 @@
 'use client';
 
-import type { ClassView, RosterEntry } from '@kinetic/core';
+import type { ClassView, RosterEntry } from '@repsy/core';
 import { useRouter } from 'next/navigation';
 import { useId, useState, type FormEvent } from 'react';
 import { Badge } from '@/components/ui/badge';

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { DomainError, getGroup, isUuid } from '@kinetic/core';
+import { DomainError, getGroup, isUuid } from '@repsy/core';
 import { GroupView } from '@/components/groups/GroupView';
 import { withPortalTenant } from '@/server/serverActor';
 

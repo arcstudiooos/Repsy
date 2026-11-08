@@ -4,8 +4,8 @@
  * 2.5 s. It measures the queries the `/app` page runs (rendering adds little server time); run it with DATABASE_URL
  * pointing at a Postgres 16 like the tests.
  */
-import { withSystem, withTenant } from '@kinetic/db';
-import { createTestDb } from '@kinetic/db/testing';
+import { withSystem, withTenant } from '@repsy/db';
+import { createTestDb } from '@repsy/db/testing';
 import {
   countOpenFlags,
   countRecentMissed,

@@ -1,5 +1,5 @@
-import type { TrainingLoad as Load } from '@kinetic/core';
-import { toDisplay, type Units } from '@kinetic/core/units';
+import type { TrainingLoad as Load } from '@repsy/core';
+import { toDisplay, type Units } from '@repsy/core/units';
 
 const week = (iso: string) =>
   new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(

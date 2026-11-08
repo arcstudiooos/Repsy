@@ -4,8 +4,8 @@ import {
   onlinePaymentsAvailable,
   retryDueSubscription,
   type Logger,
-} from '@kinetic/core';
-import { withSystem, withTenant, type PrismaClient } from '@kinetic/db';
+} from '@repsy/core';
+import { withSystem, withTenant, type PrismaClient } from '@repsy/db';
 import { defineJob, type CaptureException } from './registry';
 
 export const BILLING_SWEEP = 'billing.sweep';

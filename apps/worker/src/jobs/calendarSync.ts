@@ -1,4 +1,4 @@
-import { googleOAuthConfig, syncPendingBookings } from '@kinetic/core';
+import { googleOAuthConfig, syncPendingBookings } from '@repsy/core';
 import { defineJob } from './registry';
 
 export const CALENDAR_SYNC = 'calendar.sync';

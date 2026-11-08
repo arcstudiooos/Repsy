@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useId, useState, type FormEvent } from 'react';
-import type { TagView } from '@kinetic/core';
+import type { TagView } from '@repsy/core';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

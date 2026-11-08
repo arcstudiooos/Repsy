@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { clearSsoSetting, getSsoSetting, saveSsoSetting } from '@kinetic/core';
+import { clearSsoSetting, getSsoSetting, saveSsoSetting } from '@repsy/core';
 import { auth } from '@/lib/auth';
 import type { RouteDef } from '../api';
 

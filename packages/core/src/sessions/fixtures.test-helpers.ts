@@ -3,7 +3,7 @@
  * Builds an org with a coach, active clients and a template assigned through the real `assignProgram`.
  */
 import { createHash } from 'node:crypto';
-import { withSystem, withTenant, type PrismaClient, type TenantTx } from '@kinetic/db';
+import { withSystem, withTenant, type PrismaClient, type TenantTx } from '@repsy/db';
 import { assignProgram } from '../assignments/assign';
 import type { ActorContext } from '../authz/actor';
 import { commitProgramVersion, type WeekInput } from '../programs/commit';

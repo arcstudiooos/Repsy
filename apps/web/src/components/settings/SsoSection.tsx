@@ -1,6 +1,6 @@
 'use client';
 
-import type { SsoSettingView } from '@kinetic/core';
+import type { SsoSettingView } from '@repsy/core';
 import { useId, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

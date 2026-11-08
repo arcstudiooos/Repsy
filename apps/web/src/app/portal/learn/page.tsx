@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { myCourses } from '@kinetic/core';
+import { myCourses } from '@repsy/core';
 import { EmptyState } from '@/components/states/EmptyState';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { withPortalTenant } from '@/server/serverActor';

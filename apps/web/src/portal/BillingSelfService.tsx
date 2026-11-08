@@ -1,5 +1,5 @@
 import { revalidatePath } from 'next/cache';
-import { cancelSubscription, formatMoneyMinor, getBillingSelfService } from '@kinetic/core';
+import { cancelSubscription, formatMoneyMinor, getBillingSelfService } from '@repsy/core';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';
 

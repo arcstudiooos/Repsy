@@ -17,7 +17,7 @@ import {
   listThreads,
   searchMessages,
   type MessageSearchHit,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { BroadcastDialog } from '@/components/messages/BroadcastDialog';

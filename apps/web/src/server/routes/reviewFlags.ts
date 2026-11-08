@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { createFollowup, listFlags, updateFlag, type FlagAction } from '@kinetic/core';
+import { createFollowup, listFlags, updateFlag, type FlagAction } from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 
 // Filters and rules are checked by core (fieldErrors `filter` / `rule`).

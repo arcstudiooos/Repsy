@@ -1,4 +1,4 @@
-import type { SessionState } from '@kinetic/core';
+import type { SessionState } from '@repsy/core';
 import {
   AlarmClock,
   Ban,

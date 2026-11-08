@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { withSystem, type PrismaClient } from '@kinetic/db';
-import { createTestDb } from '@kinetic/db/testing';
+import { withSystem, type PrismaClient } from '@repsy/db';
+import { createTestDb } from '@repsy/db/testing';
 import { createAuth, type Auth } from '@/lib/auth';
 import { createApiHandler, type RouteDef } from '@/server/api';
 import { InMemoryRateLimiter } from '@/server/rateLimit';

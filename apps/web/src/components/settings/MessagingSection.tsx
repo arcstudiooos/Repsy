@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useId, useState } from 'react';
-import type { ReplyExpectations, SavedReplyView } from '@kinetic/core';
+import type { ReplyExpectations, SavedReplyView } from '@repsy/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

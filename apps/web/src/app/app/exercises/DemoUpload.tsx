@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useId, useState } from 'react';
-import type { ExerciseView } from '@kinetic/core';
+import type { ExerciseView } from '@repsy/core';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/toast';
 import { call } from '@/lib/checkin-api';

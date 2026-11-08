@@ -1,22 +1,22 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
-import type { CheckinAnswers, CheckinQuestion, CheckinView } from '@kinetic/core';
+import type { CheckinAnswers, CheckinQuestion, CheckinView } from '@repsy/core';
 import {
   metricDef,
   metricFromCanonical,
   metricToCanonical,
   metricUnit,
-} from '@kinetic/core/metric-catalog';
-import { shownQuestionIds } from '@kinetic/core/checkin-conditions';
-import type { Units } from '@kinetic/core/units';
+} from '@repsy/core/metric-catalog';
+import { shownQuestionIds } from '@repsy/core/checkin-conditions';
+import type { Units } from '@repsy/core/units';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { saveCheckinDraft, submitCheckin } from '@/lib/checkin-api';
 import { CheckinAnswersList } from './CheckinAnswersList';
 
 const AUTOSAVE_MS = 800;
-const deviceKey = (id: string) => `kinetic:checkin-draft:${id}`;
+const deviceKey = (id: string) => `repsy:checkin-draft:${id}`;
 
 /** The device copy of an unsent draft (per-viewer convenience; the server draft is the durable one). */
 function readDevice(id: string): { answers: CheckinAnswers; at: number } | null {

@@ -1,5 +1,5 @@
 /** Browser-side calls to the session API (same-origin, so the CSRF Origin check passes). */
-import type { SessionDetail, SetLogAck } from '@kinetic/core';
+import type { SessionDetail, SetLogAck } from '@repsy/core';
 
 export type ApiCall<T> =
   | { ok: true; data: T }

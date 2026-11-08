@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { TenantTx } from '@kinetic/db';
+import type { TenantTx } from '@repsy/db';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';

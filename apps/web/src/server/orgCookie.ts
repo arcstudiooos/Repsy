@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
-export const ORG_COOKIE = 'kinetic_org';
+export const ORG_COOKIE = 'repsy_org';
 
 /**
  * Signing key: ORG_COOKIE_SECRET when set, otherwise BETTER_AUTH_SECRET (already

@@ -12,8 +12,8 @@ import {
   saveGoogleConnection,
   signCalendarState,
   verifyCalendarState,
-} from '@kinetic/core';
-import type { TenantTx } from '@kinetic/db';
+} from '@repsy/core';
+import type { TenantTx } from '@repsy/db';
 import { ApiResult, type RouteDef } from '../api';
 
 /** PRD K10: Google Calendar connection for the signed-in staff user. */

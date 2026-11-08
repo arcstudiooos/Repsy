@@ -1,4 +1,4 @@
-import { wantsMessageEmail, type Prisma, type TenantTx } from '@kinetic/db';
+import { wantsMessageEmail, type Prisma, type TenantTx } from '@repsy/db';
 import { clientsInPauseNow } from '../clients/pause';
 import { DomainError } from '../errors';
 import { resolveSlotWorkoutVersionId } from '../sessions/resolve';

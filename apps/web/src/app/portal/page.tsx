@@ -26,7 +26,7 @@ import {
   getClientConsistency,
   getPersonalRecords,
   getStreak,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { HabitChecklist } from '@/components/habits/HabitChecklist';
 import { PausedBanner } from '@/components/portal/PausedBanner';
 import { EmptyState } from '@/components/states/EmptyState';

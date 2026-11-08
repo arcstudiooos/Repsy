@@ -1,4 +1,4 @@
-import type { SetTarget } from '@kinetic/core';
+import type { SetTarget } from '@repsy/core';
 
 /** "5:30 /km" from seconds per kilometre. */
 export function formatPace(secPerKm: number): string {

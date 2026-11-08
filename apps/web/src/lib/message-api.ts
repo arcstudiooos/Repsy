@@ -1,5 +1,5 @@
 /** Browser-side calls to the messages API (same-origin, so the CSRF Origin check passes). */
-import type { MessageView } from '@kinetic/core';
+import type { MessageView } from '@repsy/core';
 import { call } from './checkin-api';
 import type { ApiCall } from './workout-api';
 

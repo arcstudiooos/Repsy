@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { withSystem, type PrismaClient } from '@kinetic/db';
+import { withSystem, type PrismaClient } from '@repsy/db';
 
 /** Barbell Bench Press (reps/load) and Plank (duration) from the global catalog. */
 export const BENCH = 'e0000000-0000-4000-8000-000000000001';

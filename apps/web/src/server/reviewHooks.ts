@@ -2,7 +2,7 @@ import {
   onCheckinSubmittedRules,
   type CheckinSubmittedHook,
   type MessageSentHook,
-} from '@kinetic/core';
+} from '@repsy/core';
 
 /**
  * Event-driven review flags written in the triggering transaction (D-005 review-queue timing): a sent check-in

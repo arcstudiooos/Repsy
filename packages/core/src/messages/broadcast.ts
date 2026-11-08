@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { appendAudit, type TenantTx } from '@kinetic/db';
+import { appendAudit, type TenantTx } from '@repsy/db';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { listCovers, listTeam, todayInZone, TRAINER_ROLES } from '@kinetic/core';
+import { listCovers, listTeam, todayInZone, TRAINER_ROLES } from '@repsy/core';
 import { withServerTenant } from '@/server/serverActor';
 import { CoverManager } from './CoverManager';
 import { TeamManager } from './TeamManager';

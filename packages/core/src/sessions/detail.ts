@@ -1,6 +1,6 @@
 import { readReadiness, type ReadinessView } from './readiness';
 import { formChecksFor, type FormCheckView } from './formChecks';
-import type { TenantTx } from '@kinetic/db';
+import type { TenantTx } from '@repsy/db';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';

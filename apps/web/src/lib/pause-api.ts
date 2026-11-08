@@ -1,5 +1,5 @@
 /** Browser-side calls to the client pause API (same-origin, so the CSRF Origin check passes). */
-import type { ClientView } from '@kinetic/core';
+import type { ClientView } from '@repsy/core';
 import type { ApiCall } from './workout-api';
 
 const OFFLINE = 'Could not reach the server. Check your connection and try again.';

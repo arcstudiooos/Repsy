@@ -1,5 +1,5 @@
 /** Browser-side calls to the review-flag API (same-origin, so the CSRF Origin check passes). */
-import type { FlagView } from '@kinetic/core';
+import type { FlagView } from '@repsy/core';
 import { call } from './checkin-api';
 
 const enc = encodeURIComponent;

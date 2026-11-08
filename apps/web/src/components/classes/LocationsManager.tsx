@@ -1,6 +1,6 @@
 'use client';
 
-import type { LocationStaffView, LocationView } from '@kinetic/core';
+import type { LocationStaffView, LocationView } from '@repsy/core';
 import { useRouter } from 'next/navigation';
 import { useId, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';

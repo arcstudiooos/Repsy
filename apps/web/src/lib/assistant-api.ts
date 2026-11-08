@@ -1,5 +1,5 @@
 /** Browser-side calls to the AI assistant API (PRD I15). Same-origin, so the CSRF Origin check passes. */
-import type { AiActionView, AiConversationView, AiMessageView } from '@kinetic/core';
+import type { AiActionView, AiConversationView, AiMessageView } from '@repsy/core';
 import { call } from './checkin-api';
 import type { ApiCall } from './workout-api';
 

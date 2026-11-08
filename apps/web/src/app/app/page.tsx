@@ -10,7 +10,7 @@ import {
   Trophy,
   UserPlus,
 } from 'lucide-react';
-import { prisma } from '@kinetic/db';
+import { prisma } from '@repsy/db';
 import {
   countOpenFlags,
   countRecentMissed,
@@ -26,7 +26,7 @@ import {
   listFlags,
   todayInZone,
   unreadMessageCount,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { ChartFrame } from '@/components/charts/ChartFrame';
 import { STATE_COLOR, STATE_LABEL, type SessionStateKey } from '@/components/charts/palette';
 import { ProgressRing } from '@/components/charts/ProgressRing';

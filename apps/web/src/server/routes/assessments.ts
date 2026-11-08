@@ -6,7 +6,7 @@ import {
   deleteAssessmentPhoto,
   endClientAssessment,
   saveAssessment,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 
 const schema = z.object({

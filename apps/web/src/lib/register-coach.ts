@@ -7,8 +7,8 @@ import {
   logger,
   signupCoach,
   type SignupCoachInput,
-} from '@kinetic/core';
-import { withSystem, type PrismaClient } from '@kinetic/db';
+} from '@repsy/core';
+import { withSystem, type PrismaClient } from '@repsy/db';
 import type { Auth } from './auth';
 import { hasCoachMembership } from './membership';
 import { clientIp } from '../server/clientIp';

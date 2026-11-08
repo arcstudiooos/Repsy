@@ -1,5 +1,5 @@
 // Pure constants (no server imports) so client components can import them via
-// `@kinetic/core/exercise-options` without pulling the database layer into the bundle.
+// `@repsy/core/exercise-options` without pulling the database layer into the bundle.
 
 export const TRACKING_TYPES = ['reps_load', 'duration', 'distance'] as const;
 export type TrackingType = (typeof TRACKING_TYPES)[number];

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { DomainError, getSessionDetail, todayInZone } from '@kinetic/core';
+import { DomainError, getSessionDetail, todayInZone } from '@repsy/core';
 import { LogEditor } from '@/components/workout/LogEditor';
 import { WorkoutLogger } from '@/components/workout/WorkoutLogger';
 import { editWindowOpen, formatLocalDateTime } from '@/lib/session-format';

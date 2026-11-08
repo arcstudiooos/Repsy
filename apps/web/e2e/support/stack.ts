@@ -21,7 +21,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import EmbeddedPostgres from 'embedded-postgres';
 import pg from 'pg';
-import { applyAppRoleSql } from '@kinetic/db/testing/app-role';
+import { applyAppRoleSql } from '@repsy/db/testing/app-role';
 import { STATE_FILE, type E2EState } from './state';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -32,8 +32,8 @@ const PROD = process.env.E2E_WEB_MODE === 'prod';
 const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? (PROD ? 3300 : 3200));
 // Not 8181 either: a locally running dev worker may hold it.
 const WORKER_PORT = Number(process.env.E2E_WORKER_PORT ?? 8281);
-const DB_NAME = 'kinetic_e2e';
-const APP_ROLE = 'kinetic_app_e2e';
+const DB_NAME = 'repsy_e2e';
+const APP_ROLE = 'repsy_app_e2e';
 
 function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -97,12 +97,12 @@ async function main(): Promise<void> {
 
   let baseUrl = process.env.DATABASE_URL;
   if (!baseUrl) {
-    const dir = await mkdtemp(join(tmpdir(), 'kinetic-e2e-pg-'));
+    const dir = await mkdtemp(join(tmpdir(), 'repsy-e2e-pg-'));
     const port = await freePort();
     const embedded = new EmbeddedPostgres({
       databaseDir: dir,
-      user: 'kinetic',
-      password: 'kinetic',
+      user: 'repsy',
+      password: 'repsy',
       port,
       persistent: false,
       initdbFlags: ['--encoding=UTF8', '--locale=C'],
@@ -115,7 +115,7 @@ async function main(): Promise<void> {
       await embedded.stop();
       await rm(dir, { recursive: true, force: true });
     });
-    baseUrl = `postgres://kinetic:kinetic@127.0.0.1:${port}/postgres`;
+    baseUrl = `postgres://repsy:repsy@127.0.0.1:${port}/postgres`;
   }
 
   const adminUrl = withDatabase(baseUrl, DB_NAME);
@@ -160,7 +160,7 @@ async function main(): Promise<void> {
   delete ownerEnv.DATABASE_URL;
   await run(process.execPath, [tsxCli, 'src/pgbossMigrate.ts'], workerDir, ownerEnv);
 
-  const emailDir = await mkdtemp(join(tmpdir(), 'kinetic-e2e-emails-'));
+  const emailDir = await mkdtemp(join(tmpdir(), 'repsy-e2e-emails-'));
   cleanups.push(() => rm(emailDir, { recursive: true, force: true }));
   const state: E2EState = { adminUrl, appUrl, emailDir };
   await mkdir(dirname(STATE_FILE), { recursive: true });
@@ -187,7 +187,7 @@ async function main(): Promise<void> {
     WORKER_PORT: String(WORKER_PORT),
     // Production shape: boot-time role guard on, owner credential absent, no root .env.
     ENFORCE_RUNTIME_ROLE: 'true',
-    KINETIC_DOTENV: 'off',
+    REPSY_DOTENV: 'off',
     // Own build dir: a concurrently running `next dev` keeps `.next` to itself.
     NEXT_DIST_DIR: PROD ? '.next-e2e-prod' : '.next-e2e',
     PORT: undefined,

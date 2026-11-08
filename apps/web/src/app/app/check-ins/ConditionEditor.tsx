@@ -1,11 +1,7 @@
 'use client';
 
-import type { CheckinQuestion } from '@kinetic/core';
-import {
-  OPS_FOR,
-  type ConditionOp,
-  type QuestionCondition,
-} from '@kinetic/core/checkin-conditions';
+import type { CheckinQuestion } from '@repsy/core';
+import { OPS_FOR, type ConditionOp, type QuestionCondition } from '@repsy/core/checkin-conditions';
 import { Input } from '@/components/ui/input';
 
 const SELECT =

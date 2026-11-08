@@ -6,7 +6,7 @@ import {
   parseAnchorRef,
   resolveAnchor,
   type MessageAnchor,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { MessageThread } from '@/components/messages/MessageThread';
 import { withPortalTenant } from '@/server/serverActor';
 

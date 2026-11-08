@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { withSystem, type PrismaClient } from '@kinetic/db';
-import { createTestDb } from '@kinetic/db/testing';
+import { withSystem, type PrismaClient } from '@repsy/db';
+import { createTestDb } from '@repsy/db/testing';
 import { getClientCalendar, rescheduleSession } from './calendar';
 import { grid, newClientWorld, newOrg, NOW, runAs, sessionsOf } from './fixtures.test-helpers';
 

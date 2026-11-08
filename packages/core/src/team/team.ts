@@ -1,4 +1,4 @@
-import { appendAudit, withSystem, type PrismaClient, type TenantTx } from '@kinetic/db';
+import { appendAudit, withSystem, type PrismaClient, type TenantTx } from '@repsy/db';
 import { isCoachRole, isManager, STAFF_ROLES, type ActorContext, type Role } from '../authz/actor';
 import { DomainError } from '../errors';
 import { hashInviteToken, newInviteToken } from '../invites/token';

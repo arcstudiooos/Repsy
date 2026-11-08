@@ -1,5 +1,5 @@
 {
-  "name": "@kinetic/core",
+  "name": "@repsy/core",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@date-fns/tz": "1.5.0",
-    "@kinetic/db": "workspace:*",
+    "@repsy/db": "workspace:*",
     "pino": "10.4.0",
     "zod": "4.6.7"
   },

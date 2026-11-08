@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { listGroups, TRAINER_ROLES } from '@kinetic/core';
+import { listGroups, TRAINER_ROLES } from '@repsy/core';
 import { NewGroupForm } from '@/components/groups/GroupForms';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { createNote, deleteNote, getClientTimeline, listNotes, updateNote } from '@kinetic/core';
+import { createNote, deleteNote, getClientTimeline, listNotes, updateNote } from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 
 /** `GET /api/v1/clients/:id/notes`: private notes, coach/owner only. */

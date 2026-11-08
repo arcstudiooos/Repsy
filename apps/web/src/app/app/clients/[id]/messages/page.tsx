@@ -10,7 +10,7 @@ import {
   resolveAnchor,
   todayInZone,
   type MessageAnchor,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { MessageThread } from '@/components/messages/MessageThread';
 import { ScheduledMessages } from '@/components/messages/ScheduledMessages';
 import { withServerTenant } from '@/server/serverActor';

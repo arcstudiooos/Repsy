@@ -7,8 +7,8 @@ import {
   progressSets,
   validRule,
   type ProgressionRule,
-} from '@kinetic/core/progression';
-import type { Units } from '@kinetic/core/units';
+} from '@repsy/core/progression';
+import type { Units } from '@repsy/core/units';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

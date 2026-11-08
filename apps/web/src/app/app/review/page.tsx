@@ -12,7 +12,7 @@ import {
   parseScope,
   scopeCoachIds,
   TRAINER_ROLES,
-} from '@kinetic/core';
+} from '@repsy/core';
 import {
   ExtraWorkoutBadge,
   LoggedByCoachBadge,

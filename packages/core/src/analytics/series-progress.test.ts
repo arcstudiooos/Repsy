@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { withSystem, type PrismaClient } from '@kinetic/db';
-import { createTestDb } from '@kinetic/db/testing';
+import { withSystem, type PrismaClient } from '@repsy/db';
+import { createTestDb } from '@repsy/db/testing';
 import { issueDueCheckins, setCheckinWeekday, submitCheckin } from '../checkins/checkins';
 import { upsertSetLogs } from '../logging/upsertSetLogs';
 import {

@@ -5,7 +5,7 @@ export async function register(): Promise<void> {
     // Fail fast at boot on unsafe production auth config.
     (await import('@/lib/auth-env')).assertAuthEnv(process.env);
     // Production (or ENFORCE_RUNTIME_ROLE=true): refuse a superuser/BYPASSRLS/owner DB role.
-    const { assertRuntimeRoleIfEnforced, prisma } = await import('@kinetic/db');
+    const { assertRuntimeRoleIfEnforced, prisma } = await import('@repsy/db');
     await assertRuntimeRoleIfEnforced(prisma);
     await import('../sentry.server.config');
   }

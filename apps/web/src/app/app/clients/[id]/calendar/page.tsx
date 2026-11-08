@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { DomainError, getClientCalendar } from '@kinetic/core';
+import { DomainError, getClientCalendar } from '@repsy/core';
 import { CalendarMonth } from '@/components/calendar/CalendarMonth';
 import { ErrorState } from '@/components/states/ErrorState';
 import { withServerTenant } from '@/server/serverActor';

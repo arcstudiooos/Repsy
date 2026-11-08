@@ -14,7 +14,7 @@ vi.mock('next/navigation', () => ({
 }));
 vi.mock('@/lib/auth', () => ({ auth: {}, getSessionUser }));
 vi.mock('@/lib/accept-invite', () => ({ acceptWithSignup }));
-vi.mock('@kinetic/db', () => ({ prisma: {} }));
+vi.mock('@repsy/db', () => ({ prisma: {} }));
 
 const form = () => {
   const data = new FormData();

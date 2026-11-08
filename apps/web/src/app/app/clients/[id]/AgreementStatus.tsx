@@ -1,4 +1,4 @@
-import type { AcceptanceView } from '@kinetic/core';
+import type { AcceptanceView } from '@repsy/core';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const when = (iso: string) =>

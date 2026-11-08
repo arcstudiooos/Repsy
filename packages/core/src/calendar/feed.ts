@@ -1,4 +1,4 @@
-import { appendAudit, withSystem, withTenant, type PrismaClient, type TenantTx } from '@kinetic/db';
+import { appendAudit, withSystem, withTenant, type PrismaClient, type TenantTx } from '@repsy/db';
 import type { ActorContext } from '../authz/actor';
 import { DomainError } from '../errors';
 import { hashInviteToken, newInviteToken } from '../invites/token';
@@ -134,7 +134,7 @@ export async function calendarFeed(
     const done = s.state === 'completed' ? ' (done)' : s.state === 'skipped' ? ' (skipped)' : '';
     lines.push(
       'BEGIN:VEVENT',
-      `UID:${s.id}@kinetic`,
+      `UID:${s.id}@repsy`,
       `DTSTAMP:${stamp(now)}`,
       `DTSTART;VALUE=DATE:${ymd(s.scheduledLocalDate)}`,
       `DTEND;VALUE=DATE:${ymd(nextDay(s.scheduledLocalDate))}`,

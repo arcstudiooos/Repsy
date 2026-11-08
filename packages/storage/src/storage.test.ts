@@ -11,7 +11,7 @@ afterAll(async () => {
 
 describe('fs storage', () => {
   it('puts, reads, deletes; missing keys read as null; unsafe keys are refused', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'kinetic-storage-'));
+    const dir = await mkdtemp(join(tmpdir(), 'repsy-storage-'));
     dirs.push(dir);
     const s = createFsStorage(dir);
     await s.put('exports/o/j/clients.csv', 'a,b\n', 'text/csv');

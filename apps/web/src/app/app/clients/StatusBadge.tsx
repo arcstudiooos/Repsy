@@ -1,4 +1,4 @@
-import type { ClientStatus, InviteStatus } from '@kinetic/core';
+import type { ClientStatus, InviteStatus } from '@repsy/core';
 import { CircleCheck, Mail, Pause, Archive } from 'lucide-react';
 import { Badge, type BadgeTone } from '@/components/ui/badge';
 

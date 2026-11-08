@@ -1,4 +1,4 @@
-import { emailOptIns, type TenantTx } from '@kinetic/db';
+import { emailOptIns, type TenantTx } from '@repsy/db';
 import { clientsInPauseNow } from '../clients/pause';
 import { enqueueEmail } from '../outbox';
 import { enqueuePush } from './push';

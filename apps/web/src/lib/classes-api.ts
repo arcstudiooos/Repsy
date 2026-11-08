@@ -1,5 +1,5 @@
 /** Browser-side calls to the locations (PRD A15) and group classes (PRD K12) API. */
-import type { RosterEntry } from '@kinetic/core';
+import type { RosterEntry } from '@repsy/core';
 import { call } from './checkin-api';
 import type { ApiCall } from './workout-api';
 

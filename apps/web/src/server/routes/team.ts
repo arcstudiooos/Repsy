@@ -7,7 +7,7 @@ import {
   listTeam,
   removeTeammate,
   revokeTeamInvite,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 
 /** `GET /api/v1/team` (PRD A10): the workspace's staff and, for owners and admins, open invites. */

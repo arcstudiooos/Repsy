@@ -10,7 +10,7 @@ Sprint 4 (Complete coaching workflow) covers Tasks 4.1–4.7 of `docs/superpower
 - **Unread-message flags** cite the oldest unread client message per thread; reading the thread resolves it on the next sweep.
 - **Snoozes to a date** end at 00:00 that day in the organization's time zone.
 - **Follow-ups** carry a coach-written title (≤ 200 characters) in their evidence; it is the coach's own text, never client content.
-- **Message email opt-in lookup.** Preference rows stay self-only under RLS; `app_message_email_opt_in(uuid)` (migration 000025) returns only that boolean, only for a member of the current organization, with the bypass scoped to the function call (`@kinetic/db` `wantsMessageEmail`).
+- **Message email opt-in lookup.** Preference rows stay self-only under RLS; `app_message_email_opt_in(uuid)` (migration 000025) returns only that boolean, only for a member of the current organization, with the bypass scoped to the function call (`@repsy/db` `wantsMessageEmail`).
 - **Idempotent message sends** use an optional `clientMessageId` (unique per thread), an addition to the target model.
 - **Late sync after the sweep** (Sprint 2 and 3 follow-up): set logs are accepted on `incomplete` sessions, and `missed` / `incomplete` sessions can still be started or finished. A late finish re-evaluates Rule 1.
 - **Missed sessions are locked** to their slot's version when the sweep marks them (Sprint 2 follow-up).

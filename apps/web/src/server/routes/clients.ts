@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { appendAudit } from '@kinetic/db';
-import { setLifecycleStage, transferClient } from '@kinetic/core';
+import { appendAudit } from '@repsy/db';
+import { setLifecycleStage, transferClient } from '@repsy/core';
 import {
   applyPause,
   createClient,
@@ -13,7 +13,7 @@ import {
   updateClient,
   updatePause,
   type ClientView,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 
 // Unknown keys (including any `organizationId`) are stripped by Zod and never read.

@@ -1,4 +1,4 @@
-import { emailOptIns, type TenantTx } from '@kinetic/db';
+import { emailOptIns, type TenantTx } from '@repsy/db';
 import { STAFF_ROLES } from '../authz/actor';
 import { enqueueEmail } from '../outbox';
 import { fromDbDate, isoWeekOf, toDbDate } from '../sessions/read';

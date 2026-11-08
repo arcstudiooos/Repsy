@@ -132,7 +132,7 @@ test.describe('client invite', () => {
         headers: { origin },
       });
       expect(res.status()).toBe(404);
-      expect(res.headers()['set-cookie'] ?? '').not.toContain('kinetic_org');
+      expect(res.headers()['set-cookie'] ?? '').not.toContain('repsy_org');
 
       await clientPage.goto('/portal');
       await expect(clientPage).toHaveURL(/\/portal$/);

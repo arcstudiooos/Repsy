@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { listResources } from '@kinetic/core';
+import { listResources } from '@repsy/core';
 import { ResourceList } from '@/components/resources/ResourceList';
 import { EmptyState } from '@/components/states/EmptyState';
 import { withPortalTenant } from '@/server/serverActor';

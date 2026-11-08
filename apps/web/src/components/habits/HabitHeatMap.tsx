@@ -1,5 +1,5 @@
-import type { HabitsView } from '@kinetic/core';
-import { habitHeatmap, HEATMAP_WEEKS } from '@kinetic/core/habit-heatmap';
+import type { HabitsView } from '@repsy/core';
+import { habitHeatmap, HEATMAP_WEEKS } from '@repsy/core/habit-heatmap';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 

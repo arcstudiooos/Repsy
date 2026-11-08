@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
-import { DomainError } from '@kinetic/core';
+import { DomainError } from '@repsy/core';
 import { Landing as MarketingHome } from '@/components/marketing/Landing';
 import { LoadingState } from '@/components/states/LoadingState';
 import { getSessionUser } from '@/lib/auth';

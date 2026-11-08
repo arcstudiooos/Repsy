@@ -1,6 +1,6 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { EmailPort } from '@kinetic/core';
+import type { EmailPort } from '@repsy/core';
 import { DevSinkEmailAdapter } from './devSinkEmail';
 import { ResendEmailAdapter } from './resendEmail';
 

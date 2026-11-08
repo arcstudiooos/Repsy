@@ -1,6 +1,6 @@
 /**
  * Personal-record helpers (PRD E6, D11). Pure: no database or server imports, so browser components can use them
- * (`@kinetic/core/pr`).
+ * (`@repsy/core/pr`).
  */
 
 /** Sets above this many reps are left out of the estimated 1RM: the formula is unreliable for long sets. */

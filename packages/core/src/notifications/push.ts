@@ -1,5 +1,5 @@
 import { createPrivateKey, sign } from 'node:crypto';
-import type { SystemTx, TenantTx } from '@kinetic/db';
+import type { SystemTx, TenantTx } from '@repsy/db';
 import type { ActorContext } from '../authz/actor';
 import { DomainError } from '../errors';
 
@@ -26,7 +26,7 @@ export function vapidKeys(
   const publicKey = env.VAPID_PUBLIC_KEY?.trim();
   const privateKey = env.VAPID_PRIVATE_KEY?.trim();
   if (!publicKey || !privateKey) return null;
-  const contact = env.SUPPORT_EMAIL?.trim() || 'support@kinetic.invalid';
+  const contact = env.SUPPORT_EMAIL?.trim() || 'hello@repsy.fit';
   return { publicKey, privateKey, subject: `mailto:${contact}` };
 }
 

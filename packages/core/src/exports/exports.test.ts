@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { withSystem, type PrismaClient } from '@kinetic/db';
-import { createTestDb } from '@kinetic/db/testing';
+import { withSystem, type PrismaClient } from '@repsy/db';
+import { createTestDb } from '@repsy/db/testing';
 import { DomainError } from '../errors';
 import { createNote } from '../history/notes';
 import { getMyThread, sendMessage } from '../messages/messages';
@@ -270,7 +270,7 @@ describe('portable programs export (PRD M3)', () => {
       version: number;
       programs: { title: string; kind: string; weeks: { days: unknown[] }[] }[];
     };
-    expect(doc).toMatchObject({ format: 'kinetic-programs', version: 1 });
+    expect(doc).toMatchObject({ format: 'repsy-programs', version: 1 });
     expect(doc.programs.map((p) => p.kind).sort()).toEqual(['client', 'template']);
     const template = doc.programs.find((p) => p.kind === 'template')!;
     const weeks = template.weeks.map((wk) => ({
@@ -290,7 +290,7 @@ describe('portable programs export (PRD M3)', () => {
     const copy = await runAs(prisma, w.coach, (tx) => getProgram(tx, w.coach, id));
     expect(copy.weekCount).toBe(template.weeks.length);
     expect(JSON.parse(csv['exercises.json']!)).toMatchObject({
-      format: 'kinetic-exercises',
+      format: 'repsy-exercises',
       exercises: [],
     });
   });

@@ -1,6 +1,6 @@
-import { appendAudit, findInviteByTokenHash, withSystem } from '@kinetic/db';
+import { appendAudit, findInviteByTokenHash, withSystem } from '@repsy/db';
 import { emitClientEventAsSystem } from '../automations/events';
-import type { PrismaClient, TenantTx } from '@kinetic/db';
+import type { PrismaClient, TenantTx } from '@repsy/db';
 import type { ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { cleanGoals } from '../clients/clients';

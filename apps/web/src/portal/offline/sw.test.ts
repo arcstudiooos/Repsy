@@ -11,7 +11,7 @@ const SOURCE = readFileSync(
   fileURLToPath(new URL('../../../public/sw.js', import.meta.url)),
   'utf8',
 );
-const ORIGIN = 'https://kinetic.test';
+const ORIGIN = 'https://repsy.test';
 const DAY_MS = 86_400_000;
 const WORKOUT = '/portal/workouts/11111111-1111-4111-8111-111111111111';
 const OLD_WORKOUT = '/portal/workouts/22222222-2222-4222-8222-222222222222';
@@ -93,32 +93,32 @@ describe('portal service worker caches (PR #2 review follow-up)', () => {
   it('names the asset cache after the build', async () => {
     const caches = memoryCaches();
     await loadWorker('abc123', caches).activate();
-    expect([...caches.stores.keys()]).toContain('kinetic-assets-abc123');
+    expect([...caches.stores.keys()]).toContain('repsy-assets-abc123');
   });
 
   it('a new build drops the old asset cache, keeping only what stored pages reference', async () => {
     const caches = memoryCaches();
     const now = new Date();
-    const pages = await caches.api.open('kinetic-pages-v1');
+    const pages = await caches.api.open('repsy-pages-v1');
     await pages.put(WORKOUT, page(['/_next/static/chunks/a.js'], now));
     await pages.put('/portal', page(['/_next/static/chunks/a.js'], now));
-    const old = await caches.api.open('kinetic-assets-build1');
+    const old = await caches.api.open('repsy-assets-build1');
     await old.put('/_next/static/chunks/a.js', new Response('a'));
     await old.put('/_next/static/chunks/unused.js', new Response('u'));
 
     await loadWorker('build2', caches).activate();
 
-    expect([...caches.stores.keys()].sort()).toEqual(['kinetic-assets-build2', 'kinetic-pages-v1']);
-    const current = caches.stores.get('kinetic-assets-build2')!;
+    expect([...caches.stores.keys()].sort()).toEqual(['repsy-assets-build2', 'repsy-pages-v1']);
+    const current = caches.stores.get('repsy-assets-build2')!;
     expect([...current.keys()]).toEqual([`${ORIGIN}/_next/static/chunks/a.js`]);
     // The stored workout still has its page and its script.
-    expect(caches.stores.get('kinetic-pages-v1')!.has(`${ORIGIN}${WORKOUT}`)).toBe(true);
+    expect(caches.stores.get('repsy-pages-v1')!.has(`${ORIGIN}${WORKOUT}`)).toBe(true);
   });
 
   it('drops workout pages stored more than 14 days ago, and the assets only they needed', async () => {
     const caches = memoryCaches();
     const now = Date.now();
-    const pages = await caches.api.open('kinetic-pages-v1');
+    const pages = await caches.api.open('repsy-pages-v1');
     await pages.put(WORKOUT, page(['/_next/static/chunks/a.js'], new Date(now - DAY_MS)));
     await pages.put(
       OLD_WORKOUT,
@@ -126,33 +126,33 @@ describe('portal service worker caches (PR #2 review follow-up)', () => {
     );
     // The portal home is kept whatever its age.
     await pages.put('/portal', page([], new Date(now - 30 * DAY_MS)));
-    const old = await caches.api.open('kinetic-assets-build1');
+    const old = await caches.api.open('repsy-assets-build1');
     await old.put('/_next/static/chunks/a.js', new Response('a'));
     await old.put('/_next/static/chunks/old.js', new Response('o'));
 
     await loadWorker('build2', caches).activate();
 
-    expect([...caches.stores.get('kinetic-pages-v1')!.keys()].sort()).toEqual([
+    expect([...caches.stores.get('repsy-pages-v1')!.keys()].sort()).toEqual([
       `${ORIGIN}/portal`,
       `${ORIGIN}${WORKOUT}`,
     ]);
-    expect([...caches.stores.get('kinetic-assets-build2')!.keys()]).toEqual([
+    expect([...caches.stores.get('repsy-assets-build2')!.keys()]).toEqual([
       `${ORIGIN}/_next/static/chunks/a.js`,
     ]);
   });
 
   it('the same build activating again keeps its asset cache', async () => {
     const caches = memoryCaches();
-    const assets = await caches.api.open('kinetic-assets-build2');
+    const assets = await caches.api.open('repsy-assets-build2');
     await assets.put('/_next/static/chunks/b.js', new Response('b'));
     await loadWorker('build2', caches).activate();
-    expect(caches.stores.get('kinetic-assets-build2')!.size).toBe(1);
+    expect(caches.stores.get('repsy-assets-build2')!.size).toBe(1);
   });
 
   it('an unsafe build id is cleaned before it names a cache', async () => {
     const caches = memoryCaches();
     await loadWorker('a%2F..%20b', caches).activate();
-    expect([...caches.stores.keys()]).toContain('kinetic-assets-ab');
+    expect([...caches.stores.keys()]).toContain('repsy-assets-ab');
   });
 
   it('keeps the next workouts for offline use, fetching again only pages older than an hour (PRD D4)', async () => {
@@ -162,7 +162,7 @@ describe('portal service worker caches (PR #2 review follow-up)', () => {
       fetched.push(new URL(url, ORIGIN).pathname);
       return page([], new Date());
     }) as unknown as typeof fetch;
-    const pages = await caches.api.open('kinetic-pages-v1');
+    const pages = await caches.api.open('repsy-pages-v1');
     await pages.put(OLD_WORKOUT, page([], new Date()));
     const worker = loadWorker('b', caches, fakeFetch);
     await worker.message({
@@ -170,6 +170,6 @@ describe('portal service worker caches (PR #2 review follow-up)', () => {
       sessionIds: [WORKOUT.split('/').pop(), OLD_WORKOUT.split('/').pop(), 'not-a-session'],
     });
     expect(fetched.sort()).toEqual(['/portal', WORKOUT]);
-    expect(caches.stores.get('kinetic-pages-v1')!.has(`${ORIGIN}${WORKOUT}`)).toBe(true);
+    expect(caches.stores.get('repsy-pages-v1')!.has(`${ORIGIN}${WORKOUT}`)).toBe(true);
   });
 });

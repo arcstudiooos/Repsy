@@ -1,9 +1,9 @@
 import OpenAI from 'openai';
-import { ACTION_TOOLS, ASSISTANT_TOOLS, DomainError, type ActionToolResult } from '@kinetic/core';
+import { ACTION_TOOLS, ASSISTANT_TOOLS, DomainError, type ActionToolResult } from '@repsy/core';
 
 /**
  * PRD I15: one assistant turn with an OpenAI model (D-021). The model reads the coach's workspace only through
- * the read-only tools in `@kinetic/core` (`runTool` runs each inside its own tenant transaction, so no
+ * the read-only tools in `@repsy/core` (`runTool` runs each inside its own tenant transaction, so no
  * transaction is held open while the model thinks). When the workspace allows it, the model can also call the
  * `propose_*` tools: they only store a proposal, and nothing changes until the coach confirms it on screen.
  */

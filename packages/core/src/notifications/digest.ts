@@ -1,4 +1,4 @@
-import { emailOptIns, type TenantTx } from '@kinetic/db';
+import { emailOptIns, type TenantTx } from '@repsy/db';
 import { STAFF_ROLES, type Role } from '../authz/actor';
 import type { ActorContext } from '../authz/actor';
 import { listCheckinsAwaitingReview } from '../checkins/checkins';

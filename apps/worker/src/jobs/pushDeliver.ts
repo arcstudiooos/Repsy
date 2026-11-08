@@ -1,5 +1,5 @@
-import { deliverPushes } from '@kinetic/core';
-import { withSystem } from '@kinetic/db';
+import { deliverPushes } from '@repsy/core';
+import { withSystem } from '@repsy/db';
 import { defineJob } from './registry';
 
 export const PUSH_DELIVER = 'push.deliver';

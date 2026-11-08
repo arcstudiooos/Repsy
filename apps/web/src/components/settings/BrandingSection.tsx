@@ -2,8 +2,8 @@
 
 import { useRouter } from 'next/navigation';
 import { useId, useState, type FormEvent } from 'react';
-import type { Branding } from '@kinetic/core';
-import { accentProblem, contrastRatio, HEX } from '@kinetic/core/brand-color';
+import type { Branding } from '@repsy/core';
+import { accentProblem, contrastRatio, HEX } from '@repsy/core/brand-color';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

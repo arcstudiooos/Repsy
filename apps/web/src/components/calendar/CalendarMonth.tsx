@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useId, useState, type DragEvent, type FormEvent } from 'react';
-import type { CalendarWorkout, ClientCalendar } from '@kinetic/core';
+import type { CalendarWorkout, ClientCalendar } from '@repsy/core';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

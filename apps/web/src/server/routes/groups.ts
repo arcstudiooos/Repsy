@@ -10,7 +10,7 @@ import {
   reportGroupItem,
   saveGroup,
   setGroupMembers,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 
 const groupSchema = z.object({

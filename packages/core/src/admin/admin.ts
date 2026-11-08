@@ -1,4 +1,4 @@
-import { appendAudit, type SystemTx } from '@kinetic/db';
+import { appendAudit, type SystemTx } from '@repsy/db';
 import { DomainError } from '../errors';
 import { generatePilotCode } from '../identity/pilotCode';
 import { isUuid } from '../uuid';

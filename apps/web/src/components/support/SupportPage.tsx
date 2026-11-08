@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Suspense } from 'react';
-import { SUPPORT_RESPONSE_TARGET } from '@kinetic/core';
+import { SUPPORT_RESPONSE_TARGET } from '@repsy/core';
 import { SupportForm } from './SupportForm';
 
 /** PRD M13: help, the status page and the changelog in one place. */

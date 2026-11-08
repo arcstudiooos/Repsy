@@ -1,4 +1,4 @@
-import { advancePhases } from '@kinetic/core';
+import { advancePhases } from '@repsy/core';
 import { defineJob } from './registry';
 
 export const PHASES_ADVANCE = 'phases.advance';

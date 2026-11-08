@@ -1,5 +1,5 @@
 /** Browser-side calls to the notes API (same-origin, so the CSRF Origin check passes). */
-import type { ClientContext, NoteView } from '@kinetic/core';
+import type { ClientContext, NoteView } from '@repsy/core';
 import { call } from './checkin-api';
 import type { ApiCall } from './workout-api';
 

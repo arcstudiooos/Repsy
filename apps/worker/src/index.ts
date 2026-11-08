@@ -1,5 +1,5 @@
-import { logger } from '@kinetic/core';
-import { assertRuntimeRoleIfEnforced, prisma } from '@kinetic/db';
+import { logger } from '@repsy/core';
+import { assertRuntimeRoleIfEnforced, prisma } from '@repsy/db';
 import { createEmailPort } from './adapters';
 import { createAnalytics } from './adapters/analytics';
 import { createBoss, pgBossSchemaIsPrecreated } from './boss';

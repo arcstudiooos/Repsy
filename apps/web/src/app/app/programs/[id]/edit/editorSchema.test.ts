@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { ProgramDetail } from '@kinetic/core';
-import type { Units } from '@kinetic/core/units';
+import type { ProgramDetail } from '@repsy/core';
+import type { Units } from '@repsy/core/units';
 import {
   buildEditorSchema,
   fromDraftPayload,

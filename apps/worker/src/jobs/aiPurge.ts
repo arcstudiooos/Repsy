@@ -1,4 +1,4 @@
-import { purgeOldAiConversations } from '@kinetic/core';
+import { purgeOldAiConversations } from '@repsy/core';
 import { defineJob } from './registry';
 
 export const AI_PURGE = 'ai.purge';

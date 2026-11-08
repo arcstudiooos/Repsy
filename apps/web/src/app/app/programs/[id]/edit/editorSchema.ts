@@ -1,9 +1,9 @@
 import { z } from 'zod';
-import type { ProgramDetail, SetTarget, WeekInput } from '@kinetic/core';
-import { TRACKING_TYPES, type TrackingType } from '@kinetic/core/exercise-options';
-import { WORKOUT_SECTIONS } from '@kinetic/core/workout-sections';
-import { BLOCK_FORMATS, type BlockSpec } from '@kinetic/core/workout-blocks';
-import { fromDisplay, toDisplay, type Units } from '@kinetic/core/units';
+import type { ProgramDetail, SetTarget, WeekInput } from '@repsy/core';
+import { TRACKING_TYPES, type TrackingType } from '@repsy/core/exercise-options';
+import { WORKOUT_SECTIONS } from '@repsy/core/workout-sections';
+import { BLOCK_FORMATS, type BlockSpec } from '@repsy/core/workout-blocks';
+import { fromDisplay, toDisplay, type Units } from '@repsy/core/units';
 
 /** Mirrors the server limits in packages/core/src/programs (commit.ts, targets.ts). */
 const MAX_WEEKS = 104;

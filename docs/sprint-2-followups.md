@@ -53,7 +53,7 @@ Sprint 2 (First end-to-end loop) was completed on branch `sprint-2` (2026-10-30)
 
 - `next dev` for the E2E stack can get stuck in a Fast Refresh reload loop when `apps/web/.next-e2e` is left over from an earlier, interrupted run (and after `next typegen` has written `.next`). Clear `apps/web/.next` and `apps/web/.next-e2e` before a local `pnpm test:e2e`; CI starts clean. Consider having `e2e/support/stack.ts` remove `.next-e2e` on start.
 - The first spec of a cold run can time out while Turbopack compiles `/signup`; CI's `retries: 2` absorbs it. Journey specs set a 180 s timeout (240 s for the golden path).
-- Client components must not value-import from the `@kinetic/core` barrel (it pulls in Prisma and `pg`); use the `@kinetic/core/units` and `@kinetic/core/exercise-options` subpaths. A dev server only fails at runtime on that page; `next build` fails outright.
+- Client components must not value-import from the `@repsy/core` barrel (it pulls in Prisma and `pg`); use the `@repsy/core/units` and `@repsy/core/exercise-options` subpaths. A dev server only fails at runtime on that page; `next build` fails outright.
 - Where the embedded Postgres can't run `initdb` (for example as root in a container), point `DATABASE_URL` at any Postgres 16 with a superuser, as CI does.
 
 ## Before the first deploy

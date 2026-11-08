@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { AUDIT_CATEGORIES, isManager, listAuditLog, type AuditCategory } from '@kinetic/core';
+import { AUDIT_CATEGORIES, isManager, listAuditLog, type AuditCategory } from '@repsy/core';
 import { EmptyState } from '@/components/states/EmptyState';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';

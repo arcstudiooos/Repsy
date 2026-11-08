@@ -76,10 +76,10 @@ async function startToday(portal: Page): Promise<string> {
     .toBe(true);
   // The asset cache is named after this build (the worker is registered as /sw.js?build=<id>), not a fixed version.
   const assetCaches = (await portal.evaluate(() => caches.keys())).filter((n) =>
-    n.startsWith('kinetic-assets-'),
+    n.startsWith('repsy-assets-'),
   );
   expect(assetCaches).toHaveLength(1);
-  expect(assetCaches[0]).not.toMatch(/^kinetic-assets-(v1|dev)$/);
+  expect(assetCaches[0]).not.toMatch(/^repsy-assets-(v1|dev)$/);
   return sessionId;
 }
 
@@ -269,7 +269,7 @@ test.describe('offline continuity (S3-3)', () => {
         return { pages, dbs };
       }, `/portal/workouts/${sessionId}`);
       expect(left.pages).toEqual([]);
-      expect(left.dbs).not.toContain('kinetic-offline');
+      expect(left.dbs).not.toContain('repsy-offline');
 
       // A signed-out visitor, offline, opening the workout (e.g. from history) gets nothing of it.
       await client.context.setOffline(true);
@@ -405,7 +405,7 @@ test.describe('offline continuity (S3-3)', () => {
             portal.evaluate(
               (id) =>
                 new Promise<number>((resolve) => {
-                  const req = indexedDB.open('kinetic-offline');
+                  const req = indexedDB.open('repsy-offline');
                   req.onsuccess = () => {
                     const tx = req.result.transaction('drafts', 'readonly');
                     const n = tx.objectStore('drafts').index('sessionId').count(id);

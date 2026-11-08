@@ -16,7 +16,7 @@ import {
   parseScope,
   scopeCoachIds,
   TRAINER_ROLES,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { LayoutGrid, List, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ChipRow, FilterChip } from '@/components/ui/filter-chip';

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { getAssignmentSummary, listPhases } from '@kinetic/core';
+import { getAssignmentSummary, listPhases } from '@repsy/core';
 import { EmptyState } from '@/components/states/EmptyState';
 import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +11,7 @@ import { formatDate } from '../../StatusBadge';
 import { loadClient } from '../data';
 import { AssignDialog } from './AssignDialog';
 import { PhaseQueue } from './PhaseQueue';
-import { bucketOf } from '@kinetic/core';
+import { bucketOf } from '@repsy/core';
 import { STATE_COLOR, STATE_LABEL } from '@/components/charts/palette';
 import { Section } from '@/components/ui/section';
 

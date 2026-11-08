@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { finishBodySchema, logsBodySchema } from '@kinetic/core';
+import { finishBodySchema, logsBodySchema } from '@repsy/core';
 import {
   sessionCompleteRoute,
   sessionSkipRoute,

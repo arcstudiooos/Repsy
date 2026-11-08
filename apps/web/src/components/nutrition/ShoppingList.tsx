@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { ShoppingItem } from '@kinetic/core';
+import type { ShoppingItem } from '@repsy/core';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const fmt = (i: ShoppingItem) =>

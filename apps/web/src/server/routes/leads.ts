@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { convertLead, updateLead, updatePublicPage } from '@kinetic/core';
+import { convertLead, updateLead, updatePublicPage } from '@repsy/core';
 import type { RouteDef } from '../api';
 
 const leadSchema = z.object({

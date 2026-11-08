@@ -244,7 +244,7 @@ model Organization {
   weightChangeBandPct Int?   @map("weight_change_band_pct")
   /// PRD D14: clients may move an unstarted workout to another day in the same week. Off by default.
   clientsCanMoveWorkouts Boolean @default(false) @map("clients_can_move_workouts")
-  /// PRD A6: accent colour (#rrggbb, AA against white) and logo (https) shown to clients; null = Kinetic's.
+  /// PRD A6: accent colour (#rrggbb, AA against white) and logo (https) shown to clients; null = Repsy's.
   brandAccent       String?  @map("brand_accent")
   logoUrl           String?  @map("logo_url")
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)

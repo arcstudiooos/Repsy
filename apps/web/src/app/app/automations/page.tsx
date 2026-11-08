@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { listSequences, SEQUENCE_TEMPLATES } from '@kinetic/core';
+import { listSequences, SEQUENCE_TEMPLATES } from '@repsy/core';
 import { EmptyState } from '@/components/states/EmptyState';
 import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

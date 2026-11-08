@@ -9,7 +9,7 @@
  * Whose pages (PR #2 review C1): stored pages are one signed-in user's, keyed by path. The worker can't check a
  * session offline (the cookie is HttpOnly and the server is unreachable), so the pages are bound to the user by the
  * app instead: a cached page is only ever served when the network fails (online, every navigation goes to the
- * server, which redirects a signed-out visitor); sign-out deletes the kinetic-pages-* caches with the IndexedDB
+ * server, which redirects a signed-out visitor); sign-out deletes the repsy-pages-* caches with the IndexedDB
  * store (SignOutButton, wipeDevice); and every portal load binds the store to the signed-in user, deleting both when
  * another user's data is found (bindOwner). Build assets hold no user data and are kept. A session that ended without
  * this device signing out (expiry, a password reset, "sign out all other devices") is caught the next time the
@@ -19,12 +19,12 @@
 // Stored pages are the user's and outlive a deploy (an in-progress workout must still open offline). Build assets are
 // per build: the app registers this worker as /sw.js?build=<id>, so each deploy installs a new worker with its own
 // asset cache, and activation drops the old ones (PR #2 review follow-up: they grew with every deploy).
-const PAGES = 'kinetic-pages-v1';
+const PAGES = 'repsy-pages-v1';
 const BUILD = (new URL(self.location.href).searchParams.get('build') || 'dev')
   .replace(/[^A-Za-z0-9_-]/g, '')
   .slice(0, 40);
-const ASSETS = `kinetic-assets-${BUILD}`;
-const ASSET_PREFIX = 'kinetic-assets-';
+const ASSETS = `repsy-assets-${BUILD}`;
+const ASSET_PREFIX = 'repsy-assets-';
 // A stored workout page not opened again in this long (an abandoned session) is dropped on the next activation.
 const STALE_PAGE_MS = 14 * 24 * 60 * 60 * 1000;
 
@@ -32,8 +32,8 @@ self.addEventListener('install', () => self.skipWaiting());
 
 /**
  * On activation: drops workout pages stored longer ago than STALE_PAGE_MS; carries over from older asset caches only
- * what the remaining stored pages reference (so they still hydrate offline), then deletes those caches and any other
- * stale kinetic-* cache.
+ * what the remaining stored pages reference (so they still hydrate offline), then deletes those caches and every other
+ * cache on this origin (this worker owns them all; this also clears caches named before the Repsy rename).
  */
 async function tidyCaches() {
   const pages = await caches.open(PAGES);
@@ -52,7 +52,7 @@ async function tidyCaches() {
   }
   const assets = await caches.open(ASSETS);
   for (const key of await caches.keys()) {
-    if (!key.startsWith('kinetic-') || key === PAGES || key === ASSETS) continue;
+    if (key === PAGES || key === ASSETS) continue;
     if (key.startsWith(ASSET_PREFIX)) {
       const old = await caches.open(key);
       for (const req of await old.keys()) {
@@ -211,7 +211,7 @@ self.addEventListener('fetch', (event) => {
             // Signed out elsewhere, or the session ended: the pages kept for it go.
             pagesEpoch += 1;
             for (const key of await caches.keys()) {
-              if (key.startsWith('kinetic-pages-')) await caches.delete(key);
+              if (key.startsWith('repsy-pages-')) await caches.delete(key);
             }
           } else if (res.ok && (await wanted(path))) {
             await (await caches.open(PAGES)).put(path, res.clone());
@@ -232,7 +232,7 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification('Repsy', {
       body: 'You have something new. Open Repsy to see it.',
-      tag: 'kinetic',
+      tag: 'repsy',
       icon: '/icon-192.png',
     }),
   );

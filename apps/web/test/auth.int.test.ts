@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
-import { withSystem, type PrismaClient } from '@kinetic/db';
-import { createTestDb } from '@kinetic/db/testing';
+import { withSystem, type PrismaClient } from '@repsy/db';
+import { createTestDb } from '@repsy/db/testing';
 import { breachedPasswordCheckEnabled, createAuth, getSessionUser, type Auth } from '@/lib/auth';
 import { createAuthHandlers } from '@/lib/auth-handler';
 import { guardRequest } from '@/lib/guard';

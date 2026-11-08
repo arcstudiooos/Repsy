@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { appendAudit } from '@kinetic/db';
+import { appendAudit } from '@repsy/db';
 import {
   getBranding,
   getSettings,
@@ -7,7 +7,7 @@ import {
   updateBranding,
   updateSettings,
   type SettingsView,
-} from '@kinetic/core';
+} from '@repsy/core';
 import type { RouteDef } from '../api';
 
 // Unknown keys (including any `organizationId`) are stripped by Zod and never read.

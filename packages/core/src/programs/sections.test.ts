@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { withSystem, withTenant, type PrismaClient } from '@kinetic/db';
-import { createTestDb } from '@kinetic/db/testing';
+import { withSystem, withTenant, type PrismaClient } from '@repsy/db';
+import { createTestDb } from '@repsy/db/testing';
 import type { ActorContext } from '../authz/actor';
 import { commitProgramVersion, contentHash } from './commit';
 import { createProgram, getProgram } from './read';

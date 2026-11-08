@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { cancelScheduledMessage, listScheduledMessages, scheduleMessage } from '@kinetic/core';
+import { cancelScheduledMessage, listScheduledMessages, scheduleMessage } from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 
 /** `GET /api/v1/clients/:id/scheduled-messages` (PRD H5): messages waiting to go out to this client. */

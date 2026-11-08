@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { withSystem } from '@kinetic/db';
+import { withSystem } from '@repsy/db';
 import {
   deletePushSubscription,
   DomainError,
@@ -8,7 +8,7 @@ import {
   releaseEndpoint,
   savePushSubscription,
   vapidKeys,
-} from '@kinetic/core';
+} from '@repsy/core';
 import type { RouteDef } from '../api';
 
 const endpointQuery = z.object({ endpoint: z.string().max(1000).optional() });

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { listChallenges } from '@kinetic/core';
+import { listChallenges } from '@repsy/core';
 import { ChallengeList } from '@/components/challenges/ChallengeList';
 import { EmptyState } from '@/components/states/EmptyState';
 import { withPortalTenant } from '@/server/serverActor';

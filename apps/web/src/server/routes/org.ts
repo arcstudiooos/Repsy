@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { appendAudit } from '@kinetic/db';
-import { DomainError } from '@kinetic/core';
+import { appendAudit } from '@repsy/db';
+import { DomainError } from '@repsy/core';
 import type { RouteDef } from '../api';
 
 const orgSelect = { id: true, name: true, timezone: true } as const;

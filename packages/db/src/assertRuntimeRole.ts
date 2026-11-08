@@ -10,7 +10,7 @@ interface RoleFacts {
 /**
  * Refuses to run as a role that would defeat tenant isolation: a superuser or
  * BYPASSRLS role skips RLS entirely, and a table owner is exempt from RLS unless
- * FORCE is set. The runtime role (`kinetic_app`) must be none of these; migrations
+ * FORCE is set. The runtime role (`repsy_app`) must be none of these; migrations
  * run as the owner via MIGRATION_DATABASE_URL.
  */
 export async function assertRuntimeRole(
@@ -35,7 +35,7 @@ export async function assertRuntimeRole(
   if (problems.length > 0) {
     throw new Error(
       `Unsafe database role "${facts.role}": ${problems.join(', ')}. ` +
-        'Run the app as the restricted kinetic_app role (see docs/runbook.md).',
+        'Run the app as the restricted repsy_app role (see docs/runbook.md).',
     );
   }
 }

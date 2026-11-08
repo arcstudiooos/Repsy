@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useState } from 'react';
-import { convertWeight, DEFAULT_BAR, plateBreakdown, type PlateUnit } from '@kinetic/core/plates';
+import { convertWeight, DEFAULT_BAR, plateBreakdown, type PlateUnit } from '@repsy/core/plates';
 import { Input } from '@/components/ui/input';
 
 const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/0+$/, ''));

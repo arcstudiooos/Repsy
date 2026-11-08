@@ -7,7 +7,7 @@ import pg from 'pg';
 import { createAuthPrismaClient, createPrismaClient } from '../client';
 import type { PrismaClient } from '../generated/client';
 
-const APP_ROLE = 'kinetic_app_test';
+const APP_ROLE = 'repsy_app_test';
 const run = promisify(execFile);
 const prismaCli = createRequire(import.meta.url).resolve('prisma/build/index.js');
 const packageDir = fileURLToPath(new URL('../../', import.meta.url));

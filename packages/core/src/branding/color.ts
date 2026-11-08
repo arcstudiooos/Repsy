@@ -1,5 +1,5 @@
 /**
- * Brand colour checks (PRD A6). Pure, so the settings form can use it too (`@kinetic/core/brand-color`).
+ * Brand colour checks (PRD A6). Pure, so the settings form can use it too (`@repsy/core/brand-color`).
  * The accent fills buttons with white text, so it must reach WCAG AA (4.5:1) against white.
  */
 export const HEX = /^#[0-9a-f]{6}$/;

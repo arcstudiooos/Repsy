@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { listResources, listTags } from '@kinetic/core';
+import { listResources, listTags } from '@repsy/core';
 import { NewResourceForm } from '@/components/resources/NewResourceForm';
 import { ResourceList } from '@/components/resources/ResourceList';
 import { EmptyState } from '@/components/states/EmptyState';

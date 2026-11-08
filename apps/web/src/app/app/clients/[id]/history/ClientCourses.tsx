@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { EnrollmentProgress } from '@kinetic/core';
+import type { EnrollmentProgress } from '@repsy/core';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 /** PRD G4: the client's courses and how far they are. Enrol from a course's page. */

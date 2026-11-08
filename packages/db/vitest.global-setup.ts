@@ -27,12 +27,12 @@ export default async function setup(): Promise<(() => Promise<void>) | undefined
   const { default: EmbeddedPostgres } = await import('embedded-postgres');
   keepFailureExitCode();
 
-  const dir = await mkdtemp(join(tmpdir(), 'kinetic-pg-'));
+  const dir = await mkdtemp(join(tmpdir(), 'repsy-pg-'));
   const port = await freePort();
   const pg = new EmbeddedPostgres({
     databaseDir: dir,
-    user: 'kinetic',
-    password: 'kinetic',
+    user: 'repsy',
+    password: 'repsy',
     port,
     persistent: false,
     initdbFlags: ['--encoding=UTF8', '--locale=C'],
@@ -41,8 +41,8 @@ export default async function setup(): Promise<(() => Promise<void>) | undefined
   });
   await pg.initialise();
   await pg.start();
-  await pg.createDatabase('kinetic_test');
-  process.env.DATABASE_URL = `postgres://kinetic:kinetic@127.0.0.1:${port}/kinetic_test`;
+  await pg.createDatabase('repsy_test');
+  process.env.DATABASE_URL = `postgres://repsy:repsy@127.0.0.1:${port}/repsy_test`;
 
   return async () => {
     await pg.stop();

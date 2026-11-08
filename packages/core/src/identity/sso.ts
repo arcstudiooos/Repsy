@@ -1,4 +1,4 @@
-import { withSystem, type PrismaClient, type TenantTx } from '@kinetic/db';
+import { withSystem, type PrismaClient, type TenantTx } from '@repsy/db';
 import { STAFF_ROLES, type ActorContext } from '../authz/actor';
 import { assertCan } from '../authz/policies';
 import { DomainError } from '../errors';

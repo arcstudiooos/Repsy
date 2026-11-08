@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { createGoal, listGoals, setGoalStatus } from '@kinetic/core';
+import { createGoal, listGoals, setGoalStatus } from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 
 /** `GET /api/v1/clients/:id/goals` (PRD B18, E9): goals with progress. Coaches and the client themselves. */

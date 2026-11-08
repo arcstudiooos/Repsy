@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { listSharedWorkouts } from '@kinetic/core';
+import { listSharedWorkouts } from '@repsy/core';
 import { ExtraWorkoutStarter } from '@/components/workout/ExtraWorkoutStarter';
 import { withPortalTenant } from '@/server/serverActor';
 

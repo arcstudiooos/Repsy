@@ -1,4 +1,4 @@
-import type { TrackingType } from '@kinetic/core/exercise-options';
+import type { TrackingType } from '@repsy/core/exercise-options';
 
 export const TRACKING_LABEL: Record<TrackingType, string> = {
   reps_load: 'Reps and load',

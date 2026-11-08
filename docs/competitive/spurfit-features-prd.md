@@ -1,7 +1,7 @@
 # Spur.fit: Feature and Screen PRD (competitive teardown)
 
 **Status:** Draft v0.1, 2026-10-31. For founder review.
-**Purpose:** Document what Spur.fit (also written Spurfit) offers coaches and their clients, and the screens it uses, so we can decide what Kinetic should build next. The Kinetic build spec for these features is in [`combined-features-prd.md`](combined-features-prd.md).
+**Purpose:** Document what Spur.fit (also written Spurfit) offers coaches and their clients, and the screens it uses, so we can decide what Repsy should build next. The Repsy build spec for these features is in [`combined-features-prd.md`](combined-features-prd.md).
 
 ## 0. How this was researched, and how far to trust it
 
@@ -166,9 +166,9 @@
 | Forms and lead statuses keep things organized ("instead of scattered across my phone"). | Mostly marketing-sourced claims. Depth of automation unverified.         |
 | Free tier and a cheap start.                                                            | No confirmed storefront or packages.                                     |
 
-## 6. What this means for Kinetic
+## 6. What this means for Repsy
 
-| Spur.fit strength                                                                                                                                                                                                                                                  | Kinetic today                                                   | Note                                                                                   |
+| Spur.fit strength                                                                                                                                                                                                                                                  | Repsy today                                                   | Note                                                                                   |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | AI program and meal drafts                                                                                                                                                                                                                                         | None. **D-007 / Global Constraints: "No AI features."**         | The biggest gap against Spur.fit. Needs a founder decision. See combined PRD §5, F-23. |
 | Nutrition (plans, logging, goals)                                                                                                                                                                                                                                  | None                                                            | Combined PRD F-11.                                                                     |
@@ -177,7 +177,7 @@
 | Video exercise library with YouTube/Instagram import                                                                                                                                                                                                               | `Exercise.mediaUrl` (https, one URL) exists. No player or embed | Combined PRD F-03.                                                                     |
 | Leads / CRM, payments                                                                                                                                                                                                                                              | None (D-008 #12: billing outside the app)                       | Combined PRD F-13, F-14.                                                               |
 | Branded native app, wearables                                                                                                                                                                                                                                      | Web portal (PWA-capable, offline logging)                       | Combined PRD F-19, F-20.                                                               |
-| **Kinetic is stronger at:** immutable program versioning and history, offline logging with an honest sync state, a rules-based review queue with snooze and resolve, pause/resume that protects adherence, audited coach corrections, privacy export and deletion. |                                                                 | Keep these as our positioning: a dependable loop rather than AI volume.                |
+| **Repsy is stronger at:** immutable program versioning and history, offline logging with an honest sync state, a rules-based review queue with snooze and resolve, pause/resume that protects adherence, audited coach corrections, privacy export and deletion. |                                                                 | Keep these as our positioning: a dependable loop rather than AI volume.                |
 
 ## 7. Hands-on verification checklist (for a team member with a trial)
 

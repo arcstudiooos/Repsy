@@ -15,7 +15,7 @@ import {
   listCheckinTemplates,
   sendForm,
   updateCheckinTemplateById,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 import { onCheckinSubmitted } from '../reviewHooks';
 

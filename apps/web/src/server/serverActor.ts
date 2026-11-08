@@ -1,8 +1,8 @@
 import { cache } from 'react';
 import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
-import { DomainError, type ActorContext, type MembershipRef } from '@kinetic/core';
-import { withTenant, type TenantTx } from '@kinetic/db';
+import { DomainError, type ActorContext, type MembershipRef } from '@repsy/core';
+import { withTenant, type TenantTx } from '@repsy/db';
 import { getSessionUser, type SessionUser } from '@/lib/auth';
 import { loadMemberships, resolveActor } from './actor';
 import type { ActorOutcome } from './shellGate';

@@ -12,7 +12,7 @@ import {
   revokeSupportAccess,
   postNotice,
   resolveNotice,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { ApiResult, type RouteCtx, type RouteDef } from '../api';
 import { withPlatformAdmin } from '../platformAdmin';
 

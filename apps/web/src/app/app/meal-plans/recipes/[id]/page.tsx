@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { isUuid, listRecipes } from '@kinetic/core';
+import { isUuid, listRecipes } from '@repsy/core';
 import { withServerTenant } from '@/server/serverActor';
 import { ArchiveButton } from '../../ArchiveButton';
 import { RecipeEditor } from '../../RecipeEditor';

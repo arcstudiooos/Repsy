@@ -7,7 +7,7 @@ import {
   type AnalyticsPort,
   type EventName,
   type EventValue,
-} from '@kinetic/core';
+} from '@repsy/core';
 
 type Env = Record<string, string | undefined>;
 

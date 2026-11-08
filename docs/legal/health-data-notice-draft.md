@@ -7,7 +7,7 @@
 - Weekly check-in answers on **energy, sleep, stress** and free-text answers ("What got in the way this week?").
 - Workout performance (weights, reps, effort) and comments, and messages, if a client writes about how they feel.
 
-## What Kinetic does not do
+## What Repsy does not do
 
 - No injury, medical-history or medical-clearance fields, and no health advice or AI-generated guidance (D-007).
 - Check-in answers and messages never go to analytics, logs or audit records.

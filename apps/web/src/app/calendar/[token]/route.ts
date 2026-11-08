@@ -1,5 +1,5 @@
-import { calendarFeed } from '@kinetic/core';
-import { prisma } from '@kinetic/db';
+import { calendarFeed } from '@repsy/core';
+import { prisma } from '@repsy/db';
 import { clientIp } from '@/server/clientIp';
 import { InMemoryRateLimiter } from '@/server/rateLimit';
 

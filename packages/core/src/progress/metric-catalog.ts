@@ -1,6 +1,6 @@
 /**
  * Body metric catalogue and unit conversion (PRD E1). Pure: no database or server imports, so browser components can
- * use it (`@kinetic/core/metric-catalog`).
+ * use it (`@repsy/core/metric-catalog`).
  */
 import { fromDisplay, toDisplay, type Units } from '../units';
 

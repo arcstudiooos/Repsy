@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { bucketOf, isoWeekOf, listSessions, todayInZone, type SessionSummary } from '@kinetic/core';
+import { bucketOf, isoWeekOf, listSessions, todayInZone, type SessionSummary } from '@repsy/core';
 import { weekdayShort } from '@/lib/relative-time';
 import { STATE_COLOR } from '@/components/charts/palette';
 import { sessionStateLabel } from '@/lib/session-format';

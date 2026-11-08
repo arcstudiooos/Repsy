@@ -1,6 +1,6 @@
 import type { PgBoss, Queue } from 'pg-boss';
-import type { AnalyticsPort, EmailPort, Logger } from '@kinetic/core';
-import type { PrismaClient } from '@kinetic/db';
+import type { AnalyticsPort, EmailPort, Logger } from '@repsy/core';
+import type { PrismaClient } from '@repsy/db';
 
 /** Error reporter (Sentry.captureException in the worker; a no-op without SENTRY_DSN). */
 export type CaptureException = (error: unknown, context?: Record<string, unknown>) => void;

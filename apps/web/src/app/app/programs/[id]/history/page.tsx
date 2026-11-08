@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { DomainError, getProgram, getSettings, listProgramVersions } from '@kinetic/core';
+import { DomainError, getProgram, getSettings, listProgramVersions } from '@repsy/core';
 import { EmptyState } from '@/components/states/EmptyState';
 import { withServerTenant } from '@/server/serverActor';
 

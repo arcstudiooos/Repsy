@@ -1,5 +1,5 @@
 {
-  "name": "@kinetic/worker",
+  "name": "@repsy/worker",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,9 +12,9 @@
     "dev": "node --env-file-if-exists=../../.env --watch --import tsx src/index.ts"
   },
   "dependencies": {
-    "@kinetic/core": "workspace:*",
-    "@kinetic/db": "workspace:*",
-    "@kinetic/storage": "workspace:*",
+    "@repsy/core": "workspace:*",
+    "@repsy/db": "workspace:*",
+    "@repsy/storage": "workspace:*",
     "@sentry/node": "11.10.0",
     "pg-boss": "12.38.0",
     "pino": "10.4.0",

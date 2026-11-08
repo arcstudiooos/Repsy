@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { GOALS_MAX } from '@kinetic/core';
+import { GOALS_MAX } from '@repsy/core';
 import { acceptSignedIn } from '@/lib/accept-invite';
 import { ApiResult, type RouteDef } from '../api';
 

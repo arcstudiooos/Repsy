@@ -2,8 +2,8 @@
 
 import { createContext, useContext } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
-import type { EquipmentGuide } from '@kinetic/core';
-import { outsideKit } from '@kinetic/core/exercise-options';
+import type { EquipmentGuide } from '@repsy/core';
+import { outsideKit } from '@repsy/core/exercise-options';
 import { Button } from '@/components/ui/button';
 import type { EditorValues } from './editorSchema';
 

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { TRIAL_CLIENT_LIMIT, TRIAL_DAYS } from '@kinetic/core';
+import { TRIAL_CLIENT_LIMIT, TRIAL_DAYS } from '@repsy/core';
 import { PLAN_CONTACT, PLANS, planMailto } from '@/content/marketing';
 
 export const metadata: Metadata = {

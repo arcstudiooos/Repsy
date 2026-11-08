@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { withSystem, withTenant, type PrismaClient } from '@kinetic/db';
-import { createTestDb } from '@kinetic/db/testing';
+import { withSystem, withTenant, type PrismaClient } from '@repsy/db';
+import { createTestDb } from '@repsy/db/testing';
 import { getMyThread, sendMessage } from '../messages/messages';
 import { newClientWorld, newOrg, runAs } from '../sessions/fixtures.test-helpers';
 import { queueCoachDigests } from './digest';

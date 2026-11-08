@@ -5,7 +5,7 @@ import {
   DomainError,
   getAssignmentSummary,
   type IsoWeekday,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 
 // Unknown keys (including any `organizationId`) are stripped by Zod and never read.

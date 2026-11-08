@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { DomainError, logger } from '@kinetic/core';
-import { withSystem, type PrismaClient } from '@kinetic/db';
-import { createTestDb } from '@kinetic/db/testing';
+import { DomainError, logger } from '@repsy/core';
+import { withSystem, type PrismaClient } from '@repsy/db';
+import { createTestDb } from '@repsy/db/testing';
 import { createAuth, type Auth } from '@/lib/auth';
 import { ApiResult, createApiHandler } from '@/server/api';
 import { InMemoryRateLimiter } from '@/server/rateLimit';
@@ -250,11 +250,11 @@ describe('api envelope', () => {
 
   it('malformed (bad percent-encoding) org cookie behaves as absent, not 500', async () => {
     const h = headersFor(t.dualRoleUser);
-    h.set('cookie', `${h.get('cookie')}; kinetic_org=%E0%A4`);
+    h.set('cookie', `${h.get('cookie')}; repsy_org=%E0%A4`);
     const res = await make()({ handler: () => ({}) })(req('GET', h));
     expect(res.status).toBe(409);
     const single = headersFor(t.coachA);
-    single.set('cookie', `${single.get('cookie')}; kinetic_org=%E0%A4`);
+    single.set('cookie', `${single.get('cookie')}; repsy_org=%E0%A4`);
     expect((await make()({ handler: () => ({}) })(req('GET', single))).status).toBe(200);
   });
 

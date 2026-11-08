@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { withSystem, withTenant, type PrismaClient } from '@kinetic/db';
+import { withSystem, withTenant, type PrismaClient } from '@repsy/db';
 import { createClient } from '../clients/clients';
-import { createTestDb } from '@kinetic/db/testing';
+import { createTestDb } from '@repsy/db/testing';
 import { DomainError } from '../errors';
 import { hashPilotCode } from './pilotCode';
 import { canonicalTimezone } from '../timezone';

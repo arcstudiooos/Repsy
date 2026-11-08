@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { createHabit, listHabits, logHabit, setHabitStatus } from '@kinetic/core';
+import { createHabit, listHabits, logHabit, setHabitStatus } from '@repsy/core';
 import { ApiResult, type RouteDef } from '../api';
 
 /** `GET /api/v1/clients/:id/habits`: habits and tasks (PRD G1-G3). A client reaches only their own (core). */

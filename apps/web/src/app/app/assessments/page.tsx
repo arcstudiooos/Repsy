@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { listAssessments, TRAINER_ROLES } from '@kinetic/core';
+import { listAssessments, TRAINER_ROLES } from '@repsy/core';
 import { GUIDE_LABEL } from '@/components/assessments/GuideOverlay';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { withServerTenant } from '@/server/serverActor';

@@ -11,7 +11,7 @@ Files: `apps/web/src/portal/offline/{db,outbox,workoutCache,useSyncStatus}.ts`, 
 **Design.** The design is documented in the headers of `sw.js` and `db.ts` and in the `SignOutButton` doc comment.
 
 - **The store has an owner.** IndexedDB moves to v2, which adds a `meta` store holding the owner `{userId, orgId}` and the queue sequence. v1 data has no owner and v1 never shipped, so the upgrade drops it.
-  - `bindOwner(owner)` claims the store. If the store holds data from a different user, or data with no known owner, it clears every data store and deletes the `kinetic-pages-*` caches first. Build assets hold no user data and are kept.
+  - `bindOwner(owner)` claims the store. If the store holds data from a different user, or data with no known owner, it clears every data store and deletes the `repsy-pages-*` caches first. Build assets hold no user data and are kept.
   - A different org for the same user keeps its data.
   - Every data helper (`openDb`) waits until the store is bound. Nothing reads the store before the owner check has run.
 - **The portal layout binds the store.** `ClientGate` renders `<PortalDevice userId orgId>` before `{children}`. The ids come from `withServerTenant`'s actor. `PortalDevice` binds the store and then starts the sync loop (see I3).
@@ -22,7 +22,7 @@ Files: `apps/web/src/portal/offline/{db,outbox,workoutCache,useSyncStatus}.ts`, 
 - **Sign-out clears the device.** All sign-out paths use `SignOutButton`: the portal profile, the coach nav, the coach "More" page and the invite page. It now works like this:
   1. `unsyncedBeforeSignOut()` flushes first, bounded to 5 s so a hanging network can't stall it. It then counts outbox and rejected items.
   2. If anything is still unsynced, a dialog asks "Sign out anyway?" with the text "You have workout changes that haven't synced yet. If you sign out now, they're deleted from this device." The buttons are "Stay signed in" and "Sign out anyway".
-  3. `wipeDevice()` clears every store, deletes the `kinetic-offline` database and deletes the `kinetic-pages-*` caches. It also unbinds the tab. A delete blocked by another tab still leaves the data cleared, and that tab's `onversionchange` closes its connection.
+  3. `wipeDevice()` clears every store, deletes the `repsy-offline` database and deletes the `repsy-pages-*` caches. It also unbinds the tab. A delete blocked by another tab still leaves the data cleared, and that tab's `onversionchange` closes its connection.
   4. `authClient.signOut()` runs, then the redirect.
 - **The service worker is unchanged in behaviour.** It still goes network-first and serves a cached page only when the network fails. It now validates `sessionId` in the `cache-workout` and `uncache-workout` messages (the hardening from the Minor list).
 
@@ -42,7 +42,7 @@ Files: `apps/web/src/portal/offline/{db,outbox,workoutCache,useSyncStatus}.ts`, 
 - E2E in `offline.spec.ts`, "sign-out deletes the device's workout data; offline, the next visitor sees none of it (C1)":
   1. Client A starts a workout and logs a set offline. The logs API is then blocked, so the set stays unsynced.
   2. A signs out from the profile page. The test checks the dialog text, then "Stay signed in" (A stays on the profile page), then "Sign out anyway", which lands on `/login`.
-  3. No cache holds the workout page or `/portal`, and `indexedDB.databases()` no longer lists `kinetic-offline`.
+  3. No cache holds the workout page or `/portal`, and `indexedDB.databases()` no longer lists `repsy-offline`.
   4. Offline, a signed-out visitor opens the workout URL and `/portal` and sees neither the exercise nor the program name.
 - **RED:** The `device.test.ts` sign-out tests failed ("not implemented", plus the foreign-write test sent 1 item). The owner-binding and wipe unit tests were written after `db.ts`, so they passed on their first run; they don't have a recorded RED. The E2E against the old `SignOutButton` failed at the confirm dialog ("element(s) not found", `offline.spec.ts:245`).
 - **GREEN:** all of the above pass.

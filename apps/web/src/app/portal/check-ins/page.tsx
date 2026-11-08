@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { checkinStreak, listCheckins, todayInZone } from '@kinetic/core';
+import { checkinStreak, listCheckins, todayInZone } from '@repsy/core';
 import { EmptyState } from '@/components/states/EmptyState';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatSessionDate } from '@/lib/session-format';

@@ -1,4 +1,4 @@
-import { withSystem, type PrismaClient, type TenantTx } from '@kinetic/db';
+import { withSystem, type PrismaClient, type TenantTx } from '@repsy/db';
 import type { ActorContext } from '../authz/actor';
 import { mediaForDownload } from './media';
 

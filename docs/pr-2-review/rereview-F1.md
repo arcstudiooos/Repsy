@@ -5,7 +5,7 @@ Fix commit `d186da3` on `pr2-review` (base `21a0de2`), checkout `D:\Gym-review`.
 ## Finding verdicts
 
 - **C1 ✅ Fixed (core). One new Important issue: a wipe error fails open (N1).**
-  - Owner binding: `db.ts:110-145` (`bindOwner`/`claim`) wipes data stores and `kinetic-pages-*` on a foreign or unknown owner.
+  - Owner binding: `db.ts:110-145` (`bindOwner`/`claim`) wipes data stores and `repsy-pages-*` on a foreign or unknown owner.
   - Every data helper waits on `bound` (`db.ts:92-95`). The module starts unbound (`db.ts:86`), so nothing reads or sends before the layout binds.
   - `flushOnce` sends nothing without an owner (`outbox.ts:429`) and only the owner's own writes for the active org (`outbox.ts:113-116, 432`). `enqueue` re-checks the owner after binding (`outbox.ts:179-182`).
   - The layout binds before children (`portal/layout.tsx:52`).
@@ -50,7 +50,7 @@ Fix commit `d186da3` on `pr2-review` (base `21a0de2`), checkout `D:\Gym-review`.
   - Workspace switch (same user) keeps the data. That is correct: writes wait for their org.
   - Revoke-all keeps this device signed in, so not wiping is correct.
   - Password-reset revocation and expiry are the residual.
-- **(f) Cache scope:** OK. The page deletes only `kinetic-pages-*` (`db.ts:19, 98-103`). The SW `activate` deletes only stale `kinetic-*` (`sw.js:24-26`). Asset caches are kept.
+- **(f) Cache scope:** OK. The page deletes only `repsy-pages-*` (`db.ts:19, 98-103`). The SW `activate` deletes only stale `repsy-*` (`sw.js:24-26`). Asset caches are kept.
 
 ## New issues in the fix
 
@@ -89,7 +89,7 @@ None.
   - Fix: in `onversionchange`, when `event.newVersion === null`, call `unbind()`. Alternatively, have `flushOnce` compare the stored `meta.owner` with `currentOwner()`.
 - **M3. A flush still in flight at wipe time hangs on the Web Lock.**
   - This happens when the 5-s timeout expires, or when the loop's pass is mid-send.
-  - The flush's next `put` or `del` awaits the now-pending `bound` and hangs while holding the `kinetic-outbox` Web Lock. That stalls flushes in other tabs until this tab does a full navigation.
+  - The flush's next `put` or `del` awaits the now-pending `bound` and hangs while holding the `repsy-outbox` Web Lock. That stalls flushes in other tabs until this tab does a full navigation.
   - Login uses `window.location.assign`, so the hung pass dies there and never resumes under a new user.
   - Fix: on `wipeDevice`, reject `bound` (`failBound`) instead of leaving it pending forever, or re-check the owner after each `send`.
 - **M4. `authClient.signOut()` failures are ignored** (`SignOutButton.tsx:37-39`).
@@ -102,7 +102,7 @@ None.
 
 1. **Session ends without sign-out (expiry, password-reset revocation) leaves pages and data servable offline.**
    - Acceptable for R1 as a Minor, documented user decision. The worker can't verify a session offline, and a full fix (lock screen or encrypted store) is out of R1 scope. Record it in `docs/decisions.md` under D-004.
-   - Cheap hardening, recommended but not blocking: in `sw.js`, when an online `/portal*` navigation returns `opaqueredirect`, a redirect or a 401, delete `kinetic-pages-*`.
+   - Cheap hardening, recommended but not blocking: in `sw.js`, when an online `/portal*` navigation returns `opaqueredirect`, a redirect or a 401, delete `repsy-pages-*`.
    - That closes the window as soon as the device is online once with the session gone. It also covers "sign out all other devices" and password-reset devices when they next come online.
 2. **"Sign out all other devices" can't clear other devices.** Acceptable. It can't be fixed remotely, and the hardening above covers those devices on their next online portal visit.
 3. **A page-cache write in flight after sign-out.** Minor. Fix: call `deletePageCaches()` once more after `authClient.signOut()` resolves. After that the cookie is gone, so any later SW `store()` gets a redirect and stores nothing.

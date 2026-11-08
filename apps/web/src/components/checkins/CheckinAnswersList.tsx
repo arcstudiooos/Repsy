@@ -1,5 +1,5 @@
-import type { CheckinAnswers, CheckinQuestion } from '@kinetic/core';
-import type { Units } from '@kinetic/core/units';
+import type { CheckinAnswers, CheckinQuestion } from '@repsy/core';
+import type { Units } from '@repsy/core/units';
 import { formatAnswer } from '@/lib/checkin-answer';
 import { Sparkline } from '@/components/charts/Sparkline';
 import { cn } from '@/lib/utils';

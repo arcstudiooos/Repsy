@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { getLapseAccess, setSubscriptionLapse } from '@kinetic/core';
+import { getLapseAccess, setSubscriptionLapse } from '@repsy/core';
 import type { RouteDef } from '../api';
 import { withPlatformAdmin } from '../platformAdmin';
 

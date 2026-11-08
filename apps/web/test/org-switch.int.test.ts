@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { withSystem, type PrismaClient } from '@kinetic/db';
-import { createTestDb } from '@kinetic/db/testing';
+import { withSystem, type PrismaClient } from '@repsy/db';
+import { createTestDb } from '@repsy/db/testing';
 import { createAuth, type Auth } from '@/lib/auth';
 import { createApiHandler } from '@/server/api';
 import { InMemoryRateLimiter } from '@/server/rateLimit';
@@ -68,7 +68,7 @@ describe('org switch', () => {
       role: 'owner',
     });
     const setCookie = res.headers.get('set-cookie') ?? '';
-    expect(setCookie).toMatch(/^kinetic_org=/);
+    expect(setCookie).toMatch(/^repsy_org=/);
     expect(setCookie).toMatch(/HttpOnly/);
     const orgCookie = (setCookie.split(';')[0] ?? '').trim();
 

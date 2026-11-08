@@ -1,4 +1,4 @@
-import { withSystem, type PrismaClient, type SystemTx } from '@kinetic/db';
+import { withSystem, type PrismaClient, type SystemTx } from '@repsy/db';
 import { DomainError } from '../errors';
 import { isUuid } from '../uuid';
 import { assertPlatformAdmin, type PlatformAdmin } from './admin';

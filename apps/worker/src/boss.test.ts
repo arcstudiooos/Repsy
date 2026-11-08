@@ -1,9 +1,9 @@
 import { Writable } from 'node:stream';
 import { afterAll, beforeAll, expect, it } from 'vitest';
-import type { EmailMessage } from '@kinetic/core';
-import { createLogger } from '@kinetic/core';
-import { withSystem, type PrismaClient } from '@kinetic/db';
-import { createTestDb } from '@kinetic/db/testing';
+import type { EmailMessage } from '@repsy/core';
+import { createLogger } from '@repsy/core';
+import { withSystem, type PrismaClient } from '@repsy/db';
+import { createTestDb } from '@repsy/db/testing';
 import { createBoss } from './boss';
 import { emailDeliverJob, queueEmailSweep } from './jobs/emailDeliver';
 import { registerJobs } from './jobs/registry';

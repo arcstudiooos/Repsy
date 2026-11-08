@@ -6,7 +6,7 @@ export const PGBOSS_SCHEMA = 'pgboss';
 /**
  * True when the runtime role is restricted (production, or ENFORCE_RUNTIME_ROLE=true):
  * that role cannot run DDL, so the pgboss schema must already exist, created by the
- * owner with `pnpm --filter @kinetic/worker pgboss:migrate`.
+ * owner with `pnpm --filter @repsy/worker pgboss:migrate`.
  */
 export function pgBossSchemaIsPrecreated(
   env: Record<string, string | undefined> = process.env,

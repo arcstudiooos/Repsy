@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { DomainError, getProgram, getSettings, type SetTarget } from '@kinetic/core';
-import { toDisplay, type Units } from '@kinetic/core/units';
+import { DomainError, getProgram, getSettings, type SetTarget } from '@repsy/core';
+import { toDisplay, type Units } from '@repsy/core/units';
 import { withServerTenant } from '@/server/serverActor';
 import { extraTargets, repsText } from '@/lib/target-text';
-import { blockLayout } from '@kinetic/core/workout-blocks';
-import { sectionStart } from '@kinetic/core/workout-sections';
+import { blockLayout } from '@repsy/core/workout-blocks';
+import { sectionStart } from '@repsy/core/workout-sections';
 
 export const metadata: Metadata = { title: 'Program version | Repsy' };
 

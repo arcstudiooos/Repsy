@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useId, useState, type ChangeEvent } from 'react';
-import type { ImportResult } from '@kinetic/core';
+import type { ImportResult } from '@repsy/core';
 import { Button } from '@/components/ui/button';
 import { call } from '@/lib/checkin-api';
 import { parseRoster, type ColumnMapping, type RosterRow } from '@/lib/csv-import';
@@ -139,7 +139,7 @@ export function ImportClients() {
         />
         <p className="mt-2 text-sm text-secondary">
           Exported from another app? Most columns are matched by name.{' '}
-          <a href="/templates/kinetic-clients.csv" download className="text-accent underline">
+          <a href="/templates/repsy-clients.csv" download className="text-accent underline">
             Download a CSV template
           </a>
           , or{' '}

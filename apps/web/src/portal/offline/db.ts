@@ -9,7 +9,13 @@
  * service worker's page caches, before use. Sign-out (`wipeDevice`) deletes it all and unbinds, so nothing in the tab
  * reopens it afterwards.
  */
-export const DB_NAME = 'kinetic-offline';
+export const DB_NAME = 'repsy-offline';
+/**
+ * The same store under its name from before the Repsy rename (2026-11-08). On first open its rows (queued writes
+ * included, PRD M11) move into DB_NAME and it is deleted. Remove this, and adoptLegacyStore, after 2027-02-01.
+ */
+const LEGACY_DB_NAME = 'kinetic-offline';
+const LEGACY_TIMEOUT_MS = 3000;
 // v2 (PR #2 review): adds `meta`. v1 data has no owner, so the upgrade drops it (v1 never shipped).
 // v3 (PRD D20): adds `drafts`, what is typed in a set row before it is saved.
 // PRD M11: an upgrade must never drop `outbox` or `rejected` (writes queued by an older build still have to reach
@@ -19,7 +25,7 @@ const DB_VERSION = 3;
 export type StoreName = 'workouts' | 'outbox' | 'rejected' | 'drafts';
 const DATA_STORES: StoreName[] = ['workouts', 'outbox', 'rejected', 'drafts'];
 /** The service worker's caches of a user's pages (public/sw.js). Build assets hold no user data and stay. */
-const PAGE_CACHE_PREFIX = 'kinetic-pages-';
+const PAGE_CACHE_PREFIX = 'repsy-pages-';
 
 export interface DeviceOwner {
   userId: string;
@@ -54,7 +60,11 @@ function openRaw(): Promise<IDBDatabase> {
         // old user into the next user's store (PR #2 re-review M2); the next portal load binds again.
         if (event.newVersion === null) signedOut();
       };
-      resolve(req.result);
+      const db = req.result;
+      // Never blocks the portal: a failed or slow move leaves the legacy store for the next open.
+      within(adoptLegacyStore(db), LEGACY_TIMEOUT_MS)
+        .catch(() => undefined)
+        .finally(() => resolve(db));
     };
     req.onerror = () => {
       opening = null;
@@ -188,6 +198,41 @@ const within = <T>(p: Promise<T>, ms: number): Promise<T> =>
       },
     );
   });
+
+/** Moves the rows of the pre-rename store (LEGACY_DB_NAME) into `db`, then deletes the old store. */
+async function adoptLegacyStore(db: IDBDatabase): Promise<void> {
+  if (typeof indexedDB.databases !== 'function') return;
+  const all = await indexedDB.databases().catch(() => [] as IDBDatabaseInfo[]);
+  if (!all.some((info) => info.name === LEGACY_DB_NAME)) return;
+  const legacy = await new Promise<IDBDatabase | null>((resolve) => {
+    const req = indexedDB.open(LEGACY_DB_NAME);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => resolve(null);
+    req.onblocked = () => resolve(null);
+  });
+  if (!legacy) return;
+  try {
+    const names = ['meta', ...DATA_STORES].filter(
+      (name) => legacy.objectStoreNames.contains(name) && db.objectStoreNames.contains(name),
+    );
+    for (const name of names) {
+      const src = legacy.transaction(name, 'readonly').objectStore(name);
+      const [keys, values] = await Promise.all([result(src.getAllKeys()), result(src.getAll())]);
+      const tx = db.transaction(name, 'readwrite');
+      const store = tx.objectStore(name);
+      values.forEach((value, i) =>
+        store.keyPath === null ? store.put(value, keys[i]) : store.put(value),
+      );
+      await committed(tx);
+    }
+  } finally {
+    legacy.close();
+  }
+  await new Promise<void>((resolve) => {
+    const req = indexedDB.deleteDatabase(LEGACY_DB_NAME);
+    req.onsuccess = req.onerror = req.onblocked = () => resolve();
+  });
+}
 
 /** Deletes the database without an open connection: true once it is gone, false on an error or a block. */
 const deleteDatabase = (): Promise<boolean> =>

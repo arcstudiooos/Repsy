@@ -1,4 +1,4 @@
-import { appendAudit, withSystem, withTenant, type PrismaClient, type TenantTx } from '@kinetic/db';
+import { appendAudit, withSystem, withTenant, type PrismaClient, type TenantTx } from '@repsy/db';
 import { TRAINER_ROLES, type ActorContext, type Role } from '../authz/actor';
 import { assignProgram } from '../assignments/assign';
 import { sendForm } from '../checkins/checkins';

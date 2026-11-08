@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Search } from 'lucide-react';
-import { LIFECYCLE_STAGES, STAGE_LABEL } from '@kinetic/core/client-stages';
+import { LIFECYCLE_STAGES, STAGE_LABEL } from '@repsy/core/client-stages';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import type {
@@ -11,7 +11,7 @@ import type {
   ClientView,
   StateBucket,
   TagView,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { TagBadge } from '@/components/tags/TagBadge';
 import { CompliancePercent } from '@/components/analytics/Compliance';
 import { ProgressRing } from '@/components/charts/ProgressRing';

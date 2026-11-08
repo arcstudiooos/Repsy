@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { prisma } from '@kinetic/db';
+import { prisma } from '@repsy/db';
 import { Avatar } from '@/components/ui/avatar';
 import { getServerSession } from '@/server/serverActor';
 

@@ -1,5 +1,5 @@
-import type { EmailMessage, EmailPort, Logger } from '@kinetic/core';
-import { withSystem, type PrismaClient } from '@kinetic/db';
+import type { EmailMessage, EmailPort, Logger } from '@repsy/core';
+import { withSystem, type PrismaClient } from '@repsy/db';
 import { defineJob, type CaptureException } from './registry';
 import { renderTemplate } from './templates';
 

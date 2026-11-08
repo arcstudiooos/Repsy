@@ -10,13 +10,13 @@ import {
   microsoftLinkAllowed,
   microsoftTenantFromIdToken,
   ssoRequiredFor,
-} from '@kinetic/core';
+} from '@repsy/core';
 import {
   authPrisma as defaultAuthPrisma,
   prisma as defaultPrisma,
   withSystem,
   type PrismaClient,
-} from '@kinetic/db';
+} from '@repsy/db';
 
 import { assertAuthEnv, type AuthEnv } from './auth-env';
 

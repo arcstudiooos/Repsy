@@ -6,8 +6,8 @@ import {
   listMyExports,
   requestExport,
   DomainError,
-} from '@kinetic/core';
-import { createStorage, type StoragePort } from '@kinetic/storage';
+} from '@repsy/core';
+import { createStorage, type StoragePort } from '@repsy/storage';
 import { ApiResult, type RouteDef } from '../api';
 import { signExportLink, verifyExportLink } from '../exportLinks';
 

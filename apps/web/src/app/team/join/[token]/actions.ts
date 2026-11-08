@@ -2,8 +2,8 @@
 
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { acceptTeamInvite, DomainError } from '@kinetic/core';
-import { prisma } from '@kinetic/db';
+import { acceptTeamInvite, DomainError } from '@repsy/core';
+import { prisma } from '@repsy/db';
 import { getSessionUser } from '@/lib/auth';
 
 /** PRD A10: the signed-in, verified invitee joins the team, then picks the workspace to open. */

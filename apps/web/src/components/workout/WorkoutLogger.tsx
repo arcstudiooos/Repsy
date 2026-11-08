@@ -2,17 +2,17 @@
 
 import { ListChecks, Timer, Trophy, Weight } from 'lucide-react';
 import Link from 'next/link';
-import { blockLayout } from '@kinetic/core/workout-blocks';
-import { sectionStart } from '@kinetic/core/workout-sections';
-import { READINESS_QUESTIONS } from '@kinetic/core/readiness';
+import { blockLayout } from '@repsy/core/workout-blocks';
+import { sectionStart } from '@repsy/core/workout-sections';
+import { READINESS_QUESTIONS } from '@repsy/core/readiness';
 import { ReadinessCheck, type ReadinessDraft } from './ReadinessCheck';
 import { ExerciseDemo } from './ExerciseDemo';
 import { FormChecks } from './FormChecks';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import type { LoggedSet, SessionDetail, TrackingType, Units } from '@kinetic/core';
-import { isPersonalRecord } from '@kinetic/core/pr';
-import { toDisplay } from '@kinetic/core/units';
+import type { LoggedSet, SessionDetail, TrackingType, Units } from '@repsy/core';
+import { isPersonalRecord } from '@repsy/core/pr';
+import { toDisplay } from '@repsy/core/units';
 import {
   ExtraWorkoutBadge,
   LoggedByCoachBadge,

@@ -1,10 +1,4 @@
-import {
-  assertAllowedEvent,
-  hashId,
-  logger,
-  noopAnalytics,
-  type AnalyticsPort,
-} from '@kinetic/core';
+import { assertAllowedEvent, hashId, logger, noopAnalytics, type AnalyticsPort } from '@repsy/core';
 
 type Env = Record<string, string | undefined>;
 

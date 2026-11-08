@@ -7,7 +7,7 @@ import {
   listCheckinTemplates,
   listCheckins,
   metricsAsOf,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { CheckinAnswersList } from '@/components/checkins/CheckinAnswersList';
 import { EmptyState } from '@/components/states/EmptyState';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

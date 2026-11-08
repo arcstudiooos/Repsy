@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { readNotices } from '@kinetic/core';
+import { readNotices } from '@repsy/core';
 
 const LABEL = {
   maintenance: 'Planned maintenance',

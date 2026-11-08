@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { checkinWeekSummary, DomainError, getCheckin } from '@kinetic/core';
+import { checkinWeekSummary, DomainError, getCheckin } from '@repsy/core';
 import { CheckinFormLoader } from '@/components/checkins/CheckinFormLoader';
 import { WeekSummary } from '@/components/checkins/WeekSummary';
 import { formatDate } from '@/app/app/clients/StatusBadge';

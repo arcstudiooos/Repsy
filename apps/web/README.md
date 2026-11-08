@@ -1,10 +1,10 @@
-# @kinetic/web
+# @repsy/web
 
-Next.js (App Router) web app for Kinetic: the coach workspace (`/app`) and the client portal (`/portal`).
+Next.js (App Router) web app for Repsy: the coach workspace (`/app`) and the client portal (`/portal`).
 
 ## Scripts
 
-Run from `apps/web` (or with `pnpm --filter @kinetic/web <script>` from the repo root).
+Run from `apps/web` (or with `pnpm --filter @repsy/web <script>` from the repo root).
 
 | Script           | What it does                                         |
 | ---------------- | ---------------------------------------------------- |
@@ -23,7 +23,7 @@ Unit and integration tests run from the repo root with `pnpm test`.
 
 - it builds into `.next-e2e` (`NEXT_DIST_DIR`), not `.next`; to start it clean, delete `apps/web/.next-e2e` (never `.next`, which belongs to the dev server);
 - it serves on port 3200 (worker health on 8281); override with `E2E_WEB_PORT` / `E2E_WORKER_PORT`;
-- it creates and drops its own `kinetic_e2e` database (or an embedded Postgres when `DATABASE_URL` is unset), never the dev database.
+- it creates and drops its own `repsy_e2e` database (or an embedded Postgres when `DATABASE_URL` is unset), never the dev database.
 
 A one-off production build check that should not disturb a dev server can use its own dir too: `NEXT_DIST_DIR=.next-build pnpm build`.
 

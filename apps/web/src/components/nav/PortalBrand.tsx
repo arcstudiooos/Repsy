@@ -1,4 +1,4 @@
-import { getBranding, type Branding } from '@kinetic/core';
+import { getBranding, type Branding } from '@repsy/core';
 import { withServerTenant } from '@/server/serverActor';
 import { RepsyMark } from '@/components/brand/Logo';
 

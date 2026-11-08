@@ -2,7 +2,7 @@
  * Started workouts kept on the device (S3-3): the server payload from Start plus every value the client typed, so a
  * closed and reopened page (online or not) shows the device's latest sets, never an older server payload.
  */
-import type { LoggedSet, SessionDetail, SetLogAck } from '@kinetic/core';
+import type { LoggedSet, SessionDetail, SetLogAck } from '@repsy/core';
 import { countOutbox, del, get, getBySession, put } from './db';
 
 /** PRD D20: a set row as typed, before it is saved (kept per keystroke so a crash loses nothing). */

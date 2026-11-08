@@ -7,9 +7,9 @@ import {
   failExport,
   type ExportTxRunner,
   type Logger,
-} from '@kinetic/core';
-import { withSystem, withTenant, type PrismaClient } from '@kinetic/db';
-import { createStorage, type StoragePort } from '@kinetic/storage';
+} from '@repsy/core';
+import { withSystem, withTenant, type PrismaClient } from '@repsy/db';
+import { createStorage, type StoragePort } from '@repsy/storage';
 import { defineJob } from './registry';
 
 export const EXPORTS_BUILD = 'exports.build';

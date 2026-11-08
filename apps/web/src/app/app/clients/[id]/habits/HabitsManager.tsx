@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useId, useState } from 'react';
-import type { HabitView, HabitsView } from '@kinetic/core';
+import type { HabitView, HabitsView } from '@repsy/core';
 import { frequencyLabel, streakLabel } from '@/components/habits/HabitChecklist';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

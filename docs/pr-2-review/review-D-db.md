@@ -2,7 +2,7 @@
 
 Reviewer scope: `D:\Gym-review` at `30b1cea`, diff `991ae94..HEAD`. Migrations `20260101000023_client_pauses` … `20260101000029_deletion_support`, `packages/db/prisma/schema.prisma`, `packages/db/src/**`, `packages/db/sql/app-role.sql`, and every new non-test `withSystem(` call site.
 
-Verification run: `pnpm --filter @kinetic/db db:diff` (shadow `kinetic_shadow` on :54320, main URL pointed at a dummy unreachable host): **"No difference detected", exit 0**. All 29 migrations replay cleanly on an empty database and the Prisma schema matches them.
+Verification run: `pnpm --filter @repsy/db db:diff` (shadow `repsy_shadow` on :54320, main URL pointed at a dummy unreachable host): **"No difference detected", exit 0**. All 29 migrations replay cleanly on an empty database and the Prisma schema matches them.
 
 ## Strengths
 
@@ -10,7 +10,7 @@ Verification run: `pnpm --filter @kinetic/db db:diff` (shadow `kinetic_shadow` o
 - **Composite tenant FKs are complete.** Every tenant parent link is a composite `(fk, organization_id)` FK. This covers `clients.checkin_template_id`, `checkins.template_id` and `messages.thread_id`, and `(id, organization_id)` unique keys were added where the table is itself a parent. Links to `users` are plain FKs, which is correct.
 - **`tenantIntegrity.test.ts` covers every new composite FK** with a cross-org negative case (`client_pauses`, `checkins` ×2, `clients -> checkin_templates`, `conversation_threads`, `messages`, `review_flags`, `internal_notes`, `export_jobs`, `deletion_requests`, `support_access_grants`).
 - **`rls.test.ts` lists all 11 new tables** in both the forced-RLS list and the `tenant_isolation` policy list.
-- **Grants are unchanged.** `app-role.sql` default privileges give new tables only `SELECT, INSERT, UPDATE, DELETE`: no TRUNCATE and no DDL. `kinetic_app` owns nothing, so FORCE RLS applies.
+- **Grants are unchanged.** `app-role.sql` default privileges give new tables only `SELECT, INSERT, UPDATE, DELETE`: no TRUNCATE and no DDL. `repsy_app` owns nothing, so FORCE RLS applies.
 - **The `app.lawful_erasure` check is written safely.** It uses `pg_catalog.current_setting('app.lawful_erasure', true)`, so a missing setting returns NULL rather than raising, and it compares with `OPERATOR(pg_catalog.=)`. The exemption only lets DELETE through; UPDATE and TRUNCATE still raise. The erasure job sets it transaction-locally (`set_config(..., true)`) and switches it off again inside the same transaction.
 - **CHECK constraints model the state rules well:** pause 1–90 days, check-in submission shape, review-flag state, export scope/files, and message and note body length. Partial unique indexes enforce one open pause per client and one open deletion request per client.
 - **Worker jobs follow the right pattern.** `checkinsIssue`, `pausesEnd`, `reviewSweep` and `exportsBuild` use `withSystem` only to enumerate due orgs or rows, then do the work inside `withTenant(organizationId, …)`.
@@ -89,7 +89,7 @@ None found.
 
 - **Where:** `packages/db/prisma/migrations/20260101000025_messages/migration.sql:108-118`.
 - **What:** The body references `notification_preferences`, `memberships` and `app_current_org()` unqualified, and the function has no `SET search_path`. Postgres searches `pg_temp` first for relations, so a session that can `CREATE TEMP TABLE memberships(...)` can make the function return any user's opt-in while bypass is on. This contradicts the hardening in migration `000008` ("Harden the RLS helper functions against search_path shadowing"). EXECUTE is granted to PUBLIC by default. Default privileges in `app-role.sql` cover only tables and sequences, not functions.
-- **Why:** This is not exploitable beyond today's trust level, because `kinetic_app` can already `SET app.bypass_rls` with raw SQL. It becomes a real escalation the day bypass is gated by role. It is also the only bypass-elevating function in the schema.
+- **Why:** This is not exploitable beyond today's trust level, because `repsy_app` can already `SET app.bypass_rls` with raw SQL. It becomes a real escalation the day bypass is gated by role. It is also the only bypass-elevating function in the schema.
 - **Fix:** Create the function inside a `DO` block so the migrated schema is pinned, for example `EXECUTE format('CREATE FUNCTION … SET app.bypass_rls = ''on'' SET search_path = %I, pg_temp AS …', current_schema())`. That works with per-run test schemas. Inside the body, use `OPERATOR(pg_catalog.=)`. Then add `REVOKE EXECUTE ON FUNCTION app_message_email_opt_in(uuid) FROM PUBLIC;` and rely on `app-role.sql`'s `GRANT EXECUTE ON ALL FUNCTIONS`. Note in the runbook that `app-role.sql` must be re-run after this migration.
 
 ### M2. Any transaction can set `app.lawful_erasure`
@@ -139,7 +139,7 @@ None found.
 
 ## Declined to judge
 
-- Role-level isolation inside an org (clients vs coaches on `internal_notes`, `review_flags`, `support_access_grants` visibility to owners) is enforced in `@kinetic/core` policy, not RLS. I did not audit every core read path.
+- Role-level isolation inside an org (clients vs coaches on `internal_notes`, `review_flags`, `support_access_grants` visibility to owners) is enforced in `@repsy/core` policy, not RLS. I did not audit every core read path.
 - I did not run the integration or test suites (`rls.test.ts`, `tenantIntegrity.test.ts`, `deletion.test.ts`). I read them; only `db:diff` was executed. I did not verify end to end that `eraseClientData`'s delete order satisfies every RESTRICT FK, for example `workout_versions` and other children of `workout_sessions`. A failure there would roll back and retry every minute rather than corrupt data.
 - Storage-layer access control for export objects and signed export links (`apps/web/src/server/exportLinks.ts`) is outside the database scope.
 - Whether organization owners should see `support_access_grants` rows for their org (transparency vs. disclosure of the support process) is a product decision.

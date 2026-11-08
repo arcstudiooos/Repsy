@@ -1,14 +1,14 @@
-# Kinetic R1 Implementation Plan
+# Repsy R1 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship Kinetic R1, a pilot-ready coaching loop: invite client → assign program → log workout → identify attention needed → complete check-in → take the next action.
+**Goal:** Ship Repsy R1, a pilot-ready coaching loop: invite client → assign program → log workout → identify attention needed → complete check-in → take the next action.
 
 **Architecture:** pnpm monorepo. `apps/web` is Next.js App Router with Better Auth, serving UI and `/api/v1`. `apps/worker` is an always-on pg-boss worker. `packages/core` holds domain logic behind adapters. `packages/db` holds Prisma + PostgreSQL. `web` deploys as a Render Web Service and `worker` as a Render Background Worker, on one Render Postgres (D-005). Build order is "thin loop first, then deepen" (D-009): the golden-path E2E passes from the end of Sprint 2 and stays green.
 
 **Tech Stack:** TypeScript (strict), Next.js App Router, React, Tailwind CSS, shadcn/ui + Radix, React Hook Form + Zod, Prisma, PostgreSQL, Better Auth, pg-boss, Resend (behind an adapter), Cloudflare R2 / S3-compatible storage, Sentry, PostHog, Vitest, React Testing Library, Playwright + @axe-core/playwright, GitHub Actions, Render (`render.yaml` Blueprint), `date-fns` + `@date-fns/tz` for timezone math, `idb` for IndexedDB.
 
-**Spec:** `C:\Users\ranes\Downloads\Kinetic_Coaching_Platform_Agent_Ready_PRD.docx` (PRD v1.0) as amended by [`docs/decisions.md`](decisions.md) (D-001…D-010). **decisions.md wins every conflict.** Executors read both.
+**Spec:** the original coaching platform PRD (v1.0, .docx, kept outside the repo) as amended by [`docs/decisions.md`](decisions.md) (D-001…D-010). **decisions.md wins every conflict.** Executors read both.
 
 ---
 
@@ -41,7 +41,7 @@
 - Colors: Canvas `#F7F8F6`, Surface `#FFFFFF`, Primary ink `#152825`, Accent `#1C7666`, Accent hover `#145B50`, Secondary text `#60716E`, Divider `#E1E8E4` (decorative only), Input border `#7D8C87`, Warning `#8F5A26`, Danger `#B64743`. Radius 12px cards, 8px controls. Shadow `0 4px 18px rgba(16,36,30,.05)`. Spacing 4/8/12/16/24/32 (PRD §6.2, D-008 #18).
 - Typography: page titles 28–32px desktop, 24px mobile; section 18px; body 14–16px; metadata ≥12px. Motion 120–180ms, honor `prefers-reduced-motion`. Tap targets ≥44px on mobile. Target: WCAG 2.2 AA (PRD §6.2).
 - Viewports: 375 / 768 / 1440 with no horizontal clipping (PRD §12).
-- No hardcoded domain. Base URL, auth URL, OAuth callbacks and email link base come from env (`APP_BASE_URL`, `BETTER_AUTH_URL`, …). Never `kinetic.com` (D-010 #5).
+- No hardcoded domain. Base URL, auth URL, OAuth callbacks and email link base come from env (`APP_BASE_URL`, `BETTER_AUTH_URL`, …). Never a hardcoded domain (D-010 #5).
 - No secrets in Git or docs. Only `.env.example` with placeholders. Synthetic seed data only (PRD §15.2, D-010 #5).
 - Analytics never captures names, free-text answers, message bodies or wellbeing answers. Client IDs are hashed (PRD §13, D-007).
 - Audit events never contain message content (PRD §11).
@@ -201,7 +201,7 @@ Interfaces: `packages/core/src/ports/email.ts`: `interface EmailPort { send(msg:
 Tests: same `idempotencyKey` enqueued twice → one row; delivery failure retries and marks `failed` after the limit; a handler throwing on attempt 1 succeeds on attempt 2 without double-send.
 
 **S0-7 — Render deploy, seed, smoke** · §7, §17 · D-005, D-010 #5 · S0-4, S0-5, S0-6
-Scope: `render.yaml` Blueprint (founder creates the Render account, connects GitHub and sets env): Web Service `web` (paid Starter+), Background Worker `worker`, Render Postgres (paid); staging and production environments; `prisma migrate deploy` as the pre-deploy command using the owner connection; SQL that creates the non-owner runtime role `kinetic_app` (`NOSUPERUSER NOBYPASSRLS`) with grants, plus a startup check in web and worker that refuses to run as the table owner, a superuser or a `BYPASSRLS` role; pg-boss schema created with the owner connection; client IP from Render's proxy hop in `X-Forwarded-For`; high-entropy pilot-code generator (≥128 bits, shown once, stored sha256); synthetic seed (`pnpm db:seed`: 1 admin, 1 pilot code, demo coach + 3 clients; no real-looking PII); smoke Playwright against the staging URL from env; `docs/architecture/overview.md` with the diagram; `docs/runbook.md` (deploy, rollback, migration, restore placeholder).
+Scope: `render.yaml` Blueprint (founder creates the Render account, connects GitHub and sets env): Web Service `web` (paid Starter+), Background Worker `worker`, Render Postgres (paid); staging and production environments; `prisma migrate deploy` as the pre-deploy command using the owner connection; SQL that creates the non-owner runtime role `repsy_app` (`NOSUPERUSER NOBYPASSRLS`) with grants, plus a startup check in web and worker that refuses to run as the table owner, a superuser or a `BYPASSRLS` role; pg-boss schema created with the owner connection; client IP from Render's proxy hop in `X-Forwarded-For`; high-entropy pilot-code generator (≥128 bits, shown once, stored sha256); synthetic seed (`pnpm db:seed`: 1 admin, 1 pilot code, demo coach + 3 clients; no real-looking PII); smoke Playwright against the staging URL from env; `docs/architecture/overview.md` with the diagram; `docs/runbook.md` (deploy, rollback, migration, restore placeholder).
 Tests: CI job `smoke` (manual trigger) hits `${STAGING_URL}/healthz` and logs in as the seeded demo coach.
 
 ### Sprint 1 — Clients + basic programming (DoD: full coach/client access tests)
@@ -367,7 +367,7 @@ Repo root is `D:\Gym`. Commands are run from the root unless noted.
 
 **Interfaces:**
 
-- Produces: root scripts `lint`, `typecheck`, `test`, `test:e2e`; package names `@kinetic/web`, `@kinetic/worker`, `@kinetic/core`, `@kinetic/db`.
+- Produces: root scripts `lint`, `typecheck`, `test`, `test:e2e`; package names `@repsy/web`, `@repsy/worker`, `@repsy/core`, `@repsy/db`.
 
 - [ ] **Step 1: Write the failing smoke test** `packages/core/src/index.test.ts`
 
@@ -381,10 +381,10 @@ describe('core', () => {
 });
 ```
 
-- [ ] **Step 2: Run it.** `pnpm --filter @kinetic/core test`. Expected: FAIL, `CORE_VERSION` not exported.
+- [ ] **Step 2: Run it.** `pnpm --filter @repsy/core test`. Expected: FAIL, `CORE_VERSION` not exported.
 - [ ] **Step 3: Scaffold workspaces.** Create the files above. `tsconfig.base.json` has `strict`, `noUncheckedIndexedAccess`, `moduleResolution: "bundler"`. `packages/core/src/index.ts` exports `CORE_VERSION = '0.0.0'`. Root `test` runs `vitest run --workspace vitest.workspace.ts`. `.env.example` lists `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `APP_BASE_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `EMAIL_FROM`, `SENTRY_DSN`, `POSTHOG_KEY`, `ANALYTICS_HASH_SECRET`, `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` with placeholder values only.
 - [ ] **Step 4: Verify.** `pnpm install && pnpm lint && pnpm typecheck && pnpm test`. Expected: all exit 0; 1 test passed.
-- [ ] **Step 5: Add CI.** `.github/workflows/ci.yml` on push/PR: setup pnpm + node from `.nvmrc`, Postgres 16 service, run lint, typecheck, test, then `pnpm --filter @kinetic/web exec playwright install --with-deps` and `test:e2e`. `test:e2e` passes with zero specs (`--pass-with-no-tests`).
+- [ ] **Step 5: Add CI.** `.github/workflows/ci.yml` on push/PR: setup pnpm + node from `.nvmrc`, Postgres 16 service, run lint, typecheck, test, then `pnpm --filter @repsy/web exec playwright install --with-deps` and `test:e2e`. `test:e2e` passes with zero specs (`--pass-with-no-tests`).
 - [ ] **Step 6: Commit.** `git add -A && git commit -m "chore: scaffold pnpm monorepo with CI"`
 
 ### Task 0.2: DB package + tenancy primitives (S0-2)
@@ -401,7 +401,7 @@ describe('core', () => {
 - [ ] **Step 1: Write failing tests.**
   - `tenant.test.ts` › `withTenant only returns rows of that org`: seed orgs A and B with one `AuditEvent` each; `withTenant(A.id, tx => tx.auditEvent.findMany())` returns exactly A's row.
   - `audit.test.ts` › `audit events are append-only`: `prisma.auditEvent.update(...)` rejects (Postgres trigger `audit_events_no_update` raises).
-- [ ] **Step 2: Run.** `pnpm --filter @kinetic/db test`. Expected: FAIL (no schema).
+- [ ] **Step 2: Run.** `pnpm --filter @repsy/db test`. Expected: FAIL (no schema).
 - [ ] **Step 3: Implement.** Models `User`, `Organization`, `Membership`, `PilotCode`, `AuditEvent`, `OutboxEmail` per the data model table. `withTenant` runs inside `$transaction` and returns a Prisma client extension that injects `where: { organizationId }` on find/update/delete and sets it on create for models with `organizationId`. A raw-SQL migration adds the update/delete trigger on `audit_events`. `createTestDb` creates a uniquely named schema and runs `prisma migrate deploy` against it.
 - [ ] **Step 4: Run.** Same command. Expected: PASS.
 - [ ] **Step 5: Commit.** `git commit -m "feat(db): tenant-scoped client, audit log, base schema"`
@@ -444,7 +444,7 @@ describe('core', () => {
   - `api-envelope` › `422 includes fieldErrors and requestId`; › `unknown error → 500 with code INTERNAL and requestId, no stack`.
   - `cross-tenant` › `coach B reading org A client → 404`; › `client role on coach route → 403`; › `dualRoleUser as client of B cannot read org A data via B context`; › `organizationId in request body is ignored`.
 - [ ] **Step 2: Run.** Expected: FAIL.
-- [ ] **Step 3: Implement.** The active org comes from a signed cookie `kinetic_org` validated against memberships on every request. Without it, use the sole membership; if there are several, return 409 `ORG_SELECTION_REQUIRED`. `apiHandler` checks `Origin` against `APP_BASE_URL` on non-GET requests, parses input with Zod, and maps `DomainError` codes to HTTP statuses (`NOT_FOUND` 404, `FORBIDDEN` 403, `VALIDATION` 422, `CONFLICT` 409, `RATE_LIMITED` 429). In-memory token-bucket rate limiting is acceptable for the single-instance pilot, behind a `RateLimiter` interface.
+- [ ] **Step 3: Implement.** The active org comes from a signed cookie `repsy_org` validated against memberships on every request. Without it, use the sole membership; if there are several, return 409 `ORG_SELECTION_REQUIRED`. `apiHandler` checks `Origin` against `APP_BASE_URL` on non-GET requests, parses input with Zod, and maps `DomainError` codes to HTTP statuses (`NOT_FOUND` 404, `FORBIDDEN` 403, `VALIDATION` 422, `CONFLICT` 409, `RATE_LIMITED` 429). In-memory token-bucket rate limiting is acceptable for the single-instance pilot, behind a `RateLimiter` interface.
 - [ ] **Step 4: Run.** Expected: PASS.
 - [ ] **Step 5: Commit.** `git commit -m "feat(api): actor context, envelope, tenant isolation harness"`
 
@@ -500,7 +500,7 @@ describe('core', () => {
 
 - [ ] **Step 1: Write failing test.** `seed.test.ts` › `seed twice yields same counts` (1 admin, 1 org, 3 clients).
 - [ ] **Step 2: Run.** Expected: FAIL.
-- [ ] **Step 3: Implement** the seed, `render.yaml` (web: build `pnpm install --frozen-lockfile && pnpm --filter @kinetic/web build`, start `pnpm --filter @kinetic/web start`, preDeployCommand `pnpm --filter @kinetic/db exec prisma migrate deploy` with `MIGRATION_DATABASE_URL`; worker: start `pnpm --filter @kinetic/worker start`; Postgres database; shared env group), the app-role SQL + `assertRuntimeRole()` startup check (test: connecting as owner/superuser throws), trusted-proxy client IP helper, pilot-code generator, smoke spec using `STAGING_URL`, and docs.
+- [ ] **Step 3: Implement** the seed, `render.yaml` (web: build `pnpm install --frozen-lockfile && pnpm --filter @repsy/web build`, start `pnpm --filter @repsy/web start`, preDeployCommand `pnpm --filter @repsy/db exec prisma migrate deploy` with `MIGRATION_DATABASE_URL`; worker: start `pnpm --filter @repsy/worker start`; Postgres database; shared env group), the app-role SQL + `assertRuntimeRole()` startup check (test: connecting as owner/superuser throws), trusted-proxy client IP helper, pilot-code generator, smoke spec using `STAGING_URL`, and docs.
 - [ ] **Step 4: Run.** `pnpm test` PASS locally. **Founder step:** create the Render account, apply the Blueprint, set env vars (staging), run the app-role SQL and confirm Render allows creating the role (escalate if not), then trigger `smoke.yml`. Expected: `/healthz` 200 on web and worker; seeded coach login succeeds.
 - [ ] **Step 5: Commit.** `git commit -m "chore(deploy): Render blueprint, app role, seed, smoke workflow, runbook"`
 

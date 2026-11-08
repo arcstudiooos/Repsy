@@ -13,7 +13,7 @@ import {
   isManager,
   getPublicPageSettings,
   getSsoSetting,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { AgreementsSection } from '@/components/settings/AgreementsSection';
 import { PublicPageSection } from '@/components/settings/PublicPageSection';
 import { BrandingSection } from '@/components/settings/BrandingSection';

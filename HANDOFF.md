@@ -1,6 +1,6 @@
 # Repsy: handoff
 
-Repsy (the code still calls itself **Kinetic** in package names, the UI and docs) is a coaching web app for personal
+Repsy is a coaching web app for personal
 trainers: coaches build programs and run their clients from one place; clients train, log and check in from a
 mobile-first portal. This file is the starting point for whoever picks the project up next.
 
@@ -119,8 +119,10 @@ Everything else in R4 was removed from scope (D-019).
 
 ## 6. Things to know
 
-- **The name:** the product, UI copy and emails say Repsy. Only internal names still say Kinetic: the package scope
-  `@kinetic/*`, the database role `kinetic_app` and some older docs.
+- **The name:** everything says Repsy: the product, UI copy, emails, the package scope `@repsy/*`, the database role
+  `repsy_app` and the docs. The one exception is `LEGACY_DB_NAME` in `apps/web/src/portal/offline/db.ts`, which moves
+  offline data saved under the old working name; remove it after 2027-02-01. The production database and its Render
+  resource names are renamed by hand (`docs/runbook.md`, "Renaming production resources").
 - **PDF reports** use a small built-in writer (`packages/core/src/reports/pdf.ts`) with the standard Helvetica font:
   Western European text renders; other scripts show as "?" until a font is embedded. Only JPEG photos are drawn.
 - **Group activity** sends no notifications; the chat refreshes every 20 seconds while open.

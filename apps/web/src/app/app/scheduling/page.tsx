@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
-// NOTE (slice merge): the parent adds these names to '@kinetic/core' first
+// NOTE (slice merge): the parent adds these names to '@repsy/core' first
 // (see SLICE_REPORT_SCHEDULING.md); the page then compiles unchanged.
 import {
   getCalendarConnection,
   googleOAuthConfig,
   listSessionTypes,
   TRAINER_ROLES,
-} from '@kinetic/core';
+} from '@repsy/core';
 import { CalendarConnectCard } from '@/components/scheduling/CalendarConnectCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {

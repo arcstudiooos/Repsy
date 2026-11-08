@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { connection } from 'next/server';
-import { listClasses } from '@kinetic/core';
+import { listClasses } from '@repsy/core';
 import { PortalClasses } from '@/components/classes/PortalClasses';
 import { withPortalTenant } from '@/server/serverActor';
 

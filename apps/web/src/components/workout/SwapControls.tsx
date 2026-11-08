@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useState, type FormEvent } from 'react';
-import type { SessionDetail, SwapReason, SwapView } from '@kinetic/core';
+import type { SessionDetail, SwapReason, SwapView } from '@repsy/core';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

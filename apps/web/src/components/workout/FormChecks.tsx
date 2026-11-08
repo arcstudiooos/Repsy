@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useState } from 'react';
-import type { FormCheckView } from '@kinetic/core';
+import type { FormCheckView } from '@repsy/core';
 import { call } from '@/lib/checkin-api';
 
 /**

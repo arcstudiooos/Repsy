@@ -193,15 +193,6 @@ importers:
       '@hookform/resolvers':
         specifier: 7.0.2
         version: 7.0.2(@standard-schema/spec@1.1.0)(ajv@8.20.0)(react-hook-form@7.91.0(@types/react@19.3.0)(react@19.3.1))(valibot@1.4.2(typescript@6.0.3))(zod@4.6.7)
-      '@kinetic/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@kinetic/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@kinetic/storage':
-        specifier: workspace:*
-        version: link:../../packages/storage
       '@radix-ui/react-dialog':
         specifier: 1.3.1
         version: 1.3.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -223,6 +214,15 @@ importers:
       '@radix-ui/react-tooltip':
         specifier: 1.4.1
         version: 1.4.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@repsy/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@repsy/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@repsy/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
       '@sentry/nextjs':
         specifier: 11.10.0
         version: 11.10.0(next@16.4.5(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.10.0)(@playwright/test@1.64.1)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
@@ -326,13 +326,13 @@ importers:
 
   apps/worker:
     dependencies:
-      '@kinetic/core':
+      '@repsy/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@kinetic/db':
+      '@repsy/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@kinetic/storage':
+      '@repsy/storage':
         specifier: workspace:*
         version: link:../../packages/storage
       '@sentry/node':
@@ -372,7 +372,7 @@ importers:
       '@date-fns/tz':
         specifier: 1.5.0
         version: 1.5.0
-      '@kinetic/db':
+      '@repsy/db':
         specifier: workspace:*
         version: link:../db
       pino:

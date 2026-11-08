@@ -1,6 +1,6 @@
-# Kinetic — Decisions Log
+# Repsy — Decisions Log
 
-Decisions that resolve ambiguities, contradictions and gaps in the Kinetic PRD (v1.0, 29 Oct 2026), as required by the PRD's "Operating rules for agents". Each entry records the decision, why, and what it supersedes in the PRD.
+Decisions that resolve ambiguities, contradictions and gaps in the Repsy PRD (v1.0, 29 Oct 2026), as required by the PRD's "Operating rules for agents". Each entry records the decision, why, and what it supersedes in the PRD.
 
 Status key: **Locked** = agreed with the founder. **Proposed** = recommended default awaiting confirmation.
 
@@ -186,7 +186,7 @@ Status key: **Locked** = agreed with the founder. **Proposed** = recommended def
 
 **Rules**
 
-1. **Authentication ≠ authorization.** Better Auth verifies identity only. Kinetic's service layer enforces roles, coach–client permissions and tenant scope on every read and write (PRD §7.2).
+1. **Authentication ≠ authorization.** Better Auth verifies identity only. Repsy's service layer enforces roles, coach–client permissions and tenant scope on every read and write (PRD §7.2).
 2. **Invitation-based client onboarding.** Coaches invite clients via secure, expiring, single-use links (hashed tokens, F04).
 3. **Tenant isolation.** A coach never accesses another coach's clients. `organization_id` is always derived server-side, never trusted from the UI.
 4. **Dual roles.** One account can be both a coach and a client (e.g. a coach who is also coached), via separate memberships and no duplicate accounts.
@@ -194,7 +194,7 @@ Status key: **Locked** = agreed with the founder. **Proposed** = recommended def
 
 **Roles (locked 2026-10-29)**
 
-- **Platform `admin` = Kinetic staff.** A platform-level flag on the user, not an organization membership. Used for pilot access, account support lookups and processing export/deletion requests.
+- **Platform `admin` = Repsy staff.** A platform-level flag on the user, not an organization membership. Used for pilot access, account support lookups and processing export/deletion requests.
 - **Organization memberships:** `owner` and `client` (PRD F01). In R1 each signing-up coach becomes `owner` of their own one-person organization. The `coach` (assistant) membership role exists in the schema but is disabled until team rollout (R3), as F01 states.
 - **Admin support access** to a client record is explicit, time-boxed and audited. Admins do not browse client training data or messages by default. _(Locked via D-008 #19.)_
 - **Coach registration requires a pilot code** issued by an admin, consistent with the §14 invite-only pilot. _(Locked via D-008 #19.)_
@@ -223,7 +223,7 @@ Status key: **Locked** = agreed with the founder. **Proposed** = recommended def
 3. **Coach-led conversation.** Clients can voluntarily raise concerns with their coach through private messaging.
 4. **Messages are protected as potentially sensitive.** Removing the field doesn't stop sensitive information appearing in messages. Message bodies are access-controlled to the coaching relationship, never sent to analytics, never written to logs or audit payloads (PRD §11, §13), and admins cannot read them by default.
 5. **Safety reminder.** Before a client's first program starts, the portal shows a short reminder to tell their coach about any limitations relevant to safe training.
-6. **No medical clearance claims.** Kinetic never presents itself as providing medical clearance. Coaches confirm that a client is ready for assigned exercises before training begins.
+6. **No medical clearance claims.** Repsy never presents itself as providing medical clearance. Coaches confirm that a client is ready for assigned exercises before training begins.
 
 **Further rules**
 
@@ -256,7 +256,7 @@ Status key: **Locked** = agreed with the founder. **Proposed** = recommended def
 | 14  | **Invitations:** expire after **7 days**, single-use, previous link revoked on resend.                                                                                                                                                                                                                                                                                                                                                                   | F04, §8 `client_invites`                                                                                                    |
 | 15  | **Passwords:** minimum **12 characters**, breached-password check, login rate limiting, no arbitrary complexity rules.                                                                                                                                                                                                                                                                                                                                   | F01, §11                                                                                                                    |
 | 16  | **Deletion:** lawful deletion is permitted (immutability forbids _silent edits_, not lawful erasure). Target processing within **30 days**; audit retention is content-free (IDs and actions only); backups expire within **35 days**. Subject to legal exceptions.                                                                                                                                                                                      | §8.1, §11 Retention, Journey E                                                                                              |
-| 17  | **Data roles:** coach's business = controller, Kinetic = processor. **Provisional pending legal review.**                                                                                                                                                                                                                                                                                                                                                | §11 Legal                                                                                                                   |
+| 17  | **Data roles:** coach's business = controller, Repsy = processor. **Provisional pending legal review.**                                                                                                                                                                                                                                                                                                                                                | §11 Legal                                                                                                                   |
 | 18  | **Design tokens:** Warning `#8F5A26` (5.74:1 on white, 5.39:1 on canvas); new **Input border** `#7D8C87` (3.52:1 on white, 3.30:1 on canvas); `#E1E8E4` kept for **decorative dividers only**.                                                                                                                                                                                                                                                           | §6.2. Fixes AA failures                                                                                                     |
 | 19  | Explicit, audited platform-admin support access; pilot-code coach registration; readiness confirmation on first assignment.                                                                                                                                                                                                                                                                                                                              | D-006, D-007                                                                                                                |
 
@@ -311,7 +311,7 @@ Status key: **Locked** = agreed with the founder. **Proposed** = recommended def
 **Repository layout**
 
 ```
-kinetic/            (repo root = D:\Gym)
+repsy/            (repo root = D:\Gym)
 ├── apps/
 │   ├── web/        # Next.js App Router + Better Auth (Render Web Service "web")
 │   └── worker/     # pg-boss background jobs (Render Background Worker "worker")
@@ -362,13 +362,13 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
 ### 4. Export, deletion, archiving
 
 - **Export is self-serve and automated.** A client exports their own data; a coach (owner) exports organization CSVs. It runs as a worker job; the file goes to a private bucket and is served via a **short-lived, access-controlled link scoped to the requesting user or organization**.
-- **Deletion:** the request is logged (audit) and the coach is notified. A Kinetic admin verifies it and triggers a tested, idempotent deletion job. The job is **audited** and **never removes data belonging to unrelated coaching relationships** (e.g. a dual-role user's other memberships). Retention obligations follow D-008 clarification 4.
+- **Deletion:** the request is logged (audit) and the coach is notified. A Repsy admin verifies it and triggers a tested, idempotent deletion job. The job is **audited** and **never removes data belonging to unrelated coaching relationships** (e.g. a dual-role user's other memberships). Retention obligations follow D-008 clarification 4.
 - **Archiving** a client removes their access to that coach's organization. The user account and any other relationships are unaffected.
 
 ### 5. Environments, domain and credentials
 
 - **Placeholder domain in Sprint 0.** No domain purchase or brand finalization until trademark and domain availability checks are done.
-- Use Render-generated `onrender.com` URLs initially. The app base URL, Better Auth URL, OAuth callback URLs and email link base all come from **environment variables**. **Never hardcode `kinetic.com` or any unverified domain.**
+- Use Render-generated `onrender.com` URLs initially. The app base URL, Better Auth URL, OAuth callback URLs and email link base all come from **environment variables**. **Never hardcode `repsy.com` or any unverified domain.**
 - Add `staging.<final-domain>` after purchase. The final name and domain can change without architectural changes.
 - **The founder creates and owns all provider accounts** (Render, Google Cloud OAuth, Resend, Sentry, PostHog, Cloudflare R2 / S3-compatible) and sets keys as Render environment variables (or an environment group). Agents never hold production credentials.
 - **Credentials are never committed to Git or written in documentation.** Only `.env.example` with placeholders (PRD §15.2).
@@ -540,7 +540,7 @@ Render hosts `web` and `worker` with one Render Postgres database (D-005).
 
 # D-013 (snippet) — Billing rulings, payments slice (PRD K1–K9, K15)
 
-Status: proposed by the billing slice; each ruling can be revisited. Nothing here renames Kinetic to Repsy, and nothing here builds R4.
+Status: proposed by the billing slice; each ruling can be revisited. Nothing here changes the product name, and nothing here builds R4.
 
 1. **One port, two providers, one fake.** Stripe Connect (K1) and Razorpay
    (K2) are the same `PaymentsPort` interface in
@@ -687,7 +687,7 @@ snippet — `docs/decisions.md` itself was not edited by the slice).
 3. **Accessibility:** each chart has a visible title, a legend or direct labels, and a one-sentence text alternative. Status and series are never told apart by colour alone. WCAG 2.2 AA, 44px targets and reduced motion stay as before.
 4. **Libraries:** interactive line, bar and area charts use Recharts 3, pinned to an exact version and wrapped in `apps/web/src/components/charts/`; pages never import it directly, and colours come only from tokens. Small charts (sparkline, ring, donut, week dots, heatmap) are server-rendered SVG, so offline portal pages need no chart JavaScript.
 5. **Privacy:** wellbeing answers shown in charts stay in-app. No analytics event (PostHog) carries answer values.
-6. **Visual direction "Midnight & Ember"**, light and dark themes, following the system setting with a Light / Dark / System choice saved per user on the device. The user-facing product name is **Repsy**; internal package names (`@kinetic/*`), env vars and database identifiers are unchanged.
+6. **Visual direction "Midnight & Ember"**, light and dark themes, following the system setting with a Light / Dark / System choice saved per user on the device. The user-facing product name is **Repsy**; internal package names (`@repsy/*`), env vars and database identifiers are unchanged.
 
 ## D-015 — Custom domains (L4) on hold (2026-11-04)
 
@@ -703,7 +703,7 @@ snippet — `docs/decisions.md` itself was not edited by the slice).
 
 1. **Managed Postgres never gives a superuser** (Render, Neon, Supabase). Five functions that turn on the RLS bypass for one narrow lookup (`app_message_email_opt_in`, `app_email_opt_ins`, `app_org_by_public_slug`, in migrations 000025, 000032, 000056, 000070, 000078) used a function-level `SET app.bypass_rls = 'on'`. Postgres 15+ only lets a superuser create that for a custom setting, so the first Render deploy stopped at 000025.
 2. **Fix:** each function is now PL/pgSQL. It saves the current `app.bypass_rls`, turns it on (`set_config(..., true)`), runs its single lookup and puts the saved value back. If the lookup errors, the transaction or savepoint rollback restores the setting. `search_path` stays pinned and the queries are unchanged. The functions are `VOLATILE` because they change a setting.
-3. **Editing applied migrations (one-time exception to forward-only):** nothing had been deployed when this was found, so the five migrations were edited in place. A local database that already applied them will warn that they changed: reset it with `pnpm --filter @kinetic/db db:migrate` (answer yes to reset). From now on migrations are forward-only again.
+3. **Editing applied migrations (one-time exception to forward-only):** nothing had been deployed when this was found, so the five migrations were edited in place. A local database that already applied them will warn that they changed: reset it with `pnpm --filter @repsy/db db:migrate` (answer yes to reset). From now on migrations are forward-only again.
 4. **Guard:** `packages/db/src/migrateAsOwner.test.ts` applies every migration as a NOSUPERUSER owner, and `rls.test.ts` checks the bypass is off again after each call.
 
 ## D-017 — The founder's logo (2026-11-05)
@@ -747,7 +747,7 @@ The coach asked to do the whole set-up for a client in one place: put them on a 
 The owner chose OpenAI instead of Anthropic for the assistant (I15, D-020).
 
 1. **Provider.** `apps/web/src/server/assistant/run.ts` calls the OpenAI Chat Completions API through the official `openai` SDK. The key is `OPENAI_API_KEY`; the model is `OPENAI_MODEL`, default `gpt-5`. Nothing else about the assistant changes: the same tools, prompts, round limit, proposals and Confirm step.
-2. **Tools.** The tool schemas in `@kinetic/core` are sent as strict function tools. Tool arguments arrive as JSON text; text that does not parse goes back to the model as an error instead of running the tool.
+2. **Tools.** The tool schemas in `@repsy/core` are sent as strict function tools. Tool arguments arrive as JSON text; text that does not parse goes back to the model as an error instead of running the tool.
 3. **Privacy.** OpenAI replaces Anthropic as the processor for assistant questions, in the privacy notice, the assistant page and `docs/security/subprocessors.md`. OpenAI does not train on API data by default.
 
 ## D-022 — One-click coach sign-up with Google (2026-11-08)

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { clientMealPlan } from '@kinetic/core';
+import { clientMealPlan } from '@repsy/core';
 import { MealPlanDisplay } from '@/components/nutrition/MealPlanDisplay';
 import { EmptyState } from '@/components/states/EmptyState';
 import { withPortalTenant } from '@/server/serverActor';

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { listNotes } from '@kinetic/core';
+import { listNotes } from '@repsy/core';
 import { withServerTenant } from '@/server/serverActor';
 import { loadClient } from '../data';
 import { NotesPanel } from './NotesPanel';

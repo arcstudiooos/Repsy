@@ -15,7 +15,7 @@ describe('org cookie', () => {
     expect(verifyOrgCookie('nodot', 'u1', secret)).toBeNull();
   });
   it('parses cookie headers', () => {
-    expect(readCookie('a=1; kinetic_org=abc', 'kinetic_org')).toBe('abc');
+    expect(readCookie('a=1; repsy_org=abc', 'repsy_org')).toBe('abc');
     expect(readCookie(null, 'x')).toBeUndefined();
   });
 });

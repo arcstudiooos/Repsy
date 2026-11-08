@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { connection } from 'next/server';
-import { isManager, listClasses, listLocations, TRAINER_ROLES } from '@kinetic/core';
+import { isManager, listClasses, listLocations, TRAINER_ROLES } from '@repsy/core';
 import { ClassesBoard } from '@/components/classes/ClassesBoard';
 import { buttonVariants } from '@/components/ui/button';
 import { withServerTenant } from '@/server/serverActor';

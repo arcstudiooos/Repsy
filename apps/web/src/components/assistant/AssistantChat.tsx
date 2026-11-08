@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Loader2, MessageSquarePlus, Send, Sparkles, Trash2 } from 'lucide-react';
-import type { AiActionView, AiConversationSummary, AiMessageView } from '@kinetic/core';
+import type { AiActionView, AiConversationSummary, AiMessageView } from '@repsy/core';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/toast';
 import { askAssistant, loadConversation, removeConversation } from '@/lib/assistant-api';

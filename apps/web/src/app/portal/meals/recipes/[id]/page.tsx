@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { DomainError, getRecipe } from '@kinetic/core';
+import { DomainError, getRecipe } from '@repsy/core';
 import { withPortalTenant } from '@/server/serverActor';
 
 export const metadata: Metadata = { title: 'Recipe | Repsy' };

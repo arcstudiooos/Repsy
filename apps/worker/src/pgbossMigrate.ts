@@ -1,4 +1,4 @@
-/** `pnpm --filter @kinetic/worker pgboss:migrate` — owner-only; uses MIGRATION_DATABASE_URL. */
+/** `pnpm --filter @repsy/worker pgboss:migrate` — owner-only; uses MIGRATION_DATABASE_URL. */
 import { migratePgBoss } from './boss';
 import { jobs } from './jobs/all';
 

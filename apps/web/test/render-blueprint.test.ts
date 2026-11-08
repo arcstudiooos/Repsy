@@ -48,9 +48,9 @@ describe('render.yaml blueprint', () => {
     expect(web?.plan).toBe('starter');
     expect(web?.runtime).toBe('node');
     expect(web?.buildCommand).toContain('pnpm install --frozen-lockfile');
-    expect(web?.buildCommand).toContain('pnpm --filter @kinetic/web build');
+    expect(web?.buildCommand).toContain('pnpm --filter @repsy/web build');
     expect(web?.startCommand).toBe(
-      'exec env -u MIGRATION_DATABASE_URL pnpm --filter @kinetic/web start',
+      'exec env -u MIGRATION_DATABASE_URL pnpm --filter @repsy/web start',
     );
     expect(web?.preDeployCommand).toContain('prisma migrate deploy');
     expect(web?.preDeployCommand).toContain('MIGRATION_DATABASE_URL');
@@ -59,12 +59,12 @@ describe('render.yaml blueprint', () => {
   });
 
   it('worker starts the worker package', () => {
-    expect(service('worker')?.startCommand).toBe('pnpm --filter @kinetic/worker start');
+    expect(service('worker')?.startCommand).toBe('pnpm --filter @repsy/worker start');
   });
 
   it('worker waits for migrations before going live, without the owner role', () => {
     const cmd = service('worker')?.preDeployCommand ?? '';
-    expect(cmd).toBe('pnpm --filter @kinetic/db db:wait-migrations');
+    expect(cmd).toBe('pnpm --filter @repsy/db db:wait-migrations');
     expect(cmd).not.toContain('MIGRATION_DATABASE_URL');
   });
 
