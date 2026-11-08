@@ -6,10 +6,7 @@ import { resetRateLimits } from './support/db';
 test.describe('self-serve trial (PRD A4)', () => {
   test.describe.configure({ timeout: 180_000 });
 
-  test('a coach signs up without a pilot code and gets a 7-day trial', async ({
-    page,
-    request,
-  }) => {
+  test('a coach signs up and gets a 7-day trial', async ({ page, request }) => {
     const email = `trial-${Date.now()}@example.test`;
     await expect(async () => {
       await resetRateLimits();
@@ -19,7 +16,7 @@ test.describe('self-serve trial (PRD A4)', () => {
       await page.getByLabel('Password').fill(E2E_PASSWORD);
       await page.getByLabel('Business name').fill('Trial Gym');
       await page.getByLabel('Time zone').selectOption('Europe/London');
-      await expect(page.getByText('No code? You get a free 7-day trial')).toBeVisible();
+      await expect(page.getByText('Free 7-day trial for up to 3 clients.')).toBeVisible();
       await page.getByRole('button', { name: 'Create account' }).click();
       await expect(page).toHaveURL(/\/verify-email$/, { timeout: 20_000 });
     }).toPass({ timeout: 90_000 });
