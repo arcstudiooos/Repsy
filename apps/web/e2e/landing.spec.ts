@@ -9,7 +9,7 @@ test.describe('marketing landing (signed out)', () => {
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(HEADING);
     await expect(
-      page.getByRole('link', { name: /Start free with 3 clients/ }).first(),
+      page.getByRole('link', { name: /Start your free 7-day trial/ }).first(),
     ).toHaveAttribute('href', '/signup');
     await expect(page.getByRole('link', { name: 'Log in' }).first()).toHaveAttribute(
       'href',

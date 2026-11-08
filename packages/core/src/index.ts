@@ -934,6 +934,8 @@ export {
   calculateTax,
   defaultProviderForCurrency,
   fakePaymentsProvider,
+  onlinePaymentsAvailable,
+  PAYMENTS_UNAVAILABLE_MESSAGE,
   formatMoneyMinor,
   type CheckoutSession,
   type Money,

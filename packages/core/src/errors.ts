@@ -24,6 +24,8 @@ export const ERROR_STATUS = {
   RATE_LIMITED: 429,
   /** PRD I15: the AI provider is not configured, or failed. */
   AI_UNAVAILABLE: 503,
+  /** Online card payments are not connected yet (only the test provider exists). */
+  PAYMENTS_UNAVAILABLE: 503,
   INTERNAL: 500,
 } as const;
 

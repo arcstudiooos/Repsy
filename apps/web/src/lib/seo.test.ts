@@ -103,7 +103,7 @@ describe('llms.txt', () => {
     const lines = text.split('\n');
     expect(lines[0]).toBe('# Repsy');
     expect(lines[2]).toMatch(/^> /);
-    expect(text).toContain('[Start free](https://app.repsy.fit/signup)');
+    expect(text).toContain('[Start free trial](https://app.repsy.fit/signup)');
     expect(text).toContain('[Home](https://repsy.fit/)');
   });
 

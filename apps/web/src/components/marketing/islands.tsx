@@ -6,7 +6,7 @@ import { ArrowRight, Menu, X } from 'lucide-react';
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { RepsyMark } from '@/components/brand/Logo';
 import { cn } from '@/lib/utils';
-import { LOOP, PLANS } from '@/content/marketing';
+import { LOOP, PLAN_CONTACT, PLANS, planMailto } from '@/content/marketing';
 import { readPaused, reduced } from './motion';
 
 export const NAV_LINKS = [
@@ -66,7 +66,7 @@ export function MarketingNav() {
             href="/signup"
             className="group flex min-h-10 items-center gap-1.5 rounded-[12px] bg-brand px-4 text-[15px] font-semibold text-on-brand shadow-e1 transition-colors hover:bg-brand-hover"
           >
-            Start free
+            Start free trial
             <ArrowRight
               aria-hidden
               className="size-4 transition-transform duration-150 group-hover:translate-x-[3px]"
@@ -116,7 +116,7 @@ export function MarketingNav() {
                   href="/signup"
                   className="mt-auto flex min-h-12 items-center justify-center rounded-[12px] bg-brand text-base font-semibold text-on-brand"
                 >
-                  Start free with 3 clients
+                  Start your free 7-day trial
                 </a>
               </Dialog.Content>
             </Dialog.Portal>
@@ -287,6 +287,7 @@ export function PricingPlans() {
       <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {PLANS.map((p, n) => {
           const featured = 'featured' in p && p.featured;
+          const trial = p.monthly === 0;
           const price = annual ? Math.round(p.annual / 12) : p.monthly;
           return (
             <li
@@ -320,7 +321,7 @@ export function PricingPlans() {
               <p className="mt-5 flex items-baseline gap-1">
                 <span className="mk-display tabular text-5xl font-bold">${price}</span>
                 <span className={cn('text-sm', featured ? 'text-canvas/80' : 'text-secondary')}>
-                  /month
+                  {trial ? 'for 7 days' : '/month'}
                 </span>
               </p>
               <p
@@ -351,7 +352,7 @@ export function PricingPlans() {
                 <li>Every feature included</li>
               </ul>
               <a
-                href="/signup"
+                href={trial ? '/signup' : planMailto(p.name)}
                 className={cn(
                   'mt-6 flex min-h-12 items-center justify-center rounded-[12px] text-[15px] font-semibold transition-colors',
                   featured
@@ -359,12 +360,19 @@ export function PricingPlans() {
                     : 'border border-input-border bg-surface text-ink hover:bg-surface-2',
                 )}
               >
-                {p.monthly === 0 ? 'Start free' : `Choose ${p.name}`}
+                {trial ? 'Start free trial' : `Email us for ${p.name}`}
               </a>
             </li>
           );
         })}
       </ul>
+      <p className="mx-auto mt-6 max-w-2xl text-center text-sm text-secondary">
+        Online checkout is coming soon. Until then, start the free trial and email{' '}
+        <a href={`mailto:${PLAN_CONTACT}`} className="underline underline-offset-4">
+          {PLAN_CONTACT}
+        </a>{' '}
+        to move your workspace to a paid plan.
+      </p>
     </div>
   );
 }

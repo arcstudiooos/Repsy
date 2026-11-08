@@ -1,4 +1,10 @@
-import { chargeDueRenewal, expireGraces, retryDueSubscription, type Logger } from '@kinetic/core';
+import {
+  chargeDueRenewal,
+  expireGraces,
+  onlinePaymentsAvailable,
+  retryDueSubscription,
+  type Logger,
+} from '@kinetic/core';
 import { withSystem, withTenant, type PrismaClient } from '@kinetic/db';
 import { defineJob, type CaptureException } from './registry';
 
@@ -17,22 +23,28 @@ export async function sweepBilling(
   now: Date,
   report: { logger?: Pick<Logger, 'error'>; captureException?: CaptureException } = {},
 ): Promise<{ renewed: number; retried: number; paused: number; failed: number }> {
+  // Renewals and retries charge through the payment provider; skip them while online payments are off.
+  const charging = onlinePaymentsAvailable();
   const { renewals, due, graceOrgs } = await withSystem(
     async (tx) => ({
-      renewals: await tx.subscription.findMany({
-        where: { status: { in: ['active', 'trialing'] }, nextChargeAt: { lte: now } },
-        select: { id: true, organizationId: true },
-        take: 500,
-      }),
-      due: await tx.subscription.findMany({
-        where: {
-          status: { in: ['past_due', 'grace'] },
-          needsReview: false,
-          nextRetryAt: { lte: now },
-        },
-        select: { id: true, organizationId: true },
-        take: 500,
-      }),
+      renewals: !charging
+        ? []
+        : await tx.subscription.findMany({
+            where: { status: { in: ['active', 'trialing'] }, nextChargeAt: { lte: now } },
+            select: { id: true, organizationId: true },
+            take: 500,
+          }),
+      due: !charging
+        ? []
+        : await tx.subscription.findMany({
+            where: {
+              status: { in: ['past_due', 'grace'] },
+              needsReview: false,
+              nextRetryAt: { lte: now },
+            },
+            select: { id: true, organizationId: true },
+            take: 500,
+          }),
       graceOrgs: await tx.subscription.findMany({
         where: { status: 'grace', graceEndsAt: { lte: now } },
         distinct: ['organizationId'],

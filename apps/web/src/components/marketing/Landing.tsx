@@ -17,6 +17,7 @@ import {
   Workflow,
 } from 'lucide-react';
 import { RepsyMark } from '@/components/brand/Logo';
+import { gtmContainerId } from './gtm';
 import { CookieSettingsLink, MarketingAnalytics } from './MarketingAnalytics';
 import { cn } from '@/lib/utils';
 import {
@@ -163,7 +164,7 @@ function Hero() {
             even with no signal, and every feature is on every plan.
           </p>
           <div data-reveal style={i(3)} className="mt-8 flex flex-wrap gap-3">
-            <PrimaryCta>Start free with 3 clients</PrimaryCta>
+            <PrimaryCta>Start your free 7-day trial</PrimaryCta>
             {tourReady ? (
               <SecondaryCta href="#tour">See a {TOUR_VIDEO.length} tour</SecondaryCta>
             ) : (
@@ -1067,7 +1068,7 @@ function FinalCta() {
             Bring your clients. We&apos;ll help with the rest.
           </h2>
           <div data-reveal style={i(1)} className="mt-8 flex flex-wrap justify-center gap-3">
-            <PrimaryCta tone="acid">Start free with 3 clients</PrimaryCta>
+            <PrimaryCta tone="acid">Start your free 7-day trial</PrimaryCta>
             <SecondaryCta href="mailto:hello@repsy.fit?subject=Help%20moving%20to%20Repsy" onDark>
               Ask for help moving
             </SecondaryCta>
@@ -1078,7 +1079,7 @@ function FinalCta() {
   );
 }
 
-function Footer() {
+function Footer({ gtmId }: { gtmId: string }) {
   const cols = [
     {
       h: 'Product',
@@ -1092,7 +1093,7 @@ function Footer() {
     {
       h: 'Account',
       links: [
-        ['Start free', '/signup'],
+        ['Start free trial', '/signup'],
         ['Log in', '/login'],
         ['Plan and billing', '/plan'],
       ],
@@ -1149,7 +1150,10 @@ function Footer() {
       <Wordmark />
       <p className="mk-container flex flex-wrap gap-4 pb-8 text-[13px] text-secondary">
         <span>© Repsy</span>
-        <CookieSettingsLink className="underline-offset-4 hover:text-ink hover:underline" />
+        <CookieSettingsLink
+          gtmId={gtmId}
+          className="underline-offset-4 hover:text-ink hover:underline"
+        />
       </p>
     </footer>
   );
@@ -1157,6 +1161,7 @@ function Footer() {
 
 /** The marketing home page (landing PRD rev 2, §6). Signed-out visitors to `/` see this. */
 export function Landing() {
+  const gtmId = gtmContainerId();
   return (
     <div className={cn('mk', display.variable)}>
       <script dangerouslySetInnerHTML={{ __html: motionBoot }} />
@@ -1167,7 +1172,7 @@ export function Landing() {
         Skip to content
       </a>
       <Grain />
-      <MarketingAnalytics />
+      <MarketingAnalytics gtmId={gtmId} />
       <MarketingNav />
       <main id="main">
         <Hero />
@@ -1186,7 +1191,7 @@ export function Landing() {
           <FinalCta />
         </div>
       </main>
-      <Footer />
+      <Footer gtmId={gtmId} />
       <MotionController />
       <MotionPauseToggle />
     </div>

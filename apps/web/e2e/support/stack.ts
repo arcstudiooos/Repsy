@@ -175,6 +175,8 @@ async function main(): Promise<void> {
     BETTER_AUTH_SECRET: randomBytes(32).toString('hex'),
     APP_BASE_URL: origin,
     DISABLE_BREACHED_PASSWORD_CHECK: 'true',
+    // Online payments run on the fake provider, which production keeps off unless this is set.
+    PAYMENTS_FAKE: 'true',
     DEV_EMAIL_DIR: emailDir,
     OUTBOX_POLL_INTERVAL_MS: '1000',
     RESEND_API_KEY: '',

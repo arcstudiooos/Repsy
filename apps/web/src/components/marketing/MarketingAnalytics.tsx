@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 /**
  * Google Tag Manager on the public home page only, and only after the visitor accepts analytics cookies
  * (D-023). Declining (or not choosing) loads nothing from Google. App and portal pages never load it: their
- * URLs and titles carry client details. The container id comes from NEXT_PUBLIC_GTM_ID at build time.
+ * URLs and titles carry client details. The container id is read from NEXT_PUBLIC_GTM_ID on the server at request
+ * time and passed in as a prop (see gtmContainerId), so setting it on Render works without a rebuild of the client
+ * bundle. A build-time-only read left the banner off in production while the server rendered "Cookie settings".
  */
-const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID?.trim() ?? '';
 const CONSENT_KEY = 'repsy-analytics-consent';
 type Choice = 'granted' | 'denied';
 
@@ -54,11 +55,13 @@ const subscribe = (onChange: () => void) => {
 const snapshot = (): Choice | 'unset' => readChoice() ?? memoryChoice ?? 'unset';
 const serverSnapshot = (): 'pending' => 'pending';
 
+const GTM_ID_PATTERN = /^GTM-[A-Z0-9]+$/;
+
 let gtmLoaded = false;
 let mounted = 0;
 
 function loadGtm(id: string) {
-  if (gtmLoaded || !/^GTM-[A-Z0-9]+$/.test(id)) return;
+  if (gtmLoaded || !GTM_ID_PATTERN.test(id)) return;
   gtmLoaded = true;
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push({ 'gtm.start': Date.now(), event: 'gtm.js' });
@@ -68,15 +71,15 @@ function loadGtm(id: string) {
   document.head.appendChild(script);
 }
 
-export function MarketingAnalytics() {
+export function MarketingAnalytics({ gtmId }: { gtmId: string }) {
   const choice = useSyncExternalStore(subscribe, snapshot, serverSnapshot);
 
   useEffect(() => {
-    if (GTM_ID && choice === 'granted') loadGtm(GTM_ID);
-  }, [choice]);
+    if (gtmId && choice === 'granted') loadGtm(gtmId);
+  }, [gtmId, choice]);
 
   useEffect(() => {
-    if (!GTM_ID) return;
+    if (!gtmId) return;
     mounted += 1;
     return () => {
       mounted -= 1;
@@ -86,9 +89,9 @@ export function MarketingAnalytics() {
         if (mounted === 0 && gtmLoaded) window.location.reload();
       }, 0);
     };
-  }, []);
+  }, [gtmId]);
 
-  if (!GTM_ID || choice !== 'unset') return null;
+  if (!gtmId || choice !== 'unset') return null;
 
   const decide = (next: Choice) => {
     saveChoice(next);
@@ -118,8 +121,8 @@ export function MarketingAnalytics() {
 }
 
 /** Footer link that reopens the cookie choice. Hidden when analytics is not configured. */
-export function CookieSettingsLink({ className }: { className?: string }) {
-  if (!GTM_ID) return null;
+export function CookieSettingsLink({ gtmId, className }: { gtmId: string; className?: string }) {
+  if (!gtmId) return null;
   return (
     <button type="button" className={className} onClick={() => saveChoice(null)}>
       Cookie settings

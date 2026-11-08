@@ -763,4 +763,5 @@ The owner chose OpenAI instead of Anthropic for the assistant (I15, D-020).
 2. It loads only after the visitor presses **Accept** on the cookie banner; Decline, or no choice, loads nothing from Google. The choice is kept in the browser (`localStorage`) and can be changed with "Cookie settings" in the home page footer.
 3. App, portal, admin and auth pages never load it: their URLs and titles carry client and workspace details. If a visitor who accepted moves from the home page into the app without a full page load, the page reloads so the script does not follow them.
 4. The privacy notice lists Google as a processor for home-page visitor statistics and describes the choice. Configure GA4 inside GTM; GTM tags that collect personal data, or advertising tags, need a new decision first.
+5. The container id is read by the server at request time and passed to the banner as a prop, so changing `NEXT_PUBLIC_GTM_ID` on Render takes effect on the next deploy without depending on build-time inlining (fix 2026-11-08: the live banner never showed because the browser bundle was built without the value).
 
