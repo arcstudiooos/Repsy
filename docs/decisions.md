@@ -756,3 +756,11 @@ The owner chose OpenAI instead of Anthropic for the assistant (I15, D-020).
 2. The new coach lands on `/onboarding/pilot-code` ("Set up your workspace") for business name and time zone, then `/app`. The workspace starts on the 7-day, 3-client trial, as with email sign-up. A Google user who leaves before this step is sent back to it by the existing no-workspace guard.
 3. Signing in from `/login` with Google still never creates an account. Over HTTP, Google from the sign-up page is the only way to create a user; email accounts still go through `registerCoach`, and Microsoft SSO never creates users.
 4. **Pilot codes are retired from sign-up** (owner, 2026-11-08). Neither sign-up form nor onboarding asks for one; every new workspace starts on the trial (A4). Existing pilot workspaces keep their allowance. The admin pilot-code endpoints and `registerCoach`'s code handling stay, unused by the forms. E2E coaches get the pilot allowance through the admin database connection (`grantPilotAccess`).
+
+## D-023 — Google Tag Manager on the public home page, with consent (2026-11-08)
+
+1. The owner's GTM container (`NEXT_PUBLIC_GTM_ID`, `GTM-MBTTWJPC` in `render.yaml`) loads on the public home page only, from `MarketingAnalytics` in the landing page.
+2. It loads only after the visitor presses **Accept** on the cookie banner; Decline, or no choice, loads nothing from Google. The choice is kept in the browser (`localStorage`) and can be changed with "Cookie settings" in the home page footer.
+3. App, portal, admin and auth pages never load it: their URLs and titles carry client and workspace details. If a visitor who accepted moves from the home page into the app without a full page load, the page reloads so the script does not follow them.
+4. The privacy notice lists Google as a processor for home-page visitor statistics and describes the choice. Configure GA4 inside GTM; GTM tags that collect personal data, or advertising tags, need a new decision first.
+
