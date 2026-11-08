@@ -12,7 +12,7 @@ export function GoogleSignInButton() {
         void authClient.signIn.social({
           provider: 'google',
           callbackURL: '/app',
-          errorCallbackURL: '/login?sso=refused',
+          errorCallbackURL: '/login?sso=google',
         })
       }
     >

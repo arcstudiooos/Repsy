@@ -112,6 +112,12 @@ export function createAuth(options: CreateAuthOptions = {}) {
       // Secure cookies whenever the configured origin is https.
       useSecureCookies: env.BETTER_AUTH_URL?.startsWith('https://') ?? false,
       defaultCookieAttributes: { httpOnly: true, sameSite: 'lax' },
+      // Client IP for Better Auth's rate limits. Production sits behind Cloudflare and Render, so X-Forwarded-For
+      // carries several hops and Better Auth (without trustedProxies) rejects a multi-value header, which put every
+      // visitor in one shared bucket ("Rate limiting could not determine a client IP"). Cloudflare sets
+      // CF-Connecting-IP to the single real client address. Local and E2E runs without Cloudflare fall back to
+      // X-Forwarded-For. Direct *.onrender.com traffic can forge CF-Connecting-IP; it only picks a rate-limit bucket.
+      ipAddress: { ipAddressHeaders: ['cf-connecting-ip', 'x-forwarded-for'] },
     },
     user: {
       additionalFields: {
