@@ -754,7 +754,7 @@ The owner chose OpenAI instead of Anthropic for the assistant (I15, D-020).
 
 1. `/signup` shows **Sign up with Google** when the Google keys are set. It asks Google to create the account (`requestSignUp`); Google has already verified the email.
 2. The new coach lands on `/onboarding/pilot-code` ("Set up your workspace") for business name and time zone, then `/app`. The workspace starts on the 7-day, 3-client trial, as with email sign-up. A Google user who leaves before this step is sent back to it by the existing no-workspace guard.
-3. Signing in from `/login` with Google still never creates an account. Over HTTP, Google from the sign-up page is the only way to create a user; email accounts still go through `registerCoach`, and Microsoft SSO never creates users.
+3. **Changed 2026-11-09 (owner):** the `/login` Google button also creates the account for a new email, so Google works the same from both pages. Over HTTP, Google is the only way to create a user; email accounts still go through `registerCoach`, and Microsoft SSO never creates users.
 4. **Pilot codes are retired from sign-up** (owner, 2026-11-08). Neither sign-up form nor onboarding asks for one; every new workspace starts on the trial (A4). Existing pilot workspaces keep their allowance. The admin pilot-code endpoints and `registerCoach`'s code handling stay, unused by the forms. E2E coaches get the pilot allowance through the admin database connection (`grantPilotAccess`).
 
 ## D-023 — Google Tag Manager on the public home page, with consent (2026-11-08)

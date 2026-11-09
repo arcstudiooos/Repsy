@@ -173,8 +173,8 @@ export function createAuth(options: CreateAuthOptions = {}) {
                   google: {
                     clientId: env.GOOGLE_CLIENT_ID as string,
                     clientSecret: env.GOOGLE_CLIENT_SECRET as string,
-                    // Signing in never creates an account. The sign-up page's Google button asks for one
-                    // explicitly (requestSignUp); the new user then sets up a workspace at onboarding.
+                    // A Google account is created only when the button asks (requestSignUp). Both Repsy Google
+                    // buttons ask (D-022), and the new user then sets up a workspace at onboarding.
                     disableImplicitSignUp: true,
                   },
                 }
@@ -202,7 +202,7 @@ export function createAuth(options: CreateAuthOptions = {}) {
     hooks: {
       // Password accounts are created only by registerCoach, which calls auth.api.signUpEmail
       // server-side (no ctx.request). Over HTTP (ctx.request set) the only sign-up allowed is
-      // Google's, from the sign-up page: Google has verified the email, and a user with no
+      // Google's: Google has verified the email, and a user with no
       // workspace is sent to /onboarding to create one. Microsoft SSO never creates users.
       before: createAuthMiddleware(async (ctx) => {
         const viaHttp = ctx.request !== undefined;
