@@ -25,6 +25,16 @@ describe('engagement signal (PRD I4)', () => {
   it('scores a week from workouts, messages and portal visits', async () => {
     const org = await newOrg(prisma);
     const w = await newClientWorld(prisma, org); // workouts 4, 6, 9 Nov; NOW is Wed 4 Nov
+    // The score starts at the week the client was created. NOW is fixed, so the row's real creation time would
+    // land after it once the calendar passes NOW's week.
+    await withSystem(
+      (tx) =>
+        tx.client.update({
+          where: { id: w.clientId },
+          data: { createdAt: new Date('2026-10-01') },
+        }),
+      prisma,
+    );
     const [first] = await sessionsOf(prisma, w.assignmentId);
     await runAs(prisma, w.client, (tx) =>
       completeSession(tx, w.client, first!.id, { idempotencyKey: randomUUID() }, { now: NOW }),
