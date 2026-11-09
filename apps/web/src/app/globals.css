@@ -157,3 +157,14 @@
 .k-fade-up {
   animation: k-fade-up 400ms var(--k-ease) both;
 }
+
+/* Until React is ready a button does nothing, so it takes no clicks and dims if the wait is noticeable. */
+html:not([data-hydrated]) button {
+  pointer-events: none;
+  animation: k-await-hydration 0s 400ms forwards;
+}
+@keyframes k-await-hydration {
+  to {
+    opacity: 0.6;
+  }
+}

@@ -1091,6 +1091,8 @@ model ConversationThread {
   clientId       String   @unique @map("client_id") @db.Uuid
   coachUserId    String   @map("coach_user_id") @db.Uuid
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  /// Newest message's time, kept by sendMessage so the inbox can sort and page without reading every thread.
+  lastMessageAt  DateTime? @map("last_message_at") @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id])
   client       Client       @relation(fields: [clientId, organizationId], references: [id, organizationId])

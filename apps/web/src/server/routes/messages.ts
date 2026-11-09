@@ -10,10 +10,13 @@ import {
 import { ApiResult, type RouteDef } from '../api';
 import { onMessageSent } from '../reviewHooks';
 
-/** `GET /api/v1/threads`: the coach inbox, most recent first. */
-export const threadsListRoute: RouteDef<undefined, true> = {
+const threadsSchema = z.object({ page: z.coerce.number().int().min(1).max(100_000).optional() });
+
+/** `GET /api/v1/threads`: one page of the coach inbox (50 threads), most recent first. */
+export const threadsListRoute: RouteDef<typeof threadsSchema, true> = {
   can: 'message:read',
-  handler: ({ actor, tenant }) => tenant((tx) => listThreads(tx, actor)),
+  input: threadsSchema,
+  handler: ({ actor, input, tenant }) => tenant((tx) => listThreads(tx, actor, input)),
 };
 
 /** `GET /api/v1/threads/me`: the acting client's thread (created on first open). */

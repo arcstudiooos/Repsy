@@ -1,7 +1,7 @@
 import { prisma } from '@repsy/db';
-import { countOpenFlags, unreadMessageCount } from '@repsy/core';
 import type { ReactNode } from 'react';
-import { getServerSession, withServerTenant } from '@/server/serverActor';
+import { getCoachShellData } from '@/server/coachShellData';
+import { getServerSession } from '@/server/serverActor';
 import { canSwitchWorkspace } from '@/server/shellGate';
 import { CoachNav } from './CoachNav';
 
@@ -11,15 +11,7 @@ import { CoachNav } from './CoachNav';
  */
 export async function CoachNavServer({ switcher }: { switcher?: ReactNode }) {
   const { user, memberships } = await getServerSession();
-  const data = user
-    ? await withServerTenant(async (tx, actor) => ({
-        review: (await countOpenFlags(tx, actor)).total,
-        messages: await unreadMessageCount(tx, actor),
-        org:
-          (await tx.organization.findFirst({ where: { id: actor.orgId }, select: { name: true } }))
-            ?.name ?? null,
-      })).catch(() => null)
-    : null;
+  const data = user ? await getCoachShellData() : null;
   const me = user
     ? await prisma.user
         .findUnique({ where: { id: user.id }, select: { name: true } })
@@ -28,12 +20,12 @@ export async function CoachNavServer({ switcher }: { switcher?: ReactNode }) {
   return (
     <CoachNav
       switcher={switcher}
-      counts={data ? { review: data.review, messages: data.messages } : undefined}
+      counts={data ? { review: data.review ?? 0, messages: data.messages ?? 0 } : undefined}
       user={
         user
           ? {
               name: me?.name?.trim() || user.email,
-              org: data?.org ?? null,
+              org: data?.org?.name ?? null,
               canSwitch: canSwitchWorkspace(memberships),
             }
           : undefined

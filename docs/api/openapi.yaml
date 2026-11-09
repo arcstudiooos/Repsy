@@ -1202,7 +1202,9 @@ paths:
   /threads:
     get:
       tags: [Messages]
-      summary: 'The coach inbox with unread counts.'
+      summary: 'The coach inbox with unread counts, 50 threads per page.'
+      parameters:
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1 } }
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Error' }

@@ -1,12 +1,13 @@
 import { redirect } from 'next/navigation';
 import { Suspense, type ReactNode } from 'react';
 import Link from 'next/link';
-import { isCoachRole, twoFactorStatus } from '@repsy/core';
+import { isCoachRole } from '@repsy/core';
 import { CoachNavServer } from '@/components/nav/CoachNavServer';
 import { NoticeBanner } from '@/components/nav/NoticeBanner';
 import { PathBreadcrumbs } from '@/components/nav/PathBreadcrumbs';
 import { LoadingState } from '@/components/states/LoadingState';
-import { getServerActorOutcome, getServerSession, withServerTenant } from '@/server/serverActor';
+import { getCoachShellData } from '@/server/coachShellData';
+import { getServerActorOutcome, getServerSession } from '@/server/serverActor';
 import { shellRedirect } from '@/server/shellGate';
 
 /**
@@ -50,12 +51,7 @@ async function MembershipGate({
 
 /** PRD A4: days left in a self-serve trial, or that it ended (clients and data are kept). */
 async function TrialBanner() {
-  const org = await withServerTenant((tx, actor) =>
-    tx.organization.findFirst({
-      where: { id: actor.orgId },
-      select: { trialEndsAt: true, activeClientLimit: true },
-    }),
-  ).catch(() => null);
+  const org = (await getCoachShellData())?.org;
   if (!org?.trialEndsAt) return null;
   const left = Math.ceil((org.trialEndsAt.getTime() - Date.now()) / 86_400_000);
   return (
@@ -79,9 +75,7 @@ async function TrialBanner() {
 
 /** PRD A8: an owner of a workspace with more than one coach is asked to turn on two-step sign-in. */
 async function TwoFactorRequiredBanner() {
-  const status = await withServerTenant((tx, actor) => twoFactorStatus(tx, actor)).catch(
-    () => null,
-  );
+  const status = (await getCoachShellData())?.twoFactor;
   if (!status?.required || status.enabled) return null;
   return (
     <div role="status" className="mb-6 rounded-card bg-surface p-4 shadow-card ring-1 ring-warning">

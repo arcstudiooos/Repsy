@@ -14,7 +14,9 @@ import {
   isUuid,
   listMessages,
   listSavedReplies,
+  countThreads,
   listThreads,
+  THREAD_PAGE_SIZE,
   searchMessages,
   type MessageSearchHit,
 } from '@repsy/core';
@@ -43,7 +45,8 @@ export default async function MessagesPage({
   const sp = await searchParams;
   const selected = first(sp.thread);
   const q = first(sp.q)?.trim().slice(0, 100) || undefined;
-  const { threads, open, hits, searchError, replies, audiences } = await withServerTenant(
+  const inboxPage = Math.max(1, Math.floor(Number(first(sp.page))) || 1);
+  const { threads, total, open, hits, searchError, replies, audiences } = await withServerTenant(
     async (tx, actor) => {
       const replies = await listSavedReplies(tx, actor);
       const audiences = await broadcastAudiences(tx, actor);
@@ -57,17 +60,26 @@ export default async function MessagesPage({
           searchError = 'Search with at least 2 characters.';
         }
       }
-      const list = await listThreads(tx, actor);
-      const pick =
-        selected && isUuid(selected) && list.some((t) => t.id === selected) ? selected : null;
-      if (!pick) return { threads: list, open: null, hits, searchError, replies, audiences };
-      const thread = await getThread(tx, actor, pick);
+      const list = await listThreads(tx, actor, { page: inboxPage });
+      const total = await countThreads(tx, actor);
+      const closed = { threads: list, total, open: null, hits, searchError, replies, audiences };
+      // The open thread may be on another page of the list, so it is looked up on its own.
+      if (!selected || !isUuid(selected)) return closed;
+      let thread;
+      try {
+        thread = await getThread(tx, actor, selected);
+      } catch (error) {
+        if (error instanceof DomainError && error.code === 'NOT_FOUND') return closed;
+        throw error;
+      }
+      const pick = thread.id;
       const page = await listMessages(tx, actor, pick);
       const units = (await getSettings(tx, actor)).profile?.units ?? 'kg';
       const facts = await replyFacts(tx, actor, thread.clientId, units);
       const context = await getClientContext(tx, actor, thread.clientId);
       // Opening the thread marked it read.
       return {
+        total,
         threads: list.map((t) => (t.id === pick ? { ...t, unread: 0 } : t)),
         open: { thread, page, facts, context },
         hits,
@@ -86,7 +98,7 @@ export default async function MessagesPage({
         subtitle="Every client conversation in one inbox."
         actions={<BroadcastDialog audiences={audiences} />}
       />
-      {threads.length === 0 ? (
+      {total === 0 ? (
         <EmptyState
           icon={MessageSquare}
           title="No conversations yet"
@@ -159,7 +171,7 @@ export default async function MessagesPage({
                 {threads.map((t) => (
                   <li key={t.id}>
                     <Link
-                      href={`/app/messages?thread=${t.id}`}
+                      href={`/app/messages?thread=${t.id}${inboxPage > 1 ? `&page=${inboxPage}` : ''}`}
                       aria-current={open?.thread.id === t.id ? 'page' : undefined}
                       className={cn(
                         'flex min-h-16 items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-surface-2',
@@ -206,6 +218,33 @@ export default async function MessagesPage({
                   </li>
                 ))}
               </ul>
+              {total > THREAD_PAGE_SIZE && (
+                <div className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+                  {inboxPage > 1 ? (
+                    <Link
+                      href={`/app/messages?page=${inboxPage - 1}`}
+                      className="inline-flex min-h-11 items-center text-accent underline"
+                    >
+                      Newer
+                    </Link>
+                  ) : (
+                    <span />
+                  )}
+                  <span className="text-secondary">
+                    Page {inboxPage} of {Math.ceil(total / THREAD_PAGE_SIZE)}
+                  </span>
+                  {inboxPage * THREAD_PAGE_SIZE < total ? (
+                    <Link
+                      href={`/app/messages?page=${inboxPage + 1}`}
+                      className="inline-flex min-h-11 items-center text-accent underline"
+                    >
+                      Older
+                    </Link>
+                  ) : (
+                    <span />
+                  )}
+                </div>
+              )}
             </Card>
           </nav>
           <section aria-label="Conversation" className={cn(!open && 'hidden md:block')}>
