@@ -11,7 +11,10 @@ export function GoogleSignInButton() {
       onClick={() =>
         void authClient.signIn.social({
           provider: 'google',
+          // One Google button everywhere: an existing account signs in, a new email gets an account and onboarding.
+          requestSignUp: true,
           callbackURL: '/app',
+          newUserCallbackURL: '/onboarding/pilot-code',
           errorCallbackURL: '/login?sso=google',
         })
       }

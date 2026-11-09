@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "node --max-old-space-size=340 ./node_modules/next/dist/bin/next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test:e2e": "playwright test --pass-with-no-tests && playwright test -c playwright.offline.config.ts"

@@ -35,7 +35,22 @@ export async function GoogleButton({
           )}
         </FormMessage>
       )}
-      {google && <GoogleSignInButton />}
+      {google && (
+        <>
+          <GoogleSignInButton />
+          <p className="mt-2 text-sm text-secondary">
+            New to Repsy? Continuing with Google creates your coach account and you agree to the{' '}
+            <Link href="/terms" className="underline">
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link href="/privacy" className="underline">
+              Privacy Policy
+            </Link>
+            .
+          </p>
+        </>
+      )}
       {microsoft && <MicrosoftSignInButton />}
     </>
   );
