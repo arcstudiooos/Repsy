@@ -5,7 +5,7 @@
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
-    "start": "tsx src/index.ts",
+    "start": "node --import tsx src/index.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "pgboss:migrate": "node --env-file-if-exists=../../.env --import tsx src/pgbossMigrate.ts",

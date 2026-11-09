@@ -148,21 +148,98 @@ export async function getThread(
   };
 }
 
-/** The coach inbox: every thread in the organization, most recent activity first. */
-export async function listThreads(tx: TenantTx, actor: ActorContext): Promise<ThreadSummary[]> {
+/** Threads per page of the coach inbox. */
+export const THREAD_PAGE_SIZE = 50;
+
+/**
+ * One page of the coach inbox, most recent activity first. Two queries however many threads the workspace has: the
+ * per-thread lookups this replaces ran about 4,000 statements on a 1,000-client workspace and timed out.
+ */
+export async function listThreads(
+  tx: TenantTx,
+  actor: ActorContext,
+  options: { page?: number; pageSize?: number } = {},
+): Promise<ThreadSummary[]> {
   assertCan(actor, 'message:read');
   if (actor.role === 'client')
     throw new DomainError('FORBIDDEN', 'You do not have access to this.');
+  const pageSize = options.pageSize ?? THREAD_PAGE_SIZE;
   const threads = await tx.conversationThread.findMany({
-    select: { id: true, clientId: true, client: { select: { name: true, status: true } } },
+    orderBy: [
+      { lastMessageAt: { sort: 'desc', nulls: 'last' } },
+      { client: { name: 'asc' } },
+      { id: 'asc' },
+    ],
+    skip: (Math.max(1, options.page ?? 1) - 1) * pageSize,
+    take: pageSize,
+    select: {
+      id: true,
+      clientId: true,
+      client: { select: { name: true, status: true } },
+      messages: {
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: 1,
+        select: { body: true, senderUserId: true, createdAt: true },
+      },
+    },
   });
-  const out: ThreadSummary[] = [];
-  for (const t of threads) out.push(await summarizeThread(tx, actor, t));
-  return out.sort(
-    (a, b) =>
-      (b.lastMessageAt ?? '').localeCompare(a.lastMessageAt ?? '') ||
-      a.clientName.localeCompare(b.clientName),
+  const unread = await unreadByThread(
+    tx,
+    actor,
+    threads.map((t) => t.id),
   );
+  return threads.map((t) => {
+    const last = t.messages[0];
+    return {
+      id: t.id,
+      clientId: t.clientId,
+      clientName: t.client.name,
+      clientStatus: t.client.status,
+      unread: unread.get(t.id) ?? 0,
+      lastMessageAt: last?.createdAt.toISOString() ?? null,
+      lastMessage: last ? { body: last.body, mine: last.senderUserId === actor.userId } : null,
+    };
+  });
+}
+
+/** Threads in the workspace, for the inbox pager. */
+export async function countThreads(tx: TenantTx, actor: ActorContext): Promise<number> {
+  assertCan(actor, 'message:read');
+  return tx.conversationThread.count();
+}
+
+async function unreadByThread(
+  tx: TenantTx,
+  actor: ActorContext,
+  threadIds: string[],
+): Promise<Map<string, number>> {
+  if (threadIds.length === 0) return new Map();
+  const counts = await tx.message.groupBy({
+    by: ['threadId'],
+    where: { threadId: { in: threadIds }, readAt: null, senderUserId: { not: actor.userId } },
+    _count: { _all: true },
+  });
+  return new Map(counts.map((c) => [c.threadId, c._count._all]));
+}
+
+/** Unread messages per client for one page of the roster. */
+export async function unreadByClient(
+  tx: TenantTx,
+  actor: ActorContext,
+  clientIds: string[],
+): Promise<Map<string, number>> {
+  assertCan(actor, 'message:read');
+  if (clientIds.length === 0) return new Map();
+  const threads = await tx.conversationThread.findMany({
+    where: { clientId: { in: clientIds } },
+    select: { id: true, clientId: true },
+  });
+  const unread = await unreadByThread(
+    tx,
+    actor,
+    threads.map((t) => t.id),
+  );
+  return new Map(threads.map((t) => [t.clientId, unread.get(t.id) ?? 0]));
 }
 
 /** Unread messages to the acting user across their threads (nav badge). */
@@ -387,6 +464,11 @@ export async function sendMessage(
   } else {
     row = await tx.message.create({ data: data as never, select });
   }
+  await tx.conversationThread.update({
+    where: { id: thread.id },
+    data: { lastMessageAt: now },
+    select: { id: true },
+  });
   await appendAudit(tx, {
     orgId: actor.orgId,
     actorId: actor.userId,

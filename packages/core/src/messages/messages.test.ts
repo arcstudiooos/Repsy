@@ -106,6 +106,47 @@ describe('messages', () => {
     });
   });
 
+  it('the inbox pages and its query count does not grow with the number of threads', async () => {
+    const w = await world();
+    const others = await Promise.all(
+      [1, 2].map(() => newClientWorld(prisma, { orgId: w.orgId, coach: w.coach })),
+    );
+    const own = await myThread(w);
+    await send(w, 'client', own.id, 'First in the inbox');
+    for (const o of others) {
+      await runAs(prisma, o.client, (tx) => getMyThread(tx, o.client));
+    }
+    const calls: string[] = [];
+    const counted = await runAs(prisma, w.coach, (tx) => {
+      const spy = (name: 'message' | 'conversationThread') =>
+        new Proxy(tx[name] as object, {
+          get(target, prop, receiver) {
+            calls.push(`${name}.${String(prop)}`);
+            return Reflect.get(target, prop, receiver) as unknown;
+          },
+        });
+      const watched = new Proxy(tx, {
+        get(target, prop, receiver) {
+          if (prop === 'message' || prop === 'conversationThread') return spy(prop);
+          return Reflect.get(target, prop, receiver) as unknown;
+        },
+      });
+      return listThreads(watched, w.coach);
+    });
+    expect(counted[0]).toMatchObject({ id: own.id, lastMessage: { body: 'First in the inbox' } });
+    expect(calls).toEqual(['conversationThread.findMany', 'message.groupBy']);
+
+    const pageOne = await runAs(prisma, w.coach, (tx) =>
+      listThreads(tx, w.coach, { page: 1, pageSize: 2 }),
+    );
+    const pageTwo = await runAs(prisma, w.coach, (tx) =>
+      listThreads(tx, w.coach, { page: 2, pageSize: 2 }),
+    );
+    expect(pageOne).toHaveLength(2);
+    expect(pageTwo).toHaveLength(1);
+    expect(new Set([...pageOne, ...pageTwo].map((t) => t.id)).size).toBe(3);
+  });
+
   it('a retried send with the same clientMessageId stores one message', async () => {
     const w = await world();
     const { id } = await myThread(w);

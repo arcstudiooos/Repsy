@@ -7,6 +7,15 @@ import { PrismaClient } from './generated/client';
  */
 const AUTH_CONTEXT_OPTIONS = '-c app.auth_context=on';
 
+/** Requests queue for a connection this long before failing (Prisma's own default of 2 s fails under a burst). */
+const DEFAULT_TX_MAX_WAIT_MS = 5_000;
+
+/** Connections per pool: DB_POOL_MAX for the app client, DB_AUTH_POOL_MAX for the Better Auth client. */
+export function poolSizeFromEnv(env: Record<string, string | undefined>, auth: boolean): number {
+  const n = Number(auth ? env.DB_AUTH_POOL_MAX : env.DB_POOL_MAX);
+  return Number.isInteger(n) && n > 0 ? n : auth ? 5 : 20;
+}
+
 export function createPrismaClient(
   connectionString: string,
   schema?: string,
@@ -23,10 +32,20 @@ export function createPrismaClient(
     ...(schema ? [`-c search_path=${schema},public`] : []),
   ].join(' ');
   const adapter = new PrismaPg(
-    settings ? { connectionString, options: settings } : { connectionString },
+    {
+      connectionString,
+      ...(settings ? { options: settings } : {}),
+      max: poolSizeFromEnv(process.env, options.authContext === true),
+    },
     schema ? { schema } : undefined,
   );
-  return new PrismaClient({ adapter, transactionOptions: transactionOptionsFromEnv(process.env) });
+  return new PrismaClient({
+    adapter,
+    transactionOptions: {
+      maxWait: DEFAULT_TX_MAX_WAIT_MS,
+      ...transactionOptionsFromEnv(process.env),
+    },
+  });
 }
 
 /**
@@ -58,13 +77,25 @@ export function createAuthPrismaClient(connectionString: string, schema?: string
   return createPrismaClient(connectionString, schema, { authContext: true });
 }
 
-function lazyClient(create: (url: string) => PrismaClient): PrismaClient {
-  let instance: PrismaClient | undefined;
+/**
+ * One client of each kind per process. Next.js bundles this module into several server chunks, each with its own
+ * module scope: a plain module variable there created 7 clients at about 26 MB each, every one with its own pool.
+ */
+const processClients = globalThis as typeof globalThis & {
+  __repsyPrismaClients?: Map<string, PrismaClient>;
+};
+processClients.__repsyPrismaClients ??= new Map();
+
+function lazyClient(kind: string, create: (url: string) => PrismaClient): PrismaClient {
+  const clients = processClients.__repsyPrismaClients as Map<string, PrismaClient>;
   const get = (): PrismaClient => {
+    const url = process.env.DATABASE_URL;
+    if (!url) throw new Error('DATABASE_URL is not set');
+    const key = `${kind}:${url}`;
+    let instance = clients.get(key);
     if (!instance) {
-      const url = process.env.DATABASE_URL;
-      if (!url) throw new Error('DATABASE_URL is not set');
       instance = create(url);
+      clients.set(key, instance);
     }
     return instance;
   };
@@ -78,7 +109,7 @@ function lazyClient(create: (url: string) => PrismaClient): PrismaClient {
 }
 
 /** Lazily-connected shared client; resolves DATABASE_URL on first use. */
-export const prisma: PrismaClient = lazyClient((url) => createPrismaClient(url));
+export const prisma: PrismaClient = lazyClient('app', (url) => createPrismaClient(url));
 
 /** Lazily-connected Better Auth client (see createAuthPrismaClient). */
-export const authPrisma: PrismaClient = lazyClient((url) => createAuthPrismaClient(url));
+export const authPrisma: PrismaClient = lazyClient('auth', (url) => createAuthPrismaClient(url));

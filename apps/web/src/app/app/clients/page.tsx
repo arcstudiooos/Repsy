@@ -3,7 +3,7 @@ import Link from 'next/link';
 import {
   clientCompliance,
   getClientAdherence,
-  listThreads,
+  unreadByClient,
   DomainError,
   listClients,
   listCheckinTemplates,
@@ -120,7 +120,7 @@ export default async function ClientsPage({
         select: { clientId: true, program: { select: { title: true } } },
       });
       const program = new Map(assignments.map((a) => [a.clientId, a.program.title]));
-      const unread = new Map((await listThreads(tx, actor)).map((t) => [t.clientId, t.unread]));
+      const unread = await unreadByClient(tx, actor, ids);
       const extras: Record<string, ClientExtras> = {};
       for (const id of ids) {
         const row = adh.get(id);

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { themeBootScript } from '@/components/theme/theme';
+import { HydrationMarker } from '@/components/ui/HydrationMarker';
 import { Toaster } from '@/components/ui/toast';
 import { appUrl, SITE_NAME } from '@/lib/site';
 import './globals.css';
@@ -50,6 +51,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       <body className="min-h-full flex flex-col">
         {children}
         <Toaster />
+        <HydrationMarker />
       </body>
     </html>
   );

@@ -50,7 +50,8 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   transpilePackages: ['@repsy/core', '@repsy/db'],
   serverExternalPackages: ['pg'],
-  partialPrefetching: true,
+  // Off: when on, every dynamic page rendered twice per request and doubled its database work (D-024).
+  partialPrefetching: false,
   poweredByHeader: false,
   async headers() {
     return [
