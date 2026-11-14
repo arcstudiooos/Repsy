@@ -15,10 +15,10 @@
     "@repsy/core": "workspace:*",
     "@repsy/db": "workspace:*",
     "@repsy/storage": "workspace:*",
-    "@sentry/node": "11.10.0",
-    "pg-boss": "12.38.0",
+    "@sentry/node": "11.12.0",
+    "pg-boss": "12.38.2",
     "pino": "10.4.0",
-    "resend": "6.37.0"
+    "resend": "6.38.0"
   },
   "devDependencies": {
     "@types/node": "26.6.6",
